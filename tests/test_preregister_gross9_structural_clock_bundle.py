@@ -65,68 +65,49 @@ EXPECTED_AUTHORITY_AMENDMENTS = [
     },
 ]
 
-EXPECTED_PROTOCOL_PATHS = [
-    (
-        "docs/"
-        "gross9-structural-clock-bundle-g9cb8-successor-authority-decision-"
-        "2026-07-31.md"
-    ),
-    (
-        "docs/"
-        "gross9-structural-clock-bundle-g9cb7-successor-authority-decision-"
-        "2026-07-31.md"
-    ),
-    (
-        "docs/"
-        "gross9-structural-clock-bundle-g9cb6-successor-authority-decision-"
-        "2026-07-31.md"
-    ),
-    (
-        "docs/"
-        "gross9-structural-clock-bundle-g9cb5-successor-authority-decision-"
-        "2026-07-31.md"
-    ),
-    (
-        "docs/"
-        "gross9-structural-clock-bundle-g9cb4-successor-authority-decision-"
-        "2026-07-31.md"
-    ),
-    (
-        "docs/"
-        "gross9-structural-clock-bundle-g9cb3-successor-authority-decision-"
-        "2026-07-31.md"
-    ),
-    (
-        "docs/"
-        "gross9-structural-clock-bundle-successor-authority-decision-"
-        "2026-07-31.md"
-    ),
-    "docs/gross9-structural-clock-bundle-authority-decision-2026-07-31.md",
-    (
-        "docs/"
-        "gross9-structural-clock-bundle-rank7-authority-amendment-"
-        "2026-07-31.md"
-    ),
-    (
-        "docs/"
-        "gross9-structural-clock-bundle-runtime-isolation-amendment-"
-        "2026-07-31.md"
-    ),
-    (
-        "docs/"
-        "gross9-structural-clock-bundle-preregistration-correction-"
-        "amendment-2026-07-31.md"
-    ),
-    "training/preregister_gross9_structural_clock_bundle.py",
-    "tests/test_preregister_gross9_structural_clock_bundle.py",
-    "tests/test_gross9_structural_clock_bundle_preregistration_artifact.py",
-    "training/build_gross9_structural_clock_bundle.py",
-    "tests/test_build_gross9_structural_clock_bundle.py",
-    "training/gross9_structural_clock_primitives.py",
-    "tests/test_gross9_structural_clock_primitives.py",
-    "execution/gross9_rank7_clock_runtime.py",
-    "tests/test_gross9_rank7_clock_runtime.py",
-]
+EXPECTED_PROTOCOL_PATHS = ['docs/gross9-structural-clock-bundle-g9cb12-successor-authority-decision-2026-07-31.md',
+ 'results/gross9_structural_clock_bundle_g9cb11_source_support_attempt_consumed_2026-07-31.json',
+ 'results/gross9_structural_clock_bundle_g9cb11_source_support_terminal_failure_2026-07-31.json',
+ 'training/materialize_gross9_structural_clock_g9cb12_sources.py',
+ 'tests/test_materialize_gross9_structural_clock_g9cb12_sources.py',
+ 'results/gross9_structural_clock_bundle_g9cb12_source_support_attempt_consumed_2026-07-31.json',
+ 'configs/shadow/gross9_structural_clock_bundle_g9cb12_sources_2026-07-31.json',
+ 'results/gross9_structural_clock_bundle_g9cb12_source_support_2026-07-31.json',
+ 'docs/gross9-structural-clock-bundle-g9cb11-successor-authority-decision-2026-07-31.md',
+ 'results/gross9_structural_clock_bundle_g9cb10_source_support_attempt_consumed_2026-07-31.json',
+ 'results/gross9_structural_clock_bundle_g9cb10_source_support_terminal_failure_2026-07-31.json',
+ 'training/materialize_gross9_structural_clock_g9cb11_sources.py',
+ 'tests/test_materialize_gross9_structural_clock_g9cb11_sources.py',
+ 'docs/gross9-structural-clock-bundle-g9cb10-successor-authority-decision-2026-07-31.md',
+ 'results/gross9_structural_clock_bundle_g9cb9_source_support_attempt_consumed_2026-07-31.json',
+ 'results/gross9_structural_clock_bundle_g9cb9_source_support_terminal_failure_2026-07-31.json',
+ 'training/materialize_gross9_structural_clock_g9cb10_sources.py',
+ 'tests/test_materialize_gross9_structural_clock_g9cb10_sources.py',
+ 'docs/gross9-structural-clock-bundle-g9cb9-successor-authority-decision-2026-07-31.md',
+ 'results/gross9_structural_clock_bundle_g9cb8_attempt_consumed_2026-07-31.json',
+ 'results/gross9_structural_clock_bundle_g9cb8_worker_capability_consumed_pass1_2026-07-31.json',
+ 'training/materialize_gross9_structural_clock_g9cb9_sources.py',
+ 'tests/test_materialize_gross9_structural_clock_g9cb9_sources.py',
+ 'docs/gross9-structural-clock-bundle-g9cb8-successor-authority-decision-2026-07-31.md',
+ 'docs/gross9-structural-clock-bundle-g9cb7-successor-authority-decision-2026-07-31.md',
+ 'docs/gross9-structural-clock-bundle-g9cb6-successor-authority-decision-2026-07-31.md',
+ 'docs/gross9-structural-clock-bundle-g9cb5-successor-authority-decision-2026-07-31.md',
+ 'docs/gross9-structural-clock-bundle-g9cb4-successor-authority-decision-2026-07-31.md',
+ 'docs/gross9-structural-clock-bundle-g9cb3-successor-authority-decision-2026-07-31.md',
+ 'docs/gross9-structural-clock-bundle-successor-authority-decision-2026-07-31.md',
+ 'docs/gross9-structural-clock-bundle-authority-decision-2026-07-31.md',
+ 'docs/gross9-structural-clock-bundle-rank7-authority-amendment-2026-07-31.md',
+ 'docs/gross9-structural-clock-bundle-runtime-isolation-amendment-2026-07-31.md',
+ 'docs/gross9-structural-clock-bundle-preregistration-correction-amendment-2026-07-31.md',
+ 'training/preregister_gross9_structural_clock_bundle.py',
+ 'tests/test_preregister_gross9_structural_clock_bundle.py',
+ 'tests/test_gross9_structural_clock_bundle_preregistration_artifact.py',
+ 'training/build_gross9_structural_clock_bundle.py',
+ 'tests/test_build_gross9_structural_clock_bundle.py',
+ 'training/gross9_structural_clock_primitives.py',
+ 'tests/test_gross9_structural_clock_primitives.py',
+ 'execution/gross9_rank7_clock_runtime.py',
+ 'tests/test_gross9_rank7_clock_runtime.py']
 
 EXPECTED_SUPERSEDED_PREREGISTRATION = {
     "path": (
@@ -182,12 +163,12 @@ EXPECTED_FAILED_PREDECESSOR_PREREGISTRATIONS = [
 EXPECTED_CONSUMPTION_LEDGER_PATHS = [
     (
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb12_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     (
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb12_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 ]
@@ -215,6 +196,36 @@ def _q5_tracked_binding(root: Path, relative: Path) -> dict[str, Any]:
     }
 
 
+def _synthetic_source_preclaim_disclosures() -> dict[str, Any]:
+    return {
+        "frozen_open_interest_gzip_opaque_bytes_opened_preclaim": True,
+        "frozen_open_interest_gzip_decompressed_preclaim": False,
+        "g9cb12_source_support": {
+            "attempt_sentinel": {
+                "attempt_hash": prereg.G9CB12_SOURCE_ATTEMPT_HASH,
+            },
+            "historical_access_ledger": {},
+            "materialized_sources": {},
+            "p12_process_access_at_creation": {
+                "candidate_rows_opened": 0,
+                "comparator_clock_rows_opened": 0,
+                "model_files_opened": 0,
+                "pre2025_anchor_value_rows_opened": 0,
+                "runtime_modules_imported": 0,
+                "source_files_opened": 0,
+                "source_value_rows_opened": 0,
+            },
+            "source_manifest": {},
+            "support_artifact": {
+                "access_ledger_hash": prereg.G9CB12_ACCESS_LEDGER_HASH,
+                "source_support_commit": prereg.G9CB12_SOURCE_SUPPORT_COMMIT,
+                "support_hash": prereg.G9CB12_SUPPORT_HASH,
+            },
+            "validation": {},
+        },
+    }
+
+
 def _prepare_synthetic_q5_repository(
     base: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -230,7 +241,7 @@ def _prepare_synthetic_q5_repository(
     )
     _q5_git(root, "init", "-q", "-b", prereg.EXPECTED_BRANCH)
     _q5_git(root, "config", "user.email", "q5@example.invalid")
-    _q5_git(root, "config", "user.name", "Q8 Synthetic")
+    _q5_git(root, "config", "user.name", "Q12 Synthetic")
 
     protocol_paths = tuple(
         sorted(prereg.PROTOCOL_PATHS, key=lambda path: path.as_posix())
@@ -247,11 +258,11 @@ def _prepare_synthetic_q5_repository(
         candidate.write_bytes(raw)
 
     predecessor_path = Path("results/synthetic-predecessor-metadata.json")
-    (root / predecessor_path).parent.mkdir(parents=True)
+    (root / predecessor_path).parent.mkdir(parents=True, exist_ok=True)
     (root / predecessor_path).write_bytes(b'{"synthetic":true}\n')
     tracked_nested_path = Path(
         "results/synthetic-tracked-directory/"
-        "gross9_structural_clock_bundle_g9cb8_preregistration_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb12_preregistration_2026-07-31.json"
     )
     (root / tracked_nested_path).parent.mkdir(parents=True)
     (root / tracked_nested_path).write_bytes(b"synthetic nested tracked leaf\n")
@@ -261,15 +272,22 @@ def _prepare_synthetic_q5_repository(
         "\n".join(
             [
                 "data/",
-                "results/gross9_structural_clock_bundle_g9cb8_*",
-                "results/.gross9-structural-clock-g9cb8-worker-*",
-                "results/.g9cb8-bytecode-cache-disabled",
+                "results/gross9_structural_clock_bundle_g9cb12_*",
+                "results/.gross9-structural-clock-g9cb12-worker-*",
+                "results/.g9cb12-bytecode-cache-disabled",
                 "",
             ]
         ),
         encoding="utf-8",
     )
     _q5_git(root, "add", ".")
+    _q5_git(
+        root,
+        "add",
+        "-f",
+        "--",
+        *[path.as_posix() for path in protocol_paths],
+    )
     _q5_git(root, "commit", "-qm", "synthetic A5")
     a5 = _q5_git(root, "rev-parse", "HEAD")
 
@@ -278,10 +296,10 @@ def _prepare_synthetic_q5_repository(
         assert status == "M"
         candidate = root / path_text
         candidate.write_bytes(
-            f"synthetic Q8 bytes: {path_text}\n".encode()
+            f"synthetic Q12 bytes: {path_text}\n".encode()
         )
     _q5_git(root, "add", ".")
-    _q5_git(root, "commit", "-qm", "synthetic Q8")
+    _q5_git(root, "commit", "-qm", "synthetic Q12")
     q5 = _q5_git(root, "rev-parse", "HEAD")
     _q5_git(root, "remote", "add", "origin", str(remote))
     _q5_git(root, "push", "-qu", "origin", prereg.EXPECTED_BRANCH)
@@ -298,6 +316,16 @@ def _prepare_synthetic_q5_repository(
         stage.chmod(0o700)
 
     predecessor = _q5_tracked_binding(root, predecessor_path)
+    synthetic_source_bindings = (
+        (
+            "synthetic_source",
+            predecessor["path"],
+            predecessor["sha256"],
+        ),
+    )
+    monkeypatch.setattr(
+        prereg, "SOURCE_BINDINGS", synthetic_source_bindings
+    )
     attempts = [
         {
             "identity": identity.upper().replace("G9CB", "G9CB-"),
@@ -476,6 +504,9 @@ def _prepare_synthetic_q5_repository(
 
     monkeypatch.setattr(prereg, "AUTHORITY_DECISION_COMMIT", a5)
     monkeypatch.setattr(
+        prereg, "PROTOCOL_IMPLEMENTATION_PARENT_COMMIT", a5
+    )
+    monkeypatch.setattr(
         prereg,
         "_active_authority_decision_binding",
         lambda _root=root: dict(authority),
@@ -503,14 +534,18 @@ def _prepare_synthetic_q5_repository(
     monkeypatch.setattr(prereg, "validate_environment", lambda _root=root: {})
     monkeypatch.setattr(prereg, "validate_config_metadata", lambda _root=root: [])
     monkeypatch.setattr(prereg, "validate_rank7_bundle", lambda _root=root: {})
-    monkeypatch.setattr(prereg, "validate_sources", lambda _root=root: [])
+    monkeypatch.setattr(
+        prereg,
+        "validate_sources",
+        lambda _root=root: [
+            {"name": name, "path": path, "sha256": digest}
+            for name, path, digest in synthetic_source_bindings
+        ],
+    )
     monkeypatch.setattr(
         prereg,
         "source_preclaim_disclosures",
-        lambda _root=root: {
-            "frozen_open_interest_gzip_opaque_bytes_opened_preclaim": True,
-            "frozen_open_interest_gzip_decompressed_preclaim": False,
-        },
+        lambda _root=root: _synthetic_source_preclaim_disclosures(),
     )
     monkeypatch.setattr(
         prereg,
@@ -848,18 +883,18 @@ def test_repository_authority_amendments_authenticate_in_canonical_order() -> No
     assert type(decision) is dict
     assert decision == {
         "path": (
-            "docs/gross9-structural-clock-bundle-g9cb8-successor-"
+            "docs/gross9-structural-clock-bundle-g9cb12-successor-"
             "authority-decision-2026-07-31.md"
         ),
-        "path_type": "regular_file",
-        "sha256": (
-            "8b2ced344ef3e40fbdba68427a8f3467abedab2c57edbd6afe84b8da6691aec0"
-        ),
-        "git_blob": "3adc4c8e04901a001b0ada47b273756b63128e60",
-        "git_mode": "100644",
-        "authority_commit": "33a5aad98c19cec29aba253933145d76b893be93",
-        "size_bytes": 21_309,
-    }
+            "path_type": "regular_file",
+            "sha256": (
+                "1c10d085d9e38aad9568f8769795de38d9d8729bf41334db70c839723d64ba6f"
+            ),
+            "git_blob": "f27653975eb4a1b7fd2ce057034fc26ad447a0ff",
+            "git_mode": "100644",
+            "authority_commit": "a533ec5ec6bb01d0eeed8ab66a37a3a10f1dba5d",
+            "size_bytes": 44_054,
+        }
 
     assert prereg._authority_amendment_bindings() == EXPECTED_AUTHORITY_AMENDMENTS
 
@@ -1110,7 +1145,7 @@ def test_protocol_commit_topology_accepts_exact_synthetic_a5_q5_p5_chain(
 ) -> None:
     _q5_git(tmp_path, "init", "-q", "-b", prereg.EXPECTED_BRANCH)
     _q5_git(tmp_path, "config", "user.email", "q5-topology@example.invalid")
-    _q5_git(tmp_path, "config", "user.name", "Q8 Topology")
+    _q5_git(tmp_path, "config", "user.name", "Q12 Topology")
 
     def paths(diff: tuple[str, ...], expected_status: str) -> tuple[Path, ...]:
         parsed = []
@@ -1276,50 +1311,135 @@ def test_protocol_commit_topology_accepts_exact_synthetic_a5_q5_p5_chain(
             "synthetic C7 claim",
             prereg.G9CB7_CLAIM_DIFF,
         ),
-        (
-            "AUTHORITY_DECISION_COMMIT",
-            "synthetic A8 authority",
-            prereg.SUCCESSOR_AUTHORITY_DIFF,
-        ),
-    )
+            (
+                "G9CB8_AUTHORITY_DECISION_COMMIT",
+                "synthetic A8 authority",
+                prereg.G9CB8_SUCCESSOR_AUTHORITY_DIFF,
+            ),
+            (
+                "G9CB8_PROTOCOL_IMPLEMENTATION_COMMIT",
+                "synthetic Q8 protocol",
+                prereg.SUCCESSOR_PROTOCOL_DIFF,
+            ),
+            (
+                "G9CB8_PREREGISTRATION_SEAL_COMMIT",
+                "synthetic P8 preregistration",
+                prereg.G9CB8_ACTIVE_PREREGISTRATION_DIFF,
+            ),
+            (
+                "G9CB8_CLAIM_COMMIT",
+                "synthetic C8 claim",
+                prereg.G9CB8_CLAIM_DIFF,
+            ),
+            (
+                "G9CB9_AUTHORITY_DECISION_COMMIT",
+                "synthetic A9 authority",
+                prereg.G9CB9_SUCCESSOR_AUTHORITY_DIFF,
+            ),
+            (
+                "G9CB8_TERMINAL_EVIDENCE_COMMIT",
+                "synthetic T8 evidence",
+                prereg.G9CB8_TERMINAL_EVIDENCE_DIFF,
+            ),
+            (
+                "G9CB9_SOURCE_SUPPORT_COMMIT",
+                "synthetic S9 source support",
+                prereg.G9CB9_SOURCE_SUPPORT_DIFF,
+            ),
+            (
+                "G9CB10_AUTHORITY_DECISION_COMMIT",
+                "synthetic A10 authority",
+                prereg.G9CB10_SUCCESSOR_AUTHORITY_DIFF,
+            ),
+            (
+                "G9CB9_TERMINAL_EVIDENCE_COMMIT",
+                "synthetic T9 evidence",
+                prereg.G9CB9_TERMINAL_EVIDENCE_DIFF,
+            ),
+            (
+                "G9CB10_SOURCE_SUPPORT_COMMIT",
+                "synthetic S10 source support",
+                prereg.G9CB10_SOURCE_SUPPORT_DIFF,
+            ),
+            (
+                "G9CB11_AUTHORITY_DECISION_COMMIT",
+                "synthetic A11 authority",
+                prereg.G9CB11_SUCCESSOR_AUTHORITY_DIFF,
+            ),
+            (
+                "G9CB10_TERMINAL_EVIDENCE_COMMIT",
+                "synthetic T10 evidence",
+                prereg.G9CB10_TERMINAL_EVIDENCE_DIFF,
+            ),
+            (
+                "G9CB11_SOURCE_SUPPORT_COMMIT",
+                "synthetic S11 source support",
+                prereg.G9CB11_SOURCE_SUPPORT_DIFF,
+            ),
+            (
+                "AUTHORITY_DECISION_COMMIT",
+                "synthetic A12 authority",
+                prereg.SUCCESSOR_AUTHORITY_DIFF,
+            ),
+            (
+                "G9CB11_TERMINAL_EVIDENCE_COMMIT",
+                "synthetic T11 evidence",
+                prereg.G9CB11_TERMINAL_EVIDENCE_DIFF,
+            ),
+            (
+                "G9CB12_SOURCE_SUPPORT_COMMIT",
+                "synthetic S12 source support",
+                prereg.G9CB12_SOURCE_SUPPORT_DIFF,
+            ),
+            (
+                "G9CB12_SOURCE_MANIFEST_COMMIT",
+                "synthetic M12 source manifest",
+                prereg.G9CB12_SOURCE_MANIFEST_DIFF,
+            ),
+        )
     for key, label, diff in chain:
         commit_delta(key, label, diff)
     q8 = commit_delta(
-        "Q8_PROTOCOL_IMPLEMENTATION_COMMIT",
-        "synthetic Q8 protocol",
+        "Q12_PROTOCOL_IMPLEMENTATION_COMMIT",
+        "synthetic Q12 protocol",
         prereg.SUCCESSOR_PROTOCOL_DIFF,
     )
     commit_delta(
-        "P8_PREREGISTRATION_SEAL_COMMIT",
-        "synthetic P8 preregistration",
+        "P12_PREREGISTRATION_SEAL_COMMIT",
+        "synthetic P12 preregistration",
         prereg.ACTIVE_PREREGISTRATION_DIFF,
     )
 
     for name, commit in commits.items():
         if hasattr(prereg, name):
             monkeypatch.setattr(prereg, name, commit)
+    monkeypatch.setattr(
+        prereg,
+        "PROTOCOL_IMPLEMENTATION_PARENT_COMMIT",
+        commits["G9CB12_SOURCE_MANIFEST_COMMIT"],
+    )
 
     assert prereg.validate_protocol_commit_topology(tmp_path) == q8
 
-    a8 = commits["AUTHORITY_DECISION_COMMIT"]
-    _q5_git(tmp_path, "checkout", "-q", "--detach", a8)
+    m12 = commits["G9CB12_SOURCE_MANIFEST_COMMIT"]
+    _q5_git(tmp_path, "checkout", "-q", "--detach", m12)
     for relative in paths(prereg.SUCCESSOR_PROTOCOL_DIFF, "M"):
         (tmp_path / relative).write_bytes(
-            f"malformed Q8 delta: {relative}\n".encode()
+            f"malformed Q12 delta: {relative}\n".encode()
         )
     (tmp_path / "unexpected-q8-path").write_bytes(b"unexpected\n")
     _q5_git(tmp_path, "add", ".")
-    _q5_git(tmp_path, "commit", "-qm", "malformed Q8 protocol")
+    _q5_git(tmp_path, "commit", "-qm", "malformed Q12 protocol")
     with pytest.raises(ValueError, match="implementation diff"):
         prereg.validate_protocol_commit_topology(tmp_path)
 
 
-def test_protocol_paths_include_exact_sorted_unique_g9cb8_inventory() -> None:
+def test_protocol_paths_include_exact_sorted_unique_g9cb12_inventory() -> None:
     assert [path.as_posix() for path in prereg.PROTOCOL_PATHS] == (
         EXPECTED_PROTOCOL_PATHS
     )
-    assert len(prereg.PROTOCOL_PATHS) == 20
-    assert len(set(prereg.PROTOCOL_PATHS)) == 20
+    assert len(prereg.PROTOCOL_PATHS) == 43
+    assert len(set(prereg.PROTOCOL_PATHS)) == 43
     assert sorted(path.as_posix() for path in prereg.PROTOCOL_PATHS) == sorted(
         EXPECTED_PROTOCOL_PATHS
     )
@@ -1382,7 +1502,7 @@ def test_q8_results_inventory_rejects_missing_tracked_or_extra_untracked_entry(
         with pytest.raises(FileExistsError, match="exact results inventory"):
             prereg._validate_closed_path_state(
                 results_fd,
-                prereg.Q8_PREREGISTRATION_PUBLICATION,
+                prereg.Q12_PREREGISTRATION_PUBLICATION,
                 snapshot=snapshot,
                 preregistration=False,
                 claim=False,
@@ -1477,7 +1597,7 @@ def test_worker_process_environment_substitutes_canonical_synthetic_root(
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONPATH": canonical_root.as_posix(),
         "PYTHONPYCACHEPREFIX": (
-            canonical_root / "results/.g9cb8-bytecode-cache-disabled"
+            canonical_root / "results/.g9cb12-bytecode-cache-disabled"
         ).as_posix(),
         "PYTHONUNBUFFERED": "1",
         "PYTHONUTF8": "1",
@@ -1514,11 +1634,11 @@ def test_manifest_binds_g9cb_1b_contract_and_exact_rank7_counters(
     )
     assert manifest["protocol_implementation_commit"] == "0" * 40
     assert manifest["protocol_version"] == (
-        "gross9_structural_clock_bundle_g9cb8_preregistration_v1"
+        "gross9_structural_clock_bundle_g9cb12_preregistration_v1"
     )
     assert manifest["output_paths"]["preregistration"] == (
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_preregistration_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb12_preregistration_2026-07-31.json"
     )
     assert manifest["bindings"]["runtime_import_roots"] == [
         "execution/gross9_rank7_clock_runtime.py",
@@ -1584,8 +1704,9 @@ def test_frozen_environment_inventory_authenticates_under_project_runner() -> No
     assert environment["selected_distributions"]["sqlalchemy"] == "absent"
 
 
-def test_source_preclaim_disclosures_are_exact_without_row_counts() -> None:
+def test_source_preclaim_disclosures_include_exact_g9cb12_support() -> None:
     disclosures = prereg.source_preclaim_disclosures()
+    source_support = disclosures.pop("g9cb12_source_support")
     assert disclosures == {
         "frozen_open_interest_gzip_logical_path": (
             "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz"
@@ -1616,6 +1737,85 @@ def test_source_preclaim_disclosures_are_exact_without_row_counts() -> None:
         "open_interest_rows_decoded_preclaim": 0,
         "open_interest_fields_or_values_opened_preclaim": 0,
     }
+    assert tuple(source_support) == (
+        "attempt_sentinel",
+        "historical_access_ledger",
+        "materialized_sources",
+        "p12_process_access_at_creation",
+        "source_manifest",
+        "support_artifact",
+        "validation",
+    )
+    assert source_support["attempt_sentinel"] == {
+        "path": prereg.G9CB12_SOURCE_ATTEMPT_PATH.as_posix(),
+        "path_type": "regular_file",
+        "sha256": prereg.G9CB12_SOURCE_ATTEMPT_SHA256,
+        "git_blob": prereg.G9CB12_SOURCE_ATTEMPT_GIT_BLOB,
+        "git_mode": "100644",
+        "size_bytes": prereg.G9CB12_SOURCE_ATTEMPT_SIZE,
+        "filesystem_mode_octal": "0444",
+        "attempt_hash": prereg.G9CB12_SOURCE_ATTEMPT_HASH,
+    }
+    assert source_support["source_manifest"] == {
+        "path": prereg.G9CB12_SOURCE_MANIFEST_PATH.as_posix(),
+        "path_type": "regular_file",
+        "sha256": prereg.G9CB12_SOURCE_MANIFEST_SHA256,
+        "git_blob": prereg.G9CB12_SOURCE_MANIFEST_GIT_BLOB,
+        "git_mode": "100644",
+        "size_bytes": prereg.G9CB12_SOURCE_MANIFEST_SIZE,
+        "filesystem_mode_octal": "0444",
+    }
+    assert source_support["support_artifact"] == {
+        "path": prereg.G9CB12_SOURCE_SUPPORT_PATH.as_posix(),
+        "path_type": "regular_file",
+        "sha256": prereg.G9CB12_SOURCE_SUPPORT_SHA256,
+        "git_blob": prereg.G9CB12_SOURCE_SUPPORT_GIT_BLOB,
+        "git_mode": "100644",
+        "size_bytes": prereg.G9CB12_SOURCE_SUPPORT_SIZE,
+        "filesystem_mode_octal": "0444",
+        "support_hash": prereg.G9CB12_SUPPORT_HASH,
+        "source_support_commit": prereg.G9CB12_SOURCE_SUPPORT_COMMIT,
+        "access_ledger_hash": prereg.G9CB12_ACCESS_LEDGER_HASH,
+    }
+    assert source_support["p12_process_access_at_creation"] == {
+        "candidate_rows_opened": 0,
+        "comparator_clock_rows_opened": 0,
+        "model_files_opened": 0,
+        "pre2025_anchor_value_rows_opened": 0,
+        "runtime_modules_imported": 0,
+        "source_files_opened": 0,
+        "source_value_rows_opened": 0,
+    }
+    ledger = source_support["historical_access_ledger"]
+    assert tuple(ledger) == (
+        "access_ledger_hash",
+        "current_s12",
+        "historical_s11",
+        "ledger_kind",
+        "process_local",
+        "replay_guard",
+        "schema_version",
+    )
+    assert ledger["access_ledger_hash"] == prereg.G9CB12_ACCESS_LEDGER_HASH
+    assert ledger["current_s12"]["rank7_required_tail_rows"] == 3_000
+    assert ledger["current_s12"]["rank7_tail_exact_matches"] == 3_000
+    assert (
+        ledger["current_s12"]["rank7_pre_tail_coverage_comparison_count"]
+        == 0
+    )
+    assert ledger["current_s12"]["rank7_gap_detail_disclosure_count"] == 0
+    assert ledger["historical_s11"]["authority_transferred"] is False
+    assert ledger["replay_guard"]["replay_guard_hash"] == (
+        prereg.G9CB12_REPLAY_GUARD_HASH
+    )
+    prereg._require_zero_economics(ledger)
+    assert tuple(source_support["materialized_sources"]) == (
+        "market_5m",
+        "open_interest",
+    )
+    assert source_support["validation"][
+        "rank7_spot_premium_latest_values_valid"
+    ] is True
 
 
 def test_anchor_loader_guard_forbids_value_parsing() -> None:
@@ -1629,7 +1829,7 @@ def test_write_once_is_singleton_create_only_and_verifies_existing(
 ) -> None:
     _q5_git(tmp_path, "init", "-q")
     _q5_git(tmp_path, "config", "user.email", "q5-tests@example.invalid")
-    _q5_git(tmp_path, "config", "user.name", "Q8 tests")
+    _q5_git(tmp_path, "config", "user.name", "Q12 tests")
     (tmp_path / "host-marker").write_bytes(b"synthetic host repository\n")
     _q5_git(tmp_path, "add", "host-marker")
     _q5_git(tmp_path, "commit", "-qm", "synthetic host")
@@ -1774,36 +1974,39 @@ def test_module_is_stdlib_metadata_only_and_has_no_forbidden_dependency() -> Non
     assert call.args[0].elts[0].value == "git"
 
 
-def test_g9cb8_identity_paths_and_terminal_literals_are_exact() -> None:
-    assert prereg.IDENTITY == "G9CB-8"
+def test_g9cb12_identity_paths_and_terminal_literals_are_exact() -> None:
+    assert prereg.IDENTITY == "G9CB-12-SOURCE-SUPPORT"
     assert prereg.PROTOCOL_VERSION == (
-        "gross9_structural_clock_bundle_g9cb8_preregistration_v1"
+        "gross9_structural_clock_bundle_g9cb12_preregistration_v1"
     )
     assert prereg.PREREGISTRATION_PATH.as_posix() == (
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_preregistration_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb12_preregistration_2026-07-31.json"
     )
     assert prereg.ACCESS_CLAIM_PATH.as_posix() == (
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_access_claim_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb12_access_claim_2026-07-31.json"
     )
     assert prereg.ATTEMPT_SENTINEL_PATH.as_posix() == (
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_attempt_consumed_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb12_attempt_consumed_2026-07-31.json"
     )
 
 
-def test_g9cb8_authority_is_add_only_child_of_frozen_c7() -> None:
-    assert prereg.AUTHORITY_DECISION_COMMIT == (
+def test_g9cb12_authority_is_add_only_child_of_g9cb11_source_support() -> None:
+    assert prereg.G9CB8_AUTHORITY_DECISION_COMMIT == (
         "33a5aad98c19cec29aba253933145d76b893be93"
     )
-    assert prereg.G9CB7_CLAIM_COMMIT == (
-        "ff1a8907d19c97beeef0bd7d2797e3bacce17617"
+    assert prereg.AUTHORITY_DECISION_COMMIT == (
+        "a533ec5ec6bb01d0eeed8ab66a37a3a10f1dba5d"
+    )
+    assert prereg.G9CB11_SOURCE_SUPPORT_COMMIT == (
+        "646fccbf6568bcf39fab12a47873f72da880ca01"
     )
     assert prereg._single_parent(
         prereg.AUTHORITY_DECISION_COMMIT,
         prereg.REPOSITORY_ROOT,
-    ) == prereg.G9CB7_CLAIM_COMMIT
+    ) == prereg.G9CB11_SOURCE_SUPPORT_COMMIT
 
 
 def test_g9cb5_prepublication_closure_authenticates_exact_git_bytes() -> None:
@@ -1853,7 +2056,7 @@ def test_g9cb7_pre_sentinel_closure_authenticates_exact_chain_and_cleanup() -> N
             prereg.G9CB7_PREREGISTRATION_SEAL_COMMIT
         ),
         "g9cb7_protocol_commit": prereg.G9CB7_PROTOCOL_IMPLEMENTATION_COMMIT,
-        "g9cb8_authority_commit": prereg.AUTHORITY_DECISION_COMMIT,
+        "g9cb8_authority_commit": prereg.G9CB8_AUTHORITY_DECISION_COMMIT,
         "terminal_evidence_commit": None,
     }
 
@@ -1867,7 +2070,7 @@ def test_shared_repository_bytecode_preflight_rejects_every_cache_form(
     if artifact == "directory":
         (tmp_path / "pkg" / "__pycache__").mkdir(parents=True)
     elif artifact == "fixed":
-        (tmp_path / "results/.g9cb8-bytecode-cache-disabled").mkdir()
+        (tmp_path / "results/.g9cb12-bytecode-cache-disabled").mkdir()
     else:
         (tmp_path / "pkg").mkdir()
         (tmp_path / "pkg" / f"orphan.{artifact}").write_bytes(b"bytecode")
@@ -1934,9 +2137,9 @@ def test_p8_main_bytecode_gate_precedes_topology_snapshot_and_publication(
     monkeypatch.setattr(prereg, "REPOSITORY_ROOT", tmp_path)
     monkeypatch.setattr(prereg.os, "walk", failing_walk)
     monkeypatch.setattr(
-        prereg, "_validate_q8_publication_topology", forbidden("topology")
+        prereg, "_validate_q12_publication_topology", forbidden("topology")
     )
-    monkeypatch.setattr(prereg, "_bootstrap_q8_snapshot", forbidden("snapshot"))
+    monkeypatch.setattr(prereg, "_bootstrap_q12_snapshot", forbidden("snapshot"))
     monkeypatch.setattr(
         prereg, "_probe_preregistration_publication", forbidden("publication")
     )
@@ -2152,7 +2355,7 @@ def test_q8_bootstrap_and_manifest_bind_exact_same_closure_unique_path_set(
     assert set(bootstrap_digests) == set(manifest_digests)
 
 
-def test_q8_canonical_bootstrap_and_manifest_bind_exact_same_63_paths() -> None:
+def test_q12_canonical_bootstrap_and_manifest_bind_exact_same_89_paths() -> None:
     predecessor_raw = subprocess.run(
         [
             "git",
@@ -2175,7 +2378,7 @@ def test_q8_canonical_bootstrap_and_manifest_bind_exact_same_63_paths() -> None:
         require_git_seal=False,
     )
     manifest_digests, _ = prereg._snapshot_declarations(manifest)
-    assert len(bootstrap_digests) == len(manifest_digests) == 63
+    assert len(bootstrap_digests) == len(manifest_digests) == 89
     assert set(bootstrap_digests) == set(manifest_digests)
     assert {
         prereg.G9CB7_PREREGISTRATION_PATH.as_posix(),
@@ -2289,7 +2492,6 @@ def test_q8_paired_null_git_command_failure_precedes_open_and_publication(
         prereg.write_once(manifest, repository_root=root)
     assert events == []
     assert not (root / prereg.PREREGISTRATION_PATH).exists()
-    assert not list((root / "results").glob("*g9cb8*"))
 
 
 def test_frozen_oi_live_binding_accepts_only_mode_0444_regular_file(
@@ -2315,6 +2517,13 @@ def test_frozen_oi_live_binding_accepts_only_mode_0444_regular_file(
         hashlib.sha256(raw).hexdigest(),
     )
     monkeypatch.setattr(prereg, "validate_file", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        prereg,
+        "g9cb12_source_support_disclosure",
+        lambda *_a, **_k: _synthetic_source_preclaim_disclosures()[
+            "g9cb12_source_support"
+        ],
+    )
 
     disclosure = prereg.source_preclaim_disclosures(tmp_path)
     assert disclosure["frozen_open_interest_gzip_resolved_path"] == str(relative)
@@ -2330,10 +2539,10 @@ def test_frozen_oi_live_binding_accepts_only_mode_0444_regular_file(
         prereg.source_preclaim_disclosures(tmp_path)
 
 
-def test_g9cb8_stage_and_pycache_prefixes_do_not_alias_predecessor_residue() -> None:
+def test_g9cb12_stage_and_pycache_prefixes_do_not_alias_predecessor_residue() -> None:
     active = {
-        "results/.gross9-structural-clock-g9cb8-worker-",
-        "results/.g9cb8-bytecode-cache-disabled",
+        "results/.gross9-structural-clock-g9cb12-worker-",
+        "results/.g9cb12-bytecode-cache-disabled",
     }
     predecessor = {
         "results/.gross9-structural-clock-worker-",
@@ -2445,7 +2654,7 @@ def test_actual_synthetic_q5_publication_is_pair_first_two_read_and_link_last(
     monkeypatch.setattr(prereg.os, "pread", recorded_pread)
     monkeypatch.setattr(prereg, "_git_result", recorded_git_result)
 
-    assert prereg._validate_q8_publication_topology(root) == q5
+    assert prereg._validate_q12_publication_topology(root) == q5
     assert prereg._single_parent(q5, root) == a5
     assert prereg._commit_diff(a5, q5, root) == prereg.SUCCESSOR_PROTOCOL_DIFF
     assert prereg.write_once(manifest, repository_root=root) is True
@@ -2509,11 +2718,11 @@ def test_actual_synthetic_q5_publication_is_pair_first_two_read_and_link_last(
     assert all(not (root / path).exists() for path in active)
     assert not list(
         (root / "results").glob(
-            ".gross9-structural-clock-g9cb8-worker-*"
+            ".gross9-structural-clock-g9cb12-worker-*"
         )
     )
     assert not (
-        root / "results/.g9cb8-bytecode-cache-disabled"
+        root / "results/.g9cb12-bytecode-cache-disabled"
     ).exists()
 
 
@@ -2537,7 +2746,7 @@ def test_existing_preregistration_public_path_is_full_retained_verification_or_a
     active_path = ""
     descriptor_paths: dict[int, str] = {}
     reads: dict[str, list[int]] = {}
-    original_topology = prereg._validate_q8_publication_topology
+    original_topology = prereg._validate_q12_publication_topology
     original_pair = prereg._classify_git_pair_only
     original_open = prereg._PreregistrationSnapshot.open_initial
     original_verify = prereg._PreregistrationSnapshot.verify_final
@@ -2578,7 +2787,7 @@ def test_existing_preregistration_public_path_is_full_retained_verification_or_a
 
     monkeypatch.setattr(
         prereg,
-        "_validate_q8_publication_topology",
+        "_validate_q12_publication_topology",
         recorded_topology,
     )
     monkeypatch.setattr(prereg, "_classify_git_pair_only", recorded_pair)
@@ -2643,7 +2852,7 @@ def test_preregistration_retains_predecessor_residue_edge_through_final_recheck(
     try:
         prereg._validate_closed_path_state(
             results_fd,
-            prereg.Q8_PREREGISTRATION_PUBLICATION,
+            prereg.Q12_PREREGISTRATION_PUBLICATION,
             snapshot=snapshot,
             preregistration=False,
             claim=False,
@@ -2731,7 +2940,7 @@ def test_preregistration_retained_residue_rejects_restored_timestamp_drift(
     try:
         prereg._validate_closed_path_state(
             results_fd,
-            prereg.Q8_PREREGISTRATION_PUBLICATION,
+            prereg.Q12_PREREGISTRATION_PUBLICATION,
             snapshot=snapshot,
             preregistration=False,
             claim=False,
@@ -2788,10 +2997,10 @@ def test_q5_publication_rejects_every_preexisting_active_state(
         ),
         "worker-stage": (
             root
-            / "results/.gross9-structural-clock-g9cb8-worker-existing"
+            / "results/.gross9-structural-clock-g9cb12-worker-existing"
         ),
         "fixed-pycache": (
-            root / "results/.g9cb8-bytecode-cache-disabled"
+            root / "results/.g9cb12-bytecode-cache-disabled"
         ),
     }
     candidate = candidates[closed_state]
@@ -2857,8 +3066,11 @@ def test_q8_protocol_topology_constants_bind_a7_q7_p7_c7_a8_chain() -> None:
     assert prereg.G9CB7_CLAIM_COMMIT == (
         "ff1a8907d19c97beeef0bd7d2797e3bacce17617"
     )
-    assert prereg.AUTHORITY_DECISION_COMMIT == (
+    assert prereg.G9CB8_AUTHORITY_DECISION_COMMIT == (
         "33a5aad98c19cec29aba253933145d76b893be93"
+    )
+    assert prereg.AUTHORITY_DECISION_COMMIT == (
+        "a533ec5ec6bb01d0eeed8ab66a37a3a10f1dba5d"
     )
     assert prereg.SUCCESSOR_PROTOCOL_DIFF == (
         "M\ttests/test_build_gross9_structural_clock_bundle.py",

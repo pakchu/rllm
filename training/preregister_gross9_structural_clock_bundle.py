@@ -1,4 +1,4 @@
-"""Create the metadata-only G9CB-8 structural-clock preregistration.
+"""Create the metadata-only G9CB-12-SOURCE-SUPPORT structural-clock preregistration.
 
 This module deliberately has a stdlib-only import surface.  It authenticates
 opaque bytes, Git metadata, permitted JSON metadata, static Python imports,
@@ -25,7 +25,7 @@ import zlib
 
 
 PROTOCOL_VERSION = (
-    "gross9_structural_clock_bundle_g9cb8_preregistration_v1"
+    "gross9_structural_clock_bundle_g9cb12_preregistration_v1"
 )
 HISTORICAL_PROTOCOL_VERSION = (
     "gross9_structural_clock_bundle_preregistration_v1"
@@ -33,7 +33,7 @@ HISTORICAL_PROTOCOL_VERSION = (
 FAILED_V2_PROTOCOL_VERSION = (
     "gross9_structural_clock_bundle_preregistration_v2"
 )
-IDENTITY = "G9CB-8"
+IDENTITY = "G9CB-12-SOURCE-SUPPORT"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = REPOSITORY_ROOT / "results"
 PREREGISTRATION_SOURCE = Path(
@@ -49,10 +49,30 @@ BUILDER_SOURCE = Path("training/build_gross9_structural_clock_bundle.py")
 BUILDER_TEST = Path("tests/test_build_gross9_structural_clock_bundle.py")
 AUTHORITY_DECISION_PATH = Path(
     "docs/"
-    "gross9-structural-clock-bundle-g9cb8-successor-authority-decision-"
+    "gross9-structural-clock-bundle-g9cb12-successor-authority-decision-"
     "2026-07-31.md"
 )
 ACTIVE_AUTHORITY_DECISION_PATH = AUTHORITY_DECISION_PATH
+G9CB8_AUTHORITY_DECISION_PATH = Path(
+    "docs/"
+    "gross9-structural-clock-bundle-g9cb8-successor-authority-decision-"
+    "2026-07-31.md"
+)
+G9CB9_AUTHORITY_DECISION_PATH = Path(
+    "docs/"
+    "gross9-structural-clock-bundle-g9cb9-successor-authority-decision-"
+    "2026-07-31.md"
+)
+G9CB10_AUTHORITY_DECISION_PATH = Path(
+    "docs/"
+    "gross9-structural-clock-bundle-g9cb10-successor-authority-decision-"
+    "2026-07-31.md"
+)
+G9CB11_AUTHORITY_DECISION_PATH = Path(
+    "docs/"
+    "gross9-structural-clock-bundle-g9cb11-successor-authority-decision-"
+    "2026-07-31.md"
+)
 G9CB7_AUTHORITY_DECISION_PATH = Path(
     "docs/"
     "gross9-structural-clock-bundle-g9cb7-successor-authority-decision-"
@@ -110,11 +130,11 @@ FAILED_V2_PREREGISTRATION_PATH = Path(
 )
 PREREGISTRATION_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb8_preregistration_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb12_preregistration_2026-07-31.json"
 )
 ACCESS_CLAIM_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb8_access_claim_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb12_access_claim_2026-07-31.json"
 )
 G9CB7_PREREGISTRATION_PATH = Path(
     "results/"
@@ -126,34 +146,190 @@ G9CB7_ACCESS_CLAIM_PATH = Path(
 )
 ATTEMPT_SENTINEL_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb8_attempt_consumed_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb12_attempt_consumed_2026-07-31.json"
 )
 BUNDLE_PATH = Path(
-    "results/gross9_structural_clock_bundle_g9cb8_2026-07-31.csv.gz"
+    "results/gross9_structural_clock_bundle_g9cb12_2026-07-31.csv.gz"
 )
 FINAL_MANIFEST_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb8_manifest_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb12_manifest_2026-07-31.json"
 )
 WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS = (
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb12_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb12_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 )
 
-AUTHORITY_DECISION_COMMIT = "33a5aad98c19cec29aba253933145d76b893be93"
-AUTHORITY_DECISION_SHA256 = (
+G9CB8_ATTEMPT_SENTINEL_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb8_attempt_consumed_"
+    "2026-07-31.json"
+)
+G9CB8_PASS1_LEDGER_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb8_worker_capability_"
+    "consumed_pass1_2026-07-31.json"
+)
+G9CB9_MATERIALIZER_SOURCE = Path(
+    "training/materialize_gross9_structural_clock_g9cb9_sources.py"
+)
+G9CB9_MATERIALIZER_TEST = Path(
+    "tests/test_materialize_gross9_structural_clock_g9cb9_sources.py"
+)
+G9CB9_SOURCE_ATTEMPT_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb9_source_support_"
+    "attempt_consumed_2026-07-31.json"
+)
+G9CB9_SOURCE_TERMINAL_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb9_source_support_"
+    "terminal_failure_2026-07-31.json"
+)
+G9CB10_MATERIALIZER_SOURCE = Path(
+    "training/materialize_gross9_structural_clock_g9cb10_sources.py"
+)
+G9CB10_MATERIALIZER_TEST = Path(
+    "tests/test_materialize_gross9_structural_clock_g9cb10_sources.py"
+)
+G9CB10_SOURCE_ATTEMPT_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb10_source_support_"
+    "attempt_consumed_2026-07-31.json"
+)
+G9CB10_SOURCE_TERMINAL_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb10_source_support_"
+    "terminal_failure_2026-07-31.json"
+)
+G9CB11_MATERIALIZER_SOURCE = Path(
+    "training/materialize_gross9_structural_clock_g9cb11_sources.py"
+)
+G9CB11_MATERIALIZER_TEST = Path(
+    "tests/test_materialize_gross9_structural_clock_g9cb11_sources.py"
+)
+G9CB11_SOURCE_ATTEMPT_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb11_source_support_"
+    "attempt_consumed_2026-07-31.json"
+)
+G9CB11_SOURCE_TERMINAL_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb11_source_support_"
+    "terminal_failure_2026-07-31.json"
+)
+G9CB12_MATERIALIZER_SOURCE = Path(
+    "training/materialize_gross9_structural_clock_g9cb12_sources.py"
+)
+G9CB12_MATERIALIZER_TEST = Path(
+    "tests/test_materialize_gross9_structural_clock_g9cb12_sources.py"
+)
+G9CB12_SOURCE_ATTEMPT_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb12_source_support_"
+    "attempt_consumed_2026-07-31.json"
+)
+G9CB12_SOURCE_MANIFEST_PATH = Path(
+    "configs/shadow/gross9_structural_clock_bundle_g9cb12_sources_"
+    "2026-07-31.json"
+)
+G9CB12_SOURCE_SUPPORT_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb12_source_support_"
+    "2026-07-31.json"
+)
+
+G9CB8_AUTHORITY_DECISION_COMMIT = (
+    "33a5aad98c19cec29aba253933145d76b893be93"
+)
+G9CB8_AUTHORITY_DECISION_SHA256 = (
     "8b2ced344ef3e40fbdba68427a8f3467abedab2c57edbd6afe84b8da6691aec0"
 )
-AUTHORITY_DECISION_GIT_BLOB = "3adc4c8e04901a001b0ada47b273756b63128e60"
-AUTHORITY_DECISION_SIZE = 21_309
+G9CB8_AUTHORITY_DECISION_GIT_BLOB = (
+    "3adc4c8e04901a001b0ada47b273756b63128e60"
+)
+G9CB8_AUTHORITY_DECISION_SIZE = 21_309
+G9CB8_PROTOCOL_IMPLEMENTATION_COMMIT = (
+    "6a1ec54b2218adb2b46f0072cfd5a5991ce63aee"
+)
+G9CB8_PREREGISTRATION_SEAL_COMMIT = (
+    "3b4c628a18fba4e24d2e742b59cdbecc2a1b62a7"
+)
+G9CB8_CLAIM_COMMIT = "3c8696905bad0bb36e79f759e06299a4148e62eb"
+G9CB9_AUTHORITY_DECISION_COMMIT = (
+    "98fe1e95708ad095cf0727363c32a89e7d03ead6"
+)
+G9CB8_TERMINAL_EVIDENCE_COMMIT = (
+    "4188f35caa2c491f7b12f400d0815ea3a1a6144b"
+)
+G9CB9_SOURCE_SUPPORT_COMMIT = (
+    "fe7dbb94e474d0d6f7ec3514ef79402e46c47c1e"
+)
+G9CB10_AUTHORITY_DECISION_COMMIT = (
+    "6f9dd21554bc7b3282d0b2cbf7badee126e75c1a"
+)
+G9CB9_TERMINAL_EVIDENCE_COMMIT = (
+    "a3ce195b02598b139068294089695b5d5dcd5044"
+)
+G9CB10_SOURCE_SUPPORT_COMMIT = (
+    "1079c3575c7e7dced52eea15e1ef35ae0171a5dd"
+)
+G9CB11_AUTHORITY_DECISION_COMMIT = (
+    "189b5403c66ea0283e67b42b9fbc6ba909280a57"
+)
+G9CB10_TERMINAL_EVIDENCE_COMMIT = (
+    "7f5866be73e01e9531e585c7a13b19661906b05c"
+)
+G9CB11_SOURCE_SUPPORT_COMMIT = (
+    "646fccbf6568bcf39fab12a47873f72da880ca01"
+)
+AUTHORITY_DECISION_COMMIT = "a533ec5ec6bb01d0eeed8ab66a37a3a10f1dba5d"
+G9CB11_TERMINAL_EVIDENCE_COMMIT = (
+    "87c9d32df28f4b8c157d78e2d88145d6bfbb92c0"
+)
+G9CB12_SOURCE_SUPPORT_COMMIT = (
+    "807c62b656476c1d5e3d47e3b949686371de3b0b"
+)
+G9CB12_SOURCE_MANIFEST_COMMIT = (
+    "e9e8d7b0425b943c1def39553b861e3659b52a11"
+)
+PROTOCOL_IMPLEMENTATION_PARENT_COMMIT = G9CB12_SOURCE_MANIFEST_COMMIT
+G9CB12_SOURCE_ATTEMPT_SHA256 = (
+    "f7f4348095a287643155ebc6fc181d878a9b048ee61055514703941c1a422fc6"
+)
+G9CB12_SOURCE_ATTEMPT_GIT_BLOB = (
+    "a80e238b94b46c7aa33e6008dc46d24aeba76393"
+)
+G9CB12_SOURCE_ATTEMPT_SIZE = 3_056
+G9CB12_SOURCE_ATTEMPT_HASH = (
+    "1b76e4b934965dfa769a9b208fdc10f301b2b1805da303e654d03bcbbb8d02c9"
+)
+G9CB12_SOURCE_MANIFEST_SHA256 = (
+    "e1104f952415f2867acc60ccfad874a47b89564b951306eb852b10be12c834a6"
+)
+G9CB12_SOURCE_MANIFEST_GIT_BLOB = (
+    "8c1462de820b52cefbb1cbe9d49d832336a5dddf"
+)
+G9CB12_SOURCE_MANIFEST_SIZE = 1_718
+G9CB12_SOURCE_SUPPORT_SHA256 = (
+    "b76532be19288da334aa53931555f763ef71bca03bb0aaf04f999ec65e0f2f04"
+)
+G9CB12_SOURCE_SUPPORT_GIT_BLOB = (
+    "19337b117087f2c97ea5108d6befd0f1835a4423"
+)
+G9CB12_SOURCE_SUPPORT_SIZE = 18_274
+G9CB12_SUPPORT_HASH = (
+    "67b234ed27b8be671597ac996d8dd674e0aa446fd0403333eaa102cd41ff5ab1"
+)
+G9CB12_ACCESS_LEDGER_HASH = (
+    "9daeb53c101eb5cb7116faee49208d0055330823e1013fd3a3283bd29d24b524"
+)
+G9CB12_REPLAY_GUARD_HASH = (
+    "5545dada8089a6521d4d17aacd995988453be3137f0062ae809b283570089fcd"
+)
+AUTHORITY_DECISION_SHA256 = (
+    "1c10d085d9e38aad9568f8769795de38d9d8729bf41334db70c839723d64ba6f"
+)
+AUTHORITY_DECISION_GIT_BLOB = "f27653975eb4a1b7fd2ce057034fc26ad447a0ff"
+AUTHORITY_DECISION_SIZE = 44_054
 G9CB7_AUTHORITY_DECISION_COMMIT = (
     "ad5a7e5f6d3edeac0928c1ef93fd0fd2209a9279"
 )
@@ -353,12 +529,41 @@ DIRECT_AUTHORITY_VERIFICATION_COMMIT = "91b41254319686f8b64bba797708f8e637aeddd3
 EXPECTED_BRANCH = "codex/gross9-structural-clock-bundle-20260731"
 UNSEALED_PROTOCOL_IMPLEMENTATION_COMMIT = "0" * 40
 _ABSOLUTE_BINDING_ALLOWLIST = frozenset(
-    {"/tmp/btcusdt_open_interest_5m_2020_2026.csv"}
+    {
+        "/tmp/btcusdt_open_interest_5m_2020_2026.csv",
+        (
+            "/home/pakchu/rllm/data/"
+            "cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz"
+        ),
+    }
 )
-Q8_PREREGISTRATION_PUBLICATION = "Q8_PREREGISTRATION_PUBLICATION"
+Q12_PREREGISTRATION_PUBLICATION = "Q12_PREREGISTRATION_PUBLICATION"
 
 PROTOCOL_PATHS = (
     ACTIVE_AUTHORITY_DECISION_PATH,
+    G9CB11_SOURCE_ATTEMPT_PATH,
+    G9CB11_SOURCE_TERMINAL_PATH,
+    G9CB12_MATERIALIZER_SOURCE,
+    G9CB12_MATERIALIZER_TEST,
+    G9CB12_SOURCE_ATTEMPT_PATH,
+    G9CB12_SOURCE_MANIFEST_PATH,
+    G9CB12_SOURCE_SUPPORT_PATH,
+    G9CB11_AUTHORITY_DECISION_PATH,
+    G9CB10_SOURCE_ATTEMPT_PATH,
+    G9CB10_SOURCE_TERMINAL_PATH,
+    G9CB11_MATERIALIZER_SOURCE,
+    G9CB11_MATERIALIZER_TEST,
+    G9CB10_AUTHORITY_DECISION_PATH,
+    G9CB9_SOURCE_ATTEMPT_PATH,
+    G9CB9_SOURCE_TERMINAL_PATH,
+    G9CB10_MATERIALIZER_SOURCE,
+    G9CB10_MATERIALIZER_TEST,
+    G9CB9_AUTHORITY_DECISION_PATH,
+    G9CB8_ATTEMPT_SENTINEL_PATH,
+    G9CB8_PASS1_LEDGER_PATH,
+    G9CB9_MATERIALIZER_SOURCE,
+    G9CB9_MATERIALIZER_TEST,
+    G9CB8_AUTHORITY_DECISION_PATH,
     G9CB7_AUTHORITY_DECISION_PATH,
     G9CB6_AUTHORITY_DECISION_PATH,
     G9CB5_AUTHORITY_DECISION_PATH,
@@ -459,11 +664,107 @@ G9CB7_SUCCESSOR_AUTHORITY_DIFF = (
         "2026-07-31.md"
     ),
 )
-SUCCESSOR_AUTHORITY_DIFF = (
+G9CB8_SUCCESSOR_AUTHORITY_DIFF = (
     (
         "A\tdocs/"
         "gross9-structural-clock-bundle-g9cb8-successor-authority-decision-"
         "2026-07-31.md"
+    ),
+)
+G9CB9_SUCCESSOR_AUTHORITY_DIFF = (
+    (
+        "A\tdocs/"
+        "gross9-structural-clock-bundle-g9cb9-successor-authority-decision-"
+        "2026-07-31.md"
+    ),
+)
+G9CB8_TERMINAL_EVIDENCE_DIFF = (
+    "A\tresults/gross9_structural_clock_bundle_g9cb8_attempt_consumed_"
+    "2026-07-31.json",
+    (
+        "A\tresults/gross9_structural_clock_bundle_g9cb8_worker_capability_"
+        "consumed_pass1_2026-07-31.json"
+    ),
+)
+G9CB9_SOURCE_SUPPORT_DIFF = (
+    "A\ttests/test_materialize_gross9_structural_clock_g9cb9_sources.py",
+    "A\ttraining/materialize_gross9_structural_clock_g9cb9_sources.py",
+)
+G9CB10_SUCCESSOR_AUTHORITY_DIFF = (
+    (
+        "A\tdocs/"
+        "gross9-structural-clock-bundle-g9cb10-successor-authority-decision-"
+        "2026-07-31.md"
+    ),
+)
+G9CB9_TERMINAL_EVIDENCE_DIFF = (
+    (
+        "A\tresults/gross9_structural_clock_bundle_g9cb9_source_support_"
+        "attempt_consumed_2026-07-31.json"
+    ),
+    (
+        "A\tresults/gross9_structural_clock_bundle_g9cb9_source_support_"
+        "terminal_failure_2026-07-31.json"
+    ),
+)
+G9CB10_SOURCE_SUPPORT_DIFF = (
+    "A\ttests/test_materialize_gross9_structural_clock_g9cb10_sources.py",
+    "A\ttraining/materialize_gross9_structural_clock_g9cb10_sources.py",
+)
+G9CB11_SUCCESSOR_AUTHORITY_DIFF = (
+    (
+        "A\tdocs/"
+        "gross9-structural-clock-bundle-g9cb11-successor-authority-decision-"
+        "2026-07-31.md"
+    ),
+)
+G9CB10_TERMINAL_EVIDENCE_DIFF = (
+    (
+        "A\tresults/gross9_structural_clock_bundle_g9cb10_source_support_"
+        "attempt_consumed_2026-07-31.json"
+    ),
+    (
+        "A\tresults/gross9_structural_clock_bundle_g9cb10_source_support_"
+        "terminal_failure_2026-07-31.json"
+    ),
+)
+G9CB11_SOURCE_SUPPORT_DIFF = (
+    "A\ttests/test_materialize_gross9_structural_clock_g9cb11_sources.py",
+    "A\ttraining/materialize_gross9_structural_clock_g9cb11_sources.py",
+)
+SUCCESSOR_AUTHORITY_DIFF = (
+    (
+        "A\tdocs/"
+        "gross9-structural-clock-bundle-g9cb12-successor-authority-decision-"
+        "2026-07-31.md"
+    ),
+)
+G9CB11_TERMINAL_EVIDENCE_DIFF = (
+    (
+        "A\tresults/gross9_structural_clock_bundle_g9cb11_source_support_"
+        "attempt_consumed_2026-07-31.json"
+    ),
+    (
+        "A\tresults/gross9_structural_clock_bundle_g9cb11_source_support_"
+        "terminal_failure_2026-07-31.json"
+    ),
+)
+G9CB12_SOURCE_SUPPORT_DIFF = (
+    "A\ttests/test_materialize_gross9_structural_clock_g9cb12_sources.py",
+    "A\ttraining/materialize_gross9_structural_clock_g9cb12_sources.py",
+)
+G9CB12_SOURCE_MANIFEST_DIFF = (
+    (
+        "A\tconfigs/shadow/gross9_structural_clock_bundle_g9cb12_sources_"
+        "2026-07-31.json"
+    ),
+    (
+        "A\tresults/gross9_structural_clock_bundle_g9cb12_source_support_"
+        "2026-07-31.json"
+    ),
+    (
+        "A\tresults/gross9_structural_clock_bundle_g9cb12_source_support_"
+        "attempt_consumed_2026-07-31.json"
     ),
 )
 TERMINAL_EVIDENCE_DIFF = (
@@ -488,10 +789,22 @@ G9CB7_CLAIM_DIFF = (
         "gross9_structural_clock_bundle_g9cb7_access_claim_2026-07-31.json"
     ),
 )
-ACTIVE_PREREGISTRATION_DIFF = (
+G9CB8_ACTIVE_PREREGISTRATION_DIFF = (
     (
         "A\tresults/"
         "gross9_structural_clock_bundle_g9cb8_preregistration_2026-07-31.json"
+    ),
+)
+G9CB8_CLAIM_DIFF = (
+    (
+        "A\tresults/"
+        "gross9_structural_clock_bundle_g9cb8_access_claim_2026-07-31.json"
+    ),
+)
+ACTIVE_PREREGISTRATION_DIFF = (
+    (
+        "A\tresults/"
+        "gross9_structural_clock_bundle_g9cb12_preregistration_2026-07-31.json"
     ),
 )
 
@@ -628,14 +941,15 @@ RANK7_FILE_BINDINGS = (
     ),
 )
 
-SOURCE_MANIFEST_PATH = Path(
-    "configs/shadow/portfolio_added_alpha_signal_parity_sources_2026-07-16.json"
-)
+SOURCE_MANIFEST_PATH = G9CB12_SOURCE_MANIFEST_PATH
 SOURCE_BINDINGS = (
     (
         "market_5m",
-        "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
-        "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+        (
+            "data/cache_market_ext_5m_wavefull_2020-01-01_"
+            "2026-06-01_g9cb12_complete.csv.gz"
+        ),
+        "b5d6f4b2edb4d3a7f68dc84097a5c3caf6947b2cf77ceb6a3e621d220068a282",
     ),
     (
         "funding",
@@ -651,8 +965,19 @@ SOURCE_BINDINGS = (
     ),
     (
         "open_interest",
-        "/tmp/btcusdt_open_interest_5m_2020_2026.csv",
-        "e08f93033e56959e8e7a9c1e21f27c5f01efc8d06fa6b4fbbfe7354697122b31",
+        (
+            "data/btcusdt_open_interest_5m_2020-01-01_"
+            "2026-06-01_g9cb12_complete.csv.gz"
+        ),
+        "dc73ba1d080bd4c4a493e315467ca998399a55914041c67c6ae08db84266ded8",
+    ),
+    (
+        "rank7_spot_premium_5m",
+        (
+            "/home/pakchu/rllm/data/"
+            "cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz"
+        ),
+        "c21ed3f52804a3f879ef5167b6b81ee0fd7dd262f2e9d87ee5c1c25dbad73617",
     ),
     (
         "rex_taker_train",
@@ -731,7 +1056,7 @@ WORKER_PROCESS_ENVIRONMENT = {
     "PYTHONDONTWRITEBYTECODE": "1",
     "PYTHONPATH": REPOSITORY_ROOT.as_posix(),
     "PYTHONPYCACHEPREFIX": (
-        REPOSITORY_ROOT / "results/.g9cb8-bytecode-cache-disabled"
+        REPOSITORY_ROOT / "results/.g9cb12-bytecode-cache-disabled"
     ).as_posix(),
     "PYTHONUNBUFFERED": "1",
     "PYTHONUTF8": "1",
@@ -849,6 +1174,7 @@ SOURCE_COUNTER_NAMES = (
     "funding",
     "premium",
     "open_interest",
+    "rank7_spot_premium_5m",
     "rex_taker_train",
     "rex_taker_test",
     "rex_taker_eval",
@@ -993,6 +1319,10 @@ def validate_zero_access_schema(payload: Mapping[str, Any]) -> None:
                         "bindings",
                         "failed_predecessor_pre_sentinel_closures",
                     ),
+                    (
+                        "source_preclaim_disclosures",
+                        "g9cb12_source_support",
+                    ),
                 }:
                     continue
                 if (
@@ -1025,7 +1355,7 @@ def validate_repository_bytecode_preflight(
     """Reject every repository bytecode artifact before any input snapshot."""
 
     root = repository_root.resolve(strict=True)
-    fixed_prefix = root / "results/.g9cb8-bytecode-cache-disabled"
+    fixed_prefix = root / "results/.g9cb12-bytecode-cache-disabled"
     if fixed_prefix.exists() or fixed_prefix.is_symlink():
         raise ValueError("fixed worker bytecode-cache prefix already exists")
 
@@ -1587,9 +1917,105 @@ def validate_protocol_commit_topology(
         ),
         (
             G9CB7_CLAIM_COMMIT,
+            G9CB8_AUTHORITY_DECISION_COMMIT,
+            G9CB8_SUCCESSOR_AUTHORITY_DIFF,
+            "G9CB-8 successor authority",
+        ),
+        (
+            G9CB8_AUTHORITY_DECISION_COMMIT,
+            G9CB8_PROTOCOL_IMPLEMENTATION_COMMIT,
+            SUCCESSOR_PROTOCOL_DIFF,
+            "G9CB-8 protocol implementation",
+        ),
+        (
+            G9CB8_PROTOCOL_IMPLEMENTATION_COMMIT,
+            G9CB8_PREREGISTRATION_SEAL_COMMIT,
+            G9CB8_ACTIVE_PREREGISTRATION_DIFF,
+            "G9CB-8 preregistration",
+        ),
+        (
+            G9CB8_PREREGISTRATION_SEAL_COMMIT,
+            G9CB8_CLAIM_COMMIT,
+            G9CB8_CLAIM_DIFF,
+            "G9CB-8 claim",
+        ),
+        (
+            G9CB8_CLAIM_COMMIT,
+            G9CB9_AUTHORITY_DECISION_COMMIT,
+            G9CB9_SUCCESSOR_AUTHORITY_DIFF,
+            "G9CB-9 successor authority",
+        ),
+        (
+            G9CB9_AUTHORITY_DECISION_COMMIT,
+            G9CB8_TERMINAL_EVIDENCE_COMMIT,
+            G9CB8_TERMINAL_EVIDENCE_DIFF,
+            "G9CB-8 terminal evidence",
+        ),
+        (
+            G9CB8_TERMINAL_EVIDENCE_COMMIT,
+            G9CB9_SOURCE_SUPPORT_COMMIT,
+            G9CB9_SOURCE_SUPPORT_DIFF,
+            "G9CB-9 source support",
+        ),
+        (
+            G9CB9_SOURCE_SUPPORT_COMMIT,
+            G9CB10_AUTHORITY_DECISION_COMMIT,
+            G9CB10_SUCCESSOR_AUTHORITY_DIFF,
+            "G9CB-10 successor authority",
+        ),
+        (
+            G9CB10_AUTHORITY_DECISION_COMMIT,
+            G9CB9_TERMINAL_EVIDENCE_COMMIT,
+            G9CB9_TERMINAL_EVIDENCE_DIFF,
+            "G9CB-9 terminal evidence",
+        ),
+        (
+            G9CB9_TERMINAL_EVIDENCE_COMMIT,
+            G9CB10_SOURCE_SUPPORT_COMMIT,
+            G9CB10_SOURCE_SUPPORT_DIFF,
+            "G9CB-10 source support",
+        ),
+        (
+            G9CB10_SOURCE_SUPPORT_COMMIT,
+            G9CB11_AUTHORITY_DECISION_COMMIT,
+            G9CB11_SUCCESSOR_AUTHORITY_DIFF,
+            "G9CB-11 successor authority",
+        ),
+        (
+            G9CB11_AUTHORITY_DECISION_COMMIT,
+            G9CB10_TERMINAL_EVIDENCE_COMMIT,
+            G9CB10_TERMINAL_EVIDENCE_DIFF,
+            "G9CB-10 terminal evidence",
+        ),
+        (
+            G9CB10_TERMINAL_EVIDENCE_COMMIT,
+            G9CB11_SOURCE_SUPPORT_COMMIT,
+            G9CB11_SOURCE_SUPPORT_DIFF,
+            "G9CB-11 source support",
+        ),
+        (
+            G9CB11_SOURCE_SUPPORT_COMMIT,
             AUTHORITY_DECISION_COMMIT,
             SUCCESSOR_AUTHORITY_DIFF,
-            "G9CB-8 successor authority",
+            "G9CB-12 successor authority",
+        ),
+        (
+            AUTHORITY_DECISION_COMMIT,
+            G9CB11_TERMINAL_EVIDENCE_COMMIT,
+            G9CB11_TERMINAL_EVIDENCE_DIFF,
+            "G9CB-11 terminal evidence",
+        ),
+        (
+            G9CB11_TERMINAL_EVIDENCE_COMMIT,
+            G9CB12_SOURCE_SUPPORT_COMMIT,
+            G9CB12_SOURCE_SUPPORT_DIFF,
+            "G9CB-12 source support",
+        ),
+        (
+            G9CB12_SOURCE_SUPPORT_COMMIT,
+            G9CB12_SOURCE_MANIFEST_COMMIT,
+            G9CB12_SOURCE_MANIFEST_DIFF,
+            "G9CB-12 source manifest seal",
         ),
     )
     for parent, child, expected_diff, label in predecessor_steps:
@@ -1615,10 +2041,61 @@ def validate_protocol_commit_topology(
         G9CB7_AUTHORITY_DECISION_PATH, repository_root
     ) != (G9CB7_AUTHORITY_DECISION_COMMIT,):
         raise ValueError("G9CB-7 authority addition history differs")
+    for path, commit, label in (
+        (
+            G9CB8_AUTHORITY_DECISION_PATH,
+            G9CB8_AUTHORITY_DECISION_COMMIT,
+            "G9CB-8 authority",
+        ),
+        (
+            G9CB8_ATTEMPT_SENTINEL_PATH,
+            G9CB8_TERMINAL_EVIDENCE_COMMIT,
+            "G9CB-8 terminal sentinel",
+        ),
+        (
+            G9CB8_PASS1_LEDGER_PATH,
+            G9CB8_TERMINAL_EVIDENCE_COMMIT,
+            "G9CB-8 terminal worker ledger",
+        ),
+        (
+            G9CB9_AUTHORITY_DECISION_PATH,
+            G9CB9_AUTHORITY_DECISION_COMMIT,
+            "G9CB-9 authority",
+        ),
+        (G9CB9_MATERIALIZER_SOURCE, G9CB9_SOURCE_SUPPORT_COMMIT, "G9CB-9 source"),
+        (G9CB9_MATERIALIZER_TEST, G9CB9_SOURCE_SUPPORT_COMMIT, "G9CB-9 test"),
+        (G9CB9_SOURCE_ATTEMPT_PATH, G9CB9_TERMINAL_EVIDENCE_COMMIT, "G9CB-9 terminal attempt"),
+        (G9CB9_SOURCE_TERMINAL_PATH, G9CB9_TERMINAL_EVIDENCE_COMMIT, "G9CB-9 terminal ledger"),
+        (
+            G9CB10_AUTHORITY_DECISION_PATH,
+            G9CB10_AUTHORITY_DECISION_COMMIT,
+            "G9CB-10 authority",
+        ),
+        (G9CB10_MATERIALIZER_SOURCE, G9CB10_SOURCE_SUPPORT_COMMIT, "G9CB-10 source"),
+        (G9CB10_MATERIALIZER_TEST, G9CB10_SOURCE_SUPPORT_COMMIT, "G9CB-10 test"),
+        (G9CB10_SOURCE_ATTEMPT_PATH, G9CB10_TERMINAL_EVIDENCE_COMMIT, "G9CB-10 terminal attempt"),
+        (G9CB10_SOURCE_TERMINAL_PATH, G9CB10_TERMINAL_EVIDENCE_COMMIT, "G9CB-10 terminal ledger"),
+        (
+            G9CB11_AUTHORITY_DECISION_PATH,
+            G9CB11_AUTHORITY_DECISION_COMMIT,
+            "G9CB-11 authority",
+        ),
+        (G9CB11_MATERIALIZER_SOURCE, G9CB11_SOURCE_SUPPORT_COMMIT, "G9CB-11 source"),
+        (G9CB11_MATERIALIZER_TEST, G9CB11_SOURCE_SUPPORT_COMMIT, "G9CB-11 test"),
+        (G9CB11_SOURCE_ATTEMPT_PATH, G9CB11_TERMINAL_EVIDENCE_COMMIT, "G9CB-11 terminal attempt"),
+        (G9CB11_SOURCE_TERMINAL_PATH, G9CB11_TERMINAL_EVIDENCE_COMMIT, "G9CB-11 terminal ledger"),
+        (G9CB12_MATERIALIZER_SOURCE, G9CB12_SOURCE_SUPPORT_COMMIT, "G9CB-12 source"),
+        (G9CB12_MATERIALIZER_TEST, G9CB12_SOURCE_SUPPORT_COMMIT, "G9CB-12 test"),
+        (G9CB12_SOURCE_ATTEMPT_PATH, G9CB12_SOURCE_MANIFEST_COMMIT, "G9CB-12 source attempt"),
+        (G9CB12_SOURCE_MANIFEST_PATH, G9CB12_SOURCE_MANIFEST_COMMIT, "G9CB-12 source manifest"),
+        (G9CB12_SOURCE_SUPPORT_PATH, G9CB12_SOURCE_MANIFEST_COMMIT, "G9CB-12 support ledger"),
+    ):
+        if _addition_commits(path, repository_root) != (commit,):
+            raise ValueError(f"{label} addition history differs")
     if _addition_commits(
         ACTIVE_AUTHORITY_DECISION_PATH, repository_root
     ) != (AUTHORITY_DECISION_COMMIT,):
-        raise ValueError("G9CB-8 authority addition history differs")
+        raise ValueError("G9CB-12 authority addition history differs")
     if _addition_commits(
         G9CB3_AUTHORITY_DECISION_PATH, repository_root
     ) != (G9CB3_AUTHORITY_DECISION_COMMIT,):
@@ -1643,7 +2120,7 @@ def validate_protocol_commit_topology(
     else:
         implementation = head
 
-    implementation_parent = AUTHORITY_DECISION_COMMIT
+    implementation_parent = PROTOCOL_IMPLEMENTATION_PARENT_COMMIT
     if _single_parent(implementation, repository_root) != implementation_parent:
         raise ValueError("protocol implementation parent differs")
     if _commit_diff(
@@ -2897,7 +3374,7 @@ def expected_failed_predecessor_pre_sentinel_closures() -> list[dict[str, Any]]:
                     G9CB7_PREREGISTRATION_SEAL_COMMIT
                 ),
                 "g9cb7_protocol_commit": G9CB7_PROTOCOL_IMPLEMENTATION_COMMIT,
-                "g9cb8_authority_commit": AUTHORITY_DECISION_COMMIT,
+                "g9cb8_authority_commit": G9CB8_AUTHORITY_DECISION_COMMIT,
                 "terminal_evidence_commit": None,
             },
         }
@@ -3165,16 +3642,16 @@ def validate_failed_predecessor_pre_sentinel_closures(
         ),
         (
             {
-                "path": ACTIVE_AUTHORITY_DECISION_PATH.as_posix(),
+                "path": G9CB8_AUTHORITY_DECISION_PATH.as_posix(),
                 "path_type": "regular_file",
-                "sha256": AUTHORITY_DECISION_SHA256,
-                "git_blob": AUTHORITY_DECISION_GIT_BLOB,
+                "sha256": G9CB8_AUTHORITY_DECISION_SHA256,
+                "git_blob": G9CB8_AUTHORITY_DECISION_GIT_BLOB,
                 "git_mode": "100644",
             },
-            ACTIVE_AUTHORITY_DECISION_PATH,
-            AUTHORITY_DECISION_SHA256,
-            AUTHORITY_DECISION_GIT_BLOB,
-            AUTHORITY_DECISION_SIZE,
+            G9CB8_AUTHORITY_DECISION_PATH,
+            G9CB8_AUTHORITY_DECISION_SHA256,
+            G9CB8_AUTHORITY_DECISION_GIT_BLOB,
+            G9CB8_AUTHORITY_DECISION_SIZE,
             "G9CB-8",
         ),
     ):
@@ -3317,8 +3794,8 @@ def validate_failed_predecessor_pre_sentinel_closures(
         ),
         (
             G9CB7_CLAIM_COMMIT,
-            AUTHORITY_DECISION_COMMIT,
-            SUCCESSOR_AUTHORITY_DIFF,
+            G9CB8_AUTHORITY_DECISION_COMMIT,
+            G9CB8_SUCCESSOR_AUTHORITY_DIFF,
         ),
     )
     for parent, child, expected_diff in topology_steps:
@@ -3857,7 +4334,7 @@ def worker_process_environment(
     root = repository_root.resolve()
     environment["PYTHONPATH"] = root.as_posix()
     environment["PYTHONPYCACHEPREFIX"] = (
-        root / "results/.g9cb8-bytecode-cache-disabled"
+        root / "results/.g9cb12-bytecode-cache-disabled"
     ).as_posix()
     return environment
 
@@ -4338,6 +4815,231 @@ def validate_sources(
     return bindings
 
 
+def _unique_metadata_object(
+    pairs: Sequence[tuple[str, Any]],
+) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate metadata JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _source_support_metadata(
+    path: Path,
+    *,
+    sha256: str,
+    git_blob: str,
+    size_bytes: int,
+    repository_root: Path,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    binding = _tracked_binding(
+        path,
+        repository_root=repository_root,
+        expected_sha256=sha256,
+        expected_blob=git_blob,
+    )
+    cached = _cached_file(path.as_posix(), repository_root)
+    if cached is None:
+        raw, info = _read_no_follow_once(repository_path(path, repository_root))
+    else:
+        raw, info = cached
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or stat.S_IMODE(info.st_mode) != 0o444
+        or info.st_nlink != 1
+        or info.st_size != size_bytes
+        or len(raw) != size_bytes
+        or hashlib.sha256(raw).hexdigest() != sha256
+    ):
+        raise ValueError(f"{path}: immutable source-support metadata differs")
+    try:
+        payload = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_unique_metadata_object,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{path}: invalid source-support metadata") from exc
+    if (
+        not isinstance(payload, dict)
+        or raw
+        != json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+        + b"\n"
+    ):
+        raise ValueError(f"{path}: noncanonical source-support metadata")
+    binding["size_bytes"] = size_bytes
+    binding["filesystem_mode_octal"] = "0444"
+    return payload, binding
+
+
+def _require_zero_economics(payload: Any) -> None:
+    prohibited_fragments = (
+        "candidate",
+        "comparator",
+        "economic",
+        "feature",
+        "signal",
+        "schedule",
+        "return",
+        "pnl",
+        "cagr",
+        "mdd",
+        "drawdown",
+    )
+    if isinstance(payload, Mapping):
+        for key, value in payload.items():
+            if any(fragment in key for fragment in prohibited_fragments):
+                if type(value) is not int or value != 0:
+                    raise ValueError(
+                        f"source-support economics counter differs: {key}"
+                    )
+            _require_zero_economics(value)
+    elif isinstance(payload, list):
+        for value in payload:
+            _require_zero_economics(value)
+
+
+def g9cb12_source_support_disclosure(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> dict[str, Any]:
+    attempt, attempt_binding = _source_support_metadata(
+        G9CB12_SOURCE_ATTEMPT_PATH,
+        sha256=G9CB12_SOURCE_ATTEMPT_SHA256,
+        git_blob=G9CB12_SOURCE_ATTEMPT_GIT_BLOB,
+        size_bytes=G9CB12_SOURCE_ATTEMPT_SIZE,
+        repository_root=repository_root,
+    )
+    source_manifest, manifest_binding = _source_support_metadata(
+        G9CB12_SOURCE_MANIFEST_PATH,
+        sha256=G9CB12_SOURCE_MANIFEST_SHA256,
+        git_blob=G9CB12_SOURCE_MANIFEST_GIT_BLOB,
+        size_bytes=G9CB12_SOURCE_MANIFEST_SIZE,
+        repository_root=repository_root,
+    )
+    support, support_binding = _source_support_metadata(
+        G9CB12_SOURCE_SUPPORT_PATH,
+        sha256=G9CB12_SOURCE_SUPPORT_SHA256,
+        git_blob=G9CB12_SOURCE_SUPPORT_GIT_BLOB,
+        size_bytes=G9CB12_SOURCE_SUPPORT_SIZE,
+        repository_root=repository_root,
+    )
+    if (
+        attempt.get("identity") != IDENTITY
+        or attempt.get("repository_head") != G9CB12_SOURCE_SUPPORT_COMMIT
+        or attempt.get("repository_parent") != G9CB11_TERMINAL_EVIDENCE_COMMIT
+        or attempt.get("attempt_hash") != G9CB12_SOURCE_ATTEMPT_HASH
+        or attempt.get("one_shot") is not True
+        or attempt.get("retry_allowed") is not False
+        or attempt.get("resume_allowed") is not False
+    ):
+        raise ValueError("G9CB-12 source-support attempt binding differs")
+    declared = [
+        (row.get("name"), row.get("path"), row.get("sha256"))
+        for row in source_manifest.get("sources", [])
+        if isinstance(row, Mapping)
+    ]
+    if (
+        set(source_manifest) != {"as_of", "schema_version", "sources"}
+        or source_manifest.get("as_of") != "2026-07-31"
+        or type(source_manifest.get("schema_version")) is not int
+        or source_manifest.get("schema_version") != 1
+        or declared != list(SOURCE_BINDINGS)
+    ):
+        raise ValueError("G9CB-12 source manifest binding differs")
+    support_without_hash = dict(support)
+    support_hash = support_without_hash.pop("support_hash", None)
+    observed_support_hash = hashlib.sha256(
+        json.dumps(
+            support_without_hash,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    access = support.get("access_ledger")
+    current = access.get("current_s12") if isinstance(access, Mapping) else None
+    historical = (
+        access.get("historical_s11") if isinstance(access, Mapping) else None
+    )
+    replay = access.get("replay_guard") if isinstance(access, Mapping) else None
+    if (
+        support.get("identity") != IDENTITY
+        or support.get("version")
+        != "gross9_structural_clock_bundle_g9cb12_source_support_v1"
+        or support.get("source_support_commit")
+        != G9CB12_SOURCE_SUPPORT_COMMIT
+        or support_hash != G9CB12_SUPPORT_HASH
+        or observed_support_hash != G9CB12_SUPPORT_HASH
+        or not isinstance(access, Mapping)
+        or access.get("access_ledger_hash") != G9CB12_ACCESS_LEDGER_HASH
+        or not isinstance(current, Mapping)
+        or current.get("identity") != IDENTITY
+        or current.get("rank7_required_tail_rows") != 3_000
+        or current.get("rank7_tail_exact_matches") != 3_000
+        or current.get("rank7_pre_tail_coverage_comparison_count") != 0
+        or current.get("rank7_gap_detail_disclosure_count") != 0
+        or not isinstance(historical, Mapping)
+        or historical.get("identity") != "G9CB-11-SOURCE-SUPPORT"
+        or historical.get("authority_transferred") is not False
+        or not isinstance(replay, Mapping)
+        or replay.get("replay_guard_hash") != G9CB12_REPLAY_GUARD_HASH
+        or replay.get("stage_order") != ["A12", "T11", "S12"]
+    ):
+        raise ValueError("G9CB-12 source-support ledger binding differs")
+    _require_zero_economics(access)
+    absences = historical.get("permanently_absent_output_paths")
+    expected_absences = [
+        "data/cache_market_ext_5m_wavefull_2020-01-01_"
+        "2026-06-01_g9cb11_complete.csv.gz",
+        "data/btcusdt_open_interest_5m_2020-01-01_"
+        "2026-06-01_g9cb11_complete.csv.gz",
+        "configs/shadow/gross9_structural_clock_bundle_g9cb11_sources_"
+        "2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb11_source_support_"
+        "2026-07-31.json",
+    ]
+    if absences != expected_absences:
+        raise ValueError("G9CB-11 permanent absence order differs")
+    for path_text in expected_absences:
+        if repository_path(path_text, repository_root).exists():
+            raise ValueError(f"forbidden G9CB-11 output exists: {path_text}")
+    materialized = support.get("materialized_sources")
+    if not isinstance(materialized, Mapping) or set(materialized) != {
+        "market_5m",
+        "open_interest",
+    }:
+        raise ValueError("G9CB-12 materialized-source binding differs")
+    attempt_binding["attempt_hash"] = G9CB12_SOURCE_ATTEMPT_HASH
+    support_binding["support_hash"] = G9CB12_SUPPORT_HASH
+    support_binding["source_support_commit"] = G9CB12_SOURCE_SUPPORT_COMMIT
+    support_binding["access_ledger_hash"] = G9CB12_ACCESS_LEDGER_HASH
+    return {
+        "attempt_sentinel": attempt_binding,
+        "historical_access_ledger": access,
+        "materialized_sources": materialized,
+        "p12_process_access_at_creation": {
+            "candidate_rows_opened": 0,
+            "comparator_clock_rows_opened": 0,
+            "model_files_opened": 0,
+            "pre2025_anchor_value_rows_opened": 0,
+            "runtime_modules_imported": 0,
+            "source_files_opened": 0,
+            "source_value_rows_opened": 0,
+        },
+        "source_manifest": manifest_binding,
+        "support_artifact": support_binding,
+        "validation": support.get("validation"),
+    }
+
+
 def source_preclaim_disclosures(
     repository_root: Path = REPOSITORY_ROOT,
 ) -> dict[str, Any]:
@@ -4362,7 +5064,7 @@ def source_preclaim_disclosures(
         expected_size=OPEN_INTEREST_SIZE,
         repository_root=repository_root,
     )
-    return {
+    disclosure = {
         "frozen_open_interest_gzip_logical_path": str(
             FROZEN_OPEN_INTEREST_GZIP_PATH
         ),
@@ -4388,6 +5090,10 @@ def source_preclaim_disclosures(
         "open_interest_rows_decoded_preclaim": 0,
         "open_interest_fields_or_values_opened_preclaim": 0,
     }
+    disclosure["g9cb12_source_support"] = g9cb12_source_support_disclosure(
+        repository_root
+    )
+    return disclosure
 
 
 def _direct_authority_inventory(
@@ -4775,7 +5481,7 @@ def _manifest_without_hash(
             "resume_allowed": False,
             "repair_allowed": False,
             "terminal_failure_action": (
-                "TERMINAL_G9CB8_ATTEMPT_CONSUMED_NO_RETRY"
+                "TERMINAL_G9CB12_ATTEMPT_CONSUMED_NO_RETRY"
             ),
         },
     }
@@ -4876,14 +5582,55 @@ def validate_manifest(
         != expected_successor_preregistration_bindings()
     ):
         raise ValueError("successor preregistration bindings mismatch")
-    if manifest.get("source_preclaim_disclosures", {}).get(
+    disclosures = manifest.get("source_preclaim_disclosures")
+    if not isinstance(disclosures, Mapping):
+        raise ValueError("source preclaim disclosures are absent")
+    if disclosures.get(
         "frozen_open_interest_gzip_opaque_bytes_opened_preclaim"
     ) is not True:
         raise ValueError("accidental opaque gzip disclosure is missing")
-    if manifest.get("source_preclaim_disclosures", {}).get(
+    if disclosures.get(
         "frozen_open_interest_gzip_decompressed_preclaim"
     ) is not False:
         raise ValueError("gzip preclaim decompression disclosure mismatch")
+    source_support = disclosures.get("g9cb12_source_support")
+    if not isinstance(source_support, Mapping) or set(source_support) != {
+        "attempt_sentinel",
+        "historical_access_ledger",
+        "materialized_sources",
+        "p12_process_access_at_creation",
+        "source_manifest",
+        "support_artifact",
+        "validation",
+    }:
+        raise ValueError("G9CB-12 source-support disclosure schema differs")
+    attempt_binding = source_support.get("attempt_sentinel")
+    support_binding = source_support.get("support_artifact")
+    p12_access = source_support.get("p12_process_access_at_creation")
+    expected_p12_access_keys = {
+        "candidate_rows_opened",
+        "comparator_clock_rows_opened",
+        "model_files_opened",
+        "pre2025_anchor_value_rows_opened",
+        "runtime_modules_imported",
+        "source_files_opened",
+        "source_value_rows_opened",
+    }
+    if (
+        not isinstance(attempt_binding, Mapping)
+        or attempt_binding.get("attempt_hash") != G9CB12_SOURCE_ATTEMPT_HASH
+        or not isinstance(support_binding, Mapping)
+        or support_binding.get("support_hash") != G9CB12_SUPPORT_HASH
+        or support_binding.get("access_ledger_hash")
+        != G9CB12_ACCESS_LEDGER_HASH
+        or support_binding.get("source_support_commit")
+        != G9CB12_SOURCE_SUPPORT_COMMIT
+        or not isinstance(p12_access, Mapping)
+        or set(p12_access) != expected_p12_access_keys
+        or any(type(value) is not int or value != 0 for value in p12_access.values())
+    ):
+        raise ValueError("G9CB-12 source-support disclosure binding differs")
+    _require_zero_economics(source_support.get("historical_access_ledger"))
     if verify_git_seal:
         actual_implementation = validate_protocol_commit_topology(
             repository_root
@@ -5226,15 +5973,22 @@ def _require_clean_pushed_branch(repository_root: Path) -> str:
     return _run_git(["rev-parse", "HEAD"], repository_root)
 
 
-def _validate_q8_publication_topology(repository_root: Path) -> str:
+def _validate_q12_publication_topology(repository_root: Path) -> str:
     head = _require_clean_pushed_branch(repository_root)
-    if _single_parent(head, repository_root) != AUTHORITY_DECISION_COMMIT:
-        raise ValueError("Q8 is not the direct child of A8")
     if (
-        _commit_diff(AUTHORITY_DECISION_COMMIT, head, repository_root)
+        _single_parent(head, repository_root)
+        != PROTOCOL_IMPLEMENTATION_PARENT_COMMIT
+    ):
+        raise ValueError("Q12 is not the direct child of M12")
+    if (
+        _commit_diff(
+            PROTOCOL_IMPLEMENTATION_PARENT_COMMIT,
+            head,
+            repository_root,
+        )
         != SUCCESSOR_PROTOCOL_DIFF
     ):
-        raise ValueError("Q8 implementation diff differs")
+        raise ValueError("Q12 implementation diff differs")
     return head
 
 
@@ -5249,7 +6003,7 @@ def _validate_closed_path_state(
     worker_stage: bool,
     fixed_pycache: bool,
 ) -> tuple[str, ...]:
-    if phase != Q8_PREREGISTRATION_PUBLICATION:
+    if phase != Q12_PREREGISTRATION_PUBLICATION:
         raise ValueError("preregistration publication phase differs")
     names = tuple(sorted(os.listdir(results_fd)))
     required_absence = {
@@ -5258,12 +6012,12 @@ def _validate_closed_path_state(
         *(path.name for path in WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS),
         BUNDLE_PATH.name,
         FINAL_MANIFEST_PATH.name,
-        ".g9cb8-bytecode-cache-disabled",
+        ".g9cb12-bytecode-cache-disabled",
     }
     if not preregistration:
         required_absence.add(PREREGISTRATION_PATH.name)
     if claim or worker_stage or fixed_pycache:
-        raise ValueError("Q8 entry-point flags differ")
+        raise ValueError("Q12 entry-point flags differ")
     named_staging_prefixes = tuple(
         f".{path.name}.stage-"
         for path in (
@@ -5278,18 +6032,18 @@ def _validate_closed_path_state(
     if required_absence & set(names) or any(
         name.startswith(
             (
-                ".gross9-structural-clock-g9cb8-worker-",
-                ".g9cb8-otmpfile-probe-",
+                ".gross9-structural-clock-g9cb12-worker-",
+                ".g9cb12-otmpfile-probe-",
             )
         )
         or name.startswith(named_staging_prefixes)
         or (
-            name.startswith(".gross9_structural_clock_bundle_g9cb8_")
+            name.startswith(".gross9_structural_clock_bundle_g9cb12_")
             and ".stage-" in name
         )
         for name in names
     ):
-        raise FileExistsError("Q8 preregistration path-state is not closed")
+        raise FileExistsError("Q12 preregistration path-state is not closed")
     if preregistration:
         info = os.stat(
             PREREGISTRATION_PATH.name,
@@ -5300,7 +6054,7 @@ def _validate_closed_path_state(
             not stat.S_ISREG(info.st_mode)
             or stat.S_IMODE(info.st_mode) != 0o444
         ):
-            raise ValueError("Q8 preregistration final state differs")
+            raise ValueError("Q12 preregistration final state differs")
     if (snapshot.root / ".git").exists():
         tracked_results = _tracked_results_top_level_entries(
             _run_git(["ls-files", "--", "results"], snapshot.root)
@@ -5311,7 +6065,7 @@ def _validate_closed_path_state(
         }
         active = {PREREGISTRATION_PATH.name} if preregistration else set()
         if set(names) != tracked_results | residue_names | active:
-            raise FileExistsError("Q8 exact results inventory differs")
+            raise FileExistsError("Q12 exact results inventory differs")
     if validate_predecessors:
         _validate_predecessor_inventory_from_snapshot(
             snapshot,
@@ -5418,10 +6172,18 @@ def _bootstrap_declarations(
     }:
         digests.pop(path_text, None)
         declarations.pop(path_text, None)
+    for _name, path_text, digest in SOURCE_BINDINGS:
+        prior = digests.get(path_text)
+        if prior not in (None, digest):
+            raise ValueError(
+                f"{path_text}: predecessor/current source digest differs"
+            )
+        digests[path_text] = digest
+        declarations.setdefault(path_text, {})
     return digests, declarations
 
 
-def _bootstrap_q8_snapshot(
+def _bootstrap_q12_snapshot(
     root: Path,
 ) -> tuple[
     _PreregistrationSnapshot,
@@ -5491,8 +6253,8 @@ def _probe_preregistration_publication(
     results_fd: int, snapshot: _PreregistrationSnapshot
 ) -> None:
     baseline = tuple(sorted(os.listdir(results_fd)))
-    leaf = f".g9cb8-otmpfile-probe-{os.getpid()}-{os.urandom(8).hex()}"
-    raw = b"G9CB8 preregistration capability probe\n"
+    leaf = f".g9cb12-otmpfile-probe-{os.getpid()}-{os.urandom(8).hex()}"
+    raw = b"G9CB12 preregistration capability probe\n"
     descriptor, unnamed_info = _prepare_unnamed_publication(
         results_fd, raw
     )
@@ -5562,7 +6324,7 @@ def write_once(
     expected_bytes = canonical_json_bytes(dict(manifest), trailing_lf=True)
     canonical_git = (repository_root / ".git").exists()
     if canonical_git:
-        _validate_q8_publication_topology(repository_root)
+        _validate_q12_publication_topology(repository_root)
         _require_clean_pushed_branch(repository_root)
     owns_snapshot = _snapshot is None
     if _snapshot is None:
@@ -5627,7 +6389,7 @@ def write_once(
             return False
         initial_entries = _validate_closed_path_state(
             results_fd,
-            Q8_PREREGISTRATION_PUBLICATION,
+            Q12_PREREGISTRATION_PUBLICATION,
             snapshot=snapshot,
             preregistration=False,
             claim=False,
@@ -5690,7 +6452,7 @@ def write_once(
         os.fsync(results_fd)
         _validate_closed_path_state(
             results_fd,
-            Q8_PREREGISTRATION_PUBLICATION,
+            Q12_PREREGISTRATION_PUBLICATION,
             snapshot=snapshot,
             validate_predecessors=False,
             preregistration=True,
@@ -5719,12 +6481,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args(argv)
     validate_repository_bytecode_preflight(REPOSITORY_ROOT)
-    _validate_q8_publication_topology(REPOSITORY_ROOT)
+    _validate_q12_publication_topology(REPOSITORY_ROOT)
     _require_clean_pushed_branch(REPOSITORY_ROOT)
-    publication_phase = Q8_PREREGISTRATION_PUBLICATION
-    if publication_phase != Q8_PREREGISTRATION_PUBLICATION:
-        raise RuntimeError("Q8 publication phase differs")
-    snapshot, pairs = _bootstrap_q8_snapshot(REPOSITORY_ROOT)
+    publication_phase = Q12_PREREGISTRATION_PUBLICATION
+    if publication_phase != Q12_PREREGISTRATION_PUBLICATION:
+        raise RuntimeError("Q12 publication phase differs")
+    snapshot, pairs = _bootstrap_q12_snapshot(REPOSITORY_ROOT)
     try:
         _ACTIVE_PREREGISTRATION_CACHE = snapshot
         _ACTIVE_PREREGISTRATION_GIT_PAIRS = pairs

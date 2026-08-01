@@ -1,4 +1,4 @@
-"""Claim and one-shot builder for the G9CB-8 structural clock bundle.
+"""Claim and one-shot builder for the G9CB-12 structural clock bundle.
 
 The import-time and claim paths are deliberately stdlib-only.  Generic Gross9
 runtime modules are imported only by a fresh worker process after the durable
@@ -52,8 +52,8 @@ import zlib
 from training import preregister_gross9_structural_clock_bundle as prereg
 
 
-IDENTITY = "G9CB-8"
-PROTOCOL_VERSION = "gross9_structural_clock_bundle_g9cb8_v1"
+IDENTITY = "G9CB-12-SOURCE-SUPPORT"
+PROTOCOL_VERSION = "gross9_structural_clock_bundle_g9cb12_v1"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 BUILDER_PATH = Path("training/build_gross9_structural_clock_bundle.py")
 BUILDER_TEST_PATH = Path("tests/test_build_gross9_structural_clock_bundle.py")
@@ -61,31 +61,144 @@ PREREGISTER_PATH = Path("training/preregister_gross9_structural_clock_bundle.py"
 PREREGISTRATION_PATH = prereg.PREREGISTRATION_PATH
 CLAIM_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb8_access_claim_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb12_access_claim_2026-07-31.json"
 )
 SENTINEL_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb8_attempt_consumed_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb12_attempt_consumed_2026-07-31.json"
 )
 CSV_PATH = Path(
-    "results/gross9_structural_clock_bundle_g9cb8_2026-07-31.csv.gz"
+    "results/gross9_structural_clock_bundle_g9cb12_2026-07-31.csv.gz"
 )
 MANIFEST_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb8_manifest_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb12_manifest_2026-07-31.json"
 )
 WORKER_LEDGER_PATHS = (
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb12_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb12_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 )
+H12_HANDOFF_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb12_v12_handoff_"
+    "2026-07-31.json"
+)
+H12_SUPERVISOR_SENTINEL_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb12_h12_supervisor_"
+    "attempt_consumed_2026-07-31.json"
+)
+V12_COMMAND = (
+    "PYTHONPATH=$PWD PYTHONDONTWRITEBYTECODE=1 uv run python -B -m "
+    "training.build_gross9_structural_clock_bundle --verify-publication"
+)
+H12_COMMAND = (
+    "PYTHONPATH=$PWD PYTHONDONTWRITEBYTECODE=1 uv run python -B -m "
+    "training.build_gross9_structural_clock_bundle --publish-v12-handoff"
+)
+H12_SUPERVISOR_ENV = "G9CB12_H12_SUPERVISOR_SENTINEL_SHA256"
+H12_CAPABILITY_FD_ENV = "G9CB12_H12_V12_CAPABILITY_FD"
+H12_CAPABILITY_SHA256_ENV = "G9CB12_H12_V12_CAPABILITY_SHA256"
+H12_SUPERVISOR_PID_ENV = "G9CB12_H12_SUPERVISOR_PID"
+H12_UV_EXECUTABLE = Path("/home/pakchu/.local/bin/uv")
+H12_UV_EXECUTABLE_SHA256 = (
+    "085e6be0fbb5f63c7ba39829703a7229cd62d2bd0b78ae145da9bf897e0fc007"
+)
+H12_UV_EXECUTABLE_SIZE = 54_537_024
+H12_TOP_LEVEL_KEYS = (
+    "active_alpha_goal",
+    "identity",
+    "ledger_kind",
+    "next_workflow",
+    "no_economics",
+    "no_future_commit_prediction",
+    "predecessor_bindings",
+    "schema_version",
+    "source_generation",
+    "v12_stdout_hash",
+)
+H12_BINDING_KEYS = (
+    "commit",
+    "parent_commit",
+    "stage",
+    "tracked_paths",
+)
+V12_STDOUT_KEYS = (
+    "claim_commit",
+    "claim_hash",
+    "csv_gzip_sha256",
+    "final_manifest_hash",
+    "head",
+    "identity",
+    "interval_count",
+    "preregistration_manifest_hash",
+    "preregistration_seal_commit",
+    "protocol_implementation_commit",
+    "protocol_version",
+    "publication_commit",
+    "sentinel_manifest_hash",
+)
+H12_SUPERVISOR_KEYS = (
+    "attempt_hash",
+    "capability_sha256",
+    "expected_handoff_path",
+    "h12_command",
+    "identity",
+    "one_shot",
+    "repository_head",
+    "repository_parent",
+    "resume_allowed",
+    "retry_allowed",
+    "supervisor_pid",
+    "uv_executable",
+    "uv_executable_sha256",
+    "v12_command",
+    "zero_economics",
+)
+H12_STAGE_PATHS = {
+    "S12": (
+        "training/materialize_gross9_structural_clock_g9cb12_sources.py",
+        "tests/test_materialize_gross9_structural_clock_g9cb12_sources.py",
+    ),
+    "M12": (
+        "results/gross9_structural_clock_bundle_g9cb12_source_support_"
+        "attempt_consumed_2026-07-31.json",
+        "configs/shadow/gross9_structural_clock_bundle_g9cb12_sources_"
+        "2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb12_source_support_"
+        "2026-07-31.json",
+    ),
+    "Q12": (
+        "training/build_gross9_structural_clock_bundle.py",
+        "training/preregister_gross9_structural_clock_bundle.py",
+        "tests/test_build_gross9_structural_clock_bundle.py",
+        "tests/test_preregister_gross9_structural_clock_bundle.py",
+        "tests/test_gross9_structural_clock_bundle_preregistration_artifact.py",
+    ),
+    "P12": (PREREGISTRATION_PATH.as_posix(),),
+    "C12": (CLAIM_PATH.as_posix(),),
+    "D12": (
+        SENTINEL_PATH.as_posix(),
+        WORKER_LEDGER_PATHS[0].as_posix(),
+        WORKER_LEDGER_PATHS[1].as_posix(),
+        CSV_PATH.as_posix(),
+        MANIFEST_PATH.as_posix(),
+    ),
+}
+H12_STAGE_WORKTREE_MODES = {
+    "S12": 0o644,
+    "M12": 0o444,
+    "Q12": 0o644,
+    "P12": 0o444,
+    "C12": 0o444,
+    "D12": 0o444,
+}
 ACTIVE_PREREGISTRATION_DIFF = (
     f"A\t{PREREGISTRATION_PATH.as_posix()}",
 )
@@ -197,25 +310,32 @@ RANK7_ROWS_USED_COUNTERS = (
     "rank7_bundle_parity_rows_compared",
 )
 GZIP_PREFIX = bytes.fromhex("1f8b08000000000002ff")
-TERMINAL_ACTION = "TERMINAL_G9CB8_ATTEMPT_CONSUMED_NO_RETRY"
+TERMINAL_ACTION = "TERMINAL_G9CB12_ATTEMPT_CONSUMED_NO_RETRY"
 _TIMESTAMP_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z")
 _SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
+_COMMIT_RE = re.compile(r"[0-9a-f]{40}\Z")
 _DIST_NORMALIZE_RE = re.compile(r"[-_.]+")
 _STAGED_CSV_NAME = "gross9_structural_clock_bundle.csv.gz"
 _STAGED_CORE_NAME = "gross9_structural_clock_bundle_core.json"
 _STAGED_RECEIPT_NAME = "gross9_structural_clock_bundle_pass_receipt.json"
-_PYCACHE_PREFIX_RELATIVE = Path("results/.g9cb8-bytecode-cache-disabled")
+_PYCACHE_PREFIX_RELATIVE = Path("results/.g9cb12-bytecode-cache-disabled")
 _ABSOLUTE_BINDING_ALLOWLIST = frozenset(
-    {"/tmp/btcusdt_open_interest_5m_2020_2026.csv"}
+    {
+        "/tmp/btcusdt_open_interest_5m_2020_2026.csv",
+        (
+            "/home/pakchu/rllm/data/"
+            "cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz"
+        ),
+    }
 )
 _PREREGISTRATION_ONLY = "preregistration-only"
 _PREREGISTRATION_PLUS_CLAIM = "preregistration-plus-claim"
-Q8_PREREGISTRATION_PUBLICATION = "Q8_PREREGISTRATION_PUBLICATION"
-P8_CLAIM_PREFLIGHT = "P8_CLAIM_PREFLIGHT"
-C8_PRODUCTION_PREFLIGHT = "C8_PRODUCTION_PREFLIGHT"
-D8_COMMITTED_VERIFICATION = "D8_COMMITTED_VERIFICATION"
+Q12_PREREGISTRATION_PUBLICATION = "Q12_PREREGISTRATION_PUBLICATION"
+P12_CLAIM_PREFLIGHT = "P12_CLAIM_PREFLIGHT"
+C12_PRODUCTION_PREFLIGHT = "C12_PRODUCTION_PREFLIGHT"
+D12_COMMITTED_VERIFICATION = "D12_COMMITTED_VERIFICATION"
 PRODUCTION_CHECKPOINTS = (
-    "C8_PRODUCTION_PREFLIGHT",
+    "C12_PRODUCTION_PREFLIGHT",
     "CAPABILITY_PROBE_COMPLETE",
     "SLOT1_PREPARED",
     "SENTINEL_LINKED",
@@ -239,12 +359,12 @@ _PR_SET_PDEATHSIG = 1
 _LIBC = ctypes.CDLL(None, use_errno=True)
 
 
-class TerminalG9CB8Failure(RuntimeError):
+class TerminalG9CB12Failure(RuntimeError):
     """A terminal protocol or post-sentinel failure."""
 
 
 def _fail(message: str) -> NoReturn:
-    raise TerminalG9CB8Failure(message)
+    raise TerminalG9CB12Failure(message)
 
 
 def _validate_production_checkpoint(checkpoint: str) -> None:
@@ -294,6 +414,19 @@ def _canonical_json_bytes(payload: Any, *, trailing_lf: bool = True) -> bytes:
     return raw + (b"\n" if trailing_lf else b"")
 
 
+def _canonical_h12_json_bytes(
+    payload: Any, *, trailing_lf: bool = True
+) -> bytes:
+    raw = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return raw + (b"\n" if trailing_lf else b"")
+
+
 def _object_hash(payload: Mapping[str, Any], field: str) -> str:
     core = {key: value for key, value in payload.items() if key != field}
     return hashlib.sha256(_canonical_json_bytes(core, trailing_lf=False)).hexdigest()
@@ -334,7 +467,7 @@ def _decode_canonical_object(
     try:
         payload = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB8Failure(
+        raise TerminalG9CB12Failure(
             f"invalid canonical JSON: {path_text}"
         ) from exc
     if not isinstance(payload, dict) or raw != _canonical_json_bytes(payload):
@@ -552,6 +685,578 @@ def _validate_committed_publication_topology(
     }
 
 
+def _decode_h12_canonical_object(raw: bytes, label: str) -> dict[str, Any]:
+    if not isinstance(raw, bytes):
+        _fail(f"{label} is not bytes")
+    try:
+        payload = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_unique_object,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise TerminalG9CB12Failure(
+            f"{label} is not valid duplicate-free UTF-8 JSON"
+        ) from exc
+    if (
+        not isinstance(payload, dict)
+        or raw != _canonical_h12_json_bytes(payload)
+    ):
+        _fail(f"{label} is not canonical JSON with one trailing LF")
+    return payload
+
+
+def _commit_tree_mode(root: Path, commit: str, path_text: str) -> str:
+    if not _COMMIT_RE.fullmatch(commit):
+        _fail("H12 stage commit is not lowercase 40-hex")
+    raw = _git(
+        root,
+        "ls-tree",
+        "-z",
+        "--full-tree",
+        commit,
+        "--",
+        path_text,
+    )
+    entries = [entry for entry in raw.split(b"\0") if entry]
+    if len(entries) != 1 or b"\t" not in entries[0]:
+        _fail(f"H12 stage path is absent or ambiguous: {path_text}")
+    metadata, encoded_path = entries[0].split(b"\t", 1)
+    fields = metadata.split()
+    if (
+        len(fields) != 3
+        or fields[1] != b"blob"
+        or not re.fullmatch(rb"[0-9a-f]{40}", fields[2])
+        or encoded_path != path_text.encode("utf-8")
+    ):
+        _fail(f"H12 stage tree entry differs: {path_text}")
+    try:
+        return fields[0].decode("ascii")
+    except UnicodeDecodeError as exc:
+        raise TerminalG9CB12Failure(
+            f"H12 stage mode is not ASCII: {path_text}"
+        ) from exc
+
+
+def _expected_h12_predecessor_bindings(
+    root: Path, d12_head: str
+) -> list[dict[str, Any]]:
+    if not _COMMIT_RE.fullmatch(d12_head):
+        _fail("D12 head is not lowercase 40-hex")
+    commits: dict[str, str] = {"D12": d12_head}
+    commits["C12"] = _single_parent_commit(root, commits["D12"])
+    commits["P12"] = _single_parent_commit(root, commits["C12"])
+    commits["Q12"] = _single_parent_commit(root, commits["P12"])
+    commits["M12"] = _single_parent_commit(root, commits["Q12"])
+    commits["S12"] = _single_parent_commit(root, commits["M12"])
+    t11 = _single_parent_commit(root, commits["S12"])
+    if commits["S12"] != prereg.G9CB12_SOURCE_SUPPORT_COMMIT:
+        _fail("H12 S12 commit differs from authenticated source support")
+    if commits["M12"] != prereg.G9CB12_SOURCE_MANIFEST_COMMIT:
+        _fail("H12 M12 commit differs from authenticated source manifest")
+    if t11 != prereg.G9CB11_TERMINAL_EVIDENCE_COMMIT:
+        _fail("H12 S12 parent differs from authenticated T11")
+
+    parents = {
+        "S12": t11,
+        "M12": commits["S12"],
+        "Q12": commits["M12"],
+        "P12": commits["Q12"],
+        "C12": commits["P12"],
+        "D12": commits["C12"],
+    }
+    statuses = {
+        "S12": "A",
+        "M12": "A",
+        "Q12": "M",
+        "P12": "A",
+        "C12": "A",
+        "D12": "A",
+    }
+    for stage in H12_STAGE_PATHS:
+        paths = H12_STAGE_PATHS[stage]
+        expected_diff = tuple(
+            f"{statuses[stage]}\t{path_text}"
+            for path_text in sorted(paths)
+        )
+        if _commit_name_status(
+            root, parents[stage], commits[stage]
+        ) != expected_diff:
+            _fail(f"H12 {stage} parent diff differs")
+        for path_text in paths:
+            if _commit_tree_mode(root, commits[stage], path_text) != "100644":
+                _fail(f"H12 {stage} path Git mode differs: {path_text}")
+
+    bindings = [
+        {
+            "commit": commits[stage],
+            "parent_commit": parents[stage],
+            "stage": stage,
+            "tracked_paths": list(H12_STAGE_PATHS[stage]),
+        }
+        for stage in H12_STAGE_PATHS
+    ]
+    return _normalize_h12_predecessor_bindings(bindings)
+
+
+def _normalize_h12_predecessor_bindings(
+    bindings: Any,
+) -> list[dict[str, Any]]:
+    if not isinstance(bindings, list) or len(bindings) != len(H12_STAGE_PATHS):
+        _fail("H12 predecessor_bindings is not the exact six-row array")
+    normalized: list[dict[str, Any]] = []
+    stages = tuple(H12_STAGE_PATHS)
+    for index, (row, stage) in enumerate(zip(bindings, stages, strict=True)):
+        if not isinstance(row, dict) or tuple(row) != H12_BINDING_KEYS:
+            _fail(f"H12 predecessor binding {index} keys/order differ")
+        commit = row.get("commit")
+        parent = row.get("parent_commit")
+        tracked_paths = row.get("tracked_paths")
+        if (
+            not isinstance(commit, str)
+            or not _COMMIT_RE.fullmatch(commit)
+            or not isinstance(parent, str)
+            or not _COMMIT_RE.fullmatch(parent)
+            or row.get("stage") != stage
+            or not isinstance(tracked_paths, list)
+            or tracked_paths != list(H12_STAGE_PATHS[stage])
+            or not all(isinstance(path, str) for path in tracked_paths)
+        ):
+            _fail(f"H12 predecessor binding differs: {stage}")
+        normalized.append(
+            {
+                "commit": commit,
+                "parent_commit": parent,
+                "stage": stage,
+                "tracked_paths": list(tracked_paths),
+            }
+        )
+    for prior, current in zip(normalized, normalized[1:], strict=False):
+        if current["parent_commit"] != prior["commit"]:
+            _fail("H12 predecessor direct-parent chain differs")
+    learned_oids = [normalized[0]["parent_commit"]] + [
+        row["commit"] for row in normalized
+    ]
+    if len(set(learned_oids)) != len(learned_oids):
+        _fail("H12 predecessor chain repeats a commit")
+    return normalized
+
+
+def _validated_v12_stdout(
+    raw: bytes, predecessor_bindings: list[dict[str, Any]]
+) -> dict[str, Any]:
+    payload = _decode_h12_canonical_object(raw, "V12 stdout")
+    if tuple(payload) != V12_STDOUT_KEYS:
+        _fail("V12 stdout keys/order differ")
+    for key in (
+        "claim_commit",
+        "head",
+        "preregistration_seal_commit",
+        "protocol_implementation_commit",
+        "publication_commit",
+    ):
+        value = payload.get(key)
+        if not isinstance(value, str) or not _COMMIT_RE.fullmatch(value):
+            _fail(f"V12 stdout commit differs: {key}")
+    for key in (
+        "claim_hash",
+        "csv_gzip_sha256",
+        "final_manifest_hash",
+        "preregistration_manifest_hash",
+        "sentinel_manifest_hash",
+    ):
+        value = payload.get(key)
+        if not isinstance(value, str) or not _SHA_RE.fullmatch(value):
+            _fail(f"V12 stdout hash differs: {key}")
+    if (
+        payload.get("identity") != IDENTITY
+        or payload.get("protocol_version") != PROTOCOL_VERSION
+        or type(payload.get("interval_count")) is not int
+        or payload["interval_count"] < 0
+        or payload["head"] != payload["publication_commit"]
+    ):
+        _fail("V12 stdout literal/type contract differs")
+    by_stage = {row["stage"]: row for row in predecessor_bindings}
+    if (
+        payload["protocol_implementation_commit"] != by_stage["Q12"]["commit"]
+        or payload["preregistration_seal_commit"] != by_stage["P12"]["commit"]
+        or payload["claim_commit"] != by_stage["C12"]["commit"]
+        or payload["publication_commit"] != by_stage["D12"]["commit"]
+    ):
+        _fail("V12 stdout does not bind the authenticated Q12-P12-C12-D12 chain")
+    return payload
+
+
+def _h12_handoff_payload(
+    predecessor_bindings: list[dict[str, Any]], v12_stdout: bytes
+) -> dict[str, Any]:
+    bindings = _normalize_h12_predecessor_bindings(predecessor_bindings)
+    _validated_v12_stdout(v12_stdout, bindings)
+    return {
+        "active_alpha_goal": "incomplete",
+        "identity": IDENTITY,
+        "ledger_kind": "gross9_structural_clock_bundle_g9cb12_v12_handoff_v1",
+        "next_workflow": "ralplan",
+        "no_economics": True,
+        "no_future_commit_prediction": True,
+        "predecessor_bindings": bindings,
+        "schema_version": 1,
+        "source_generation": "G9CB12",
+        "v12_stdout_hash": _sha256_bytes(v12_stdout),
+    }
+
+
+def _contains_h12_placeholder(value: Any) -> bool:
+    if isinstance(value, str):
+        return "<" in value or ">" in value
+    if isinstance(value, Mapping):
+        return any(
+            _contains_h12_placeholder(key)
+            or _contains_h12_placeholder(member)
+            for key, member in value.items()
+        )
+    if isinstance(value, list):
+        return any(_contains_h12_placeholder(member) for member in value)
+    return False
+
+
+def validate_g9cb12_h12_handoff(
+    payload: Mapping[str, Any] | bytes,
+    *,
+    v12_stdout: bytes,
+    predecessor_bindings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    observed = (
+        _decode_h12_canonical_object(payload, "H12 handoff")
+        if isinstance(payload, bytes)
+        else payload
+    )
+    if not isinstance(observed, dict) or tuple(observed) != H12_TOP_LEVEL_KEYS:
+        _fail("H12 handoff top-level keys/order differ")
+    if (
+        type(observed.get("schema_version")) is not int
+        or observed.get("schema_version") != 1
+        or type(observed.get("no_economics")) is not bool
+        or observed.get("no_economics") is not True
+        or type(observed.get("no_future_commit_prediction")) is not bool
+        or observed.get("no_future_commit_prediction") is not True
+    ):
+        _fail("H12 handoff integer/boolean contract differs")
+    for key, literal in (
+        ("active_alpha_goal", "incomplete"),
+        ("identity", IDENTITY),
+        (
+            "ledger_kind",
+            "gross9_structural_clock_bundle_g9cb12_v12_handoff_v1",
+        ),
+        ("next_workflow", "ralplan"),
+        ("source_generation", "G9CB12"),
+    ):
+        if type(observed.get(key)) is not str or observed.get(key) != literal:
+            _fail(f"H12 handoff literal differs: {key}")
+    stdout_hash = observed.get("v12_stdout_hash")
+    if (
+        not isinstance(stdout_hash, str)
+        or not _SHA_RE.fullmatch(stdout_hash)
+        or stdout_hash != _sha256_bytes(v12_stdout)
+    ):
+        _fail("H12 handoff V12 stdout hash differs")
+    normalized = _normalize_h12_predecessor_bindings(
+        observed.get("predecessor_bindings")
+    )
+    expected = _h12_handoff_payload(predecessor_bindings, v12_stdout)
+    if normalized != expected["predecessor_bindings"] or observed != expected:
+        _fail("H12 handoff schema or authenticated bindings differ")
+    if _contains_h12_placeholder(observed):
+        _fail("H12 handoff contains an unresolved placeholder")
+    return copy.deepcopy(expected)
+
+
+def _h12_supervisor_payload(
+    head: str,
+    parent: str,
+    capability_sha256: str,
+    supervisor_pid: int,
+) -> dict[str, Any]:
+    if not _COMMIT_RE.fullmatch(head) or not _COMMIT_RE.fullmatch(parent):
+        _fail("H12 supervisor repository commit binding differs")
+    if not _SHA_RE.fullmatch(capability_sha256):
+        _fail("H12 supervisor capability hash differs")
+    if type(supervisor_pid) is not int or supervisor_pid <= 0:
+        _fail("H12 supervisor PID differs")
+    core = {
+        "capability_sha256": capability_sha256,
+        "expected_handoff_path": H12_HANDOFF_PATH.as_posix(),
+        "h12_command": H12_COMMAND,
+        "identity": "G9CB-12-H12-SUPERVISOR",
+        "one_shot": True,
+        "repository_head": head,
+        "repository_parent": parent,
+        "resume_allowed": False,
+        "retry_allowed": False,
+        "supervisor_pid": supervisor_pid,
+        "uv_executable": H12_UV_EXECUTABLE.as_posix(),
+        "uv_executable_sha256": H12_UV_EXECUTABLE_SHA256,
+        "v12_command": V12_COMMAND,
+        "zero_economics": True,
+    }
+    attempt_hash = _sha256_bytes(
+        _canonical_h12_json_bytes(core, trailing_lf=False)
+    )
+    return {"attempt_hash": attempt_hash, **core}
+
+
+def _validated_h12_supervisor_payload(raw: bytes) -> dict[str, Any]:
+    payload = _decode_h12_canonical_object(raw, "H12 supervisor sentinel")
+    if tuple(payload) != H12_SUPERVISOR_KEYS:
+        _fail("H12 supervisor sentinel keys/order differ")
+    expected = _h12_supervisor_payload(
+        str(payload.get("repository_head")),
+        str(payload.get("repository_parent")),
+        str(payload.get("capability_sha256")),
+        payload.get("supervisor_pid"),
+    )
+    if payload != expected:
+        _fail("H12 supervisor sentinel schema/self-hash differs")
+    return payload
+
+
+def _read_h12_supervisor_sentinel(
+    root: Path, expected_sha256: str
+) -> tuple[dict[str, Any], bytes]:
+    if not _SHA_RE.fullmatch(expected_sha256):
+        _fail("H12 supervisor environment hash differs")
+    path = _rooted(root, H12_SUPERVISOR_SENTINEL_PATH)
+    descriptor = os.open(
+        path,
+        os.O_RDONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0),
+    )
+    try:
+        before = os.fstat(descriptor)
+        raw = _read_publication_descriptor(descriptor, before.st_size)
+        after = os.fstat(descriptor)
+        edge = os.lstat(path)
+        if (
+            _descriptor_token(before) != _descriptor_token(after)
+            or _descriptor_token(after) != _descriptor_token(edge)
+            or not stat.S_ISREG(after.st_mode)
+            or stat.S_IMODE(after.st_mode) != 0o444
+            or after.st_nlink != 1
+            or _sha256_bytes(raw) != expected_sha256
+        ):
+            _fail("H12 supervisor sentinel inode/hash binding differs")
+    finally:
+        os.close(descriptor)
+    return _validated_h12_supervisor_payload(raw), raw
+
+
+def _path_lexists(path: Path) -> bool:
+    try:
+        os.lstat(path)
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def _h12_v12_artifact_names(names: Iterable[str]) -> tuple[str, ...]:
+    return tuple(
+        sorted(
+            name
+            for name in names
+            if name.startswith("gross9_structural_clock_bundle_g9cb12_v12")
+        )
+    )
+
+
+def _authenticated_h12_uv_executable() -> str:
+    descriptor = os.open(
+        H12_UV_EXECUTABLE,
+        os.O_RDONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0),
+    )
+    try:
+        before = os.fstat(descriptor)
+        raw = _read_publication_descriptor(descriptor, before.st_size)
+        after = os.fstat(descriptor)
+        edge = os.lstat(H12_UV_EXECUTABLE)
+        if (
+            _descriptor_token(before) != _descriptor_token(after)
+            or _descriptor_token(after) != _descriptor_token(edge)
+            or not stat.S_ISREG(after.st_mode)
+            or stat.S_IMODE(after.st_mode) != 0o755
+            or after.st_nlink != 1
+            or after.st_size != H12_UV_EXECUTABLE_SIZE
+            or _sha256_bytes(raw) != H12_UV_EXECUTABLE_SHA256
+        ):
+            _fail("H12 uv executable binding differs")
+    finally:
+        os.close(descriptor)
+    return H12_UV_EXECUTABLE.as_posix()
+
+
+def _consume_h12_v12_capability(
+    descriptor_text: str, expected_sha256: str
+) -> None:
+    if (
+        not re.fullmatch(r"(?:0|[1-9][0-9]*)", descriptor_text)
+        or not _SHA_RE.fullmatch(expected_sha256)
+    ):
+        _fail("H12 V12 capability environment differs")
+    descriptor = int(descriptor_text)
+    token = bytearray()
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISFIFO(info.st_mode):
+            _fail("H12 V12 capability carrier is not a FIFO")
+        while len(token) < 32:
+            chunk = os.read(descriptor, 32 - len(token))
+            if not chunk:
+                _fail("H12 V12 capability reached EOF before 32 bytes")
+            token.extend(chunk)
+        if os.read(descriptor, 1) != b"":
+            _fail("H12 V12 capability contains extra bytes")
+        if _sha256_bytes(token) != expected_sha256:
+            _fail("H12 V12 capability token hash differs")
+    except OSError as exc:
+        raise TerminalG9CB12Failure(
+            "H12 V12 capability carrier cannot be consumed"
+        ) from exc
+    finally:
+        token[:] = b"\0" * len(token)
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+
+
+def _linux_process_parent(pid: int) -> int:
+    if type(pid) is not int or pid <= 0:
+        _fail("H12 process PID differs")
+    try:
+        raw = Path(f"/proc/{pid}/stat").read_text(encoding="ascii")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise TerminalG9CB12Failure(
+            "H12 process ancestry cannot be authenticated"
+        ) from exc
+    closing = raw.rfind(")")
+    fields = raw[closing + 2 :].split() if closing >= 0 else []
+    if len(fields) < 2 or not fields[1].isdigit():
+        _fail("H12 process ancestry record differs")
+    return int(fields[1])
+
+
+def _repository_namespace_snapshot(
+    root: Path,
+) -> dict[str, tuple[int, ...]]:
+    snapshot: dict[str, tuple[int, ...]] = {}
+    for current, directories, files in os.walk(
+        root, topdown=True, followlinks=False
+    ):
+        current_path = Path(current)
+        if current_path == root and ".git" in directories:
+            directories.remove(".git")
+        directories.sort()
+        files.sort()
+        for name in (*directories, *files):
+            candidate = current_path / name
+            relative = candidate.relative_to(root).as_posix()
+            info = os.lstat(candidate)
+            snapshot[relative] = (
+                info.st_dev,
+                info.st_ino,
+                stat.S_IFMT(info.st_mode),
+                stat.S_IMODE(info.st_mode),
+                info.st_nlink,
+                info.st_size,
+                info.st_mtime_ns,
+                info.st_ctime_ns,
+            )
+    return snapshot
+
+
+def _h12_stage_worktree_snapshot(
+    root: Path, predecessor_bindings: list[dict[str, Any]]
+) -> dict[str, tuple[int, ...]]:
+    bindings = _normalize_h12_predecessor_bindings(predecessor_bindings)
+    snapshot: dict[str, tuple[int, ...]] = {}
+    for row in bindings:
+        stage = row["stage"]
+        expected_mode = H12_STAGE_WORKTREE_MODES[stage]
+        for path_text in row["tracked_paths"]:
+            info = os.lstat(_rooted(root, Path(path_text)))
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or stat.S_IMODE(info.st_mode) != expected_mode
+                or info.st_nlink != 1
+            ):
+                _fail(f"H12 {stage} worktree mode/type differs: {path_text}")
+            snapshot[path_text] = _descriptor_token(info)
+    return snapshot
+
+
+def _require_h12_stage_worktree_unchanged(
+    root: Path, expected: Mapping[str, tuple[int, ...]]
+) -> None:
+    for path_text, token in expected.items():
+        if _descriptor_token(os.lstat(_rooted(root, Path(path_text)))) != token:
+            _fail(f"H12 stage worktree binding changed: {path_text}")
+
+
+def _require_h12_v12_supervision(root: Path) -> dict[str, Any]:
+    expected_sha256 = os.environ.get(H12_SUPERVISOR_ENV, "")
+    sentinel, _raw = _read_h12_supervisor_sentinel(
+        root, expected_sha256
+    )
+    capability_sha256 = os.environ.get(H12_CAPABILITY_SHA256_ENV, "")
+    supervisor_pid_text = os.environ.get(H12_SUPERVISOR_PID_ENV, "")
+    if (
+        capability_sha256 != sentinel["capability_sha256"]
+        or not re.fullmatch(r"[1-9][0-9]*", supervisor_pid_text)
+        or int(supervisor_pid_text) != sentinel["supervisor_pid"]
+    ):
+        _fail("H12 V12 supervisor capability binding differs")
+    parent_pid = os.getppid()
+    if (
+        parent_pid != sentinel["supervisor_pid"]
+        and _linux_process_parent(parent_pid) != sentinel["supervisor_pid"]
+    ):
+        _fail("V12 is not a direct or uv-mediated H12 child")
+    _consume_h12_v12_capability(
+        os.environ.get(H12_CAPABILITY_FD_ENV, ""),
+        capability_sha256,
+    )
+    if (
+        sentinel["uv_executable"] != H12_UV_EXECUTABLE.as_posix()
+        or sentinel["uv_executable_sha256"]
+        != H12_UV_EXECUTABLE_SHA256
+        or Path(sys.prefix).resolve() != (root / ".venv").resolve()
+    ):
+        _fail("V12 interpreter/supervisor executable binding differs")
+    if _path_lexists(_rooted(root, H12_HANDOFF_PATH)):
+        _fail("V12 handoff already exists")
+    head = _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH)
+    if (
+        sentinel["repository_head"] != head
+        or sentinel["repository_parent"] != _single_parent_commit(root, head)
+    ):
+        _fail("H12 supervisor repository binding differs")
+    if _git(
+        root,
+        "ls-files",
+        "--error-unmatch",
+        "--",
+        H12_SUPERVISOR_SENTINEL_PATH.as_posix(),
+        allow_failure=True,
+    ).strip():
+        _fail("H12 supervisor sentinel must remain untracked")
+    results_names = os.listdir(_rooted(root, Path("results")))
+    if _h12_v12_artifact_names(results_names):
+        _fail("V12 file artifact exists")
+    return sentinel
+
+
 _PATH_ALIASES = ("path", "logical_path", "repository_path")
 
 
@@ -594,7 +1299,7 @@ def _require_bound_regular_lstat(path: Path, path_text: str) -> None:
     try:
         mode = os.lstat(path).st_mode
     except OSError as exc:
-        raise TerminalG9CB8Failure(
+        raise TerminalG9CB12Failure(
             f"bound input cannot be inspected: {path_text}"
         ) from exc
     if not stat.S_ISREG(mode):
@@ -634,7 +1339,7 @@ def _validate_zero_access(payload: Mapping[str, Any]) -> None:
     try:
         prereg.validate_zero_access_schema(payload)
     except (TypeError, ValueError) as exc:
-        raise TerminalG9CB8Failure(
+        raise TerminalG9CB12Failure(
             f"preregistration zero-access schema differs: {exc}"
         ) from exc
 
@@ -818,7 +1523,7 @@ def _validated_expected_security_profile(
             or _commit_name_status(root, implementation, seal)
             != tuple(normalized["preregistration_diff"])
         ):
-            _fail("expected security profile A8/Q8/P8 topology differs")
+            _fail("expected security profile M12/Q12/P12 topology differs")
     bindings = preregistration.get("bindings")
     if not isinstance(bindings, Mapping):
         _fail("expected security profile preregistration bindings are absent")
@@ -870,8 +1575,8 @@ def _official_expected_security_profile(
         ValueError,
         subprocess.CalledProcessError,
     ) as exc:
-        raise TerminalG9CB8Failure(
-            "official A8/Q8/P8 security topology differs"
+        raise TerminalG9CB12Failure(
+            "official M12/Q12/P12 security topology differs"
         ) from exc
     if len(additions) != 1:
         _fail("official preregistration seal addition history differs")
@@ -879,7 +1584,9 @@ def _official_expected_security_profile(
     profile = {
         "identity": IDENTITY,
         "expected_branch": prereg.EXPECTED_BRANCH,
-        "authority_commit": prereg.AUTHORITY_DECISION_COMMIT,
+        # Historical field name retained for the sealed worker protocol.  For
+        # G9CB12 this is the direct Q12 implementation parent, M12.
+        "authority_commit": prereg.PROTOCOL_IMPLEMENTATION_PARENT_COMMIT,
         "protocol_implementation_commit": implementation,
         "preregistration_seal_commit": seal,
         **_fixed_security_expectations(),
@@ -1370,7 +2077,7 @@ def validate_preregistration(
             ValueError,
             subprocess.CalledProcessError,
         ) as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "failed predecessor preregistration evidence differs"
             ) from exc
     if validation_mode in {"parent", "guarded_worker"}:
@@ -1443,7 +2150,7 @@ def validate_preregistration(
             ValueError,
             subprocess.CalledProcessError,
         ) as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "protocol implementation topology differs"
             ) from exc
     if recorded_implementation != implementation:
@@ -1469,7 +2176,7 @@ def validate_preregistration(
                 verify_git_seal=False,
             )
         except (TypeError, ValueError) as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "preregistration producer validation failed"
             ) from exc
 
@@ -1941,12 +2648,110 @@ def _open_unnamed_completed(
         return descriptor, completed
     except NameError as exc:
         os.close(descriptor)
-        raise TerminalG9CB8Failure(
+        raise TerminalG9CB12Failure(
             "publication helper failure"
         ) from exc
     except BaseException:
         os.close(descriptor)
         raise
+
+
+def _publish_h12_leaf(
+    root: Path,
+    relative: Path,
+    raw: bytes,
+    *,
+    expected_entries: tuple[str, ...],
+    prelink_recheck: Any | None = None,
+) -> dict[str, Any]:
+    if (
+        relative.parent != Path("results")
+        or relative.name in {"", ".", ".."}
+        or "/" in relative.name
+        or "\\" in relative.name
+    ):
+        _fail("H12 publication path is not an exact results leaf")
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    repository_fd = os.open(root, flags)
+    results_fd = canonical_fd = unnamed_fd = -1
+    try:
+        results_fd = os.open("results", flags, dir_fd=repository_fd)
+        repository_token = _directory_identity(os.fstat(repository_fd))
+        results_token = _directory_identity(os.fstat(results_fd))
+        results_edge = os.stat(
+            "results", dir_fd=repository_fd, follow_symlinks=False
+        )
+        if (
+            _directory_identity(results_edge) != results_token
+            or _directory_entries(results_fd) != expected_entries
+            or relative.name in expected_entries
+        ):
+            _fail("H12 publication prelink inventory differs")
+        unnamed_fd, unnamed_info = _open_unnamed_completed(
+            results_fd, raw, mode=0o444
+        )
+        if prelink_recheck is not None:
+            prelink_recheck()
+        if (
+            _directory_identity(os.fstat(repository_fd)) != repository_token
+            or _directory_identity(os.fstat(results_fd)) != results_token
+            or _directory_entries(results_fd) != expected_entries
+        ):
+            _fail("H12 publication directory binding drifted before link")
+        _link_unnamed_procfd_raw(unnamed_fd, results_fd, relative.name)
+        canonical_fd = os.open(
+            relative.name,
+            os.O_RDONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0),
+            dir_fd=results_fd,
+        )
+        canonical_info = os.fstat(canonical_fd)
+        linked_info = os.fstat(unnamed_fd)
+        canonical_raw = _read_publication_descriptor(
+            canonical_fd, canonical_info.st_size
+        )
+        added = tuple(sorted((*expected_entries, relative.name)))
+        if (
+            not stat.S_ISREG(canonical_info.st_mode)
+            or stat.S_IMODE(canonical_info.st_mode) != 0o444
+            or canonical_info.st_nlink != 1
+            or (canonical_info.st_dev, canonical_info.st_ino)
+            != (unnamed_info.st_dev, unnamed_info.st_ino)
+            or (canonical_info.st_dev, canonical_info.st_ino)
+            != (linked_info.st_dev, linked_info.st_ino)
+            or canonical_info.st_size != len(raw)
+            or canonical_raw != raw
+            or _directory_entries(results_fd) != added
+        ):
+            _fail("H12 canonical publication inode/bytes/delta differs")
+        os.fsync(unnamed_fd)
+        os.fsync(results_fd)
+        if (
+            _directory_identity(os.fstat(repository_fd)) != repository_token
+            or _directory_identity(os.fstat(results_fd)) != results_token
+            or _directory_entries(results_fd) != added
+            or _read_publication_descriptor(
+                canonical_fd, canonical_info.st_size
+            )
+            != raw
+        ):
+            _fail("H12 publication post-fsync verification differs")
+        return {
+            "mode": stat.S_IMODE(canonical_info.st_mode),
+            "path": relative.as_posix(),
+            "sha256": _sha256_bytes(raw),
+            "size_bytes": canonical_info.st_size,
+        }
+    finally:
+        for descriptor in (canonical_fd, unnamed_fd, results_fd, repository_fd):
+            if descriptor >= 0:
+                os.close(descriptor)
 
 
 class _PublicationContext:
@@ -2125,10 +2930,10 @@ class _PublicationContext:
             return
         self._require_bound_results()
         baseline = self.entries
-        leaf = f".g9cb8-otmpfile-probe-{os.getpid()}-{os.urandom(8).hex()}"
+        leaf = f".g9cb12-otmpfile-probe-{os.getpid()}-{os.urandom(8).hex()}"
         if leaf in baseline:
             _fail("publication capability probe leaf already exists")
-        raw = b"G9CB8 O_TMPFILE capability probe\n"
+        raw = b"G9CB12 O_TMPFILE capability probe\n"
         descriptor, unnamed_info = _open_unnamed_completed(
             self.results_fd, raw, mode=0o444
         )
@@ -2189,7 +2994,7 @@ class _PublicationContext:
             os.fsync(self.results_fd)
             self._rebaseline(baseline)
         except NameError as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "publication helper failure"
             ) from exc
         finally:
@@ -2266,7 +3071,7 @@ class _PublicationContext:
                 "mode": stat.S_IMODE(canonical_info.st_mode),
             }
         except NameError as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "publication helper failure"
             ) from exc
         finally:
@@ -2291,7 +3096,7 @@ class _PublicationContext:
         os.close(self.repository_fd)
 
 
-def _is_forbidden_g9cb8_helper_name(name: str) -> bool:
+def _is_forbidden_g9cb12_helper_name(name: str) -> bool:
     canonical = (
         PREREGISTRATION_PATH,
         CLAIM_PATH,
@@ -2303,13 +3108,13 @@ def _is_forbidden_g9cb8_helper_name(name: str) -> bool:
     return (
         name.startswith(
             (
-                ".g9cb8-otmpfile-probe-",
-                ".gross9-structural-clock-g9cb8-worker-",
+                ".g9cb12-otmpfile-probe-",
+                ".gross9-structural-clock-g9cb12-worker-",
             )
         )
         or any(name.startswith(f".{path.name}.stage-") for path in canonical)
         or (
-            name.startswith(".gross9_structural_clock_bundle_g9cb8_")
+            name.startswith(".gross9_structural_clock_bundle_g9cb12_")
             and ".stage-" in name
         )
     )
@@ -2319,10 +3124,10 @@ def _validate_closed_entry_phase(
     context: _PublicationContext, phase: str
 ) -> None:
     phase_states = {
-        Q8_PREREGISTRATION_PUBLICATION: (False, False, False),
-        P8_CLAIM_PREFLIGHT: (True, False, False),
-        C8_PRODUCTION_PREFLIGHT: (True, True, False),
-        D8_COMMITTED_VERIFICATION: (True, True, True),
+        Q12_PREREGISTRATION_PUBLICATION: (False, False, False),
+        P12_CLAIM_PREFLIGHT: (True, False, False),
+        C12_PRODUCTION_PREFLIGHT: (True, True, False),
+        D12_COMMITTED_VERIFICATION: (True, True, True),
     }
     if phase not in phase_states:
         _fail("closed entry-point phase is invalid")
@@ -2372,12 +3177,21 @@ def _validate_closed_entry_phase(
     expected_inventory = (
         tracked_results | predecessor_residue_names | active_untracked
     )
+    supervisor_present = H12_SUPERVISOR_SENTINEL_PATH.name in names
+    if supervisor_present:
+        if phase != D12_COMMITTED_VERIFICATION:
+            _fail(f"{phase} unexpected H12 supervisor sentinel exists")
+        _read_h12_supervisor_sentinel(
+            context.root,
+            os.environ.get(H12_SUPERVISOR_ENV, ""),
+        )
+        expected_inventory.add(H12_SUPERVISOR_SENTINEL_PATH.name)
     if names != expected_inventory:
         _fail(f"{phase} exact results inventory differs")
     if _PYCACHE_PREFIX_RELATIVE.name in names:
         _fail(f"{phase} fixed pycache path exists")
-    if any(_is_forbidden_g9cb8_helper_name(name) for name in names):
-        _fail(f"{phase} forbidden G9CB8 helper path exists")
+    if any(_is_forbidden_g9cb12_helper_name(name) for name in names):
+        _fail(f"{phase} forbidden G9CB12 helper path exists")
     context.retain_predecessor_residues()
     _validate_failed_predecessor_permanent_state(
         context.results_fd,
@@ -2435,7 +3249,7 @@ def _validate_production_namespace(
         MANIFEST_PATH.name,
     )
     publication_counts = {
-        "C8_PRODUCTION_PREFLIGHT": 0,
+        "C12_PRODUCTION_PREFLIGHT": 0,
         "CAPABILITY_PROBE_COMPLETE": 0,
         "SLOT1_PREPARED": 0,
         "SENTINEL_LINKED": 1,
@@ -2453,7 +3267,7 @@ def _validate_production_namespace(
         if (leaf in names) != (index < count):
             _fail(f"{checkpoint} publication state differs: {leaf}")
     stage_expectation = {
-        "C8_PRODUCTION_PREFLIGHT": (),
+        "C12_PRODUCTION_PREFLIGHT": (),
         "CAPABILITY_PROBE_COMPLETE": (),
         "SLOT1_PREPARED": (stage_one,),
         "SENTINEL_LINKED": (stage_one,),
@@ -2501,14 +3315,14 @@ def _validate_production_namespace(
                 _fail(f"{checkpoint} worker-stage leaf differs: {leaf}")
     if _PYCACHE_PREFIX_RELATIVE.name in names:
         _fail(f"{checkpoint} fixed pycache path exists")
-    if any(_is_forbidden_g9cb8_helper_name(name) for name in names):
+    if any(_is_forbidden_g9cb12_helper_name(name) for name in names):
         allowed_stages = {stage.name for stage in stage_expectation}
         if any(
-            _is_forbidden_g9cb8_helper_name(name)
+            _is_forbidden_g9cb12_helper_name(name)
             and name not in allowed_stages
             for name in names
         ):
-            _fail(f"{checkpoint} forbidden G9CB8 helper path exists")
+            _fail(f"{checkpoint} forbidden G9CB12 helper path exists")
     context.retain_predecessor_residues()
     _validate_failed_predecessor_permanent_state(
         context.results_fd,
@@ -2693,12 +3507,12 @@ def validate_claim_preflight(
             )
             for path in _planned_protocol_paths(preregistration)
         ]
-        _validate_closed_entry_phase(context, P8_CLAIM_PREFLIGHT)
+        _validate_closed_entry_phase(context, P12_CLAIM_PREFLIGHT)
         context.probe()
         snapshot.rebaseline_directory_timestamps(
             matching_identity=context.results_token
         )
-        _validate_closed_entry_phase(context, P8_CLAIM_PREFLIGHT)
+        _validate_closed_entry_phase(context, P12_CLAIM_PREFLIGHT)
         result = {
             "preregistration": preregistration,
             "preregistration_binding": prereg_binding,
@@ -2722,7 +3536,7 @@ def validate_claim_preflight(
             snapshot,
             pairs,
             context,
-            P8_CLAIM_PREFLIGHT,
+            P12_CLAIM_PREFLIGHT,
             prereg.EXPECTED_BRANCH,
         )
         return result
@@ -2769,7 +3583,7 @@ def create_claim_only(
                 snapshot,
                 pairs,
                 context,
-                P8_CLAIM_PREFLIGHT,
+                P12_CLAIM_PREFLIGHT,
                 prereg.EXPECTED_BRANCH,
             ),
             publication_context=context,
@@ -3122,7 +3936,7 @@ def _discover_import_closure(
                 filename=current.as_posix(),
             )
         except (UnicodeDecodeError, SyntaxError) as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 f"import closure source cannot be parsed: {current}"
             ) from exc
         discovered.add(current)
@@ -3191,7 +4005,7 @@ def _decode_git_stdout(
     try:
         return completed.stdout.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise TerminalG9CB8Failure(
+        raise TerminalG9CB12Failure(
             f"{operation}: Git output is not UTF-8"
         ) from exc
 
@@ -3420,7 +4234,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
                     repository_fd = opener(root, directory_flags)
                     filesystem_root_fd = opener("/", directory_flags)
             except OSError as exc:
-                raise TerminalG9CB8Failure(
+                raise TerminalG9CB12Failure(
                     "snapshot anchors cannot be securely opened"
                 ) from exc
         if repository_fd is None or filesystem_root_fd is None:
@@ -3494,7 +4308,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
                     )
                 except OSError as exc:
                     self.close()
-                    raise TerminalG9CB8Failure(
+                    raise TerminalG9CB12Failure(
                         "bound input parent component cannot be opened "
                         f"no-follow (possible symlink): {path_text}"
                     ) from exc
@@ -3535,7 +4349,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
         try:
             descriptor = self._opener(leaf, flags, dir_fd=parent_fd)
         except OSError as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 f"retained directory cannot be opened no-follow: {path_text}"
             ) from exc
         try:
@@ -3573,7 +4387,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
             descriptor = self._opener(leaf, flags, dir_fd=parent_fd)
         except OSError as exc:
             self.close()
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 f"bound input cannot be opened component-wise no-follow: {path_text}"
             ) from exc
         before = os.fstat(descriptor)
@@ -3632,7 +4446,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
                     leaf, dir_fd=parent_fd, follow_symlinks=False
                 )
             except OSError as exc:
-                raise TerminalG9CB8Failure(
+                raise TerminalG9CB12Failure(
                     f"bound input leaf path changed: {path_text}"
                 ) from exc
             if _descriptor_token(path_info) != self.file_tokens[path_text]:
@@ -3657,7 +4471,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
                         follow_symlinks=False,
                     )
                 except OSError as exc:
-                    raise TerminalG9CB8Failure(
+                    raise TerminalG9CB12Failure(
                         f"bound input parent path changed: {key}"
                     ) from exc
                 if _descriptor_token(path_info) != self.directory_tokens[key]:
@@ -3947,7 +4761,7 @@ def _canonical_bound_json(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB8Failure(
+        raise TerminalG9CB12Failure(
             f"historical metadata JSON is invalid: {path_text}"
         ) from exc
     if (
@@ -4111,7 +4925,7 @@ def _validate_historical_metadata_bytes(
                 raw.decode("utf-8"), object_pairs_hook=_unique_object
             )
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 f"G9CB-3 worker ledger JSON is invalid: {path_text}"
             ) from exc
         if not isinstance(payload, dict) or raw != _canonical_json_bytes(payload):
@@ -4349,7 +5163,7 @@ def _validate_one_static_closure(
         try:
             ast.parse(raw, filename=row["path"])
         except SyntaxError as exc:
-            raise TerminalG9CB8Failure(f"closure source cannot be parsed: {row['path']}") from exc
+            raise TerminalG9CB12Failure(f"closure source cannot be parsed: {row['path']}") from exc
         observed = {
             "path": row["path"],
             "path_type": "regular_file",
@@ -4434,8 +5248,8 @@ def _worker_stage_path(root: Path, output_dir: Path) -> str:
     if candidate.parent != expected_parent:
         _fail("worker staging directory is not in the results filesystem")
     if (
-        not candidate.name.startswith(".gross9-structural-clock-g9cb8-worker-")
-        or candidate.name == ".gross9-structural-clock-g9cb8-worker-"
+        not candidate.name.startswith(".gross9-structural-clock-g9cb12-worker-")
+        or candidate.name == ".gross9-structural-clock-g9cb12-worker-"
     ):
         _fail("worker staging directory name differs")
     return candidate.relative_to(repository_root).as_posix()
@@ -4619,7 +5433,7 @@ def _normalized_worker_capabilities(
         stage = row["stage_directory"]
         if (
             not isinstance(stage, str)
-            or not stage.startswith("results/.gross9-structural-clock-g9cb8-worker-")
+            or not stage.startswith("results/.gross9-structural-clock-g9cb12-worker-")
             or row["carrier_kind"] != "anonymous_pipe_v1"
             or type(row["carrier_device"]) is not int
             or type(row["carrier_inode"]) is not int
@@ -4778,7 +5592,7 @@ def _validate_bytecode_preflight(root: Path) -> None:
     try:
         prereg.validate_repository_bytecode_preflight(root)
     except (OSError, ValueError) as exc:
-        raise TerminalG9CB8Failure(str(exc)) from exc
+        raise TerminalG9CB12Failure(str(exc)) from exc
 
 
 class _WorkerIsolationGuard:
@@ -4995,7 +5809,7 @@ class _WorkerIsolationGuard:
         try:
             raw = os.fspath(value)
         except TypeError as exc:
-            raise TerminalG9CB8Failure("guarded path is not path-like") from exc
+            raise TerminalG9CB12Failure("guarded path is not path-like") from exc
         if isinstance(raw, bytes):
             text = raw.decode(sys.getfilesystemencoding(), "surrogateescape")
         elif isinstance(raw, str):
@@ -5035,7 +5849,7 @@ class _WorkerIsolationGuard:
                 except FileNotFoundError:
                     return candidate
                 except OSError as exc:
-                    raise TerminalG9CB8Failure(
+                    raise TerminalG9CB12Failure(
                         f"guarded path resolution failed: {candidate}"
                     ) from exc
                 if stat.S_ISLNK(info.st_mode):
@@ -6733,7 +7547,7 @@ def _parse_timestamp(value: str) -> int:
     try:
         parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     except ValueError as exc:
-        raise TerminalG9CB8Failure(f"invalid timestamp: {value}") from exc
+        raise TerminalG9CB12Failure(f"invalid timestamp: {value}") from exc
     seconds = int(parsed.timestamp())
     if datetime.fromtimestamp(seconds, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") != value:
         _fail(f"noncanonical timestamp: {value}")
@@ -6752,7 +7566,7 @@ def _decimal(value: Any, field: str) -> Decimal:
     try:
         result = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
-        raise TerminalG9CB8Failure(f"invalid decimal {field}") from exc
+        raise TerminalG9CB12Failure(f"invalid decimal {field}") from exc
     if not result.is_finite():
         _fail(f"nonfinite decimal {field}")
     return result
@@ -6764,6 +7578,7 @@ def _empty_counters() -> dict[str, Any]:
         "funding",
         "premium",
         "open_interest",
+        "rank7_spot_premium_5m",
         "rex_taker_train",
         "rex_taker_test",
         "rex_taker_eval",
@@ -7075,13 +7890,13 @@ def validate_csv_gzip(raw: bytes, *, require_all_sleeves: bool = True) -> list[d
     try:
         decompressed = gzip.decompress(raw)
     except (OSError, EOFError) as exc:
-        raise TerminalG9CB8Failure("invalid gzip stream") from exc
+        raise TerminalG9CB12Failure("invalid gzip stream") from exc
     if compress_csv(decompressed) != raw:
         _fail("gzip bytes are not canonical")
     try:
         text = decompressed.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise TerminalG9CB8Failure("CSV is not UTF-8") from exc
+        raise TerminalG9CB12Failure("CSV is not UTF-8") from exc
     if "\r" in text or not text.endswith("\n") or "\n\n" in text:
         _fail("CSV line-ending contract failure")
     reader = csv.DictReader(io.StringIO(text, newline=""))
@@ -7354,6 +8169,7 @@ def _source_paths(
         "funding",
         "premium",
         "open_interest",
+        "rank7_spot_premium_5m",
         "rex_taker_train",
         "rex_taker_test",
         "rex_taker_eval",
@@ -7422,7 +8238,7 @@ def _install_counted_rank7_runtime(
         try:
             candidate = Path(os.fspath(path))
         except TypeError as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "Rank7 model open did not use a filesystem path"
             ) from exc
         candidate = candidate if candidate.is_absolute() else root / candidate
@@ -7487,7 +8303,7 @@ def _load_worker_json(root: Path, path: str) -> dict[str, Any]:
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB8Failure(f"worker JSON input is invalid: {path}") from exc
+        raise TerminalG9CB12Failure(f"worker JSON input is invalid: {path}") from exc
     if not isinstance(value, dict):
         _fail(f"worker JSON input is not an object: {path}")
     return value
@@ -7497,7 +8313,7 @@ def _market_seconds(market: Any) -> tuple[list[int], list[Any]]:
     try:
         values = list(market["date"])
     except (KeyError, TypeError) as exc:
-        raise TerminalG9CB8Failure("generic market lacks date rows") from exc
+        raise TerminalG9CB12Failure("generic market lacks date rows") from exc
     seconds: list[int] = []
     for value in values:
         if hasattr(value, "to_pydatetime"):
@@ -7579,7 +8395,7 @@ def _generic_time_second(value: Any, pandas_module: Any) -> int:
             pandas_module.to_datetime(value, utc=True, errors="raise")
         )
     except (TypeError, ValueError) as exc:
-        raise TerminalG9CB8Failure("generic source timestamp is invalid") from exc
+        raise TerminalG9CB12Failure("generic source timestamp is invalid") from exc
     return int(parsed.timestamp())
 
 
@@ -7620,7 +8436,7 @@ def _read_jsonl_rows(
         try:
             row = json.loads(line.decode("utf-8"), object_pairs_hook=_unique_object)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB8Failure(f"invalid JSONL row: {path}") from exc
+            raise TerminalG9CB12Failure(f"invalid JSONL row: {path}") from exc
         if not isinstance(row, dict):
             _fail(f"JSONL row is not an object: {path}")
         if "_g9cb_parser_ordinal" in row:
@@ -7781,7 +8597,7 @@ def _install_counted_csv_reader(
         try:
             source_path = Path(os.fspath(source))
         except TypeError as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "generic CSV read did not use an authenticated path"
             ) from exc
         candidate = (
@@ -7820,7 +8636,7 @@ def _install_counted_csv_reader(
         try:
             decoded_rows = len(frame)
         except TypeError as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "chunked or streaming CSV decode is forbidden"
             ) from exc
         first_ordinal = counters["rows_decoded"][logical_name]
@@ -7834,7 +8650,7 @@ def _install_counted_csv_reader(
                     format="mixed",
                 )
             except (KeyError, TypeError, ValueError) as exc:
-                raise TerminalG9CB8Failure(
+                raise TerminalG9CB12Failure(
                     "raw market timestamps are invalid"
                 ) from exc
             if bool(
@@ -7850,7 +8666,7 @@ def _install_counted_csv_reader(
             )
             frame.attrs["_g9cb_logical_source"] = logical_name
         except (AttributeError, TypeError) as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "decoded CSV frame cannot carry parser ordinals"
             ) from exc
         return frame
@@ -7863,12 +8679,18 @@ def _load_rank7_funding(
     path: str,
     cutoff: str,
     pandas_module: Any,
+    causal_rows: _CausalRowTracker,
 ) -> Any:
     frame = pandas_module.read_csv(path, compression="infer")
     required = {"date", "funding_rate"}
     if not required.issubset(frame.columns):
         _fail("Rank7 funding source lacks required columns")
+    ordinal_column = "_g9cb_rank7_parser_ordinal"
+    if ordinal_column in frame.columns:
+        _fail("Rank7 funding source collides with parser ordinal column")
+    parser_ordinals = causal_rows.frame_ordinals(frame)
     frame = frame[["date", "funding_rate"]].copy()
+    frame[ordinal_column] = parser_ordinals
     frame["date"] = pandas_module.to_datetime(
         frame["date"],
         utc=True,
@@ -7887,7 +8709,127 @@ def _load_rank7_funding(
     )
     if frame["date"].duplicated().any():
         _fail("Rank7 funding source remains duplicate")
+    retained_ordinals = tuple(
+        int(value) for value in frame.pop(ordinal_column).tolist()
+    )
+    frame.attrs["_g9cb_parser_ordinals"] = retained_ordinals
+    frame.attrs["_g9cb_logical_source"] = "funding"
+    causal_rows.handoff_frame("funding", frame)
     return frame
+
+
+_RANK7_SPOT_PREMIUM_PROJECTION = (
+    "date",
+    "spot_close",
+    "spot_rows",
+    "premium_index_1m_close",
+    "premium_rows",
+)
+
+
+def _attach_rank7_spot_premium_exact(
+    market: Any,
+    raw_projection: Any,
+    pandas_module: Any,
+    numpy_module: Any,
+) -> Any:
+    """Exact UTC-naive one-to-one left join; no fill or time remapping."""
+
+    missing = [
+        column
+        for column in _RANK7_SPOT_PREMIUM_PROJECTION
+        if column not in raw_projection.columns
+    ]
+    if missing:
+        _fail(f"Rank7 spot/premium projection columns differ: {missing!r}")
+    if any(
+        column in market.columns
+        for column in _RANK7_SPOT_PREMIUM_PROJECTION[1:]
+    ):
+        _fail("market already contains Rank7 spot/premium projection columns")
+    projection = raw_projection.loc[
+        :, list(_RANK7_SPOT_PREMIUM_PROJECTION)
+    ].copy()
+    try:
+        projection_dates = pandas_module.to_datetime(
+            projection["date"],
+            utc=True,
+            errors="raise",
+            format="mixed",
+        ).dt.tz_convert(None)
+        market_dates = pandas_module.to_datetime(
+            market["date"],
+            utc=True,
+            errors="raise",
+            format="mixed",
+        ).dt.tz_convert(None)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise TerminalG9CB12Failure(
+            "Rank7 spot/premium timestamps are invalid"
+        ) from exc
+    if (
+        projection_dates.isna().any()
+        or projection_dates.duplicated().any()
+        or not projection_dates.is_monotonic_increasing
+        or bool(
+            (
+                projection_dates.astype("int64")
+                % (300 * 1_000_000_000)
+            ).any()
+        )
+    ):
+        _fail("Rank7 spot/premium timestamp structure differs")
+    if market_dates.isna().any() or market_dates.duplicated().any():
+        _fail("market timestamps are invalid for Rank7 projection join")
+    if (
+        not market_dates.is_monotonic_increasing
+        or bool(
+            (
+                market_dates.astype("int64")
+                % (300 * 1_000_000_000)
+            ).any()
+        )
+        or len(projection_dates) != len(market_dates)
+        or not projection_dates.reset_index(drop=True).equals(
+            market_dates.reset_index(drop=True)
+        )
+    ):
+        _fail("Rank7 spot/premium timestamp vector differs from market")
+    projection["date"] = projection_dates
+    market_copy = market.copy()
+    market_copy["date"] = market_dates
+    for column in _RANK7_SPOT_PREMIUM_PROJECTION[1:]:
+        projection[column] = pandas_module.to_numeric(
+            projection[column], errors="coerce"
+        )
+        values = projection[column].to_numpy(dtype="float64")
+        if projection[column].isna().any() or not numpy_module.isfinite(
+            values
+        ).all():
+            _fail(f"Rank7 spot/premium values are invalid: {column}")
+    if (
+        not projection["spot_close"].gt(0).all()
+        or not projection["spot_rows"].eq(5).all()
+        or not projection["premium_rows"].eq(5).all()
+    ):
+        _fail("Rank7 spot/premium row validity differs")
+    joined = market_copy.merge(
+        projection,
+        on="date",
+        how="left",
+        sort=False,
+        validate="one_to_one",
+    )
+    if (
+        len(joined) != len(market_copy)
+        or not joined["date"].equals(market_copy["date"])
+        or joined[list(_RANK7_SPOT_PREMIUM_PROJECTION[1:])]
+        .isna()
+        .any()
+        .any()
+    ):
+        _fail("Rank7 spot/premium exact market coverage differs")
+    return joined
 
 
 class _StructuralTrade:
@@ -8478,6 +9420,19 @@ def _direct_generic_adapter_impl(
     open_interest = pd.read_csv(sources["open_interest"], compression="infer")
     causal_rows.handoff_frame("open_interest", open_interest)
     market = primitives.attach_open_interest(market, open_interest)
+    rank7_spot_premium = pd.read_csv(
+        sources["rank7_spot_premium_5m"],
+        compression="infer",
+    )
+    causal_rows.handoff_frame(
+        "rank7_spot_premium_5m", rank7_spot_premium
+    )
+    market = _attach_rank7_spot_premium_exact(
+        market,
+        rank7_spot_premium,
+        pd,
+        np,
+    )
     value_opens, boundaries = _market_value_opens_and_boundaries(market)
     dates = pd.to_datetime(market["date"])
     masks = {
@@ -8882,6 +9837,7 @@ def _direct_generic_adapter_impl(
         sources["funding"],
         "2026-06-02",
         pd,
+        causal_rows,
     )
     rank7_label_engine = _Rank7LabelEngine(
         rank7_context["market"],
@@ -9175,7 +10131,7 @@ def _worker_main(
                 object_pairs_hook=_unique_object,
             )
         except (UnicodeEncodeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "worker parent authentication is invalid"
             ) from exc
         if (
@@ -9198,7 +10154,7 @@ def _worker_main(
                 object_pairs_hook=_unique_object,
             )
         except (UnicodeEncodeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB8Failure(
+            raise TerminalG9CB12Failure(
                 "worker expected security profile is invalid"
             ) from exc
         if (
@@ -9954,7 +10910,7 @@ def _validate_worker_ledger_and_receipt(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB8Failure(
+        raise TerminalG9CB12Failure(
             "worker consumption ledger is invalid"
         ) from exc
     expected_ledger = _worker_ledger_payload(
@@ -10012,7 +10968,7 @@ def _validate_worker_ledger_and_receipt(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB8Failure("worker receipt is invalid") from exc
+        raise TerminalG9CB12Failure("worker receipt is invalid") from exc
     if (
         not isinstance(receipt, dict)
         or receipt_raw != _canonical_json_bytes(receipt)
@@ -10195,7 +11151,7 @@ def _validate_worker_product(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB8Failure("worker core is invalid JSON") from exc
+        raise TerminalG9CB12Failure("worker core is invalid JSON") from exc
     if not isinstance(core, dict) or core_raw != _canonical_json_bytes(core):
         _fail("worker core bytes are not canonical")
     _validate_prohibited_output_placement(core)
@@ -10558,7 +11514,7 @@ def validate_committed_publication(
         root, expected_security_profile=security_profile
     )
     _validate_closed_entry_phase(
-        publication_context, D8_COMMITTED_VERIFICATION
+        publication_context, D12_COMMITTED_VERIFICATION
     )
     preregistration, prereg_binding = validate_preregistration(
         root,
@@ -10762,7 +11718,7 @@ def validate_committed_publication(
         snapshot,
         pairs,
         publication_context,
-        D8_COMMITTED_VERIFICATION,
+        D12_COMMITTED_VERIFICATION,
         prereg.EXPECTED_BRANCH,
     )
     result = {
@@ -10780,6 +11736,197 @@ def validate_committed_publication(
     snapshot.close()
     publication_context.close()
     return result
+
+
+def publish_v12_handoff(
+    root: Path = REPOSITORY_ROOT,
+) -> dict[str, Any]:
+    """Supervise V12 once in memory, then publish the immutable H12 handoff."""
+
+    root = root.resolve()
+    _validate_bytecode_preflight(root)
+    head = _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH)
+    for relative in (H12_SUPERVISOR_SENTINEL_PATH, H12_HANDOFF_PATH):
+        if _path_lexists(_rooted(root, relative)):
+            _fail(f"H12 write-once path already exists: {relative}")
+        if _git(root, "ls-files", "--", relative.as_posix()).strip():
+            _fail(f"H12 fresh path is already tracked: {relative}")
+
+    uv_executable = _authenticated_h12_uv_executable()
+    bindings = _expected_h12_predecessor_bindings(root, head)
+    stage_worktree = _h12_stage_worktree_snapshot(root, bindings)
+    context = _PublicationContext(root)
+    try:
+        _validate_closed_entry_phase(
+            context, D12_COMMITTED_VERIFICATION
+        )
+        baseline_entries = context.entries
+    finally:
+        context.close()
+    if _h12_v12_artifact_names(baseline_entries):
+        _fail("preexisting V12 file artifact exists")
+    pre_sentinel_namespace = _repository_namespace_snapshot(root)
+
+    def sentinel_prelink_recheck() -> None:
+        _validate_bytecode_preflight(root)
+        if _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH) != head:
+            _fail("H12 repository HEAD changed before supervisor link")
+        _require_h12_stage_worktree_unchanged(root, stage_worktree)
+        if _repository_namespace_snapshot(root) != pre_sentinel_namespace:
+            _fail("H12 repository namespace changed before supervisor link")
+
+    parent = _single_parent_commit(root, head)
+    capability = bytearray(os.urandom(32))
+    capability_sha256 = _sha256_bytes(capability)
+    read_fd, write_fd = os.pipe2(getattr(os, "O_CLOEXEC", 0))
+    supervisor = _h12_supervisor_payload(
+        head,
+        parent,
+        capability_sha256,
+        os.getpid(),
+    )
+    supervisor_raw = _canonical_h12_json_bytes(supervisor)
+    try:
+        supervisor_publication = _publish_h12_leaf(
+            root,
+            H12_SUPERVISOR_SENTINEL_PATH,
+            supervisor_raw,
+            expected_entries=baseline_entries,
+            prelink_recheck=sentinel_prelink_recheck,
+        )
+        supervisor_sha256 = supervisor_publication["sha256"]
+        if supervisor_sha256 != _sha256_bytes(supervisor_raw):
+            _fail("H12 supervisor publication hash differs")
+        if os.write(write_fd, capability) != len(capability):
+            _fail("H12 V12 capability pipe write was incomplete")
+        os.close(write_fd)
+        write_fd = -1
+
+        environment = {
+            key: os.environ[key]
+            for key in (
+                "HOME",
+                "LANG",
+                "LC_ALL",
+                "SSL_CERT_DIR",
+                "SSL_CERT_FILE",
+            )
+            if key in os.environ
+        }
+        environment.update(
+            {
+                "PATH": "/usr/bin:/bin",
+                "PYTHONHASHSEED": "0",
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONNOUSERSITE": "1",
+                "PYTHONPATH": str(root),
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONUTF8": "1",
+                "TZ": "UTC",
+                "UV_NO_SYNC": "1",
+                H12_CAPABILITY_FD_ENV: str(read_fd),
+                H12_CAPABILITY_SHA256_ENV: capability_sha256,
+                H12_SUPERVISOR_ENV: supervisor_sha256,
+                H12_SUPERVISOR_PID_ENV: str(os.getpid()),
+            }
+        )
+        before_v12_namespace = _repository_namespace_snapshot(root)
+        completed = subprocess.run(
+            [
+                uv_executable,
+                "run",
+                "python",
+                "-B",
+                "-m",
+                "training.build_gross9_structural_clock_bundle",
+                "--verify-publication",
+            ],
+            cwd=root,
+            env=environment,
+            pass_fds=(read_fd,),
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    finally:
+        for descriptor in (write_fd, read_fd):
+            if descriptor >= 0:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+        capability[:] = b"\0" * len(capability)
+    if completed.returncode != 0:
+        detail = completed.stderr.decode("utf-8", errors="replace").strip()
+        _fail(f"nested V12 failed after H12 consumption: {detail}")
+    if completed.stderr != b"":
+        _fail("nested V12 emitted stderr")
+    _validated_v12_stdout(completed.stdout, bindings)
+    if _repository_namespace_snapshot(root) != before_v12_namespace:
+        _fail("nested V12 changed the repository namespace")
+    _require_h12_stage_worktree_unchanged(root, stage_worktree)
+
+    if _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH) != head:
+        _fail("nested V12 changed repository HEAD")
+    _validate_bytecode_preflight(root)
+    after_v12_entries = tuple(
+        sorted(os.listdir(_rooted(root, Path("results"))))
+    )
+    expected_after_v12 = tuple(
+        sorted((*baseline_entries, H12_SUPERVISOR_SENTINEL_PATH.name))
+    )
+    if (
+        after_v12_entries != expected_after_v12
+        or _h12_v12_artifact_names(after_v12_entries)
+    ):
+        _fail("nested V12 created a file or changed results inventory")
+
+    handoff = _h12_handoff_payload(bindings, completed.stdout)
+    validate_g9cb12_h12_handoff(
+        handoff,
+        v12_stdout=completed.stdout,
+        predecessor_bindings=bindings,
+    )
+    handoff_raw = _canonical_h12_json_bytes(handoff)
+    validate_g9cb12_h12_handoff(
+        handoff_raw,
+        v12_stdout=completed.stdout,
+        predecessor_bindings=bindings,
+    )
+
+    def handoff_prelink_recheck() -> None:
+        _validate_bytecode_preflight(root)
+        if _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH) != head:
+            _fail("H12 repository HEAD changed before handoff link")
+        _require_h12_stage_worktree_unchanged(root, stage_worktree)
+        if _repository_namespace_snapshot(root) != before_v12_namespace:
+            _fail("H12 repository namespace changed before handoff link")
+
+    handoff_publication = _publish_h12_leaf(
+        root,
+        H12_HANDOFF_PATH,
+        handoff_raw,
+        expected_entries=after_v12_entries,
+        prelink_recheck=handoff_prelink_recheck,
+    )
+    _require_h12_stage_worktree_unchanged(root, stage_worktree)
+    if _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH) != head:
+        _fail("H12 publication changed repository HEAD")
+    final_entries = tuple(
+        sorted(os.listdir(_rooted(root, Path("results"))))
+    )
+    if _h12_v12_artifact_names(final_entries) != (
+        H12_HANDOFF_PATH.name,
+    ):
+        _fail("H12 final V12 artifact inventory differs")
+    for relative in (H12_SUPERVISOR_SENTINEL_PATH, H12_HANDOFF_PATH):
+        if _git(root, "ls-files", "--", relative.as_posix()).strip():
+            _fail(f"H12 command unexpectedly tracked a path: {relative}")
+    return {
+        "handoff": handoff,
+        "handoff_publication": handoff_publication,
+        "supervisor_publication": supervisor_publication,
+    }
 
 
 def produce_one_shot(
@@ -10855,13 +12002,13 @@ def produce_one_shot(
     )
     production_state = _ProductionStateMachine()
     _validate_closed_entry_phase(
-        publication_context, C8_PRODUCTION_PREFLIGHT
+        publication_context, C12_PRODUCTION_PREFLIGHT
     )
     production_state.advance(
-        "C8_PRODUCTION_PREFLIGHT",
+        "C12_PRODUCTION_PREFLIGHT",
         lambda: _validate_production_namespace(
             publication_context,
-            "C8_PRODUCTION_PREFLIGHT",
+            "C12_PRODUCTION_PREFLIGHT",
             Path("<slot-1-unreserved>"),
             Path("<slot-2-unreserved>"),
         ),
@@ -10871,7 +12018,7 @@ def produce_one_shot(
         matching_identity=publication_context.results_token
     )
     _validate_closed_entry_phase(
-        publication_context, C8_PRODUCTION_PREFLIGHT
+        publication_context, C12_PRODUCTION_PREFLIGHT
     )
     production_state.advance(
         "CAPABILITY_PROBE_COMPLETE",
@@ -10884,7 +12031,7 @@ def produce_one_shot(
     )
     results_directory = _rooted(root, SENTINEL_PATH).parent
     staging_patterns = [
-        ".gross9-structural-clock-g9cb8-worker-*",
+        ".gross9-structural-clock-g9cb12-worker-*",
         f".{SENTINEL_PATH.name}.stage-*",
         f".{CSV_PATH.name}.stage-*",
         f".{MANIFEST_PATH.name}.stage-*",
@@ -10908,7 +12055,7 @@ def produce_one_shot(
             continue
         stages = tuple(
             results_directory
-            / f".gross9-structural-clock-g9cb8-worker-{suffix}"
+            / f".gross9-structural-clock-g9cb12-worker-{suffix}"
             for suffix in suffixes
         )
         if not any(path.name in current_names for path in stages):
@@ -10991,7 +12138,7 @@ def produce_one_shot(
                     snapshot,
                     snapshot_pairs,
                     publication_context,
-                    C8_PRODUCTION_PREFLIGHT,
+                    C12_PRODUCTION_PREFLIGHT,
                     prereg.EXPECTED_BRANCH,
                     path_state_check=lambda: (
                         _validate_production_checkpoint_two(
@@ -11241,9 +12388,9 @@ def produce_one_shot(
             stage_one.rmdir()
         snapshot.close()
         publication_context.close()
-        if isinstance(exc, TerminalG9CB8Failure):
+        if isinstance(exc, TerminalG9CB12Failure):
             raise
-        raise TerminalG9CB8Failure(f"{TERMINAL_ACTION}: {exc}") from exc
+        raise TerminalG9CB12Failure(f"{TERMINAL_ACTION}: {exc}") from exc
 
 def _raw_worker_option(arguments: Sequence[str], name: str) -> str:
     positions = [
@@ -11359,6 +12506,7 @@ def _parser() -> argparse.ArgumentParser:
     actions.add_argument("--create-claim", action="store_true")
     actions.add_argument("--produce", action="store_true")
     actions.add_argument("--verify-publication", action="store_true")
+    actions.add_argument("--publish-v12-handoff", action="store_true")
     actions.add_argument("--internal-worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--repository-root", default=str(REPOSITORY_ROOT), help=argparse.SUPPRESS)
     parser.add_argument("--output-dir", help=argparse.SUPPRESS)
@@ -11406,6 +12554,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments.create_claim:
         create_claim_only(Path(arguments.repository_root))
     elif arguments.verify_publication:
+        _require_h12_v12_supervision(Path(arguments.repository_root))
         result = validate_committed_publication(
             Path(arguments.repository_root)
         )
@@ -11415,6 +12564,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 trailing_lf=False,
             ).decode("ascii")
         )
+    elif arguments.publish_v12_handoff:
+        publish_v12_handoff(Path(arguments.repository_root))
     else:
         produce_one_shot(Path(arguments.repository_root))
     return 0

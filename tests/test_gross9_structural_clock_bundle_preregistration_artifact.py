@@ -19,7 +19,7 @@ FROZEN_G9CB4_ARTIFACT_PATH = Path(
 FROZEN_G9CB4_ARTIFACT = (
     prereg.REPOSITORY_ROOT / FROZEN_G9CB4_ARTIFACT_PATH
 )
-ACTIVE_G9CB8_ARTIFACT = (
+ACTIVE_G9CB12_ARTIFACT = (
     prereg.REPOSITORY_ROOT / prereg.PREREGISTRATION_PATH
 )
 FROZEN_G9CB4_SHA256 = (
@@ -217,8 +217,8 @@ def test_failed_g9cb1_artifacts_remain_nonoperative_evidence() -> None:
         prereg.REPOSITORY_ROOT
         / prereg.FAILED_V2_PREREGISTRATION_PATH
     )
-    assert historical_v1 != ACTIVE_G9CB8_ARTIFACT
-    assert historical_v2 != ACTIVE_G9CB8_ARTIFACT
+    assert historical_v1 != ACTIVE_G9CB12_ARTIFACT
+    assert historical_v2 != ACTIVE_G9CB12_ARTIFACT
     assert prereg.validate_failed_predecessor_preregistrations() == (
         prereg.expected_failed_predecessor_preregistration_bindings()
     )
@@ -390,11 +390,11 @@ def test_frozen_g9cb4_preregistration_authenticates_as_opaque_metadata() -> None
     assert blob_id == FROZEN_G9CB4_GIT_BLOB
 
 
-def test_active_g9cb8_preregistration_is_absent_before_p8_without_skip() -> None:
-    assert prereg.IDENTITY == "G9CB-8"
+def test_active_g9cb12_preregistration_is_absent_before_p12_without_skip() -> None:
+    assert prereg.IDENTITY == "G9CB-12-SOURCE-SUPPORT"
     assert prereg.PREREGISTRATION_PATH.as_posix() == (
         "results/"
-        "gross9_structural_clock_bundle_g9cb8_preregistration_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb12_preregistration_2026-07-31.json"
     )
     active_paths = (
         prereg.PREREGISTRATION_PATH,
@@ -410,12 +410,12 @@ def test_active_g9cb8_preregistration_is_absent_before_p8_without_skip() -> None
     )
     assert not list(
         (prereg.REPOSITORY_ROOT / "results").glob(
-            ".gross9-structural-clock-g9cb8-worker-*"
+            ".gross9-structural-clock-g9cb12-worker-*"
         )
     )
     assert not (
         prereg.REPOSITORY_ROOT
-        / "results/.g9cb8-bytecode-cache-disabled"
+        / "results/.g9cb12-bytecode-cache-disabled"
     ).exists()
     committed = subprocess.run(
         [
