@@ -1,0 +1,137 @@
+{
+  "protocol_version": "fear_greed_extremity_reversal_v1",
+  "policy_id": "FGER-24",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In an already high-volatility BTC regime, a published Crypto Fear & Greed extreme represents sentiment-linked liquidity withdrawal and overreaction. Extreme fear is faded long and extreme greed is faded short for one day.",
+    "side": "long when the lagged published index is <=25; short when it is >=75",
+    "external_support": {
+      "paper": "Farzulla (2026), The Extremity Premium: Sentiment Regimes and Adverse Selection in Cryptocurrency Markets",
+      "arxiv": "2602.07018v3",
+      "supported_fact": "fear and greed extremes exhibit uncertainty-linked liquidity withdrawal beyond neutral regimes",
+      "implementation_is_not_a_published_replication": true,
+      "untested_adaptation": "extreme states are tested as contrarian BTC return signals"
+    },
+    "why_distinct": "No prior repository alpha uses the Alternative.me Fear & Greed history. FGER uses a daily behavioral state, not price-only range, flow, funding, options, or a terminal control.",
+    "why_suited_to_volatile_regimes": "BTC prior-24h realized variation must rank at least 0.65 causally",
+    "why_low_gross9_overlap_is_plausible": "one-day-lagged sentiment-extreme entries at 00:05 UTC are absent from Gross9 primitives"
+  },
+  "features": {
+    "index_source": "Alternative.me Crypto Fear & Greed historical JSON",
+    "extremes": {
+      "fear_max": 25,
+      "greed_min": 75
+    },
+    "availability": "an index row labeled UTC date D is not usable until D+1 00:00 UTC, regardless of API timestamp",
+    "btc_variation": "sqrt(sum squared log(close/open)) over exact BTCUSDT 1m bars [D,D+1d) completed at D+1 00:00 UTC",
+    "btc_variation_rank": "strict-prior midrank against at most 90 prior daily variations; minimum 60; current excluded; rank>=0.65",
+    "missing_duplicate_or_conflicting": "ineligible or source failure; no imputation"
+  },
+  "clock": {
+    "decision": "daily 00:00 UTC after the one-day-lagged index and prior BTC day are complete",
+    "entry": "exact 00:05 UTC BTCUSDT 5m open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+    "no_imputation": true
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "sentiment": {
+      "url": "https://api.alternative.me/fng/?limit=0&format=json",
+      "download_after_preregistration": true,
+      "fields": [
+        "value",
+        "value_classification",
+        "timestamp"
+      ]
+    },
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "classification_text_only",
+      "one_day_stale_sentiment",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "source_transport_checked_without_body": false,
+    "source_values_used_to_select_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "published sentiment-extremity mechanism plus standard provider category boundaries and user-required high volatility"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, strict economics; no threshold, lag, direction, hold, timing, volatility, or subset repair",
+  "manifest_hash": "45a061692d161c803e538ac23fd7132be66a3635048b21dcc524926fd039c720"
+}
