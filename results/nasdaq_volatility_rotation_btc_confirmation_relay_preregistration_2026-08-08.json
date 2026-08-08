@@ -1,0 +1,116 @@
+{
+  "protocol_version": "nasdaq_volatility_rotation_btc_confirmation_relay_v1",
+  "policy_id": "NVXCR-6",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "mechanism": {
+    "claim": "A large completed daily change in Cboe VXN relative to VIX identifies rotation of volatility demand toward or away from Nasdaq growth risk. If BTC subsequently moves overnight in the implied risk direction through the next session 10:00 ET, the confirmed cross-asset direction should relay for six hours.",
+    "eligible": "strict-prior 252-session midrank(abs(delta log(VXN/VIX))) >= 0.60 with 126 observations",
+    "long": "delta log(VXN/VIX)<0 and BTC 16:00 ET-to-next-10:00 ET return>0",
+    "short": "delta log(VXN/VIX)>0 and BTC overnight return<0",
+    "side": "confirmed BTC overnight direction",
+    "why_distinct": "NVXCR uses official VXN/VIX cross-equity volatility rotation. Existing Cboe candidates used VIX, VVIX, SKEW and VIX term maturities; no prior candidate uses Nasdaq-specific implied volatility.",
+    "why_suited_to_volatile_regimes": "the clock activates on unusually large relative repricing of growth-equity volatility demand and requires BTC transmission confirmation",
+    "why_low_gross9_overlap_is_plausible": "Gross9 has no external Nasdaq-versus-broad-equity volatility rotation clock"
+  },
+  "clock": {
+    "source_session": "completed common VXN/VIX session S; daily values unavailable for trading until after the session close",
+    "btc_confirmation": "BTCUSDT return from S 16:00 America/New_York open to next common trading session 10:00 America/New_York open",
+    "decision": "next session 10:00 ET after VXN/VIX source and BTC confirmation are complete",
+    "entry": "exact BTCUSDT decision+5m open",
+    "side": "sign of BTC confirmation, required opposite sign of relative-volatility change",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open; chronological signals; exit first on equal open",
+    "no_imputation": true
+  },
+  "policy": {
+    "prior_sessions": 252,
+    "prior_min_sessions": 126,
+    "absolute_rotation_rank_min": 0.6,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "vxn_change_only": "absolute VXN change rank plus usual risk direction",
+    "vix_change_only": "absolute VIX change rank plus usual risk direction",
+    "no_btc_confirmation": "relative rotation maps high to SHORT and low to LONG",
+    "one_session_stale_rotation": "rotation signal lagged one source session",
+    "direction_flip": "same entries opposite side"
+  },
+  "source_plan": {
+    "vxn_raw": {
+      "path": "data/cboe_vxn_2021_2026/source/VXN_History.csv",
+      "sha256": "a856a08bbec6c5fabd23c98d4b75bc28b93c24370ef8780e3e75243c22f66716"
+    },
+    "vxn_manifest": {
+      "path": "data/cboe_vxn_2021_2026/source_manifest.json",
+      "sha256": "b59852f807efa54dd3806c2245d9846209568e6bb84c3c25a38a1c0c10f2a50a"
+    },
+    "vix": "hash-bound extended Cboe volatility surface",
+    "btc_confirmation": "hash-bound preentry BTC intrahour snapshot",
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "vxn_data_rows_opened": false,
+    "prior_candidate_incidence_known": true,
+    "prior_candidate_outcomes_used_for_nvxcr": false,
+    "nvxcr_candidate_incidence_opened": false,
+    "nvxcr_post_entry_return_or_pnl_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "manifest_hash": "e98f4a1639140b8cc0baa7db1a22ccc81c58ba03fa1d84d487f3f05385794fcd"
+}
