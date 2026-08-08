@@ -1,0 +1,125 @@
+{
+  "protocol_version": "cboe_convexity_beta_residual_relay_v1",
+  "policy_id": "CCBRR-12",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A completed daily VVIX change that is large relative to its causal rolling beta on the same-session VIX change identifies an orthogonal convexity-demand surprise. Positive residual convexity pressure transmits risk-off to BTC, while negative residual pressure transmits relief, for twelve hours after the next Cboe open.",
+    "side": "negative sign of the standardized VVIX-on-VIX change residual",
+    "why_distinct": "CCBRR removes the causal VIX beta from VVIX changes. Convexity acceleration candidates used the fixed log(VVIX/VIX) difference and BTC/crypto-vol confirmation; VSDAR used sign disagreement with VIX; no prior candidate used a rolling pre-entry OLS residual.",
+    "why_suited_to_volatile_regimes": "the feature isolates volatility-of-volatility demand unexplained by the contemporaneous VIX shock",
+    "why_low_gross9_overlap_is_plausible": "official next-session Cboe timing and a daily external residual are absent from Gross9"
+  },
+  "features": {
+    "x": "delta log(VIX)",
+    "y": "delta log(VVIX)",
+    "rolling_fit": "OLS y=a+b*x on at most 252 immediately prior finite common changes, minimum 126; current excluded",
+    "standardized_residual": "(y_t-a_t-b_t*x_t)/sample_std(prior OLS residuals), sample std positive",
+    "gate": "absolute standardized residual>=1.0",
+    "zero_or_nonfinite": "ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "trigger": "every eligible completed Cboe observation; no onset filter",
+    "entry": "first later exact common Cboe source date at 09:35 America/New_York",
+    "side": "-sign(standardized residual)",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open, entry equal prior exit accepted",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "btc_price_oi_funding_forbidden_as_signal_inputs": true
+  },
+  "policy": {
+    "prior_observations": 252,
+    "prior_min_observations": 126,
+    "absolute_standardized_residual_min": 1.0,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "raw_vvix_change",
+      "fixed_beta_one",
+      "no_magnitude_gate",
+      "one_session_stale_residual",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "source_bindings": {
+    "panel": {
+      "path": "data/cboe_volatility_surface_2021_2026/cboe_volatility_surface_2021-01-01_2026-08-07.csv.gz",
+      "sha256": "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0"
+    },
+    "manifest": {
+      "path": "data/cboe_volatility_surface_2021_2026/manifest.json",
+      "sha256": "ec1dd33efcee29b75c80294fb594969cd1b12a9343fc40f888525db4400bc936"
+    }
+  },
+  "research_boundary": {
+    "prior_cboe_candidate_incidence_known": true,
+    "prior_candidate_outcomes_used_to_define_ccbrr": false,
+    "ccbrr_candidate_incidence_opened": false,
+    "ccbrr_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent causal beta-residual feature frozen before incidence"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no threshold, side, hold, clock, or subset repair.",
+  "manifest_hash": "6303efa80c6216bd831052093aeda76ee681482a8dff70acd10943aa1fb296cb"
+}
