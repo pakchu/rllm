@@ -1,0 +1,94 @@
+"""Outcome-blind singleton preregistration for CVSRC-24."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+DEFAULT_OUTPUT = Path("results/cboe_volatility_surface_regime_crossing_relay_preregistration_2026-08-08.json")
+SOURCE = Path("data/cboe_volatility_surface_2021_2026/cboe_volatility_surface_2021-01-01_2026-08-07.csv.gz")
+SOURCE_MANIFEST = Path("data/cboe_volatility_surface_2021_2026/manifest.json")
+SOURCE_SHA256 = "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0"
+SOURCE_MANIFEST_SHA256 = "ec1dd33efcee29b75c80294fb594969cd1b12a9343fc40f888525db4400bc936"
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "cboe_volatility_surface_regime_crossing_relay_v1",
+        "policy_id": "CVSRC-24",
+        "as_of_date": "2026-08-08",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": "While VIX remains elevated, a completed daily joint tail-and-term volatility surface crossing from neutral into an outer regime marks either newly arriving stress (short) or stress normalization without price input (long), relayed for 24 elapsed hours.",
+            "long": "surface_rank <= 0.25 after prior surface_rank > 0.50, with current VIX rank >= 0.60",
+            "short": "surface_rank >= 0.75 after prior surface_rank < 0.50, with current VIX rank >= 0.60",
+            "why_distinct": "CVSRC uses a one-day outer-regime crossing in a five-index Cboe surface. Earlier Cboe candidates used static concordance, disagreement, or reconstructed levels rather than a neutral-to-outer transition.",
+            "why_low_gross9_overlap_is_plausible": "Gross9 contains no official Cboe daily tail-plus-term crossing clock and the next-session 09:35 ET schedule is external to BTC activity clocks.",
+        },
+        "features": {
+            "strict_prior_midrank": "(count(prior<current)+0.5*count(prior==current))/count(prior)",
+            "lookback_valid_observations": 252,
+            "minimum_prior_valid_observations": 126,
+            "tail": "0.5*(rank(log(SKEW/100))+rank(log(VVIX/VIX)))",
+            "term": "0.5*(rank(log(VIX9D/VIX))+rank(log(VIX/VIX3M)))",
+            "surface": "0.5*(tail+term)",
+            "vix_rank": "rank(log(VIX))",
+            "current_observation_appended_only_after_all_ranks_are_fixed": True,
+            "no_imputation": True,
+        },
+        "clock": {
+            "observation": "official Cboe daily closes on source date D",
+            "trigger": "the frozen previous/current crossing condition; no additional onset filter",
+            "entry": "first later exact common Cboe source date at 09:35 America/New_York",
+            "hold": "24 elapsed hours",
+            "reservation": "global half-open; accept entry equal to previous exit",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "price_oi_funding_forbidden_as_signal_inputs": True,
+        },
+        "thresholds": {"vix_rank_min": 0.60, "long_current_max": 0.25, "long_previous_min_strict": 0.50, "short_current_min": 0.75, "short_previous_max_strict": 0.50},
+        "stages": {"train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"], "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"], "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"], "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"]},
+        "source_support_gates": {"minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8}, "minority_side_share_min": 0.20, "max_month_share": 0.45},
+        "novelty_gates": {"exact_entry_jaccard_max": 0.10, "candidate_near_6h_share_max": 0.35, "occupied_5m_jaccard_max": 0.25, "absolute_signed_exposure_pearson_max": 0.35, "must_pass_before_economics": True},
+        "economic_gates": {"absolute_return_positive": True, "cagr_to_strict_mdd_min": 3.0, "strict_mdd_max_pct": 15.0, "mean_gross_underlying_min_bp": 20.0, "weekly_signflip_one_sided_p_max": 0.10, "stress_absolute_return_positive": True, "stress_cagr_to_strict_mdd_min": 2.5, "each_calendar_half_positive": True, "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"},
+        "controls": ["no_vix_high", "term_only", "tail_only", "outer_state_onset", "direction_flip"],
+        "source_binding": {"panel": {"path": str(SOURCE), "sha256": SOURCE_SHA256}, "manifest": {"path": str(SOURCE_MANIFEST), "sha256": SOURCE_MANIFEST_SHA256}, "availability": "daily close; next exact source session entry"},
+        "research_boundary": {"candidate_incidence_opened": False, "candidate_post_entry_return_or_pnl_opened": False, "gross9_rows_opened": False, "candidate_count": 1, "grid": False, "future_can_rank_repair_or_reselect": False},
+        "stopping_rule": "Stop terminally at the first frozen source-support, Gross9 novelty, or strict economic gate failure; no threshold, side, hold, or subset repair.",
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(payload: dict[str, Any]) -> None:
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    if payload.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("CVSRC preregistration canonical hash mismatch")
+    for path, expected in ((SOURCE, SOURCE_SHA256), (SOURCE_MANIFEST, SOURCE_MANIFEST_SHA256)):
+        if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+            raise RuntimeError(f"CVSRC frozen source hash mismatch: {path}")
+
+
+def write(output: Path = DEFAULT_OUTPUT) -> dict[str, Any]:
+    payload = build()
+    validate(payload)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    encoded = json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+    if output.exists() and output.read_text() != encoded:
+        raise RuntimeError("CVSRC preregistration already exists with different bytes")
+    output.write_text(encoded)
+    return payload
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    print(json.dumps({"output": str(args.output), "manifest_hash": write(args.output)["manifest_hash"]}, indent=2))
