@@ -1,0 +1,31 @@
+{
+  "protocol_version": "cafaer_12_sources_v1",
+  "query": "SELECT date_trunc('day',ts) AS day_start,\n       count(*) AS row_count,\n       count(DISTINCT ts) AS distinct_ts,\n       min(ts) AS min_ts,\n       max(ts) AS max_ts,\n       bool_and(ts=date_trunc('minute',ts)) AS minute_aligned,\n       bool_and(open IS NOT NULL AND high IS NOT NULL AND low IS NOT NULL AND close IS NOT NULL\n                AND open>0 AND high>0 AND low>0 AND close>0\n                AND high>=greatest(open,low,close)\n                AND low<=least(open,high,close)) AS ohlc_valid,\n       bool_and(quote_asset_volume IS NOT NULL AND taker_buy_quote IS NOT NULL\n                AND quote_asset_volume>=0 AND taker_buy_quote>=0\n                AND taker_buy_quote<=quote_asset_volume) AS flow_valid,\n       sum(2*taker_buy_quote-quote_asset_volume)\n         / nullif(sum(quote_asset_volume),0) AS flow_imbalance,\n       sqrt(sum(power(ln(close/open),2))) AS realized_variation\nFROM bars_binance\nWHERE symbol=:symbol AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1",
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "builder": {
+    "path": "training/build_cross_alt_flow_acceleration_exhaustion_reversal_support.py",
+    "sha256": "7e48c2460b77e3e7503e71e455379c094a67b2646123340bd262093bf27e5c72"
+  },
+  "features": {
+    "path": "data/cross_alt_flow_acceleration_exhaustion_reversal_sources_2023_2026/cross_alt_flow_acceleration_exhaustion_reversal_preentry_features.csv.gz",
+    "sha256": "faca226c290b4e99617495943443b5afcb622b23a103e67224ef6d27ba78598d",
+    "rows": 1308
+  },
+  "candidate_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "00ea4cbed3a7930f6d681f1b257360e92190fae3daf922cb8668ebbd2a166aa5"
+}
