@@ -1,0 +1,122 @@
+{
+  "protocol_version": "dominant_quote_deleveraging_ignition_relay_v1",
+  "policy_id": "DQDIR-6",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "mechanism": {
+    "claim": "A strong completed-hour BTCUSDT aggressive-flow impulse while BTCUSDC and BTCFDUSD remain quiet identifies dominant-book price discovery. If perpetual OI contracts while both BVOL and DVOL expand, old leveraged inventory is being removed during a new volatility impulse; the USDT flow direction should relay for six hours.",
+    "side": "sign of current-hour BTCUSDT robust flow z-score",
+    "why_distinct": "DQDIR is a dominant USDT-book impulse with both alternative books quiet, negative OI change, and joint volatility expansion. VGSQF required alternative-book consensus, USDT lag, participation, and high volatility levels; HVOPCR used BTC price direction rather than quote flow.",
+    "why_low_gross9_overlap_is_plausible": "quote-denomination topology fused with perp inventory contraction and cross-venue volatility ignition is absent from Gross9"
+  },
+  "clock": {
+    "decision": "T after a completed UTC source hour",
+    "normalization": "per-book robust z=(imbalance-prior720h q50)/((q75-q25)/1.349), shifted one hour, minimum 672; zero scale invalid",
+    "dominant_usdt_impulse": "abs(z_USDT)>=0.75 and nonzero",
+    "alternative_books_quiet": "abs(z_USDC)<0.50 and abs(z_FDUSD)<0.50",
+    "oi_deleveraging": "raw-time backward-asof positive BTCUSDT OI at T and T-60m, age<=5m, current/prior-1 strictly negative",
+    "volatility_ignition": "normalized completed-hour BVOL and DVOL bodies are both strictly positive",
+    "trigger": "false-to-true onset with prior source-valid consecutive hour",
+    "entry": "exact BTCUSDT T+5m open",
+    "side": "sign(z_USDT)",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open, exit first on equal open",
+    "funding": "not a signal input; exact settlements only for later PnL",
+    "no_imputation": true
+  },
+  "policy": {
+    "prior_hours": 720,
+    "prior_min_hours": 672,
+    "usdt_abs_z_min": 0.75,
+    "alternative_abs_z_max_exclusive": 0.5,
+    "oi_asof_max_age_minutes": 5,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "spot_flow_panel": {
+      "path": "data/binance_stablecoin_quote_flow_btc_2023_2026_aug/BTC_stablecoin_quote_flow_1h_2023-07-01_2026-07-31T23.csv.gz",
+      "sha256": "44374b9a2298ae4b64f0c1e7208665b1c08c8221045308694311123deae1c805"
+    },
+    "spot_flow_manifest": {
+      "path": "data/binance_stablecoin_quote_flow_btc_2023_2026_aug/build_manifest.json",
+      "sha256": "b9c64c3ce651934d9761a6d0731e814b2a92f5237b3040e11f794d7eb024a898"
+    },
+    "volatility_oi": "reuse hash-bound OCDR-12C source snapshot through 2026-08-01",
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_joint_expansion",
+      "no_oi_deleveraging",
+      "no_alternative_quiet",
+      "one_hour_stale_flow",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_stablecoin_candidate_outcomes_known": true,
+    "prior_candidate_outcomes_used_to_define_dqdir": false,
+    "candidate_incidence_opened": false,
+    "post_entry_outcomes_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no repair",
+  "manifest_hash": "c0f813573af7fef60fc0a224a0499b62b5d1772b9018c2b19d0371c0b03af8b5"
+}
