@@ -1,0 +1,76 @@
+{
+  "protocol_version": "eight_hour_rank_contract_drift_audit_v1",
+  "as_of_date": "2026-08-09",
+  "outcomes_reopened": false,
+  "candidates": {
+    "HVSAR-6": {
+      "policy_id": "HVSAR-6",
+      "preregistration": {
+        "path": "results/high_volatility_settlement_absorption_relay_preregistration_2026-08-09.json",
+        "sha256": "73c90aeb8cc2a58dc216ec2fb851554802eff961cd3d161deb41b18bbad10e5d",
+        "registered": {
+          "history_observations": 270,
+          "minimum_history_observations": 180
+        }
+      },
+      "support_builder": {
+        "path": "training/build_high_volatility_settlement_absorption_relay_support.py",
+        "sha256": "4717a6cf0030076715aa6fe3480f24459af1fb6ea7d3fd2ecc26290463b023e3",
+        "implemented_defaults": {
+          "history_observations": 180,
+          "minimum_history_observations": 120
+        }
+      },
+      "rank_contract_drift": true,
+      "downstream_artifacts": [
+        {
+          "path": "results/high_volatility_settlement_absorption_relay_support_2026-08-08.json",
+          "sha256": "b77baa7e9795d349251044ae4b1268c0c3a4eb1e3ad48ec1520e13ead90517b4"
+        }
+      ],
+      "exact_preregistration_reproduction_evidence_valid": false,
+      "terminal_artifacts_mutated": false,
+      "retry_or_repair_authorized": false
+    },
+    "HVAFC-6": {
+      "policy_id": "HVAFC-6",
+      "preregistration": {
+        "path": "results/high_volatility_aggressive_flow_confirmation_relay_preregistration_2026-08-09.json",
+        "sha256": "49a1da1075a28e03a518032335d481112e62cd2eee0e042f169a58615c4a0276",
+        "registered": {
+          "history_observations": 270,
+          "minimum_history_observations": 180
+        }
+      },
+      "support_builder": {
+        "path": "training/build_high_volatility_aggressive_flow_confirmation_relay_support.py",
+        "sha256": "7ba46459b6af175ac35a08abcb70fe3bd6bd0cb9e55fc4da13930832ceb7ef79",
+        "implemented_defaults": {
+          "history_observations": 180,
+          "minimum_history_observations": 120
+        }
+      },
+      "rank_contract_drift": true,
+      "downstream_artifacts": [
+        {
+          "path": "results/high_volatility_aggressive_flow_confirmation_relay_support_2026-08-08.json",
+          "sha256": "6b88ef1337fe626a404ab5fe227d926842ff8f591a135bbb2d5408e64ac64a22"
+        },
+        {
+          "path": "results/high_volatility_aggressive_flow_confirmation_relay_gross9_novelty_2026-08-09.json",
+          "sha256": "39ae6ab9da84cd37e42fbb792b3e8b6bb13048c2e9244abb1fec7c60679b128b"
+        },
+        {
+          "path": "results/high_volatility_aggressive_flow_confirmation_relay_train_economics_2026-08-09.json",
+          "sha256": "52abeb5ebe8bdbe46a699f6517ef4c745fb0b016e2674ec0e904061cbd9b711e"
+        }
+      ],
+      "exact_preregistration_reproduction_evidence_valid": false,
+      "terminal_artifacts_mutated": false,
+      "retry_or_repair_authorized": false
+    }
+  },
+  "conclusion": "Both immutable terminal runs used 180/120 instead of registered 270/180. They remain terminal and cannot be retried or repaired, but their downstream outputs are not exact-preregistration reproduction evidence.",
+  "followup": "All later eight-hour builders must bind and test 270/180 before source incidence is opened.",
+  "manifest_hash": "b8d7bd58531541b7643fda6be3b2d80418b1183fc314f3560318c68429b1d281"
+}
