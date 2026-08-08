@@ -1,0 +1,167 @@
+{
+  "protocol_version": "bscbr_24_source_v1",
+  "preregistration_sha256": "9cc91a41ea86e5d2b07464a1af1a3d01f436be757506c474f216a26e479d34e4",
+  "outcomes_opened": false,
+  "candidate_incidence_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "spy": {
+    "path": "data/bitcoin_stock_correlation_break_relay_sources_2020_2026/spy_yahoo_chart.json",
+    "sha256": "701cdd80ec699a7de0dbd3f92e3928e25c9986d840bb2b8b9b62a1988b342662",
+    "provider": "Yahoo Finance chart cache (research only)",
+    "url": "https://query1.finance.yahoo.com/v8/finance/chart/SPY?period1=1575158400&period2=1785628800&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+    "metadata": {
+      "symbol": "SPY",
+      "exchange_timezone": "America/New_York",
+      "rows": 1674,
+      "open_valid_rows": 1674,
+      "history_valid_rows": 1674,
+      "first_session": "2019-12-02",
+      "last_session": "2026-07-31",
+      "dividend_events": 27,
+      "split_events": 0,
+      "current_open_depends_on_same_day_close": false,
+      "adjusted_close_read": false
+    }
+  },
+  "btc": {
+    "path": "data/bitcoin_stock_correlation_break_relay_sources_2020_2026/btc_completed_hour.csv.gz",
+    "sha256": "0310ca92fb759f0b8448046d47f70996f68c6c942358f9205136fae06f5f114c",
+    "query": "SELECT\n  date_bin('1 hour', ts, TIMESTAMPTZ '1970-01-01 00:00:00+00') AS hour_start,\n  (array_agg(open ORDER BY ts))[1] AS hour_open,\n  (array_agg(close ORDER BY ts DESC))[1] AS hour_close,\n  count(*) AS source_rows,\n  count(DISTINCT ts) AS distinct_timestamps,\n  min(ts) AS first_ts,\n  max(ts) AS last_ts\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1",
+    "table": "bars_binance",
+    "rows": 58440,
+    "valid_rows": 58440
+  },
+  "session_schedule": {
+    "path": "data/bitcoin_stock_correlation_break_relay_sources_2020_2026/spy_session_schedule.csv.gz",
+    "sha256": "7bb835524c679a1c23cb10fad52d2f0423a0906ce3776ebcfcd7829f64145858",
+    "rows": 1674,
+    "closed_dates": [
+      "2019-12-25",
+      "2020-01-01",
+      "2020-01-20",
+      "2020-02-17",
+      "2020-04-10",
+      "2020-05-25",
+      "2020-07-03",
+      "2020-09-07",
+      "2020-11-26",
+      "2020-12-25",
+      "2021-01-01",
+      "2021-01-18",
+      "2021-02-15",
+      "2021-04-02",
+      "2021-05-31",
+      "2021-07-05",
+      "2021-09-06",
+      "2021-11-25",
+      "2021-12-24",
+      "2022-01-17",
+      "2022-02-21",
+      "2022-04-15",
+      "2022-05-30",
+      "2022-06-20",
+      "2022-07-04",
+      "2022-09-05",
+      "2022-11-24",
+      "2022-12-26",
+      "2023-01-02",
+      "2023-01-16",
+      "2023-02-20",
+      "2023-04-07",
+      "2023-05-29",
+      "2023-06-19",
+      "2023-07-04",
+      "2023-09-04",
+      "2023-11-23",
+      "2023-12-25",
+      "2024-01-01",
+      "2024-01-15",
+      "2024-02-19",
+      "2024-03-29",
+      "2024-05-27",
+      "2024-06-19",
+      "2024-07-04",
+      "2024-09-02",
+      "2024-11-28",
+      "2024-12-25",
+      "2025-01-01",
+      "2025-01-09",
+      "2025-01-20",
+      "2025-02-17",
+      "2025-04-18",
+      "2025-05-26",
+      "2025-06-19",
+      "2025-07-04",
+      "2025-09-01",
+      "2025-11-27",
+      "2025-12-25",
+      "2026-01-01",
+      "2026-01-19",
+      "2026-02-16",
+      "2026-04-03",
+      "2026-05-25",
+      "2026-06-19",
+      "2026-07-03"
+    ],
+    "early_close_dates": [
+      "2020-11-27",
+      "2020-12-24",
+      "2021-11-26",
+      "2022-11-25",
+      "2023-07-03",
+      "2023-11-24",
+      "2024-07-03",
+      "2024-11-29",
+      "2024-12-24",
+      "2025-07-03",
+      "2025-11-28",
+      "2025-12-24"
+    ],
+    "references": [
+      "https://www.nyse.com/markets/hours-calendars",
+      "https://ir.theice.com/press/news-details/2019/NYSE-Group-Announces-2020-2021-and-2022-Holiday-and-Early-Closings-Calendar/default.aspx"
+    ]
+  },
+  "estimator": {
+    "spy_garch": {
+      "mean": 0.0002920386326187785,
+      "initial_variance": 0.0002498007342531271,
+      "omega": 7.133249159511925e-06,
+      "alpha": 0.20872233145227734,
+      "beta": 0.7691606666421423,
+      "objective": -5904.330063336573,
+      "iterations": 16
+    },
+    "btc_garch": {
+      "mean": 0.0011074449091263193,
+      "initial_variance": 0.0018723875017171462,
+      "omega": 0.00017965591771446893,
+      "alpha": 0.08434936918357089,
+      "beta": 0.821940708798968,
+      "objective": -4030.7551566458487,
+      "iterations": 12
+    },
+    "dcc": {
+      "a": 0.025749156461102197,
+      "b": 0.9636684439686696,
+      "qbar": [
+        [
+          0.9929487896134002,
+          0.38011411148062624
+        ],
+        [
+          0.38011411148062624,
+          0.9994515452476608
+        ]
+      ],
+      "objective": 1368.3469664911825,
+      "iterations": 9
+    },
+    "fit_rows": 756
+  },
+  "builder": {
+    "path": "training/build_bitcoin_stock_correlation_break_relay_support.py",
+    "sha256": "a72b4504908748941adb60d11214e21ccdc6c39bc753805a14db84a991a13392"
+  },
+  "manifest_hash": "875247c16a24ccd4d079756be6204b25305c2c798e5b4e66606f1f7463e01c14"
+}
