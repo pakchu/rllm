@@ -1,0 +1,111 @@
+{
+  "protocol_version": "fsvur_6_source_support_v1",
+  "policy_id": "FSVUR-6",
+  "preregistration": {
+    "path": "results/funding_settlement_volatility_unwind_relay_preregistration_2026-08-08.json",
+    "sha256": "38aa08456a02da8d7e33ed604619ad688d90cecbf2d2034ffeef79000b527df5",
+    "manifest_hash": "0874aad3b91d1a9b20be8f3329d35ac5b948ead493b834c3b7d891f652cd8fc0"
+  },
+  "source_manifests": {
+    "volatility": {
+      "path": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/manifest.json",
+      "sha256": "5a6b8fb8d2da235afee4709d219bc3e537498e15078fafa27d57ba284723cd7e"
+    },
+    "completed_price": {
+      "path": "data/options_led_intrahour_absorption_sources_2023_2026/manifest.json",
+      "sha256": "1ca33578613d084801c02fce5f15213daa6c5a419ad621b056648b2f01e276e2"
+    },
+    "train_funding": {
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+    },
+    "later_funding": {
+      "table": "funding_rates_binance",
+      "symbol": "BTCUSDT"
+    }
+  },
+  "completed_preentry_sources_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "gross9_rows_opened": false,
+  "clock": {
+    "path": "data/funding_settlement_volatility_unwind_relay_clocks_2023_2026.csv.gz",
+    "sha256": "787640f39f90a25c05cf312d0a11437a99a0b82c38f7045f4e82d47d87caebe1",
+    "rows": 60
+  },
+  "controls": {
+    "no_funding_extreme": {
+      "path": "data/funding_settlement_volatility_unwind_relay_controls_2023_2026/no_funding_extreme.csv.gz",
+      "sha256": "2e0c3dbb4d39162c1c2fd7f25a2b906f93e667bbcfc3901dff01aece1bc70ed8",
+      "rows": 119
+    },
+    "no_pre_return_extreme": {
+      "path": "data/funding_settlement_volatility_unwind_relay_controls_2023_2026/no_pre_return_extreme.csv.gz",
+      "sha256": "f03e1e1c6359b1bbfe861c6ec933967bb68122ba800941d08a7163a107fb9efa",
+      "rows": 133
+    },
+    "no_joint_vol_contraction": {
+      "path": "data/funding_settlement_volatility_unwind_relay_controls_2023_2026/no_joint_vol_contraction.csv.gz",
+      "sha256": "425a16dbdbd37e7020a9fd2535be7feda2b1d07e6711c20685cb37a5c0df363e",
+      "rows": 118
+    },
+    "no_settlement_reversal": {
+      "path": "data/funding_settlement_volatility_unwind_relay_controls_2023_2026/no_settlement_reversal.csv.gz",
+      "sha256": "fe7f406838dcad950ec6066dc4e2253e3a2a284cec03b89a50d2f3f7b38a7f1d",
+      "rows": 108
+    },
+    "direction_flip": {
+      "path": "data/funding_settlement_volatility_unwind_relay_controls_2023_2026/direction_flip.csv.gz",
+      "sha256": "dff37f857da659df4b70ce747d496160f2957a2e8a601e42d11079a439664960",
+      "rows": 60
+    }
+  },
+  "support": {
+    "train": {
+      "events": 15,
+      "longs": 0,
+      "shorts": 15,
+      "minority_side_share": 0.0,
+      "max_month_share": 0.6
+    },
+    "test": {
+      "events": 24,
+      "longs": 0,
+      "shorts": 24,
+      "minority_side_share": 0.0,
+      "max_month_share": 0.2916666666666667
+    },
+    "eval": {
+      "events": 13,
+      "longs": 0,
+      "shorts": 13,
+      "minority_side_share": 0.0,
+      "max_month_share": 0.3076923076923077
+    },
+    "final": {
+      "events": 8,
+      "longs": 4,
+      "shorts": 4,
+      "minority_side_share": 0.5,
+      "max_month_share": 0.25
+    }
+  },
+  "support_checks": {
+    "train_minimum_events": true,
+    "train_side_balance": false,
+    "train_month_concentration": false,
+    "test_minimum_events": true,
+    "test_side_balance": false,
+    "test_month_concentration": true,
+    "eval_minimum_events": true,
+    "eval_side_balance": false,
+    "eval_month_concentration": true,
+    "final_minimum_events": true,
+    "final_side_balance": true,
+    "final_month_concentration": true
+  },
+  "support_passed": false,
+  "advance_to_gross9_novelty": false,
+  "advance_to_economic_outcomes": false,
+  "decision": "terminal_source_support_reject",
+  "manifest_hash": "6647efd26e9420e2ebef950eb8e2460fbccbe14c27e239b0e189b360b42aae20"
+}
