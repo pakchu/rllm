@@ -1,0 +1,27 @@
+{
+  "protocol_version": "hvelr_6_binance_cross_asset_source_v1",
+  "queries": {
+    "btc": "\nSELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "eth": "\nSELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='ETHUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n"
+  },
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "interval": "1m",
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "exact_candidate_outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_eth_leadership_relay_sources_2023_2026/eight_hour_eth_leadership_panel.csv.gz",
+    "sha256": "abe09d9e436449866cf0cf94ec54198b302d1a22f8ebe1df3f838722299f53df",
+    "rows": 3654,
+    "valid_rows": 3651
+  },
+  "manifest_hash": "e4587a8bd4c1fab399f2e67fa5dc7babf68a28dc9de66cba7d16ce6acafa2ff4"
+}
