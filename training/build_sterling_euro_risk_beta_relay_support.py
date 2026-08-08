@@ -11,6 +11,11 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 
+if __package__ in (None, ""):
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from training import preregister_sterling_euro_risk_beta_relay as prereg
 from training.build_binance_aggtrade_microstructure import _write_gzip_csv
 
