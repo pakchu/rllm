@@ -1,0 +1,109 @@
+{
+  "protocol_version": "cboe_surface_dislocation_overnight_btc_relay_v1",
+  "policy_id": "CVSDR-6",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A Cboe tail-versus-term pressure dislocation that remains directionally confirmed by BTC through the next session's 10:00 ET overnight close identifies cross-market state persistence into the US morning.",
+    "long": "tail_minus_term<=-0.15 and BTC overnight return>0",
+    "short": "tail_minus_term>=0.15 and BTC overnight return<0",
+    "side": "sign(BTC overnight return)",
+    "why_distinct": "CVSDR is a cross-surface relative dislocation plus causal BTC confirmation. CVTBR used the absolute term state; CSPG used no BTC confirmation and a different entry/hold clock.",
+    "why_low_gross9_overlap_is_plausible": "official Cboe state plus next-session 10:05 ET confirmation timing is absent from Gross9"
+  },
+  "features": {
+    "term_front": "log(VIX9D/VIX)",
+    "term_broad": "log(VIX/VIX3M)",
+    "tail_skew": "log(SKEW/100)",
+    "tail_relative_convexity": "log(VVIX/VIX)",
+    "ranks": "independent strict-prior midranks over 252 valid observations, minimum 126; current appended after rank",
+    "term_pressure": "0.5*(term_front_rank+term_broad_rank)",
+    "tail_pressure": "0.5*(tail_skew_rank+tail_relative_convexity_rank)",
+    "dislocation": "tail_pressure-term_pressure",
+    "outer_dislocation": {
+      "long_max": -0.15,
+      "short_min": 0.15
+    },
+    "overnight_btc": "return from source-date 16:00 ET hour_open through next exact Cboe source-date [09:00,10:00) hour_close",
+    "missing_or_zero": "ineligible; no imputation"
+  },
+  "clock": {
+    "entry": "next exact Cboe source date 10:05 America/New_York",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_forbidden_as_signal_inputs": true
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true
+  },
+  "controls": [
+    "no_dislocation_gate",
+    "tail_state_only",
+    "term_state_only",
+    "confirmation_break",
+    "direction_flip"
+  ],
+  "source_bindings": {
+    "data/cboe_volatility_surface_2021_2026/cboe_volatility_surface_2021-01-01_2026-08-07.csv.gz": "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0",
+    "data/cboe_volatility_surface_2021_2026/manifest.json": "ec1dd33efcee29b75c80294fb594969cd1b12a9343fc40f888525db4400bc936",
+    "data/options_led_intrahour_absorption_sources_2023_2026/btc_intrahour_path.csv.gz": "7413b1dde7148efbc30eccd077e4f7430d57be87836bbd4551df9f6f85609579",
+    "data/options_led_intrahour_absorption_sources_2023_2026/manifest.json": "1ca33578613d084801c02fce5f15213daa6c5a419ad621b056648b2f01e276e2"
+  },
+  "research_boundary": {
+    "candidate_incidence_opened": false,
+    "post_entry_outcomes_opened": false,
+    "gross9_rows_opened": false,
+    "grid": false,
+    "repair_of_cvtbr": false,
+    "promoted_cvtbr_control": false,
+    "future_can_rank_repair_or_reselect": false
+  },
+  "stopping_rule": "terminal first failure; no repair",
+  "manifest_hash": "e8ae8c9f0cb51302d2a3f92cb781c3e91871889f98bdf4a9cc736c0559911dbf"
+}
