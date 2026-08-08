@@ -31,7 +31,7 @@ def build_features()->pd.DataFrame:
  if x[["date","symbol"]].duplicated().any():raise RuntimeError("CQSTL duplicate quote hour")
  x["trade_count"]=pd.to_numeric(x.trade_count,errors="coerce");x["signed_taker_flow_btc"]=pd.to_numeric(x.signed_taker_flow_btc,errors="coerce");x["decision_time"]=x.date.dt.floor("8h")+pd.Timedelta(hours=8)
  g=x.groupby(["decision_time","symbol"],as_index=False).agg(hours=("date","size"),first=("date","min"),last=("date","max"),complete=("source_complete","all"),trade_count=("trade_count","sum"),signed_flow=("signed_taker_flow_btc","sum"))
- g["valid"]=g.hours.eq(8)&g.first.eq(g.decision_time-pd.Timedelta(hours=8))&g.last.eq(g.decision_time-pd.Timedelta(hours=1))&g.complete&np.isfinite(g[["trade_count","signed_flow"]]).all(axis=1)&g.trade_count.ge(80)
+ g["valid"]=g.hours.eq(8)&g["first"].eq(g.decision_time-pd.Timedelta(hours=8))&g["last"].eq(g.decision_time-pd.Timedelta(hours=1))&g.complete&np.isfinite(g[["trade_count","signed_flow"]]).all(axis=1)&g.trade_count.ge(80)
  g["ticket"]=g.signed_flow/g.trade_count;w=g.pivot(index="decision_time",columns="symbol",values=["valid","trade_count","ticket"]);w.columns=[f"{a}_{b}" for a,b in w.columns];w=w.reset_index().sort_values("decision_time").reset_index(drop=True)
  for s in SYMBOLS:
   for a in ("valid","trade_count","ticket"):
