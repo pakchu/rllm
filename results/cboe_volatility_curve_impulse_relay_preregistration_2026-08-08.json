@@ -1,0 +1,107 @@
+{
+  "protocol_version": "cboe_volatility_curve_impulse_relay_v1",
+  "policy_id": "CVCIR-24",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Under elevated VIX, same-sign one-session changes in both the 9D/VIX and VIX/3M log slopes identify a coherent volatility-curve impulse: joint steepening transmits risk-off pressure to BTC (short), while joint cooling transmits relief (long) for 24 elapsed hours.",
+    "long": "delta log(VIX9D/VIX)<0 and delta log(VIX/VIX3M)<0",
+    "short": "both deltas >0",
+    "why_distinct": "CVCIR is a first-difference curve-coherence impulse with no tail or option-flow input. CVSRC was a rare joint tail-plus-term level crossing; CVTR and related clocks were static ranked level states.",
+    "why_low_gross9_overlap_is_plausible": "an official Cboe next-session curve-impulse clock is external to BTC activity and absent from Gross9"
+  },
+  "features": {
+    "vix_strict_prior_midrank": "252 valid observations, minimum 126; current appended after rank",
+    "front": "log(VIX9D/VIX)",
+    "broad": "log(VIX/VIX3M)",
+    "deltas": "current minus immediately previous exact common source observation; no calendar fill",
+    "vix_rank_min": 0.6,
+    "zero_or_nonfinite": "ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "trigger": "false-to-true onset of each same-sign impulse state; direct switch from opposite state is a new onset",
+    "entry": "first later exact common Cboe source date at 09:35 America/New_York",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open, entry equal to prior exit accepted",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "btc_price_oi_funding_forbidden_as_signal_inputs": true
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "controls": [
+    "no_vix_high",
+    "front_only",
+    "broad_only",
+    "no_onset",
+    "direction_flip"
+  ],
+  "source_binding": {
+    "panel": {
+      "path": "data/cboe_volatility_surface_2021_2026/cboe_volatility_surface_2021-01-01_2026-08-07.csv.gz",
+      "sha256": "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0"
+    },
+    "manifest": {
+      "path": "data/cboe_volatility_surface_2021_2026/manifest.json",
+      "sha256": "ec1dd33efcee29b75c80294fb594969cd1b12a9343fc40f888525db4400bc936"
+    }
+  },
+  "research_boundary": {
+    "candidate_incidence_opened": false,
+    "candidate_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_cvsrc": false,
+    "future_can_rank_repair_or_reselect": false
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no threshold, sign, hold, or subset repair.",
+  "manifest_hash": "2efa411ab8e5c1acffc90d8f0dce8946fa2f07f0126592ef2189abf1219d9192"
+}
