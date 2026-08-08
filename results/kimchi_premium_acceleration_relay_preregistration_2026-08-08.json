@@ -1,0 +1,146 @@
+{
+  "protocol_version": "kimchi_premium_acceleration_relay_v1",
+  "policy_id": "KPAR-12",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A large six-hour acceleration in the FX-adjusted Upbit KRW-BTC premium during unusually high BTC realized variation measures a fresh local cash-demand impulse rather than a static regional valuation gap. The premium-change direction should relay into BTC for twelve hours.",
+    "side": "sign of current 00:00 premium minus the exact 18:00 premium six hours earlier",
+    "why_distinct": "KPAR is a symmetric fixed daily cross-venue premium-acceleration clock. Gross9 fresh_kimchi_fx is an asymmetric funding/flow/local-impulse or USDKRW/HTF policy on a dense stride; KPAR uses none of its thresholds, event rows, funding, taker flow, or BTC directional-return conditions.",
+    "why_suited_to_volatile_regimes": "completed six-hour BTC realized variation must be in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "one weekday 00:05 UTC premium-acceleration clock should have low structural overlap with the dense asymmetric Gross9 sleeve"
+  },
+  "features": {
+    "hourly_premium": "last observed Upbit KRW-BTC close divided by last observed Binance BTCUSDT perpetual close times last observed Polygon USDKRW close, minus one",
+    "hour_validity": "completed hour, Upbit >=30 distinct minutes with first<=minute05 and last>=minute55; Binance >=55 with first<=minute01 and last>=minute59; USDKRW >=40 with first<=minute10 and last>=minute55; finite positive closes; no imputation",
+    "premium_change": "premium at exact weekday D 00:00 minus premium at exact D-6h, both valid",
+    "premium_change_z": "standardized against at most 90 strictly prior valid weekday decisions, minimum 60, current excluded; prior sample std positive",
+    "premium_gate": "abs(premium_change_z)>=1.0",
+    "btc_realized_variation": "sqrt(sum of six squared completed-hour Binance BTC log returns ending at decision)",
+    "volatility_rank": "strict-prior midrank against at most 90 valid weekday decisions, minimum 60; current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact weekday D 00:00 UTC after all three source hours and six-hour BTC path are complete",
+    "entry": "exact BTCUSDT D 00:05 UTC open",
+    "side": "sign(premium_change)",
+    "hold": "12 elapsed hours",
+    "reservation": "fixed weekday decisions; global half-open, exit first on equal open",
+    "funding_oi_implied_vol": "not signal inputs; exact funding only for later PnL"
+  },
+  "policy": {
+    "premium_horizon_hours": 6,
+    "prior_sessions": 90,
+    "prior_min_sessions": 60,
+    "absolute_premium_change_z_min": 1.0,
+    "realized_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "upbit": {
+      "table": "bars_upbit",
+      "symbol": "KRW-BTC",
+      "interval": "1m"
+    },
+    "binance": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m"
+    },
+    "fx": {
+      "table": "bars_polygon",
+      "symbol": "USDKRW",
+      "interval": "1m"
+    },
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "columns": [
+      "ts",
+      "open",
+      "close"
+    ],
+    "materialize_after_preregistration": true,
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_premium_tail",
+      "premium_level",
+      "one_day_stale_acceleration",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "gross9_fresh_kimchi_policy_known": true,
+    "gross9_fresh_kimchi_event_rows_or_outcomes_used_to_set_kpar": false,
+    "prior_terminal_event_sets_reused": false,
+    "kpar_candidate_incidence_opened": false,
+    "kpar_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent local-cash premium-transmission mechanism for volatile BTC"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no threshold, direction, hold, clock, freshness, or subset repair.",
+  "manifest_hash": "b3c837a10ec30f2f2f7ec6310e127136e4dc2cd652a8b5da4cbb015c8eb442d2"
+}
