@@ -37,6 +37,7 @@ def build_features()->pd.DataFrame:
   for a in ("valid","trade_count","ticket"):
    c=f"{a}_{s}"
    if c not in w:w[c]=np.nan
+  w[f"trade_count_{s}"]=pd.to_numeric(w[f"trade_count_{s}"],errors="coerce");w[f"ticket_{s}"]=pd.to_numeric(w[f"ticket_{s}"],errors="coerce")
  w["block_valid"]=w[[f"valid_{s}" for s in SYMBOLS]].eq(True).all(axis=1)&np.isfinite(w[[f"ticket_{s}" for s in SYMBOLS]]).all(axis=1)
  w["alternative_sponsor_magnitude"]=(w.ticket_BTCUSDC.abs()+w.ticket_BTCFDUSD.abs())/2;w["sponsor_rank"]=strict_prior_midrank(w.alternative_sponsor_magnitude.where(w.block_valid))
  p=pd.read_csv(PRICE,compression="gzip");p["decision_time"]=pd.to_datetime(p.decision_time,utc=True,format="mixed");p["open"]=pd.to_numeric(p.open,errors="coerce");p["close"]=pd.to_numeric(p.close,errors="coerce");p["valid"]=p.source_valid.astype(str).str.lower().eq("true")&np.isfinite(p[["open","close"]]).all(axis=1)&p[["open","close"]].gt(0).all(axis=1);p=p.sort_values("decision_time").reset_index(drop=True);p["hour_return"]=np.log(p.close/p.open);consecutive=p.decision_time.diff().eq(pd.Timedelta(hours=1));p["btc_realized_variation"]=np.sqrt(p.hour_return.pow(2).rolling(24,min_periods=24).sum());p["btc_valid"]=p.valid.rolling(24,min_periods=24).sum().eq(24)&consecutive.rolling(23,min_periods=23).sum().eq(23)&np.isfinite(p.btc_realized_variation);p=p[p.decision_time.dt.hour.isin([0,8,16])][["decision_time","btc_realized_variation","btc_valid"]]
