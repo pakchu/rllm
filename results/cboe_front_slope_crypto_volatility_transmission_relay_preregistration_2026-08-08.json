@@ -6,13 +6,13 @@
   "source_incidence_opened": false,
   "singleton": true,
   "mechanism": {
-    "claim": "A completed daily VIX9D/VIX front-slope change that is confirmed by same-direction BVOL and DVOL repricing during the next Cboe source date 09:00-10:00 ET hour identifies cross-domain front slope-risk transmission; rising front-term pressure maps to short BTC and falling front-term pressure maps to long BTC for six hours.",
+    "claim": "A completed daily VIX9D/VIX front-slope change that is confirmed by same-direction BVOL and DVOL repricing during the next Cboe source date 09:00-10:00 ET hour identifies cross-domain front-slope-risk transmission; rising front-term pressure maps to short BTC and falling front-term pressure maps to long BTC for six hours.",
     "side": "negative sign of completed Cboe delta log(VIX9D/VIX)",
-    "why_distinct": "CFSTR uses no BTC price confirmation and transmits front-term pressure rather than the VIX level. CCVTR used delta log VIX; CCVDAR used Cboe front-slope disagreement with opposite crypto-vol movement rather than same-direction front slope transmission.",
+    "why_distinct": "CFSTR uses no BTC price confirmation and transmits front-term pressure rather than the VIX level. CCVTR used delta log VIX; CCVDAR used Cboe front-slope disagreement with opposite crypto-vol movement rather than same-direction front-slope transmission.",
     "why_low_gross9_overlap_is_plausible": "official Cboe front-slope-to-crypto implied-volatility transmission at next-session 10:05 ET is absent from Gross9"
   },
   "features": {
-    "cboe_relative_front slope_change": "current minus immediately previous exact Cboe observation of log(VIX9D/VIX); nonzero, no magnitude threshold",
+    "cboe_front_slope_change": "current minus immediately previous exact Cboe observation of log(VIX9D/VIX); nonzero, no magnitude threshold",
     "crypto_opening_hour": "next exact Cboe source date [09:00,10:00) America/New_York",
     "bvol_body": "completed-hour (close-open)/open, same nonzero sign as Cboe front-slope change",
     "dvol_body": "completed-hour (close-open)/open, same nonzero sign as Cboe front-slope change",
@@ -80,7 +80,7 @@
       "no_crypto_confirmation",
       "bvol_only_confirmation",
       "dvol_only_confirmation",
-      "one_session_stale_front slope_change",
+      "one_session_stale_front_slope_change",
       "direction_flip"
     ],
     "diagnostic_controls_cannot_be_promoted": true
@@ -104,5 +104,5 @@
     "promoted_prior_control": false
   },
   "stopping_rule": "terminal first failure; no repair",
-  "manifest_hash": "aeb3e4a8ac1d38ab8fb4d13e643c1e07f6ae257dbf13c58bd30ed6b037f64c52"
+  "manifest_hash": "d3ab63875b515290604bbfd50806dcdde1d704ac624ceb6b093d723bddffa7da"
 }
