@@ -1,0 +1,258 @@
+{
+  "protocol_version": "cvbdmr_6_sequential_economics_v1",
+  "policy_id": "CVBDMR-6",
+  "stage": "train",
+  "window": [
+    "2023-07-01T00:00:00Z",
+    "2024-01-01T00:00:00Z"
+  ],
+  "predecessor": null,
+  "evaluator_freeze": {
+    "path": "results/cboe_broad_slope_acceleration_dual_confirmation_relay_economic_evaluator_freeze_2026-08-08.json",
+    "sha256": "dcc19cb122119057f9564886dd389587a7dea369fede8286212e49971efea226",
+    "manifest_hash": "9f9a8c8e8eb7b97135ebc3813d85fa14294b26de57c2f20976fcca29fcc6c265"
+  },
+  "novelty_authorization": {
+    "path": "results/cboe_broad_slope_acceleration_dual_confirmation_relay_gross9_novelty_2026-08-08.json",
+    "sha256": "7742eaf52053ce5a9a7bfcd9b30063a6f58dc38dd7c5a1be88f1234a1b5f2400",
+    "manifest_hash": "776f14f91805e49e88f0a548b74b90ecd71511ff9b16e2ff5be974f20a665e3a"
+  },
+  "accounting": {
+    "quantity": "side*0.5*pre_entry_equity/entry_open, fixed through exit",
+    "same_open_transition": "exit and exit cost first, then next entry and entry cost",
+    "funding": "cash=-fixed_quantity*settlement_mark*rate for entry<=time<exit",
+    "strict_mdd": "global peak, every held favorable then adverse OHLC, funding cash, virtual adverse exit cost, actual exit cost",
+    "cagr": "full calendar including idle time"
+  },
+  "source": {
+    "mode": "hash_bound_gzip_physical_prefix",
+    "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "funding_marks_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+  },
+  "physical_rows_opened": {
+    "market": 52993,
+    "funding": 552,
+    "primary_clock": 29
+  },
+  "later_stage_outcomes_opened": false,
+  "primary": {
+    "base": {
+      "absolute_return_pct": -3.5173373934549,
+      "cagr_pct": -6.861127596109751,
+      "strict_mdd_pct": 4.5335618170244345,
+      "cagr_to_strict_mdd": -1.5134077515707054,
+      "final_equity": 0.964826626065451,
+      "trades": 29,
+      "longs": 14,
+      "shorts": 15,
+      "mean_gross_underlying_bp": -12.24971510824155,
+      "mean_net_bp": -12.108722719941579,
+      "win_rate": 0.4482758620689655
+    },
+    "stress": {
+      "absolute_return_pct": -4.632087441913768,
+      "cagr_pct": -8.985120184012018,
+      "strict_mdd_pct": 5.447651367022588,
+      "cagr_to_strict_mdd": -1.6493566821114019,
+      "final_equity": 0.9536791255808623,
+      "trades": 29,
+      "longs": 14,
+      "shorts": 15,
+      "mean_gross_underlying_bp": -12.24971510824155,
+      "mean_net_bp": -16.11019497046543,
+      "win_rate": 0.4482758620689655
+    },
+    "cluster_signflip": {
+      "method": "one_sided_UTC_week_cluster_signflip_monte_carlo",
+      "clusters": 21,
+      "draws": 100000,
+      "seed": 20260808,
+      "observed_log_effect": -0.03580685589266193,
+      "pvalue": 0.8187618123818762
+    },
+    "calendar_halves": {
+      "first": {
+        "absolute_return_pct": -2.650449047232606,
+        "cagr_pct": -10.115558620239195,
+        "strict_mdd_pct": 2.840166589773274,
+        "cagr_to_strict_mdd": -3.5616074974836964,
+        "final_equity": 0.9734955095276739,
+        "trades": 11,
+        "longs": 5,
+        "shorts": 6,
+        "mean_gross_underlying_bp": -36.837570986326774,
+        "mean_net_bp": -24.320298914789483,
+        "win_rate": 0.2727272727272727
+      },
+      "second": {
+        "absolute_return_pct": -0.8904903389260865,
+        "cagr_pct": -3.488863928997543,
+        "strict_mdd_pct": 2.6067619172291723,
+        "cagr_to_strict_mdd": -1.338389941151968,
+        "final_equity": 0.9910950966107391,
+        "trades": 18,
+        "longs": 9,
+        "shorts": 9,
+        "mean_gross_underlying_bp": 2.7761968172549762,
+        "mean_net_bp": -4.646092823090389,
+        "win_rate": 0.5555555555555556
+      }
+    }
+  },
+  "controls_diagnostic_only": {
+    "no_broad_slope_acceleration": {
+      "base": {
+        "absolute_return_pct": 4.859884799706049,
+        "cagr_pct": 9.877996497201336,
+        "strict_mdd_pct": 6.649875464885313,
+        "cagr_to_strict_mdd": 1.485440825074413,
+        "final_equity": 1.0485988479970605,
+        "trades": 62,
+        "longs": 31,
+        "shorts": 31,
+        "mean_gross_underlying_bp": 27.81963041275211,
+        "mean_net_bp": 7.987562264960414,
+        "win_rate": 0.532258064516129
+      },
+      "stress": {
+        "absolute_return_pct": 2.291764172194699,
+        "cagr_pct": 4.600620841843561,
+        "strict_mdd_pct": 7.269606130665007,
+        "cagr_to_strict_mdd": 0.6328569607694422,
+        "final_equity": 1.022917641721947,
+        "trades": 62,
+        "longs": 31,
+        "shorts": 31,
+        "mean_gross_underlying_bp": 27.81963041275211,
+        "mean_net_bp": 3.985978464875419,
+        "win_rate": 0.5
+      }
+    },
+    "overnight_direction_only": {
+      "base": {
+        "absolute_return_pct": -0.02078565547911637,
+        "cagr_pct": -0.041256431717162645,
+        "strict_mdd_pct": 5.403584228734381,
+        "cagr_to_strict_mdd": -0.0076350122383167995,
+        "final_equity": 0.9997921434452088,
+        "trades": 62,
+        "longs": 36,
+        "shorts": 26,
+        "mean_gross_underlying_bp": 12.510880023563129,
+        "mean_net_bp": 0.1950644647652668,
+        "win_rate": 0.5161290322580645
+      },
+      "stress": {
+        "absolute_return_pct": -2.4706199804016338,
+        "cagr_pct": -4.844629509508547,
+        "strict_mdd_pct": 6.850485766294112,
+        "cagr_to_strict_mdd": -0.7071950332843816,
+        "final_equity": 0.9752938001959837,
+        "trades": 62,
+        "longs": 36,
+        "shorts": 26,
+        "mean_gross_underlying_bp": 12.510880023563129,
+        "mean_net_bp": -3.8054193649261054,
+        "win_rate": 0.5161290322580645
+      }
+    },
+    "opening_direction_only": {
+      "base": {
+        "absolute_return_pct": -10.642850010428939,
+        "cagr_pct": -20.018596329684247,
+        "strict_mdd_pct": 11.177508215333742,
+        "cagr_to_strict_mdd": -1.7909712919935015,
+        "final_equity": 0.8935714998957106,
+        "trades": 62,
+        "longs": 25,
+        "shorts": 37,
+        "mean_gross_underlying_bp": -23.970290931272963,
+        "mean_net_bp": -17.909061630630045,
+        "win_rate": 0.41935483870967744
+      },
+      "stress": {
+        "absolute_return_pct": -12.836314768010059,
+        "cagr_pct": -23.868762190921267,
+        "strict_mdd_pct": 13.27749154659018,
+        "cagr_to_strict_mdd": -1.7976861146675744,
+        "final_equity": 0.8716368523198994,
+        "trades": 62,
+        "longs": 25,
+        "shorts": 37,
+        "mean_gross_underlying_bp": -23.970290931272963,
+        "mean_net_bp": -21.909545460321237,
+        "win_rate": 0.3870967741935484
+      }
+    },
+    "one_session_stale_broad_acceleration": {
+      "base": {
+        "absolute_return_pct": 2.6037518498598144,
+        "cagr_pct": 5.2348633311954496,
+        "strict_mdd_pct": 5.955022907946872,
+        "cagr_to_strict_mdd": 0.8790668670996409,
+        "final_equity": 1.0260375184985981,
+        "trades": 31,
+        "longs": 17,
+        "shorts": 14,
+        "mean_gross_underlying_bp": 28.77011757716822,
+        "mean_net_bp": 8.560352926363475,
+        "win_rate": 0.5161290322580645
+      },
+      "stress": {
+        "absolute_return_pct": 1.3397820800221005,
+        "cagr_pct": 2.677088825394769,
+        "strict_mdd_pct": 6.162573525466097,
+        "cagr_to_strict_mdd": 0.43441085357148596,
+        "final_equity": 1.013397820800221,
+        "trades": 31,
+        "longs": 17,
+        "shorts": 14,
+        "mean_gross_underlying_bp": 28.77011757716822,
+        "mean_net_bp": 4.559278367257239,
+        "win_rate": 0.4838709677419355
+      }
+    },
+    "direction_flip": {
+      "base": {
+        "absolute_return_pct": -0.03678016752576285,
+        "cagr_pct": -0.07299740539129518,
+        "strict_mdd_pct": 4.273448304583416,
+        "cagr_to_strict_mdd": -0.01708161657484028,
+        "final_equity": 0.9996321983247424,
+        "trades": 29,
+        "longs": 15,
+        "shorts": 14,
+        "mean_gross_underlying_bp": 12.24971510824155,
+        "mean_net_bp": 0.10430596837060586,
+        "win_rate": 0.4827586206896552
+      },
+      "stress": {
+        "absolute_return_pct": -1.190351863272876,
+        "cagr_pct": -2.349059015341559,
+        "strict_mdd_pct": 4.867451466285289,
+        "cagr_to_strict_mdd": -0.4826055342539038,
+        "final_equity": 0.9880964813672712,
+        "trades": 29,
+        "longs": 15,
+        "shorts": 14,
+        "mean_gross_underlying_bp": 12.24971510824155,
+        "mean_net_bp": -3.8971662821535875,
+        "win_rate": 0.4482758620689655
+      }
+    }
+  },
+  "checks": {
+    "absolute_return_positive": false,
+    "cagr_to_strict_mdd_min_3": false,
+    "strict_mdd_max_15": true,
+    "mean_gross_move_min_20bp": false,
+    "cluster_signflip_p_max_0_1": false,
+    "stress_absolute_return_positive": false,
+    "stress_cagr_to_strict_mdd_min_2_5": false,
+    "each_calendar_half_positive": false
+  },
+  "passed": false,
+  "advance_to_next_stage": false,
+  "decision": "terminal_reject_no_repair",
+  "manifest_hash": "c7bf463636c709cb4cc62e912894ef7d6a01e232b4ea26a462d8b3e7b6340a34"
+}
