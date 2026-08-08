@@ -1,0 +1,191 @@
+{
+  "protocol_version": "high_volatility_histogram_classifier_relay_v1",
+  "policy_id": "HVHGC-12",
+  "as_of_date": "2026-08-09",
+  "oos_outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "pretraining_outcomes_authorized_after_preregistration": true,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A nonlinear classifier fitted only on pre-2023 high-range-volatility hourly states can isolate directional twelve-hour continuations and reversals. Extreme calibrated class probabilities should retain edge when the same high-volatility state recurs.",
+    "side": "upper calibrated probability tail long; lower tail short",
+    "why_distinct": "HVHGC uses an hourly 12-hour binary target and fits only high-volatility rows. HVGBR used six-hour anchors, a 72-hour continuous target, and all fit states; HVETCR used ExtraTrees and a 48-hour target. No prior fitted artifact, threshold, event, control, or OOS result is reused.",
+    "why_low_gross9_overlap_is_plausible": "probability-tail events are model-state-dependent hourly clocks rather than Gross9's fixed structural schedules"
+  },
+  "training_contract": {
+    "fit_window": [
+      "2020-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "calibration_window": [
+      "2023-01-01T00:00:00Z",
+      "2023-07-01T00:00:00Z"
+    ],
+    "anchors": "each completed xx:55 UTC bar; entry is next exact-hour open",
+    "label": "one iff log(open at entry+144 bars/open at entry)>0, else zero",
+    "fit_volatility": "range_vol >= source-only q60 across complete fit anchors; classifier is fitted only on those high-volatility fit rows",
+    "features": [
+      "range_vol",
+      "trend_12",
+      "trend_24",
+      "trend_96",
+      "rsi_norm",
+      "mfi_norm",
+      "bb_z",
+      "range_pos",
+      "close_zscore_48",
+      "return_zscore_48",
+      "body_to_range",
+      "shadow_imbalance",
+      "volume_zscore",
+      "window_drawdown",
+      "taker_imbalance",
+      "funding_rate",
+      "funding_zscore",
+      "premium_index_zscore",
+      "premium_index_change",
+      "oi_change",
+      "oi_zscore",
+      "dxy_zscore",
+      "dxy_momentum",
+      "kimchi_premium_zscore",
+      "kimchi_premium_change",
+      "usdkrw_zscore",
+      "usdkrw_momentum",
+      "rex_144_range_width_pct",
+      "rex_144_range_pos",
+      "rex_576_range_width_pct",
+      "rex_576_range_pos",
+      "rex_2016_range_width_pct",
+      "rex_2016_range_pos",
+      "rex_8640_range_width_pct",
+      "rex_8640_range_pos",
+      "htf_4h_return_1",
+      "htf_4h_range_pos",
+      "htf_1d_return_1",
+      "htf_1d_range_pos",
+      "htf_3d_return_1",
+      "htf_3d_range_pos",
+      "htf_1w_return_1",
+      "htf_1w_range_pos",
+      "weekly_return_1w",
+      "weekly_range_pos",
+      "quote_vol_rel_1d_30d",
+      "trades_rel_1d_30d",
+      "volume_rel_1d_30d",
+      "dollar_flow_rel_4h_30d",
+      "premium_abs_z",
+      "funding_abs_z",
+      "interest_score"
+    ],
+    "imputer": "SimpleImputer(strategy='median') fitted only on eligible fit rows",
+    "estimator": {
+      "class": "sklearn.ensemble.HistGradientBoostingClassifier",
+      "loss": "log_loss",
+      "learning_rate": 0.03,
+      "max_iter": 400,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 40,
+      "l2_regularization": 1.0,
+      "class_weight": "balanced",
+      "random_state": 809
+    },
+    "calibration_probability": "q10 and q90 of predictions on all complete 2023H1 calibration anchors; calibration labels and post-entry prices remain unopened",
+    "calibration_volatility": "source-only q60 range_vol on calibration anchors",
+    "grid": false,
+    "feature_selection": false,
+    "refit_after_2022_12_31": false,
+    "model_artifact_must_be_frozen_before_oos_incidence": true
+  },
+  "oos_clock": {
+    "decision": "each completed xx:55 UTC bar from 2023-07-01 onward",
+    "eligibility": "range_vol>=frozen calibration q60 and probability<=q10 or >=q90; first true row of a consecutive same-tail run only",
+    "entry": "next exact-hour 5m open",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_probability_onset",
+      "one_hour_stale_features",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "source_plan": {
+    "historical": "hash-bound market, funding, and premium sources",
+    "live_extension": "read-only Postgres completed bars/features through 2026-08-01",
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "source_bindings": {
+    "training/search_tabicl_foundation_alpha.py": "cf2971aa55eb80326eb4e27f530c3377553a2c30d12ec95372877dc00e821964",
+    "preprocessing/market_features.py": "f9091ecb080656c69a08ac3b4d07f7316cc2ddcc1fe4efacb9e10e8334d5cafa",
+    "training/long_regime_interest_gate_validation.py": "cc9f4b0ea85079992ca060719ad2ab6afc2018884325a893adb459304e312075",
+    "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+    "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+  },
+  "research_boundary": {
+    "prior_model_candidate_outcomes_known": true,
+    "exact_hourly_high_volatility_twelve_hour_classifier_outcomes_known": false,
+    "oos_candidate_incidence_opened": false,
+    "oos_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "freeze registration, fit pre-2023 high-volatility labels, calibrate 2023H1 sources only, freeze model, then open OOS incidence; terminal first failure without model, threshold, probability-tail, hold, or direction repair",
+  "manifest_hash": "dbef290e45651c3354098f0ed79d869eaf14b91b38ca625ba82983c507dec272"
+}
