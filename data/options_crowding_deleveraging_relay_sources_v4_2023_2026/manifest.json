@@ -1,0 +1,53 @@
+{
+  "protocol_version": "ocdr_12c_source_snapshot_v1",
+  "window": [
+    "2023-06-20T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "btc_price_or_return_opened": false,
+  "candidate_incidence_opened": false,
+  "inputs": {
+    "old_bvol_sha256": "40c0d1aecb15119e7fab31aae4108c632d25de136401a6896896852c7f4032b1",
+    "july_bvol_sha256": "2963465dc8b461af62c6f5a25704acfd919b6163940d4946d3f83529be920e6c",
+    "old_dvol_sha256": "26b768f81c2fa49fd59d9f1a173a829329a7ed5bb94c2d71af7c33b46f4f02cf",
+    "july_dvol_sha256": "2178b8e733a4f9cb18e5c96843373e7424ccb8bf5b672be98e2e4ef72be987f8",
+    "postgres_tables": [
+      "open_interest_binance",
+      "funding_rates_binance"
+    ]
+  },
+  "outputs": {
+    "bvol": {
+      "path": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/bvol_hourly.csv.gz",
+      "sha256": "14673b491b6ed58a5927cfd2760589d11531a277e1098a5a7f40adbfdd656218",
+      "rows": 27312
+    },
+    "dvol": {
+      "path": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/dvol_hourly.csv.gz",
+      "sha256": "5556bc470ce7c8134cf6d2a09fc1eab8f233604a8029fe6a4eaf838ff302446c",
+      "rows": 27312
+    },
+    "oi": {
+      "path": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/open_interest_5m.csv.gz",
+      "sha256": "7c862ebc3e44049737a357a6ea5b76ebca315e8cbdba0afa40e6f827799c0c85",
+      "rows": 327610
+    },
+    "funding": {
+      "path": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/funding.csv.gz",
+      "sha256": "c9ff280e11c281e0c3ba2d57e4a632d497aa0930caac80e5a53a8c406616f389",
+      "rows": 3693
+    }
+  },
+  "invalid_source_rows_retained_without_imputation": {
+    "oi_zero_rows": 371,
+    "oi_off_grid_rows": 3056,
+    "funding_frozen_mark_fallback_rows": 400
+  },
+  "availability": {
+    "bvol": "feature_available_time_utc",
+    "dvol": "close_time",
+    "oi": "raw observation ts; backward as-of maximum age 5m",
+    "funding": "funding_time; positive DB mark else exact frozen official mark"
+  },
+  "manifest_hash": "1fcd9d47cd2e6f9592edcba0e3b8db06d16805e69a13f286eade6a534ed8e180"
+}
