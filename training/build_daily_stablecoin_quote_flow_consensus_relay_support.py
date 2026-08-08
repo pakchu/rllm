@@ -28,7 +28,8 @@ def features()->pd.DataFrame:
  required=[f"{a}_{s}" for a in ("valid","volume","signed") for s in ("BTCUSDT","BTCUSDC")]
  for c in required:
   if c not in w:w[c]=np.nan
- w["flow_usdt"]=w.signed_BTCUSDT/w.volume_BTCUSDT;w["flow_usdc"]=w.signed_BTCUSDC/w.volume_BTCUSDC;w["usdc_volume_share"]=w.volume_BTCUSDC/(w.volume_BTCUSDT+w.volume_BTCUSDC);w["flow_valid"]=w.valid_BTCUSDT.astype(bool)&w.valid_BTCUSDC.astype(bool)&np.isfinite(w[["flow_usdt","flow_usdc","usdc_volume_share"]]).all(axis=1)
+ for c in ("volume_BTCUSDT","volume_BTCUSDC","signed_BTCUSDT","signed_BTCUSDC"):w[c]=pd.to_numeric(w[c],errors="coerce")
+ w["flow_usdt"]=w.signed_BTCUSDT/w.volume_BTCUSDT;w["flow_usdc"]=w.signed_BTCUSDC/w.volume_BTCUSDC;w["usdc_volume_share"]=w.volume_BTCUSDC/(w.volume_BTCUSDT+w.volume_BTCUSDC);numeric=w[["flow_usdt","flow_usdc","usdc_volume_share"]].apply(pd.to_numeric,errors="coerce");w[["flow_usdt","flow_usdc","usdc_volume_share"]]=numeric;w["flow_valid"]=w.valid_BTCUSDT.astype(bool)&w.valid_BTCUSDC.astype(bool)&np.isfinite(numeric).all(axis=1)
  w["decision_time"]=w.source_day+pd.Timedelta(days=1)
  b,d,oi,funding=volbase.load_sources();v=volbase.joined_features(b,d,oi,funding)[["decision_time","bvol_close","dvol_close","bvol_valid"]].copy()
  for c in ("bvol_close","dvol_close"):

@@ -9,3 +9,6 @@ def test_dsqfcr_rejects_disagreement_low_flow_or_low_vol():
  x=frame();x.loc[0,"flow_usdc"]=-.06;assert support.clock(x).empty;x=frame();x.loc[0,"flow_usdc"]=.04;assert support.clock(x).empty;x=frame();x.loc[0,"dvol_close"]=50.;assert support.clock(x).empty
 def test_dsqfcr_direction_flip_is_diagnostic_only():
  a=support.clock(frame());b=support.clock(frame(),"direction_flip");assert len(a)==len(b)==1;assert a.iloc[0].side==-b.iloc[0].side;assert b.iloc[0].control=="direction_flip"
+
+def test_dsqfcr_bound_sources_build_numeric_daily_features():
+ f=support.features();assert not f.empty;assert f[["flow_usdt","flow_usdc","usdc_volume_share"]].dtypes.apply(lambda x:x.kind in "fc").all()
