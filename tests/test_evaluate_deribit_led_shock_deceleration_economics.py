@@ -1,4 +1,6 @@
 import math
+import hashlib
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -24,3 +26,15 @@ def test_frozen_accounting_and_stage_contract():
     source = Path(economics.__file__).read_text()
     assert "full calendar including idle time" in source
     assert "global peak, every held favorable then adverse" in source
+
+
+def test_outcome_blind_evaluator_freeze_is_bound():
+    assert hashlib.sha256(economics.FREEZE.read_bytes()).hexdigest() == "bdff241dcdbb76bcec1822fe64a877fdfc44151f0f595d4f04297a8697cc1cf8"
+    report = json.loads(economics.FREEZE.read_text())
+    core = {key: value for key, value in report.items() if key != "manifest_hash"}
+    assert report["manifest_hash"] == economics.canonical_hash(core)
+    assert report["outcomes_opened"] is False
+    assert report["evaluator"]["sha256"] == economics.sha256(Path(economics.__file__))
+    novelty, freeze = economics.verify("train")
+    assert novelty["advance_to_economic_outcomes"] is True
+    assert freeze["outcomes_opened"] is False
