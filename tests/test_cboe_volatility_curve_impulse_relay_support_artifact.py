@@ -1,0 +1,4 @@
+import hashlib,json
+from training import build_cboe_volatility_curve_impulse_relay_support as support
+def test_cvcir_source_support_is_frozen_terminal():
+ assert hashlib.sha256(support.RESULT.read_bytes()).hexdigest()=="8f06b7afc33d7da5fdbbd18f82ce8638aa261905f0b1df6a767711c9f42c6b18";assert hashlib.sha256(support.CLOCK.read_bytes()).hexdigest()=="91678cb13dd68350ebe9768a46c0fe75c3058a224d8135f4b1f8484b48a13a31";p=json.loads(support.RESULT.read_text());core={k:v for k,v in p.items() if k!="manifest_hash"};assert p["manifest_hash"]==support.chash(core);assert p["support_passed"] is False and p["decision"]=="terminal_source_support_reject";assert p["advance_to_gross9_novelty"] is False and p["advance_to_economic_outcomes"] is False;assert p["postentry_return_pnl_execution_price_opened"] is False and p["gross9_rows_opened"] is False;assert [p["support"][n]["events"] for n in support.SPLITS]==[2,49,63,47]
