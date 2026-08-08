@@ -1,0 +1,48 @@
+{
+  "protocol_version": "cavbr_12_sources_v1",
+  "raw_sources": {
+    "vix_panel": {
+      "path": "data/cboe_volatility_surface_2021_2026/cboe_volatility_surface_2021-01-01_2026-08-07.csv.gz",
+      "preregistered_sha256": "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0",
+      "observed_sha256": "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0"
+    },
+    "vxn": {
+      "path": "data/cboe_vxn_2021_2026/source/VXN_History.csv",
+      "preregistered_sha256": "a856a08bbec6c5fabd23c98d4b75bc28b93c24370ef8780e3e75243c22f66716",
+      "observed_sha256": "a856a08bbec6c5fabd23c98d4b75bc28b93c24370ef8780e3e75243c22f66716"
+    },
+    "gvz": {
+      "path": "data/cboe_gvz_2021_2026/source/GVZ_History.csv",
+      "preregistered_sha256": "eaf949af798669fb6a0d5eb0ee5a3d148a9f2abf4679450e7a9d85c6a5e1bcbb",
+      "observed_sha256": "eaf949af798669fb6a0d5eb0ee5a3d148a9f2abf4679450e7a9d85c6a5e1bcbb"
+    },
+    "ovx": {
+      "path": "data/cboe_ovx_2021_2026/source/OVX_History.csv",
+      "preregistered_sha256": "77f872f1e069cc93554fe6d80dc6f9d44d0a798ad0a906202a570ad81f73417a",
+      "observed_sha256": "77f872f1e069cc93554fe6d80dc6f9d44d0a798ad0a906202a570ad81f73417a"
+    }
+  },
+  "btc_source": {
+    "table": "bars_binance",
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "query": "SELECT ts,open,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts",
+    "start": "2021-01-05T14:30:00+00:00",
+    "end": "2026-08-07T13:30:00+00:00",
+    "rows": 2937540,
+    "read_only": true
+  },
+  "builder": {
+    "path": "training/build_cross_asset_volatility_breadth_relay_support.py",
+    "sha256": "70aacf2d26871a21beee727d24fd2b5f5d0e2f3e06baf7aafb095791281b590d"
+  },
+  "features": {
+    "path": "data/cross_asset_volatility_breadth_relay_sources_2021_2026/cross_asset_volatility_breadth_relay_preentry_features.csv.gz",
+    "sha256": "634be53b801e5a24e4f62c2c65942bcb3e51c7afa2869d4205426f603294e84b",
+    "rows": 1402
+  },
+  "candidate_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "d475ff39e7197d7f39011e4ae2649b6a19ad6bce8a0fd9055564d2d11d77e39e"
+}
