@@ -1,0 +1,4 @@
+import hashlib,json
+from training import build_blockspace_stress_absorption_relay_support as support
+def test_bsar_source_support_is_frozen_terminal():
+ assert hashlib.sha256(support.RESULT.read_bytes()).hexdigest()=="0d5f4200a91be33b023050b156052c046ea43890b447503b489d5f7057f746a2";assert hashlib.sha256(support.CLOCK.read_bytes()).hexdigest()=="70338f7b8906e49d88f02e57e0a632602dc9a140d1fc071a9868b3fd803e5a7a";p=json.loads(support.RESULT.read_text());core={k:v for k,v in p.items() if k!="manifest_hash"};assert p["manifest_hash"]==support.chash(core);assert p["support_passed"] is False and p["advance_to_gross9_novelty"] is False and p["advance_to_economic_outcomes"] is False;assert p["decision"]=="terminal_source_support_reject" and p["postentry_return_pnl_execution_price_opened"] is False and p["gross9_rows_opened"] is False;assert [p["support"][s]["events"] for s in ("train","test","eval","final")]==[0,3,5,1]
