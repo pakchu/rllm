@@ -1,0 +1,127 @@
+{
+  "protocol_version": "fear_greed_price_leadlag_relay_v1",
+  "policy_id": "FGPLR-24",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When a completed high-variation BTC day moves opposite an unusually large same-date change in the lagged-published Crypto Fear & Greed index, market price is leading a slower behavioral measure rather than confirming it. Follow the completed BTC direction for one day as sentiment catches up.",
+    "side": "strict sign of the completed BTC UTC-day return",
+    "why_distinct": "FGER used static index extremes and contrarian fixed sides and was terminal at source support. FGPLR uses the change between consecutive index observations, exact same-date BTC direction disagreement, and price-lead continuation; it reuses no FGER event or diagnostic control and is not an extremity-threshold repair.",
+    "why_suited_to_volatile_regimes": "completed BTC daily realized variation must rank in its causal upper 35%.",
+    "why_low_gross9_overlap_is_plausible": "one sparse daily behavioral lead-lag clock is absent from Gross9 primitives."
+  },
+  "features": {
+    "sentiment_source": "hash-bound Alternative.me Crypto Fear & Greed daily history already materialized outcome-blind",
+    "availability": "index row labeled UTC date D is not usable until D+1 00:00 UTC; both D and D-1 rows must be exact consecutive dates",
+    "sentiment_change": "Fear & Greed value[D] minus value[D-1]; strict nonzero",
+    "sentiment_change_rank": "strict-prior midrank of absolute sentiment_change over at most 90 prior valid consecutive changes, minimum 60, current excluded; rank>=0.60",
+    "btc_day_return": "sum of exact 24 completed hourly BTC log returns with hour starts D 00:00 through 23:00; strict nonzero",
+    "direction_disagreement": "strict sign(sentiment_change) equals negative strict sign(btc_day_return)",
+    "btc_realized_variation": "sqrt(sum squared exact 24 completed hourly BTC log returns for date D)",
+    "volatility_rank": "strict-prior midrank over at most 90 valid daily decisions, minimum 60, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact D+1 00:00 UTC after lagged index publication rule and BTC day complete",
+    "entry": "exact BTCUSDT D+1 00:05 UTC open",
+    "side": "strict sign of completed BTC day return",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes"
+  },
+  "policy": {
+    "sentiment_prior_days": 90,
+    "sentiment_prior_min_days": 60,
+    "sentiment_change_rank_min": 0.6,
+    "realized_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "sentiment": {
+      "path": "data/fear_greed_extremity_reversal_sources_2023_2026/fear_greed_daily.csv.gz",
+      "sha256": "a50769db6ca15b9cbb538b4f03fd71956a42a3ca418a7628d8ba0c63d0b8f1dd"
+    },
+    "completed_btc": "hash-bound completed-hour BTC source through 2026-08-01",
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_sentiment_change_tail",
+      "no_direction_disagreement",
+      "sentiment_direction",
+      "one_day_stale_sentiment_change",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_sentiment_family_outcomes_known": true,
+    "prior_sentiment_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_fgplr_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent behavioral-measure versus price lead-lag mechanism"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no lag, change, rank, disagreement, side, hold, clock, volatility, or subset repair.",
+  "manifest_hash": "09a82bf8b4563855a7ea8b2517e93f85aa689bdd73daa608ebbdb84ae5428775"
+}
