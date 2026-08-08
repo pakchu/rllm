@@ -1,0 +1,6 @@
+import pandas as pd
+from training import build_high_volatility_chop_resolution_relay_support as support
+def test_hvcrr_clock_enters_after_fixed_eight_hour_resolution():
+ d=pd.Timestamp("2024-07-01T08:00:00Z");f=pd.DataFrame({"decision_time":[d],"block_valid":[True],"bvol_close":[70.],"prior_bvol_q60":[60.],"dvol_close":[70.],"prior_dvol_q60":[60.],"chop_range":[.04],"chop_return":[.005],"chop_efficiency":[.125],"prior_chop_efficiency_q40":[.2],"resolution_return":[.02],"prior_abs_resolution_q60":[.01],"chop_min":[99.],"chop_max":[101.],"final_close":[102.]});c=support.clock(f);assert len(c)==1 and c.iloc[0].side==1;assert c.iloc[0].entry_time==d+pd.Timedelta(minutes=5) and c.iloc[0].exit_time-c.iloc[0].entry_time==pd.Timedelta(hours=6)
+def test_hvcrr_rejects_efficient_path_or_non_escape():
+ d=pd.Timestamp("2024-07-01T08:00:00Z");common={"decision_time":d,"block_valid":True,"bvol_close":70.,"prior_bvol_q60":60.,"dvol_close":70.,"prior_dvol_q60":60.,"chop_range":.04,"chop_return":.005,"chop_efficiency":.125,"prior_chop_efficiency_q40":.2,"resolution_return":.02,"prior_abs_resolution_q60":.01,"chop_min":99.,"chop_max":101.,"final_close":102.};assert support.clock(pd.DataFrame([{**common,"chop_efficiency":.3}])).empty;assert support.clock(pd.DataFrame([{**common,"final_close":100.5}])).empty
