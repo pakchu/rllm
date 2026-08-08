@@ -1,4 +1,4 @@
-import math
+import hashlib,json,math
 from pathlib import Path
 import pandas as pd
 from training import evaluate_cboe_convexity_beta_residual_relay_economics as economics
@@ -8,3 +8,6 @@ def test_exact_offset_funding_posts_to_containing_bar():
 
 def test_frozen_accounting_and_stage_contract():
  assert economics.POLICY_ID=="CCBRR-12" and economics.LEVERAGE==.5 and economics.BASE_COST==.0006 and economics.STRESS_COST==.001;assert economics.STAGES["final"][2]=="2026-08-01T00:00:00Z";source=Path(economics.__file__).read_text();assert "full calendar including idle time" in source and "global peak, every held favorable then adverse" in source
+
+def test_outcome_blind_evaluator_freeze_is_bound():
+ assert hashlib.sha256(economics.FREEZE.read_bytes()).hexdigest()=="a80e46203e8be43d753a6f0ee53bba7064d7144dcce8699c39c96d418e2cdfb0";d=json.loads(economics.FREEZE.read_text());core={k:v for k,v in d.items() if k!="manifest_hash"};assert d["manifest_hash"]==economics.canonical_hash(core) and d["outcomes_opened"] is False;assert d["evaluator"]["sha256"]==economics.sha256(Path(economics.__file__));novelty,freeze=economics.verify("train");assert novelty["advance_to_economic_outcomes"] is True and freeze["outcomes_opened"] is False
