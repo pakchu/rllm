@@ -1,0 +1,115 @@
+{
+  "protocol_version": "oi_divergence_contradiction_relay_v1",
+  "policy_id": "OIDCR-8",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In a high-range-volatility state, positive OI-minus-price divergence during a negative return shock is inventory absorption and maps long; the exact sign mirror is fragile price appreciation unsupported by OI and maps short.",
+    "side_rule": "sign(oi_minus_px_4h_z) when return_zscore_48 has the opposite sign and all symmetric absolute gates pass",
+    "why_distinct": "one symmetric OI-price contradiction law, not the mixed OI/premium state machine OIPAR-ASYM and not a terminal control or direction flip",
+    "why_july_like": "explicit high range-volatility gate targets July-like shock and pullback conditions"
+  },
+  "features": {
+    "oi_minus_px_4h_z": "completed 4h OI log change minus BTC close return, rolling 288-bar z-score",
+    "return_zscore_48": "completed 4h price return z-score",
+    "range_vol": "completed-bar range-volatility state",
+    "rsi_norm": "completed-bar normalized RSI",
+    "availability": "completed 5m bar t; enter t+1 open",
+    "no_imputation": true
+  },
+  "symmetric_thresholds": {
+    "oi_abs": 0.8954018630586817,
+    "return_z_abs": 0.7389570664259131,
+    "range_vol": 0.04008415457867338,
+    "rsi_abs": 0.04507656773717145
+  },
+  "states": {
+    "long": "oi_z>=+oi_abs AND return_z<=-return_z_abs AND range_vol>=gate AND rsi<=-rsi_abs",
+    "short": "oi_z<=-oi_abs AND return_z>=+return_z_abs AND range_vol>=gate AND rsi>=+rsi_abs",
+    "conflict": "impossible under strict mirrored signs; skip defensively"
+  },
+  "clock": {
+    "entry": "next 5m open",
+    "hold": "8 elapsed hours",
+    "stride": "30 elapsed minutes at frozen stride-1 UTC offset",
+    "reservation": "global half-open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_range_vol_gate",
+      "no_rsi_gate",
+      "no_return_contradiction",
+      "one_bar_stale_features",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "source_bindings": {
+    "data/oi_premium_asymmetric_volatility_relay_sources_2023_2026/signal_features.csv.gz": "4e3bc8ee099470068ef738852e6a11c3778ba2cf6c8739e1947efcd902e04233",
+    "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json": "6533650bb6800308762dc02f310dbfe7dbd59c8a217d55305f6c5388eb2a480b"
+  },
+  "research_boundary": {
+    "prior_long_component_outcomes_known": true,
+    "symmetric_candidate_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "post_entry_outcomes_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no repair",
+  "manifest_hash": "999ce40521fc31f7c4909dc6e9f187d126b7fb6267ccd0ddc7c530afb8edbf42"
+}
