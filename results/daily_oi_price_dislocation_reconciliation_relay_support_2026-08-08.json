@@ -1,0 +1,108 @@
+{
+  "protocol_version": "dopdr_12_source_support_v1",
+  "policy_id": "DOPDR-12",
+  "preregistration": {
+    "path": "results/daily_oi_price_dislocation_reconciliation_relay_preregistration_2026-08-08.json",
+    "sha256": "fbd3159e09d0ca0d0600d64db57a7bf028afdde7729e9c30d55ab8a07aaffc31",
+    "manifest_hash": "edd26af3f956d87d2110b13d32eb6cae8d347133e1710e669bb910518dd7281b"
+  },
+  "source_manifests": {
+    "oi": {
+      "path": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/manifest.json",
+      "sha256": "5a6b8fb8d2da235afee4709d219bc3e537498e15078fafa27d57ba284723cd7e"
+    },
+    "completed_price": {
+      "path": "data/options_oi_chase_exhaustion_sources_2023_2026/manifest.json",
+      "sha256": "3e350d16da72da7b60d9e91fbfb1ff4c2e13e5cb954b52b19ceaddf8c4f0e66d"
+    }
+  },
+  "completed_preentry_sources_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "gross9_rows_opened": false,
+  "clock": {
+    "path": "data/daily_oi_price_dislocation_reconciliation_relay_clocks_2023_2026.csv.gz",
+    "sha256": "1c9dc65651ffaca8480609fdf1dc8c7c36c967d76fd5cacef74720d3e81338bc",
+    "rows": 137
+  },
+  "controls": {
+    "no_realized_variation_gate": {
+      "path": "data/daily_oi_price_dislocation_reconciliation_relay_controls_2023_2026/no_realized_variation_gate.csv.gz",
+      "sha256": "3a9b3b9b2e46c1570ed268f7251e70fb581a9d5e1616a24febd0a8d6699eda73",
+      "rows": 250,
+      "promotion_authorized": false
+    },
+    "no_displacement_gate": {
+      "path": "data/daily_oi_price_dislocation_reconciliation_relay_controls_2023_2026/no_displacement_gate.csv.gz",
+      "sha256": "dce3b7fb146efb3619c1d0be55b9eaa54bdb4bc8372617be07cc17af66164623",
+      "rows": 175,
+      "promotion_authorized": false
+    },
+    "same_direction_only": {
+      "path": "data/daily_oi_price_dislocation_reconciliation_relay_controls_2023_2026/same_direction_only.csv.gz",
+      "sha256": "fafffe13f4f8ac34269e8e3b40084f5a3c7262e940a951747e2a1d5352754246",
+      "rows": 49,
+      "promotion_authorized": false
+    },
+    "one_day_stale_ranks": {
+      "path": "data/daily_oi_price_dislocation_reconciliation_relay_controls_2023_2026/one_day_stale_ranks.csv.gz",
+      "sha256": "4128168333c295ca7d3327cda0c99ca2b350274642fa45b964ad7e202bae12bd",
+      "rows": 89,
+      "promotion_authorized": false
+    },
+    "direction_flip": {
+      "path": "data/daily_oi_price_dislocation_reconciliation_relay_controls_2023_2026/direction_flip.csv.gz",
+      "sha256": "c7163029195ddff0f89db695e5502abb88a725dd1b7406c2c66a720939affd89",
+      "rows": 137,
+      "promotion_authorized": false
+    }
+  },
+  "support": {
+    "train": {
+      "events": 12,
+      "longs": 1,
+      "shorts": 11,
+      "minority_side_share": 0.08333333333333333,
+      "max_month_share": 0.5833333333333334
+    },
+    "test": {
+      "events": 55,
+      "longs": 24,
+      "shorts": 31,
+      "minority_side_share": 0.43636363636363634,
+      "max_month_share": 0.16363636363636364
+    },
+    "eval": {
+      "events": 46,
+      "longs": 30,
+      "shorts": 16,
+      "minority_side_share": 0.34782608695652173,
+      "max_month_share": 0.2608695652173913
+    },
+    "final": {
+      "events": 24,
+      "longs": 10,
+      "shorts": 14,
+      "minority_side_share": 0.4166666666666667,
+      "max_month_share": 0.2916666666666667
+    }
+  },
+  "support_checks": {
+    "train_minimum_events": true,
+    "train_side_balance": false,
+    "train_month_concentration": false,
+    "test_minimum_events": true,
+    "test_side_balance": true,
+    "test_month_concentration": true,
+    "eval_minimum_events": true,
+    "eval_side_balance": true,
+    "eval_month_concentration": true,
+    "final_minimum_events": true,
+    "final_side_balance": true,
+    "final_month_concentration": true
+  },
+  "support_passed": false,
+  "advance_to_gross9_novelty": false,
+  "advance_to_economic_outcomes": false,
+  "decision": "terminal_source_support_reject",
+  "manifest_hash": "5aa629b8444444083fc82697ab2c7129166f9ae2374aa7fdd3411c77cf5a00f7"
+}
