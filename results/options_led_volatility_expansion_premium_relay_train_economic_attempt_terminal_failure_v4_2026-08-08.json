@@ -1,0 +1,23 @@
+{
+  "protocol_version": "ovepr_24_train_economic_attempt_terminal_failure_v4",
+  "policy_id": "OVEPR-24",
+  "stage": "train",
+  "claim": {
+    "path": "results/options_led_volatility_expansion_premium_relay_train_economic_attempt_claim_v4_2026-08-08.json",
+    "sha256": "4c3eeaf194b54f9e283797ff3b30f5c587e7f813944c74338df114b2b5410175"
+  },
+  "repository_head_at_attempt": "655278ad",
+  "exit_status": 1,
+  "failed_operation": "FUNDING_CLOCK_COMPLETENESS_VALIDATION",
+  "exception_type": "RuntimeError",
+  "exception_message": "funding gap exceeds eight hours",
+  "root_cause": "reported Binance funding timestamps can lag the nominal eight-hour boundary by up to 5ms, making a strict <=8h gap assertion false; exact-key bar posting would also omit such events",
+  "economic_metrics_computed": false,
+  "candidate_pass_fail_observed": false,
+  "btc_execution_numeric_rows_opened": true,
+  "opened_scope": "2023H2 market and funding source rows only; failure occurred before primary clock loading and metric calculation",
+  "later_windows_opened": false,
+  "attempt_disposition": "TERMINAL_FAILURE_NO_RETRY_UNDER_V4",
+  "successor_requirement": "fresh V5 evaluator identity must bind this receipt, tolerate bounded reporting offset, and regression-test half-open millisecond funding event posting before another outcome execution",
+  "manifest_hash": "5e06ceab638cc104a09e499775adf7c058c3547543cf71557f0dfc6f3caa9c4b"
+}
