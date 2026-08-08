@@ -16,7 +16,7 @@ def pair(candidate,comparator):
  result=metric.evaluate_pair(candidate,comparator);result["checks"]={name:result["metrics"][name]<=limit for name,limit in LIMITS.items()};result["passed"]=all(result["checks"].values());return result
 def run(output:Path=OUTPUT)->dict:
  if sha(PREREG)!=PREREG_SHA or sha(SUPPORT)!=SUPPORT_SHA or sha(CLOCK)!=CLOCK_SHA:raise RuntimeError("DTFAR predecessor hash drift")
- reg,support=load(PREREG),load(SUPPORT);expected={"exact_entry_jaccard_max":.1,"candidate_near_6h_share_max":.35,"occupied_5m_jaccard_max":.25,"absolute_signed_exposure_pearson_max":.35,"must_pass_before_economics":True}
+ reg,support=load(PREREG),load(SUPPORT);expected={"exact_entry_jaccard_max":.1,"candidate_near_6h_share_max":.35,"occupied_5m_bar_jaccard_max":.25,"absolute_signed_exposure_pearson_max":.35,"must_pass_before_economics":True}
  if reg.get("novelty_gates")!=expected:raise RuntimeError("DTFAR novelty limits drift")
  if support.get("policy_id")!=POLICY or support.get("support_passed") is not True or support.get("advance_to_gross9_novelty") is not True or support.get("advance_to_economic_outcomes") is not False or support.get("clock",{}).get("sha256")!=CLOCK_SHA:raise RuntimeError("DTFAR predecessor state drift")
  manifest=load(gross9.DEFAULT_MANIFEST);authority=manifest.get("authority",{})
