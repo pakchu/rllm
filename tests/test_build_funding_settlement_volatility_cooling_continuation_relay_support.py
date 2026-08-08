@@ -1,0 +1,6 @@
+import pandas as pd
+from training import build_funding_settlement_volatility_cooling_continuation_relay_support as support
+def test_fsvccr_continues_pre_settlement_trend_after_cash_transfer():
+ s=pd.Timestamp("2024-07-01T08:00:00Z");f=pd.DataFrame({"settlement_time":[s],"decision_time":[s+pd.Timedelta(hours=1)],"price_valid":[True],"pre_valid_8h":[True],"funding_rate":[.0002],"prior_abs_funding_q60":[.0001],"pre_settlement_return_8h":[.03],"prior_abs_pre_return_q60":[.02],"post_settlement_return_1h":[.01],"bvol_body":[-.01],"dvol_body":[-.02]});c=support.clock(f);assert len(c)==1 and c.iloc[0].side==1 and c.iloc[0].entry_time==s+pd.Timedelta(hours=1,minutes=5)
+def test_fsvccr_rejects_reversal_or_expanding_volatility():
+ s=pd.Timestamp("2024-07-01T08:00:00Z");common={"settlement_time":s,"decision_time":s+pd.Timedelta(hours=1),"price_valid":True,"pre_valid_8h":True,"funding_rate":.0002,"prior_abs_funding_q60":.0001,"pre_settlement_return_8h":.03,"prior_abs_pre_return_q60":.02,"post_settlement_return_1h":.01,"bvol_body":-.01,"dvol_body":-.02};assert support.clock(pd.DataFrame([{**common,"post_settlement_return_1h":-.01}])).empty;assert support.clock(pd.DataFrame([{**common,"dvol_body":.02}])).empty
