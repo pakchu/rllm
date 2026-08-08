@@ -1,0 +1,150 @@
+{
+  "protocol_version": "weekly_cross_alt_flow_exhaustion_reversal_v1",
+  "policy_id": "WCAFER-24",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "At the Friday UTC boundary before weekend liquidity transfer, a high-variation completed seven-day block whose aggressive-flow imbalance accelerates in one direction across at least four of six liquid alt perpetuals reflects broad weekly positioning exhaustion; fade that majority for twenty-four hours.",
+    "side": "negative strict majority sign of six alt week-over-week taker-flow-imbalance changes",
+    "why_distinct": "CAFAER-12 fades daily alt-and-BTC flow acceleration consensus and is terminal. WCAFER-24 uses a non-overlapping seven-day Friday boundary, requires no BTC flow confirmation, and targets pre-weekend weekly positioning liquidation. It is not a clock filter or subset of CAFAER. AFGI uses a fitted hourly geometry learner.",
+    "why_suited_to_volatile_regimes": "BTC completed-week realized-variation strict-prior rank must be at least 0.65",
+    "why_low_gross9_overlap_is_plausible": "one weekly Friday 00:05 UTC clock is sparse relative to the Gross9 event roster"
+  },
+  "features": {
+    "universe": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "week": "exact bars_binance 1m paths [previous Friday 00:00,current Friday 00:00) UTC; all 10,080 timestamps for all seven symbols",
+    "flow": "sum(2*taker_buy_quote-quote_asset_volume)/sum(quote_asset_volume) per symbol and week; denominator strictly positive",
+    "acceleration": "current valid weekly flow imbalance minus immediately preceding valid Friday-aligned weekly imbalance; gaps make the current week ineligible",
+    "breadth": "at least four of six alt acceleration signs equal one strict sign",
+    "btc_variation": "sqrt(sum squared BTC 1m log(close/open)) over completed week",
+    "btc_variation_rank": "strict-prior midrank among at most 52 prior valid weeks; minimum 26; current excluded; rank>=0.65",
+    "availability": "Friday 00:00 UTC after all exact weekly paths complete",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "Friday 00:00 UTC",
+    "entry": "Friday 00:05 UTC BTCUSDT perpetual 5m open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_observations": 52,
+    "minimum_history_observations": 26,
+    "variation_rank_min": 0.65,
+    "breadth_min": 4,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close",
+      "quote_asset_volume",
+      "taker_buy_quote"
+    ],
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "read_only": true,
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "three_of_six_breadth",
+      "btc_weekly_confirmation",
+      "one_week_stale_acceleration",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "database_metadata_and_gross9_structural_clocks_only_opened_before_preregistration": true,
+    "weekly_flow_or_acceleration_values_used_to_select_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened_for_candidate": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent Friday weekly cross-alt positioning-exhaustion mechanism plus user-required high volatility and ex-ante Gross9 clock sparsity"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, strict economics; no breadth, confirmation, week, side, hold, timing, volatility, or subset repair",
+  "manifest_hash": "bd22852e6279ffef3c7654ac0af53d7b7d074b4ee1f1947d29939604df2d5b9f"
+}
