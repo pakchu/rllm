@@ -15,12 +15,12 @@ ARTIFACT = Path(
 
 def test_ovepr_preregistration_artifact_is_canonical_frozen_and_outcome_blind() -> None:
     assert hashlib.sha256(ARTIFACT.read_bytes()).hexdigest() == (
-        "871e96d99454648dac1f0dacb0bf9c3c6cf06602198d3e1d5d55ac68c243a482"
+        "180e6be7f6889024896303be511a07b3a95b44dc225f4566a2edab7127022dd6"
     )
     report = json.loads(ARTIFACT.read_text(encoding="utf-8"))
     p.validate_manifest(report)
     assert report["manifest_hash"] == (
-        "0f6070ef618e3506ac3fe955cdcffea8ff220b6c09720af599933a70df1eda49"
+        "0433453fd6895045e031f62e4c20f5b3591b2b74a9d36aad2ea6b18f2a0f932f"
     )
     assert report == p.build_manifest()
     assert report["outcomes_opened"] is False

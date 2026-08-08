@@ -337,7 +337,9 @@ def raw_candidates(
         if not consecutive or setups[index - 1] or not setups[index]:
             continue
         side = _side(current)
-        entry = current.available_at + ENTRY_DELAY
+        entry = current.close_time + ENTRY_DELAY
+        if current.available_at >= entry:
+            continue
         output.append(
             ScheduledEvent(
                 signal_id=(

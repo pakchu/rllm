@@ -164,13 +164,29 @@ def test_availability_entry_hold_and_global_nonoverlap_are_fixed() -> None:
     raw = ovepr.raw_candidates(rows)
     first = raw[0]
     assert first.available_at == first.signal_time + timedelta(minutes=2)
-    assert first.entry_time == first.available_at + timedelta(minutes=5)
+    assert first.entry_time == first.signal_time + timedelta(minutes=5)
     assert first.exit_time - first.entry_time == timedelta(hours=24)
     accepted = ovepr.reserve_nonoverlap(raw)
     assert [event.signal_time for event in accepted] == [
         START + timedelta(hours=672),
         START + timedelta(hours=697),
     ]
+
+
+def test_candidate_is_suppressed_when_joint_feature_misses_t_plus_5m() -> None:
+    rows = warmup() + [
+        hour(
+            672,
+            bvol=B_UP,
+            dvol=D_UP_LEAD,
+            available_delays=(
+                timedelta(seconds=1),
+                timedelta(minutes=5),
+                timedelta(seconds=3),
+            ),
+        )
+    ]
+    assert ovepr.raw_candidates(rows) == ()
 
 
 def test_parent_controls_preserve_primary_set_and_only_frozen_dimension() -> None:

@@ -152,7 +152,10 @@ def build_manifest() -> dict[str, Any]:
             ),
         },
         "execution": {
-            "entry": "exactly 5 elapsed minutes after feature_available_time",
+            "entry": (
+                "BTCUSDT open at completed-hour boundary T+5m; require the joint "
+                "feature_available_time strictly before entry, otherwise suppress"
+            ),
             "hold": "24 elapsed hours fixed",
             "reservation": (
                 "one global [entry,exit) nonoverlap reservation; suppressed events "
