@@ -1,0 +1,36 @@
+{
+  "protocol_version": "rvsbr_12_sources_v1",
+  "cboe_urls": {
+    "RVX": "https://cdn.cboe.com/api/global/us_indices/daily_prices/RVX_History.csv",
+    "VIX": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
+  },
+  "cboe_window": [
+    "2022-01-01",
+    "2026-08-01"
+  ],
+  "btc_query": "\nSELECT ts,open,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+  "btc_window": [
+    "2022-12-29T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "btc_rows": 1887840,
+  "builder": {
+    "path": "training/build_russell_volatility_spread_break_relay_support.py",
+    "sha256": "e1551f049b95770f8dbe758a57942ad2c76cb3be08e4bb5c6abc3ae9ab798f43"
+  },
+  "outputs": {
+    "cboe": {
+      "path": "data/russell_volatility_spread_break_relay_sources_2022_2026/cboe_rvx_vix_panel.csv.gz",
+      "sha256": "984c6eb8e683382514cc4fafefc10ce1ebf638dcff47a5257fac1091e0d95204",
+      "rows": 1148
+    },
+    "features": {
+      "path": "data/russell_volatility_spread_break_relay_sources_2022_2026/rvsbr_preentry_features.csv.gz",
+      "sha256": "a5c516382f1cbb883f92b843f43d60f0eff0e3870bf74a27dfe14835213741cd",
+      "rows": 1147
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "ed0a28fcbddd79a11d6211c9048dc324e9c460e2e95af8cf2250c452103909a4"
+}
