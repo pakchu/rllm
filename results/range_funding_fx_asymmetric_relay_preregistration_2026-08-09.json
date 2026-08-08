@@ -1,0 +1,178 @@
+{
+  "protocol_version": "range_funding_fx_asymmetric_relay_v1",
+  "policy_id": "RFFXAR-ASYM",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "BTC remains long-biased when either wide-range upside extension, negative-funding trend, or discounted-premium daily momentum is present, but switches short during joint three-day BTC drawdown and USD/KRW stress. The asymmetric relay targets volatile risk-on and cross-asset risk-off states rather than quiet mean reversion.",
+    "why_distinct": "The candidate is one globally reserved long/short state machine. Its FX-stress short state is external to the three long derivatives/range states and is not a threshold, side, hold, or control repair of a terminal candidate.",
+    "why_july_like": "The union is designed for persistent high-amplitude upside episodes and abrupt macro-FX liquidation episodes like the volatile July regime."
+  },
+  "frozen_states": {
+    "long_range_funding_premium": {
+      "logic": "OR across the three components; AND within each component",
+      "components": {
+        "range_bb90": [
+          {
+            "feature": "rex_576_range_width_pct",
+            "op": ">=",
+            "threshold": 0.12959816105499766
+          },
+          {
+            "feature": "bb_z",
+            "op": ">=",
+            "threshold": 1.6850824973528202
+          }
+        ],
+        "funding10_trend70": [
+          {
+            "feature": "funding_rate",
+            "op": "<=",
+            "threshold": -1.67e-05
+          },
+          {
+            "feature": "trend_96",
+            "op": ">=",
+            "threshold": 0.007485218212390219
+          }
+        ],
+        "premium20_mom90": [
+          {
+            "feature": "premium_index_change",
+            "op": "<=",
+            "threshold": -0.00023471
+          },
+          {
+            "feature": "htf_1d_return_4",
+            "op": ">=",
+            "threshold": 0.0940403008961932
+          }
+        ]
+      },
+      "hold_bars_5m": 576,
+      "side": 1
+    },
+    "short_fx_stress": {
+      "logic": "AND",
+      "gates": [
+        {
+          "feature": "htf_3d_return_1",
+          "op": "<=",
+          "threshold": -0.0325294973
+        },
+        {
+          "feature": "usdkrw_zscore",
+          "op": ">=",
+          "threshold": 1.3870063775
+        }
+      ],
+      "hold_bars_5m": 288,
+      "side": -1,
+      "fixed_clock_difference_from_prior_diagnostic": "The prior diagnostic used 4% take-profit and 2.5% stop-loss. This candidate freezes a 24-hour exit with no path-dependent exits so source support remains outcome-blind."
+    },
+    "conflict": "skip when both states are true on the same completed bar",
+    "availability": "all inputs are completed 5m-bar features or backward-asof external observations; decide after bar completion and enter next 5m open",
+    "global_reservation": "half-open; ignore new states while a trade is active",
+    "no_threshold_side_hold_or_component_tuning": true
+  },
+  "clock": {
+    "entry": "next completed 5m bar open",
+    "long_hold": "48 elapsed hours",
+    "short_hold": "24 elapsed hours",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "long_state_only",
+      "short_state_only",
+      "no_range_component",
+      "no_funding_component",
+      "no_premium_component",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "database_contract": {
+    "env_file": "/home/pakchu/rllm/.env",
+    "tables": [
+      "bars_binance",
+      "open_interest_binance",
+      "funding_rates_binance",
+      "bars_binance_premium"
+    ],
+    "external_source": "backward-asof USD/KRW observations from live feature builder",
+    "symbol": "BTCUSDT",
+    "read_only": true
+  },
+  "source_bindings": {
+    "training/search_low_corr_feature_alpha.py": "293d6871c80bd5a22110bef6158a9c52bb24befecd67dd957a72b55d79bf6374",
+    "training/portfolio_opt_new_alpha_pool.py": "88434d2aefafd763a6b09d2ad78b4b77dd493e4102b696e80cc53e67437e91fa",
+    "training/backtest_all_alpha_month.py": "3de3bc013cfd880d1f14740eb9a51f0c3506949dc9a716a36c44f15123226fe6",
+    "preprocessing/live_db_features.py": "a4b903913a51e1322e8946cd8dad8fea08b2361655520d20312a65f4219d5099"
+  },
+  "research_boundary": {
+    "component_outcomes_previously_known": true,
+    "prior_component_outcome_warning": "The component family was defined after historical 2024-2026 inspection; a pass cannot be represented as a fresh-data discovery.",
+    "combined_candidate_outcomes_known": false,
+    "fixed_clock_short_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "post_entry_outcomes_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no repair",
+  "manifest_hash": "13826338d6a039441aededda684723197d15c6573494df80aaee35dd015e5609"
+}
