@@ -1,0 +1,44 @@
+"""Outcome-blind preregistration for CVRVPR-12."""
+from __future__ import annotations
+import argparse, hashlib, json
+from pathlib import Path
+from typing import Any
+
+DEFAULT_OUTPUT = Path("results/cross_venue_relative_volatility_premium_regime_crossing_relay_preregistration_2026-08-08.json")
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "cross_venue_relative_volatility_premium_regime_crossing_relay_v1",
+        "policy_id": "CVRVPR-12", "as_of_date": "2026-08-08", "outcomes_opened": False,
+        "mechanism": {
+            "claim": "A completed-hour Deribit DVOL/Binance BVOL closing-level ratio that crosses from its neutral causal distribution into an outer tail marks a venue-specific volatility-risk premium dislocation. A high Deribit-relative premium transmits risk-off pressure to BTC, while a low relative premium marks localized Binance volatility demand and transmits relief.",
+            "long": "strict-prior 720h midrank(log(DVOL close/BVOL close)) <= 0.20 after prior rank > 0.20",
+            "short": "strict-prior 720h midrank(log(DVOL close/BVOL close)) >= 0.80 after prior rank < 0.80",
+            "why_distinct": "CVRVPR uses completed closing-level relative-premium rank crossings. CVVH used opposite same-hour candle bodies plus body/range leadership; disagreement relays used body polarity with BTC price confirmation; DBVHDR used an ordered two-hour expansion handoff.",
+            "why_suited_to_volatile_regimes": "the signal directly measures where implied-volatility risk demand is becoming unusually concentrated across the two crypto options venues",
+            "why_low_gross9_overlap_is_plausible": "Gross9 contains no cross-venue implied-volatility level-ratio tail crossing clock",
+        },
+        "clock": {
+            "decision": "T after a completed source-valid UTC hour",
+            "feature": "log(DVOL close/BVOL close)",
+            "rank": "midrank of current feature against strictly prior 720 consecutive source-valid hours, minimum 672; current excluded",
+            "crossing": "emit only on a neutral-to-outer crossing; require current and prior valid consecutive hours",
+            "entry": "exact BTCUSDT T+5m open", "side": "low tail LONG, high tail SHORT", "hold": "12 elapsed hours",
+            "reservation": "global half-open; chronological signals; exit first on equal open", "no_imputation": True,
+        },
+        "policy": {"prior_hours": 720, "prior_min_hours": 672, "lower_rank": 0.20, "upper_rank": 0.80, "entry_delay_minutes": 5, "hold_hours": 12, "leverage": 0.5, "base_cost_per_notional_side": 0.0006, "stress_cost_per_notional_side": 0.001},
+        "stages": {"train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"], "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"], "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"], "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"]},
+        "source_support_gates": {"minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8}, "minority_side_share_min": 0.20, "max_month_share": 0.45},
+        "novelty_gates": {"exact_entry_jaccard_max": 0.10, "candidate_near_6h_share_max": 0.35, "occupied_5m_jaccard_max": 0.25, "absolute_signed_exposure_pearson_max": 0.35, "must_pass_before_economics": True},
+        "economic_gates": {"absolute_return_positive": True, "cagr_to_strict_mdd_min": 3.0, "strict_mdd_max_pct": 15.0, "mean_gross_underlying_min_bp": 20.0, "weekly_signflip_one_sided_p_max": 0.10, "stress_absolute_return_positive": True, "stress_cagr_to_strict_mdd_min": 2.5, "each_calendar_half_positive": True, "stop_on_first_failure": True, "future_can_rank_repair_or_reselect": False, "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"},
+        "diagnostic_controls": {"absolute_dvol_level_crossing": "DVOL close own-history rank crossing", "absolute_bvol_level_crossing": "BVOL close own-history rank crossing with equivalent risk mapping", "one_hour_stale_ratio": "primary ratio crossing lagged one completed hour", "no_crossing": "all outer-tail observations", "direction_flip": "same entries opposite side"},
+        "source_plan": {"volatility": "hash-bound official Binance BTCBVOLUSDT and Deribit BTC DVOL completed-hour candles through 2026-08-01", "execution_price": "sealed until source-support and Gross9 novelty pass"},
+        "research_boundary": {"prior_candidate_incidence_known": True, "prior_candidate_outcomes_used_for_cvrvpr": False, "cvrvpr_candidate_incidence_opened": False, "cvrvpr_post_entry_return_or_pnl_opened": False, "candidate_count": 1, "grid": False, "repair_of_prior_candidate": False, "diagnostic_controls_cannot_be_promoted": True},
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+if __name__ == "__main__":
+    p=argparse.ArgumentParser();p.add_argument("--output",type=Path,default=DEFAULT_OUTPUT);a=p.parse_args();a.output.write_text(json.dumps(build(),indent=2,ensure_ascii=False)+"\n");print(a.output)
