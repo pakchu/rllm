@@ -1,0 +1,105 @@
+{
+  "protocol_version": "high_volatility_variance_concentration_release_v1",
+  "policy_id": "HVVCR-12",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When an already high-volatility BTC day suddenly concentrates an exceptional share of its realized variance into one hour, then that concentration normalizes within six hours, the burst direction reflects exhausted urgent inventory and should reverse.",
+    "side": "opposite the frozen signed one-hour return at concentration onset",
+    "why_distinct": "HVVCR is a causal realized-variance allocation state transition. It uses neither candle wicks, fixed calendar anchors, implied-volatility feeds, range boundaries, order flow, OI, nor a terminal candidate/control modification."
+  },
+  "clock": {
+    "decision": "each completed 5m bar; accepted release enters at the next exact 5m open",
+    "returns": "causal close-to-close log returns through the completed decision bar",
+    "day_variance": "sum squared returns over the prior 288 completed 5m returns",
+    "hour_variance": "sum squared returns over the prior 12 completed 5m returns",
+    "concentration": "hour_variance/day_variance",
+    "high_volatility": "prior 24h high/low-1",
+    "calibration": "2023H1 source-only: high-volatility q60, concentration-onset q90, and release q60; no source incidence or post-entry prices",
+    "onset": "false-to-true concentration >= q90 while high-volatility >= q60 and signed one-hour return is nonzero; freeze its sign",
+    "release": "within six elapsed hours, concentration <= frozen q60",
+    "episode_rules": "one pending episode globally; expiry cancels; no replacement while pending",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open after acceptance; exit first at equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_high_volatility_gate",
+      "no_release_requirement",
+      "one_bar_stale_variance",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "source_plan": {
+    "historical_market": "hash-bound 5m cache through 2026-06-01",
+    "live_extension": "read-only Postgres completed bars through 2026-08-01",
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "source_bindings": {
+    "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+  },
+  "research_boundary": {
+    "exact_variance_concentration_release_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no threshold, release, side, hold, or gate repair",
+  "manifest_hash": "74076ecfcdd44249e5d3e8e25ac13c32ca0fee895e66e5db59938f215fec1585"
+}
