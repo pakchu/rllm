@@ -1,4 +1,4 @@
-import math
+import math,hashlib,json
 from pathlib import Path
 import pandas as pd
 from training import evaluate_deribit_expansion_partial_absorption_economics as economics
@@ -12,3 +12,10 @@ def test_frozen_accounting_and_stage_contract():
  assert economics.LEVERAGE==.5 and economics.BASE_COST==.0006 and economics.STRESS_COST==.001
  assert economics.STAGES["final"][2]=="2026-08-01T00:00:00Z"
  source=Path(economics.__file__).read_text();assert "full calendar including idle time" in source and "global peak, every held favorable then adverse" in source
+
+def test_outcome_blind_evaluator_freeze_is_bound():
+ assert hashlib.sha256(economics.FREEZE.read_bytes()).hexdigest()=="751273437ed2af8a174d5678cb7ab8ed94584aa7024f7ed39bf725891880f638"
+ d=json.loads(economics.FREEZE.read_text());core={k:v for k,v in d.items() if k!='manifest_hash'}
+ assert d['manifest_hash']==economics.canonical_hash(core) and d['outcomes_opened'] is False
+ assert d['evaluator']['sha256']==economics.sha256(Path(economics.__file__))
+ novelty,freeze=economics.verify('train');assert novelty['advance_to_economic_outcomes'] is True and freeze['outcomes_opened'] is False
