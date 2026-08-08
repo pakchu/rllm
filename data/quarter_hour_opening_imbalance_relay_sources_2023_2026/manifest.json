@@ -1,0 +1,32 @@
+{
+  "protocol_version": "qhoir_8_btc_source_v1",
+  "query": "\nSELECT ts,open,close,volume,taker_buy_base\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+  "table": "bars_binance",
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "columns": [
+    "ts",
+    "open",
+    "close",
+    "volume",
+    "taker_buy_base"
+  ],
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:01:00+00:00"
+  ],
+  "exact_minute_grid": true,
+  "no_imputation": true,
+  "candidate_incidence_opened": false,
+  "candidate_outcomes_opened": false,
+  "builder": {
+    "path": "training/build_quarter_hour_opening_imbalance_relay_support.py",
+    "sha256": "d45b19e0fa407a2a35b3d91a933033522200d1fbc50ddcdac88dc3e295fdd29a"
+  },
+  "output": {
+    "path": "data/quarter_hour_opening_imbalance_relay_sources_2023_2026/quarter_hour_opening_imbalance_panel.csv.gz",
+    "sha256": "8e7de5969ac0b73ff5153cacd05ab0ac533c569402ac02d6425570d596ed0731",
+    "rows": 350497
+  },
+  "manifest_hash": "7093eb3ee6b5f67e89fbf8935509f97e94ec00d243dbd0062c8a1875963d05d5"
+}
