@@ -1,0 +1,131 @@
+"""Outcome-blind preregistration for HVPAR-6."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_OUTPUT = Path("results/high_volatility_passive_absorption_relay_preregistration_2026-08-09.json")
+
+
+def canonical_hash(payload: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "high_volatility_passive_absorption_relay_v1",
+        "policy_id": "HVPAR-6",
+        "as_of_date": "2026-08-09",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": "At a fixed eight-hour boundary in an unusually volatile completed BTC block, a final two-hour price move that persists against opposite net aggressive quote flow identifies passive liquidity absorption. Follow the resilient price direction for six elapsed hours.",
+            "side": "strict nonzero sign of final-two-hour return, opposite the final-two-hour normalized taker imbalance",
+            "why_distinct": "HVPAR requires price-flow contradiction and follows the resilient price direction. HVAFC required same-direction aggressive-flow confirmation; its direction_fade control preserved that confirmation gate and merely reversed the trade side. HVSAR used opposing 6h/2h price paths plus late volume concentration. No prior control is promoted.",
+            "why_suited_to_volatile_regimes": "completed eight-hour realized variation must rank in its causal upper 35%",
+            "why_low_gross9_overlap_is_plausible": "three fixed UTC price-flow contradiction clocks with final-two-hour microstructure are absent from Gross9",
+        },
+        "features": {
+            "source": "BTCUSDT bars_binance interval=1m",
+            "block_valid": "480 exact distinct minute rows in [decision-8h,decision), finite positive coherent OHLC, finite nonnegative quote_asset_volume and taker_buy_quote, taker_buy_quote<=quote_asset_volume, positive final-two-hour quote volume; no imputation",
+            "late_return": "log(close at decision-1m/open at decision-2h)",
+            "late_taker_imbalance": "(2*sum(taker_buy_quote)-sum(quote_asset_volume))/sum(quote_asset_volume) over final two hours",
+            "absorption_gate": "abs(late_taker_imbalance)>=0.10 and its strict sign opposes late_return",
+            "realized_variation": "sum squared 1m close-to-close log returns within completed 8h block",
+            "variation_rank": "strict-prior midrank among at most 270 valid fixed eight-hour blocks, minimum 180, current excluded; rank>=0.65",
+            "no_imputation": True,
+        },
+        "clock": {
+            "decision": "exact 00:00,08:00,16:00 UTC",
+            "entry": "exact decision+5m BTCUSDT open",
+            "hold": "6 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "funding_oi_premium_implied_vol": "not signal inputs; exact funding only after novelty passes",
+        },
+        "policy": {
+            "history_observations": 270,
+            "minimum_history_observations": 180,
+            "variation_rank_min": 0.65,
+            "absolute_late_taker_imbalance_min": 0.10,
+            "entry_delay_minutes": 5,
+            "hold_hours": 6,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.2,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.1,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.1,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "future_can_rank_repair_or_reselect": False,
+            "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR",
+        },
+        "source_plan": {
+            "btc_1m": {
+                "table": "bars_binance",
+                "symbol": "BTCUSDT",
+                "interval": "1m",
+                "columns": ["ts", "open", "high", "low", "close", "quote_asset_volume", "taker_buy_quote"],
+                "window": ["2023-04-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+                "materialize_after_preregistration": True,
+            },
+            "execution_price": "sealed until source-support and Gross9 novelty pass",
+        },
+        "diagnostic_controls": {
+            "names": ["no_volatility_gate", "no_flow_magnitude_gate", "no_contradiction_gate", "one_boundary_stale_geometry", "direction_fade"],
+            "diagnostic_controls_cannot_be_promoted": True,
+        },
+        "research_boundary": {
+            "prior_flow_candidate_incidence_and_outcomes_known": True,
+            "prior_candidate_outcomes_used_to_set_hvpar_direction_threshold_hold_or_clock": False,
+            "hvpar_candidate_incidence_opened": False,
+            "hvpar_post_entry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": "independent high-volatility passive-absorption mechanism",
+        },
+        "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no threshold, side, hold, clock, flow, or subset repair.",
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    args.output.write_text(json.dumps(build(), indent=2) + "\n")
+    print(args.output)
