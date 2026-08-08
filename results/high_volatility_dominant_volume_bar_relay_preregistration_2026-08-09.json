@@ -1,0 +1,113 @@
+{
+  "protocol_version": "high_volatility_dominant_volume_bar_relay_v1",
+  "policy_id": "HVDVBR-12",
+  "as_of_date": "2026-08-09",
+  "oos_outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During high BTC range volatility, a six-hour block whose quote volume suddenly concentrates in one five-minute bar records a discrete inventory transfer. When that dominant bar and the complete block move in the same direction, the transfer is sponsored price discovery whose direction should relay for twelve elapsed hours.",
+    "side": "common strict sign of the dominant-volume bar and six-hour block return",
+    "why_distinct": "HVDVBR uses the endogenous identity and quote-volume share of the single largest-participation bar. It is not a price-extremum candle, taker-flow imbalance, block VWAP, late-session volume share, variance concentration, volume clock, terminal-candidate repair, or diagnostic-control promotion.",
+    "why_low_gross9_overlap_is_plausible": "tail onsets depend on a six-hour participation-concentration event rather than Gross9 calendar or state clocks"
+  },
+  "causal_features": {
+    "decision": "each completed xx:55 UTC five-minute bar",
+    "lookback": "72 completed five-minute bars including the decision bar",
+    "validity": "72 exact distinct consecutive rows; finite positive coherent OHLC; finite nonnegative quote volume; positive total quote volume; no imputation",
+    "dominant_row": "last row attaining maximum quote_asset_volume in the lookback; deterministic last-occurrence tie break",
+    "dominant_share": "quote_asset_volume[dominant_row] / sum(quote_asset_volume)",
+    "dominant_return": "log(close/open) of dominant_row",
+    "block_return": "log(close[decision]/open[first lookback row])",
+    "range_vol": "(maximum high-minimum low)/midpoint over 144 completed five-minute bars including the decision bar",
+    "calibration": "2023H1 source-only q85 of dominant_share and q60 of range_vol across complete hourly anchors; no labels or post-entry prices",
+    "eligibility": "dominant_share>=q85, range_vol>=q60, and dominant_return and block_return have one common strict sign; first row of a consecutive eligible same-side run only",
+    "grid": false
+  },
+  "oos_clock": {
+    "domain_start": "2023-07-01T00:00:00Z",
+    "entry": "next exact-hour five-minute open",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "first_dominant_tie_break",
+      "block_direction_only",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "source_plan": {
+    "historical": "hash-bound five-minute market through 2026-06-01",
+    "live_extension": "read-only Postgres completed bars through 2026-08-01",
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "source_bindings": {
+    "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+  },
+  "research_boundary": {
+    "prior_volume_clock_and_daily_volume_candidate_outcomes_known": true,
+    "those_clocks_or_controls_are_not_reused": true,
+    "dominant_bar_concentration_policy_outcomes_known": false,
+    "oos_candidate_incidence_opened": false,
+    "oos_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "freeze singleton and source-only calibration, then open source incidence, Gross9 novelty, and stage outcomes sequentially; terminal first failure without threshold, side, tie-break, volatility, onset, or hold repair",
+  "manifest_hash": "3e22012c7172c3f18bbc629df9dd0a9345d6dd19fcb4da0de92bf71dabb1c655"
+}
