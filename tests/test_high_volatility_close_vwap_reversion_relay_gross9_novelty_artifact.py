@@ -1,0 +1,4 @@
+import hashlib,json
+from training import evaluate_high_volatility_close_vwap_reversion_relay_gross9_novelty as novelty
+def test_hvcvr_novelty_artifact_is_terminal_without_outcomes():
+ assert hashlib.sha256(novelty.OUTPUT.read_bytes()).hexdigest()=="ea6b9da32c514625a91c3edb7a257a4dc601af1107338bb39e0b63b150a34aaf";p=json.loads(novelty.OUTPUT.read_text());core={k:v for k,v in p.items() if k!="manifest_hash"};assert p["manifest_hash"]==novelty.chash(core);assert p["gross9_novelty_status"]=="failed" and p["every_gross9_sleeve_passed"] is False and p["advance_to_economic_outcomes"] is False;assert p["evidence_boundary"]["outcomes_opened"] is False and p["evidence_boundary"]["btc_price_or_return_rows_opened"]==0;assert all(x["metrics"]["one_to_one_6h_max_matched_share"]>.35 for x in p["gross9_sleeves"].values())
