@@ -1,0 +1,21 @@
+{
+  "protocol_version": "drcmr_12_daily_btc_source_v1",
+  "query": "SELECT date_trunc('day',ts) AS source_day,(array_agg(open ORDER BY ts))[1] AS daily_open,max(high) AS daily_high,min(low) AS daily_low,(array_agg(close ORDER BY ts DESC))[1] AS daily_close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1",
+  "table": "bars_binance",
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/daily_range_close_momentum_relay_sources_2023_2026/btc_daily_auction.csv.gz",
+    "sha256": "8f92708a0f2963d30901708f7e7d07911ffda8586a9f26739bcb863b15b33948",
+    "rows": 1308,
+    "valid_rows": 1308
+  },
+  "manifest_hash": "62a82ee8c89fff4d7c6bafb6c01577634d9ef9f0623bb8061d1aa4f7620cfdb0"
+}
