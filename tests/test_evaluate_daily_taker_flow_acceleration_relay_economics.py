@@ -26,3 +26,18 @@ def test_frozen_accounting_and_stage_contract():
     source = Path(economics.__file__).read_text()
     assert "full calendar including idle time" in source
     assert "global peak, every held favorable then adverse" in source
+
+
+def test_outcome_blind_evaluator_freeze_is_bound():
+    import hashlib
+    import json
+
+    assert hashlib.sha256(economics.FREEZE.read_bytes()).hexdigest() == "3441364b299035f4ca074e4ac8f813cb7fd2fd3ef9ecd02f2a806cc4283248e8"
+    payload = json.loads(economics.FREEZE.read_text())
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    assert payload["manifest_hash"] == economics.canonical_hash(core)
+    assert payload["outcomes_opened"] is False
+    assert payload["evaluator"]["sha256"] == economics.sha256(Path(economics.__file__))
+    novelty, freeze = economics.verify("train")
+    assert novelty["advance_to_economic_outcomes"] is True
+    assert freeze["outcomes_opened"] is False
