@@ -83,8 +83,8 @@ def validate_oi(frame: pd.DataFrame) -> None:
     if frame.empty or frame["ts"].duplicated().any() or not frame["ts"].is_monotonic_increasing:
         raise RuntimeError("OI source is empty, duplicate or unordered")
     values = frame[["sum_open_interest", "sum_open_interest_value"]].to_numpy(float)
-    if not np.isfinite(values).all() or (values <= 0).any():
-        raise RuntimeError("OI values must be finite and positive")
+    if not np.isfinite(values).all() or (values < 0).any():
+        raise RuntimeError("OI values must be finite and nonnegative")
     if not frame["ts"].dt.minute.mod(5).eq(0).all() or not frame["ts"].dt.second.eq(0).all():
         raise RuntimeError("OI timestamps are off the 5m archive grid")
 
@@ -128,6 +128,9 @@ def run(env_file: str, output_dir: Path = OUTPUT_DIR) -> dict[str, Any]:
         "outputs": {
             name: {"path": str(path), "sha256": sha256(path), "rows": len(frame)}
             for (name, path), frame in zip(outputs.items(), (bvol, dvol, oi, funding))
+        },
+        "invalid_source_rows_retained_without_imputation": {
+            "oi_zero_rows": int(pd.to_numeric(oi["sum_open_interest"]).eq(0).sum()),
         },
         "availability": {
             "bvol": "feature_available_time_utc",
