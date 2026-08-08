@@ -1,0 +1,13 @@
+from training import preregister_stablecoin_quote_count_breadth_impulse as prereg
+
+def test_sqcbi_is_outcome_blind_independent_singleton():
+ r=prereg.build();assert r['policy_id']=='SQCBI-8';assert r['outcomes_opened'] is False;assert r['source_incidence_opened'] is False;assert r['singleton'] is True;assert r['research_boundary']['candidate_count']==1;assert r['research_boundary']['grid'] is False;assert r['research_boundary']['repair_of_prior_candidate'] is False
+
+def test_sqcbi_freezes_count_breadth_and_volatile_regime():
+ r=prereg.build();p=r['policy'];assert p['aggregate_trade_count_min']==80;assert p['breadth_impulse_rank_min']==.65;assert p['realized_variation_rank_min']==.65;assert p['hold_hours']==8;assert 'trade_count' in r['features']['count_share'];assert r['clock']['side']=='common strict USDC/FDUSD flow sign'
+
+def test_sqcbi_is_not_cqstl_repair_or_control_promotion():
+ r=prereg.build();assert 'CQSTL' in r['mechanism']['why_distinct'];assert r['research_boundary']['prior_stablecoin_event_sets_reused'] is False;assert r['research_boundary']['prior_candidate_outcomes_used_to_set_sqcbi_rule'] is False;assert r['research_boundary']['promoted_prior_control'] is False
+
+def test_sqcbi_hash_binds_core():
+ r=prereg.build();assert r['manifest_hash']==prereg.canonical_hash({k:v for k,v in r.items() if k!='manifest_hash'})
