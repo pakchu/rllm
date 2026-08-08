@@ -57,7 +57,7 @@ def joined_features(
 ) -> pd.DataFrame:
     b = pd.DataFrame(
         {
-            "decision_time": pd.to_datetime(bvol["feature_available_time_utc"], utc=True),
+            "decision_time": pd.to_datetime(bvol["feature_available_time_utc"], utc=True, format="mixed"),
             "bvol_open": pd.to_numeric(bvol["open"], errors="coerce"),
             "bvol_close": pd.to_numeric(bvol["close"], errors="coerce"),
             "bvol_valid": bvol["feature_valid"].astype(str).str.lower().eq("true"),
@@ -65,14 +65,14 @@ def joined_features(
     )
     d = pd.DataFrame(
         {
-            "decision_time": pd.to_datetime(dvol["close_time"], utc=True),
+            "decision_time": pd.to_datetime(dvol["close_time"], utc=True, format="mixed"),
             "dvol_open": pd.to_numeric(dvol["open"], errors="coerce"),
             "dvol_close": pd.to_numeric(dvol["close"], errors="coerce"),
         }
     )
     joint = b.merge(d, on="decision_time", how="inner", validate="one_to_one")
     oi = oi.copy()
-    oi["ts"] = pd.to_datetime(oi["ts"], utc=True)
+    oi["ts"] = pd.to_datetime(oi["ts"], utc=True, format="mixed")
     oi["sum_open_interest"] = pd.to_numeric(oi["sum_open_interest"], errors="coerce")
     oi = oi[oi["sum_open_interest"].gt(0)].sort_values("ts")
     current_query = joint[["decision_time"]].sort_values("decision_time")
@@ -98,7 +98,9 @@ def joined_features(
         .quantile(0.75)
     )
     funding = funding.copy()
-    funding["funding_time"] = pd.to_datetime(funding["funding_time"], utc=True)
+    funding["funding_time"] = pd.to_datetime(
+        funding["funding_time"], utc=True, format="mixed"
+    )
     funding["funding_rate"] = pd.to_numeric(funding["funding_rate"], errors="coerce")
     funding["funding_tail"] = (
         funding["funding_rate"].abs().shift(1).rolling(270, min_periods=252).quantile(0.75)
