@@ -63,7 +63,7 @@ def run(output: Path = OUTPUT) -> dict:
     expected_limits = {
         "exact_entry_jaccard_max": 0.1,
         "candidate_near_6h_share_max": 0.35,
-        "occupied_5m_jaccard_max": 0.25,
+        "occupied_5m_bar_jaccard_max": 0.25,
         "absolute_signed_exposure_pearson_max": 0.35,
         "must_pass_before_economics": True,
     }
