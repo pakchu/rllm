@@ -1,0 +1,33 @@
+{
+  "protocol_version": "mxrbr_12_sources_v1",
+  "queries": {
+    "btc": "SELECT ts,open,close FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY ts",
+    "fx": "SELECT ts,open,close FROM bars_polygon WHERE symbol='USDMXN' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY ts"
+  },
+  "windows": {
+    "btc": [
+      "2022-12-29T00:00:00+00:00",
+      "2026-08-01T00:00:00+00:00"
+    ],
+    "fx": [
+      "2023-01-01T00:00:00+00:00",
+      "2026-08-01T00:00:00+00:00"
+    ]
+  },
+  "rows": {
+    "btc": 1887840,
+    "fx": 1317491,
+    "features": 871
+  },
+  "builder": {
+    "path": "training/build_mexican_peso_risk_barometer_relay_support.py",
+    "sha256": "b023317d02da31aa00ac476a2b29e3c940657b936d9adba54e9aabf1fc412ead"
+  },
+  "feature_output": {
+    "path": "data/mexican_peso_risk_barometer_relay_sources_2023_2026/mxrbr_preentry_features.csv.gz",
+    "sha256": "c8fdc8e3249967c743ef35f4bedb544f8e74e231bbecad76d31bb8a17acee21c"
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "520dacb92539729e65f9b3be735bfdb32e1100927e7c745c3d1f0bfff7c6c8ee"
+}
