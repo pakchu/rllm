@@ -83,10 +83,10 @@ def features(source: Path = prereg.SOURCE) -> pd.DataFrame:
         frame[name] = strict_prior_midrank(values)
     frame["tail"] = 0.5 * (frame.skew_rank + frame.vvix_relative_rank)
     frame["term"] = 0.5 * (frame.front_rank + frame.broad_rank)
-    frame["surface"] = 0.5 * (frame.tail + frame.term)
+    frame["surface"] = 0.5 * (frame["tail"] + frame["term"])
     frame["previous_surface"] = frame.surface.shift(1)
-    frame["previous_tail"] = frame.tail.shift(1)
-    frame["previous_term"] = frame.term.shift(1)
+    frame["previous_tail"] = frame["tail"].shift(1)
+    frame["previous_term"] = frame["term"].shift(1)
     return frame
 
 

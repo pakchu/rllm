@@ -32,3 +32,8 @@ def test_strict_prior_midrank_excludes_current_value():
     ranks = support.strict_prior_midrank(pd.Series([1.0, 2.0, 3.0]), lookback=2, minimum=2)
     assert ranks.iloc[:2].isna().all()
     assert ranks.iloc[2] == 1.0
+
+
+def test_frozen_source_features_are_finite_after_warmup():
+    frame = support.features()
+    assert frame.loc[126:, ["tail", "term", "surface", "vix_rank"]].notna().all().all()
