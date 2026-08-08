@@ -3,6 +3,9 @@ from __future__ import annotations
 import argparse, hashlib, json, math
 from pathlib import Path
 from typing import Any
+if __package__ in (None, ""):
+ import sys
+ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import pandas as pd
 from training import preregister_dollar_factor_shock_relay as prereg
