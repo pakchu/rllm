@@ -77,6 +77,8 @@ def block_panel(flow: pd.DataFrame) -> pd.DataFrame:
             column = f"{kind}_{symbol}"
             if column not in wide:
                 wide[column] = np.nan
+        wide[f"ticket_{symbol}"] = pd.to_numeric(wide[f"ticket_{symbol}"], errors="coerce")
+        wide[f"flow_{symbol}"] = pd.to_numeric(wide[f"flow_{symbol}"], errors="coerce")
     wide["block_valid"] = wide[[f"valid_{symbol}" for symbol in SYMBOLS]].eq(True).all(axis=1)
     wide["decision_time"] = wide.block_start + pd.Timedelta(hours=8)
     return wide
@@ -107,7 +109,8 @@ def score_states(flow: pd.DataFrame, market: pd.DataFrame) -> pd.DataFrame:
             history.append(float(value))
     states["variation_rank"] = ranks
     consecutive = states.decision_time.diff().eq(pd.Timedelta(hours=8))
-    states["pair_valid"] = states.block_valid & states.block_valid.shift(1).fillna(False) & consecutive
+    prior_valid = states.block_valid.shift(1).eq(True)
+    states["pair_valid"] = states.block_valid.eq(True) & prior_valid & consecutive
     for symbol in SYMBOLS:
         states[f"ticket_change_{symbol}"] = np.log(states[f"ticket_{symbol}"] / states[f"ticket_{symbol}"].shift(1)).where(states.pair_valid)
     usdc, fdusd = states.flow_BTCUSDC, states.flow_BTCFDUSD

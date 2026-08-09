@@ -36,3 +36,4 @@ def test_block_panel_requires_complete_exact_hours_and_unsigned_ticket():
     panel = support.block_panel(pd.DataFrame(rows))
     assert panel.block_valid.tolist() == [True]
     assert panel.ticket_BTCUSDT.tolist() == [0.16]
+    assert panel.ticket_BTCUSDT.dtype.kind == "f"
