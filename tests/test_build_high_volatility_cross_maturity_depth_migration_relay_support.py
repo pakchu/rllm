@@ -34,6 +34,20 @@ def test_parse_archive_reduces_complete_snapshots() -> None:
     assert result.iloc[0].mass == 200
 
 
+def test_parse_archive_rejects_only_malformed_snapshot() -> None:
+    rows = []
+    for timestamp in (pd.Timestamp("2023-01-01T00:00:03Z"), pd.Timestamp("2023-01-01T00:00:31Z")):
+        for level in support.LEVELS:
+            rows.append({"timestamp": timestamp, "percentage": level, "depth": 100 + level, "notional": 1000 + level})
+    rows[-1]["depth"] = -1
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, "w") as archive:
+        archive.writestr("x.csv", pd.DataFrame(rows).to_csv(index=False).encode())
+    job = support.Job(pd.Timestamp("2023-01-01T00:00:00Z"), "BTCUSD_230331")
+    result = support.parse_archive(payload.getvalue(), job)
+    assert result.iloc[0].snapshots == 1
+
+
 def test_checksum_parser_binds_filename() -> None:
     digest = hashlib.sha256(b"x").hexdigest()
     assert support.expected_checksum(f"{digest}  x.zip\n".encode(), "x.zip") == digest

@@ -26,6 +26,7 @@ START = pd.Timestamp("2023-01-01T00:00:00Z")
 END = pd.Timestamp("2026-08-01T00:00:00Z")
 PREREG_SHA256 = "a593e05871009ef7755666371fce58802d576321239f2c49f66da3ffda9253e1"
 BASE_URL = "https://data.binance.vision/data/futures/cm/daily/bookDepth"
+CACHE_DIR = Path("/tmp/hvcmdm_bookdepth_cache")
 EXPIRIES = tuple(
     pd.Timestamp(value, tz="UTC")
     for value in (
@@ -133,17 +134,25 @@ def parse_archive(payload: bytes, job: Job) -> pd.DataFrame:
     frame["depth"] = pd.to_numeric(frame.depth, errors="coerce")
     frame["notional"] = pd.to_numeric(frame.notional, errors="coerce")
     day_end = job.day + pd.Timedelta(days=1)
-    if (
-        frame.empty or frame.timestamp.isna().any() or frame.percentage.isna().any()
-        or frame.depth.isna().any() or frame.notional.isna().any()
-        or not frame.timestamp.ge(job.day).all() or not frame.timestamp.lt(day_end).all()
-        or not frame.depth.gt(0).all() or not frame.notional.gt(0).all()
-        or frame.duplicated(["timestamp", "percentage"]).any()
-    ):
-        raise ValueError("HVCMDM archive row validity failed")
-    counts = frame.groupby("timestamp", sort=False).percentage.agg(["size", lambda x: tuple(sorted(x.astype(int)))])
-    if not counts["size"].eq(10).all() or not counts["<lambda_0>"].map(lambda value: value == LEVELS).all():
-        raise ValueError("HVCMDM snapshot level completeness failed")
+    if frame.empty:
+        raise ValueError("HVCMDM archive empty")
+    row_valid = (
+        frame.timestamp.notna() & frame.percentage.notna() & frame.depth.notna() & frame.notional.notna()
+        & frame.timestamp.ge(job.day) & frame.timestamp.lt(day_end)
+        & frame.depth.gt(0) & frame.notional.gt(0)
+    )
+    duplicate_timestamp = frame.loc[row_valid].duplicated(["timestamp", "percentage"], keep=False).groupby(
+        frame.loc[row_valid, "timestamp"]
+    ).any()
+    counts = frame.loc[row_valid].groupby("timestamp", sort=False).percentage.agg(
+        ["size", lambda x: tuple(sorted(x.astype(int)))]
+    )
+    complete = counts["size"].eq(10) & counts["<lambda_0>"].map(lambda value: value == LEVELS)
+    complete &= ~duplicate_timestamp.reindex(complete.index, fill_value=False)
+    valid_timestamps = complete.index[complete]
+    frame = frame[row_valid & frame.timestamp.isin(valid_timestamps)].copy()
+    if frame.empty:
+        raise ValueError("HVCMDM archive has no valid complete snapshot")
     pivot = frame.pivot(index="timestamp", columns="percentage", values="depth").sort_index()
     output = pd.DataFrame(index=pivot.index)
     output["pressure"] = np.log(pivot[-1.0] / pivot[1.0])
@@ -165,10 +174,18 @@ def process_job(job: Job) -> tuple[pd.DataFrame, dict[str, Any]]:
     filename = url.rsplit("/", 1)[-1]
     checksum_bytes = fetch(url + ".CHECKSUM")
     expected = expected_checksum(checksum_bytes, filename)
-    payload = fetch(url)
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = CACHE_DIR / filename
+    payload = cache_path.read_bytes() if cache_path.exists() else fetch(url)
     observed = hashlib.sha256(payload).hexdigest()
     if observed != expected:
-        raise ValueError(f"HVCMDM archive checksum mismatch: {filename}")
+        if cache_path.exists():
+            payload = fetch(url)
+            observed = hashlib.sha256(payload).hexdigest()
+        if observed != expected:
+            raise ValueError(f"HVCMDM archive checksum mismatch: {filename}")
+    if not cache_path.exists():
+        cache_path.write_bytes(payload)
     reduced = parse_archive(payload, job)
     ledger = {
         "day": job.day, "symbol": job.symbol, "url": url, "sha256": observed,
