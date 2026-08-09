@@ -15,4 +15,4 @@ def test_clock_uses_five_minute_delay_and_holds_eight_hours():
     c=support.build_clock(frame());assert len(c)==1;assert c.iloc[0].entry_time==pd.Timestamp("2024-01-01T04:05:00Z");assert c.iloc[0].exit_time==pd.Timestamp("2024-01-01T12:05:00Z")
 
 def test_builder_is_bound_and_outcomes_are_sealed():
-    source=support.BUILDER.read_text();assert support.PREREG_SHA=="8d51df306ceab0c90069c09dbb8c123f1705f80856748d48df7ff41fecaed621";assert "FROM bars_binance" in source;assert '"postentry_return_pnl_execution_price_opened": False' in source;assert '"gross9_rows_opened": False' in source;assert support.ECONOMIC_OUTCOMES_AUTHORIZED is False
+    source=support.BUILDER.read_text();assert support.PREREG_SHA=="8d51df306ceab0c90069c09dbb8c123f1705f80856748d48df7ff41fecaed621";assert support.sha(support.prereg.DEFAULT_OUTPUT)==support.PREREG_SHA;assert "preregistration manifest drift" in source;assert "FROM bars_binance" in source;assert '"postentry_return_pnl_execution_price_opened": False' in source;assert '"gross9_rows_opened": False' in source;assert support.ECONOMIC_OUTCOMES_AUTHORIZED is False

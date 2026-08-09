@@ -203,7 +203,9 @@ def run() -> dict[str, Any]:
     if sha(prereg.DEFAULT_OUTPUT) != PREREG_SHA:
         raise RuntimeError("CABUR preregistration hash drift")
     registration = json.loads(prereg.DEFAULT_OUTPUT.read_text())
-    prereg.validate(registration)
+    registration_core = {key: value for key, value in registration.items() if key != "manifest_hash"}
+    if registration.get("manifest_hash") != prereg.canonical_hash(registration_core):
+        raise RuntimeError("CABUR preregistration manifest drift")
     bars = {symbol: load_bars(symbol) for symbol in SYMBOLS}
     features = build_features(bars)
     primary = build_clock(features)
