@@ -1,0 +1,152 @@
+{
+  "protocol_version": "gross_oi_churn_release_relay_v1",
+  "policy_id": "GOICR-12",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Heavy two-way open-interest replacement with little net OI displacement is inventory transfer rather than simple leverage creation or liquidation. When the final completed hour escapes directionally at the onset of that cancellation state, follow the price direction for twelve elapsed hours.",
+    "side": "strict sign of the final completed-hour BTC return",
+    "why_distinct": "GOICR uses fixed-window total variation of log OI minus its net displacement: C=1-|sum d_i|/sum|d_i|. Existing OI candidates use net OI changes, OI-price divergence, purge, or departure-and-first-reclosure episodes. GOICR does not reuse round-trip episode settings, residual phase, signed inventory work, funding, premium, positioning ratios, or a prior diagnostic control.",
+    "volatile_market_target": "high gross OI replacement plus a late directional escape is a leveraged volatile-auction state; causal RV20 q90 remains only a later audit",
+    "why_low_gross9_overlap_is_plausible": "new three-hour-grid cancellation onsets with twelve-hour reservation"
+  },
+  "features": {
+    "decision_grid": "exact UTC 00:00,03:00,...,21:00 boundaries D",
+    "oi_window": "73 exact BTCUSDT period=5m OI rows at timestamps [D-6h-5m,D-5m], producing 72 completed increments; each row positive and no imputation",
+    "oi_increment": "d_i=log(OI_i/OI_(i-1))",
+    "gross_churn": "G=sum(abs(d_i)), strict positive",
+    "net_displacement": "N=abs(sum(d_i))",
+    "cancellation": "C=1-N/G, finite in [0,1] up to 1e-12 tolerance",
+    "late_escape": "R=log(BTC close at D-5m / BTC open at D-1h), using exactly twelve complete coherent five-minute aggregates; strict nonzero",
+    "prior_ranks": "strict-prior midranks of G, C, N, and abs(R) over at most 720 prior valid exact three-hour decisions, minimum 480, current excluded",
+    "eligible_state": "G_rank>=0.65, C_rank>=0.80, and abs(R)_rank>=0.65",
+    "onset": "current eligible state true and immediately preceding exact three-hour opportunity false; missing prior cannot trigger",
+    "availability": "OI row timestamp D-5m and all price bars complete by D; entry one full five-minute bar later",
+    "source_valid": "exact unique OI and price timestamp grids, positive finite OI/OHLC, coherent price bars, no imputation"
+  },
+  "rv20_stress_slice": {
+    "rv20": "sqrt(365*mean exact daily returns^2 over t-20 through t-1)",
+    "threshold": "numpy linear q90 over 756 strictly prior available RV20 observations",
+    "entry_filter": false,
+    "future_use": "only after all sequential full-calendar stages pass"
+  },
+  "clock": {
+    "decision": "exact three-hour UTC boundary after source completion",
+    "entry": "exact BTCUSDT decision+5m open",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not an input; exact realized funding only after novelty"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "persistent_long_vol_comparator": "same accepted clock and 0.5 gross, side forced long",
+    "full_calendar_decomposition": "candidate minus comparator net return",
+    "rv20_q90_decomposition": "same decomposition on causal RV20 q90 decisions",
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "candidate_specific_q90_residual_positive": true,
+    "comparator_cannot_satisfy_candidate_claim": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "net_oi_tail_only": "N_rank>=0.65 and abs(R)_rank>=0.65 onset, side=sign(R)",
+      "gross_churn_without_cancellation": "G_rank>=0.65 and abs(R)_rank>=0.65 onset, side=sign(R)",
+      "late_price_escape_only": "abs(R)_rank>=0.65 onset, side=sign(R)",
+      "one_decision_stale_churn": "primary eligible boolean and side shifted by one exact three-hour decision with onset applied after shift",
+      "direction_flip": "negative primary side"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "oi": {
+      "table": "open_interest_binance",
+      "symbol": "BTCUSDT",
+      "period": "5m",
+      "columns": [
+        "ts",
+        "sum_open_interest"
+      ],
+      "read_after_preregistration": true
+    },
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_oi_family_outcomes_known": true,
+    "exact_goicr_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_oi_roundtrip": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no OI path, window, rank, history, onset, side, clock, hold, RV20, subset, comparator, control, or gate repair",
+  "manifest_hash": "4e1ecc2383f802d126b7caf39ef68dad89c982400dd7000ac3ff4a551e260e0b"
+}
