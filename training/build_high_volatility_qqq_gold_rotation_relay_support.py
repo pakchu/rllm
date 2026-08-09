@@ -158,6 +158,9 @@ def run() -> dict[str, Any]:
     states = score_sessions(pd.read_csv(prereg.SOURCE), market)
     primary = build_clock(states)
     controls = {name: build_clock(states, name) for name in CONTROLS}
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    CLOCK.parent.mkdir(parents=True, exist_ok=True)
+    CONTROL_DIR.mkdir(parents=True, exist_ok=True)
     _write_gzip_csv(states, STATE)
     _write_gzip_csv(primary, CLOCK)
     for name, candidate in controls.items():
