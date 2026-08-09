@@ -1,0 +1,178 @@
+"""Outcome-blind preregistration for HVSPH-8."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_OUTPUT = Path(
+    "results/high_volatility_signed_path_hysteresis_onset_preregistration_2026-08-10.json"
+)
+
+
+def canonical_hash(payload: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "high_volatility_signed_path_hysteresis_onset_v1",
+        "policy_id": "HVSPH-8",
+        "as_of_date": "2026-08-10",
+        "oos_outcomes_opened": False,
+        "oos_source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": (
+                "In a volatile BTC path, the orientation of cumulative signed return against "
+                "cumulative realized variation identifies whether directional displacement led "
+                "or lagged the volatility expenditure. A fresh orientation reversal is traded "
+                "in the new orientation."
+            ),
+            "side": "strict sign of the current normalized return-variation loop area",
+            "why_distinct": (
+                "HVSPH uses price-versus-realized-variation path orientation. Prior signed-area "
+                "work used price-versus-taker-flow paths; prior high-volatility candidates used "
+                "scalar variance, entropy, topology, trend, flow, or classifier summaries."
+            ),
+            "volatile_market_target": "strict-prior realized-variation rank >= 0.80",
+            "why_low_gross9_overlap_is_plausible": (
+                "entries require an hourly first orientation reversal rather than a fixed daily, "
+                "eight-hour, macro-release, or funding clock"
+            ),
+        },
+        "source_contract": {
+            "table": "bars_binance",
+            "symbol": "BTCUSDT",
+            "interval": "1m",
+            "columns": ["ts", "open", "high", "low", "close"],
+            "source_window": ["2023-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+            "decision_times": "every exact UTC hour D",
+            "path_window": "480 exact coherent one-minute rows [D-8h,D)",
+            "returns": "479 close-to-close log returns r_i",
+            "coordinates": (
+                "x_0=y_0=0; x_k=cumsum(r_1..r_k); "
+                "y_k=cumsum(r_1^2..r_k^2)/sum(r_i^2)"
+            ),
+            "loop_area": (
+                "A=0.5*sum_{k=0}^{478}(x_k*y_{k+1}-x_{k+1}*y_k); "
+                "normalized A=A/sqrt(sum(r_i^2)); reject zero/nonfinite variation or area"
+            ),
+            "history_rank": (
+                "strict-prior midrank among at most 720 valid hourly observations, current "
+                "excluded, minimum 480; ties receive half weight"
+            ),
+            "no_imputation": True,
+        },
+        "oos_clock": {
+            "start": "2023-07-01T00:00:00Z",
+            "eligibility": (
+                "source valid, realized-variation rank >=0.80, absolute normalized-area rank "
+                ">=0.80, and current area sign differs from the immediately prior exact hourly "
+                "valid observation; missing prior observation rejects"
+            ),
+            "reservation": (
+                "chronological first eligible event only while flat; intervals are half-open and "
+                "exit is processed before an equal-time entry"
+            ),
+            "entry": "D+5m BTCUSDT perpetual open",
+            "side": "sign of current normalized loop area",
+            "hold": "8 elapsed hours",
+            "funding": "not an input; exact settlements opened only after novelty passes",
+        },
+        "policy": {
+            "path_minutes": 480,
+            "history_observations": 720,
+            "minimum_history_observations": 480,
+            "realized_variation_rank_min": 0.80,
+            "absolute_area_rank_min": 0.80,
+            "entry_delay_minutes": 5,
+            "hold_hours": 8,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.20,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.10,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.10,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp/10bp per notional side, favorable-then-adverse "
+                "held 5m path, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged passes all sequential economic stages",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_volatility_gate",
+                "no_area_gate",
+                "one_hour_stale_features",
+                "direction_flip",
+                "forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        "research_boundary": {
+            "prior_family_outcomes_known": True,
+            "prior_price_flow_signed_area_outcomes_known": True,
+            "candidate_specific_incidence_opened": False,
+            "candidate_specific_postentry_return_or_pnl_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "selection_basis": (
+                "new return-versus-realized-variation temporal-order mechanism fixed before "
+                "candidate incidence or outcomes"
+            ),
+        },
+        "stopping_rule": (
+            "freeze preregistration, then source support, Gross9 novelty, and sequential economics; "
+            "terminal first failure with no threshold, onset, side, hold, clock, subset, or control repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    args.output.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
+    print(args.output)
