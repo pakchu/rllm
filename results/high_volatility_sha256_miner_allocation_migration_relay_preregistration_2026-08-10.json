@@ -1,0 +1,155 @@
+{
+  "protocol_version": "high_volatility_sha256_miner_allocation_migration_relay_v1",
+  "policy_id": "HVSMAM-24",
+  "as_of_date": "2026-08-10",
+  "oos_outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "BTC and BCH compete for the same SHA-256 mining hardware. During volatile BTC trading, a large completed three-day migration of estimated hash-solving rate toward BTC indicates improving relative security-budget sponsorship and is traded long; migration toward BCH is traded short.",
+    "side": "strict sign of the three-observation change in log(BTC HashRate/BCH HashRate)",
+    "why_distinct": "Existing miner candidates use BTC-only hash rate, blocks, fees, issuance, cadence, or retarget state. The repository has no BCH source and no cross-chain SHA-256 hardware-allocation feature.",
+    "volatile_market_target": "strict-prior completed UTC-day BTC realized-variation rank >=0.65",
+    "why_low_gross9_overlap_is_plausible": "entries follow the later of two variable Coin Metrics EOD completion timestamps, rather than a fixed release, funding, daily close, or exchange-calendar clock"
+  },
+  "source_contract": {
+    "official_api": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+    "official_catalog": "https://community-api.coinmetrics.io/v4/catalog/metrics?metrics=HashRate%2CBlkCnt%2CAssetEODCompletionTime",
+    "assets": [
+      "btc",
+      "bch"
+    ],
+    "metrics": [
+      "HashRate",
+      "BlkCnt",
+      "AssetEODCompletionTime"
+    ],
+    "frequency": "1d",
+    "observation_window": [
+      "2023-01-01",
+      "2026-07-31"
+    ],
+    "schema": [
+      "asset",
+      "time",
+      "HashRate",
+      "BlkCnt",
+      "AssetEODCompletionTime"
+    ],
+    "row_validity": "exactly one row per asset and UTC observation day; finite strictly-positive HashRate and BlkCnt; completion epoch at least observation day plus one elapsed day",
+    "pair_validity": "both BTC and BCH rows required for every observation day; no interpolation, forward fill, nearest-day join, or partial pair",
+    "causal_availability": "feature availability is max(BTC AssetEODCompletionTime, BCH AssetEODCompletionTime); the decision time is that timestamp rounded upward to the next exact five-minute boundary",
+    "revision_boundary": "AssetEODCompletionTime freezes semantic publication latency and the downloaded gzip hash freezes this vintage; the API is not a historical revision-vintage archive",
+    "bounded_probe_disclosure": "before preregistration, five 2023 days were opened only to confirm public BTC/BCH schema, positivity, and metric availability; no event incidence or BTC outcome was computed"
+  },
+  "feature_contract": {
+    "relative_hash_allocation": "log(BTC HashRate/BCH HashRate)",
+    "allocation_migration": "current relative_hash_allocation minus the value exactly three paired observation days earlier; strict nonzero",
+    "absolute_migration_rank": "strict-prior midrank of abs(allocation_migration), current excluded, at most 365 valid paired days and minimum 180",
+    "btc_variation": "sum squared close-to-close log returns from 1,440 exact coherent BTCUSDT bars_binance 1m rows on the completed UTC observation day",
+    "btc_variation_rank": "same strict-prior 365/180 rule",
+    "eligible_state": "absolute_migration_rank>=0.80, btc_variation_rank>=0.65, and allocation_migration strict nonzero",
+    "onset": "current paired day eligible and immediately previous paired observation day ineligible",
+    "no_imputation": true
+  },
+  "oos_clock": {
+    "start": "2023-07-01T00:00:00Z",
+    "entry": "decision time +5m BTCUSDT perpetual open",
+    "side": "sign(allocation_migration)",
+    "hold": "24 elapsed hours",
+    "reservation": "chronological first eligible onset while flat; intervals half-open and exit first on an equal-time entry",
+    "funding": "not an input; exact settlements opened only after novelty passes"
+  },
+  "policy": {
+    "migration_days": 3,
+    "history_observations": 365,
+    "minimum_history_observations": 180,
+    "absolute_migration_rank_min": 0.8,
+    "btc_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45,
+    "complete_paired_daily_grid_required": true
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, favorable-then-adverse held 5m path, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged passes every sequential economic stage",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_migration_gate",
+      "btc_hashrate_change_only",
+      "one_observation_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_btc_only_miner_family_outcomes_known": true,
+    "prior_bch_or_cross_chain_hash_allocation_outcomes_known": false,
+    "candidate_specific_incidence_opened": false,
+    "candidate_specific_postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "selection_basis": "new cross-chain SHA-256 hardware-allocation mechanism fixed before candidate incidence or outcomes"
+  },
+  "stopping_rule": "freeze preregistration, source support, Gross9 novelty, and sequential economics; terminal first failure with no asset pair, availability, migration horizon, rank, onset, side, hold, clock, subset, or control repair",
+  "manifest_hash": "70e7a8b71ec2f4e2c135f28c38e4e4ed2aed3809c11b0549aa81706900cc25a1"
+}
