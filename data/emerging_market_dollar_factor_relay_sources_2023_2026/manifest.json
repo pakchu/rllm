@@ -1,0 +1,30 @@
+{
+  "protocol_version": "emdf_12_dollar_factor_source_v1",
+  "query": "SELECT date_trunc('day',ts) AS source_day,(array_agg(open ORDER BY ts))[1] AS session_open,max(high) AS session_high,min(low) AS session_low,(array_agg(close ORDER BY ts DESC))[1] AS session_close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_polygon WHERE symbol=:symbol AND interval='1m' AND ts>=:start AND ts<:end AND extract(isodow from ts) BETWEEN 1 AND 5 AND extract(hour from ts)>=13 AND extract(hour from ts)<16 GROUP BY 1 ORDER BY 1",
+  "table": "bars_polygon",
+  "symbols": [
+    "USDMXN",
+    "USDINR",
+    "USDCNY"
+  ],
+  "canonical_dollar_multipliers": {
+    "USDMXN": 1.0,
+    "USDINR": 1.0,
+    "USDCNY": 1.0
+  },
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/emerging_market_dollar_factor_relay_sources_2023_2026/emerging_market_dollar_factor_sessions.csv.gz",
+    "sha256": "9a0bbad9235fc3936c192b7755430dafd03f287047c10fc0c6ce37a5dd44afa4",
+    "rows": 928,
+    "valid_rows": 0
+  },
+  "manifest_hash": "770e0e8b4d7e52a26c3c5fe485612cec508a966def3ce23cb0904a7fe0190865"
+}
