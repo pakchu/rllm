@@ -53,14 +53,14 @@
       "return_premium_dislocation"
     ],
     "price": "480 exact coherent bars_binance 1m rows [D-8h,D); 96 exact aggregated 5m log(close/open) returns",
-    "premium": "480 exact coherent bars_binance_premium 1m rows [D-8h,D); close values only",
+    "premium": "480 exact finite coherent bars_binance_premium 1m rows [D-8h,D); signed close values only",
     "open_interest": "97 exact unique positive open_interest_binance BTCUSDT period=5m source=open_interest_hist rows [D-8h-5m,D), yielding 96 log changes",
     "normalized_returns": "full and final-two-hour price returns divided by sqrt(sum 96 squared 5m returns)",
     "variation_rank": "strict-prior midrank over <=270 valid blocks, minimum180, current excluded",
     "oi_features": "full/last24-change log sums; abs(full)/sum(abs changes); sqrt(sum squared changes); 2*(last-min)/(max-min)-1",
     "premium_features": "full mean, final-two-hour mean, terminal close, terminal-minus-first close, max-minus-min",
     "interactions": "normalized_full_return*full_oi_log_change and normalized_full_return*premium_change",
-    "source_validity": "exact timestamps, no duplicates/imputation, finite positive coherent price/premium OHLC, positive OI, all denominators positive"
+    "source_validity": "exact timestamps, no duplicates/imputation, finite positive coherent price OHLC, finite signed coherent premium OHLC, positive OI, all denominators positive"
   },
   "oos_clock": {
     "start": "2023-07-01T00:00:00Z",
@@ -169,5 +169,5 @@
     "selection_basis": "new continuous leverage-premium state model specified before its labels or candidate incidence"
   },
   "stopping_rule": "freeze prereg, model, source support, novelty, economics; terminal first failure; no feature/alpha/threshold/side/hold/clock/subset/control repair",
-  "manifest_hash": "6cd6645a1e5380cef3308e24fbb1a08d15f5b8148e3b5d221da26363df33ae09"
+  "manifest_hash": "a3fba682a02cdebccd2aa1edbc939588443f7b65cc79f6ef99bbaf36bffc2346"
 }
