@@ -1,0 +1,36 @@
+{
+  "protocol_version": "mfdh_8_sources_v1",
+  "queries": {
+    "funding": "SELECT funding_time,funding_rate,mark_price FROM funding_rates_binance WHERE symbol='BTCUSDT' AND funding_time>=:start AND funding_time<:end ORDER BY funding_time",
+    "bars": "SELECT ts,open,high,low,close FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY ts"
+  },
+  "windows": {
+    "funding": [
+      "2022-10-01T00:00:00+00:00",
+      "2026-08-01T00:00:00+00:00"
+    ],
+    "bars": [
+      "2022-09-10T00:00:00+00:00",
+      "2026-08-01T00:00:00+00:00"
+    ]
+  },
+  "rows": {
+    "funding": 4479,
+    "bars": 2046240,
+    "features": 4479
+  },
+  "builder": {
+    "path": "training/build_monotone_funding_price_divergence_handoff_support.py",
+    "sha256": "b9c889fc77c1c6df73a4deb6d12c8dcea4b8fa1d4b9c56bc4f8d4d5458c12232"
+  },
+  "feature_output": {
+    "path": "data/monotone_funding_price_divergence_handoff_sources_2022_2026/mfdh_preentry_features.csv.gz",
+    "sha256": "8c70c00a6f6db39c88165fdbb2bc9bed671d44f8167df635d8f342a08489d241"
+  },
+  "completed_preentry_sources_opened": true,
+  "execution_prices_opened": false,
+  "postentry_return_or_pnl_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "779fe834ae1992544685b918fa5983328a4a37a0e7946d175986d8febae623a3"
+}
