@@ -1,0 +1,152 @@
+{
+  "protocol_version": "header_backdating_disorder_correction_v1",
+  "policy_id": "HBDC-6",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A canonical block whose header timestamp retreats by at least 300 seconds from its predecessor, while remaining above the predecessor MTP, reveals consensus-valid miner-clock disorder. Fade the strict completed two-hour BTC impulse after six confirmations and a conservative two-hour header-time embargo.",
+    "why_distinct": "HBDC uses header timestamp ordering relative to the predecessor and predecessor median-time-past. It is not a block interval level, throughput, fee, fullness, empty-template, drought-underfill, retarget, hashrate, candle-shape, flow, funding, premium, OI, or prior control rule.",
+    "volatile_market_target": "miner-clock disagreement can reveal disordered settlement timing during volatile price impulses; causal RV20 q90 remains only a later audit",
+    "why_low_gross9_overlap_is_plausible": "consensus-valid header backsteps create naturally irregular sparse clocks"
+  },
+  "features": {
+    "anchor": "canonical block i with timestamp_(i-1)-timestamp_i >= 300 seconds",
+    "consensus_valid": "timestamp_i > mediantime_(i-1)",
+    "event": "anchor and consensus-valid predicates both hold",
+    "confirmation": "block i+6 must exist in the same canonical prefix",
+    "raw_availability": "max header timestamp and mediantime from the beginning of the source prefix through block i+6, plus 7200 seconds",
+    "decision": "raw availability ceiled to the next exact five-minute UTC boundary D",
+    "side_return": "log(BTCUSDT close at D-5m / open at D-2h) from exactly 24 coherent completed five-minute aggregates; strict nonzero",
+    "side": "negative strict sign of side_return",
+    "dedupe": "process anchors by increasing height and accept the earliest event whose entry is not before the prior accepted event's exit; never replace suppression",
+    "source_valid": "contiguous canonical heights and hashes, positive exact block fields, unique coherent five-minute bars, no imputation"
+  },
+  "rv20_stress_slice": {
+    "rv20": "sqrt(365*mean exact daily returns^2 over t-20 through t-1)",
+    "threshold": "numpy linear q90 over 756 strictly prior available RV20 observations",
+    "entry_filter": false,
+    "future_use": "only after all sequential full-calendar stages pass"
+  },
+  "clock": {
+    "entry": "exact BTCUSDT decision+5m open",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not an input; exact realized funding only after novelty"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "persistent_long_vol_comparator": "same accepted clock and 0.5 gross, side forced long",
+    "full_calendar_decomposition": "candidate minus comparator net return",
+    "rv20_q90_decomposition": "same decomposition on causal RV20 q90 decisions",
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "candidate_specific_q90_residual_positive": true,
+    "comparator_cannot_satisfy_candidate_claim": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "small_backstep": "header backstep strictly between 0 and 300 seconds",
+      "non_backstep": "same source clock without timestamp retreat",
+      "backstep_without_mtp_relation": "backstep event without predecessor-MTP predicate",
+      "one_event_stale_side": "primary side shifted by one accepted event",
+      "direction_flip": "negative primary side"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "blocks": {
+      "source": "Blockstream Esplora canonical block metadata",
+      "columns": [
+        "height",
+        "id",
+        "previousblockhash",
+        "timestamp",
+        "mediantime",
+        "tx_count",
+        "size",
+        "weight"
+      ],
+      "read_after_preregistration": true
+    },
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_block_families_known": true,
+    "exact_hbdc_incidence_known": false,
+    "exact_hbdc_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no block predicate, threshold, confirmation, embargo, side, clock, hold, RV20, subset, comparator, control, or gate repair",
+  "manifest_hash": "a0ddb66985b81e500b3d32a4c60683937d2564d866bb1aa4c6ea3038efed4432"
+}
