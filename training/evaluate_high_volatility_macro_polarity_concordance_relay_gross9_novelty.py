@@ -18,8 +18,8 @@ from training import (
 )
 
 
-POLICY = "HVMPC-8"
-PROTOCOL = "hvmpc_8_gross9_novelty_v1"
+POLICY = "HVMPC-24"
+PROTOCOL = "hvmpc_24_gross9_novelty_v1"
 PREREG = Path(
     "results/high_volatility_macro_polarity_concordance_relay_preregistration_2026-08-09.json"
 )

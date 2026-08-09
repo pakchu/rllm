@@ -38,5 +38,6 @@ def test_exact_clock_collision_fails_novelty() -> None:
 
 def test_preregistered_limit_names_are_bound_without_changing_metric_names() -> None:
     registration = novelty.load(novelty.PREREG)
+    assert novelty.POLICY == "HVMPC-24"
     assert registration["novelty_gates"]["occupied_5m_bar_jaccard_max"] == 0.25
     assert novelty.LIMITS["occupied_5m_bar_jaccard"] == 0.25
