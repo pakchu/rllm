@@ -1,4 +1,4 @@
-"""Freeze outcome-blind Yahoo daily QQQ/GLD source rows for HVRPC-24."""
+"""Freeze outcome-blind Yahoo daily SPY/TLT source rows for HVRPC-24."""
 from __future__ import annotations
 
 import argparse
