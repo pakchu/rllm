@@ -19,13 +19,13 @@ from training.download_bitcoin_block_summaries import (
 )
 
 
-BASE_URL = "https://blockstream.info/api"
+BASE_URL = "https://mempool.space/api/v1"
 START_HEIGHT = 795_000
 END_HEIGHT = 961_681
 OUTPUT = Path("data/fetls_block_summaries_2023_2026.csv.gz")
-CHECKPOINT = Path("data/.fetls_block_summaries_2023_2026.sqlite3")
+CHECKPOINT = Path("data/.fetls_block_summaries_2023_2026_mempool_v1.sqlite3")
 MANIFEST = Path("results/fetls_block_summaries_source_manifest_2026-08-09.json")
-PAGE_SIZE = 10
+PAGE_SIZE = 15
 COLUMNS = (
     "height", "id", "previousblockhash", "timestamp", "mediantime",
     "tx_count", "size", "weight",
@@ -53,7 +53,7 @@ def _validate_page(cursor: int, payload: list[dict]) -> list[dict]:
         raise RuntimeError("invalid Esplora page cardinality")
     rows = []
     for raw in payload:
-        if not isinstance(raw, dict) or frozenset(raw) != BLOCK_KEYS:
+        if not isinstance(raw, dict) or not BLOCK_KEYS.issubset(raw):
             raise RuntimeError("Esplora block schema drift")
         row = {key: raw[key] for key in COLUMNS}
         if (
@@ -130,7 +130,8 @@ def assemble() -> dict:
     digest = hashlib.sha256(OUTPUT.read_bytes()).hexdigest()
     core = {
         "protocol_version": "fetls_block_summaries_source_v1",
-        "official_api": "https://github.com/Blockstream/esplora/blob/master/API.md",
+        "official_api": "https://github.com/mempool/mempool/blob/master/docs/api/rest.md",
+        "transport": "https://mempool.space/api/v1/blocks/{height}",
         "start_height": START_HEIGHT,
         "end_height": END_HEIGHT,
         "rows": len(ordered),
@@ -148,7 +149,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
-    if not 1 <= args.workers <= 16:
-        raise ValueError("workers must be in [1,16]")
+    if not 1 <= args.workers <= 32:
+        raise ValueError("workers must be in [1,32]")
     download(args.workers)
     print(json.dumps(assemble(), indent=2))
