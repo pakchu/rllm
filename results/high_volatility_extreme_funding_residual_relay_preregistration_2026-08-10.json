@@ -1,0 +1,143 @@
+{
+  "protocol_version": "high_volatility_extreme_funding_residual_relay_v1",
+  "policy_id": "HVEFR-8",
+  "as_of_date": "2026-08-10",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "An actual BTCUSDT funding settlement far from its own causal rolling median identifies unusually one-sided leverage crowding. In elevated realized variation, fade the funding residual for the next inventory cycle.",
+    "side": "negative strict sign of current funding rate minus its strictly-prior 90-settlement median",
+    "why_distinct": "HVEFR uses the level residual at every actual settlement, not the failed fixed 00-to-08 acceleration contract, price/funding sign confirmation, cross-alt funding, OI, options volatility, or a prior diagnostic control.",
+    "volatile_market_target": "completed prior-24h BTC variation causal rank at least 0.65",
+    "why_low_gross9_overlap_is_plausible": "only extreme residual settlements survive two causal ranks and an eight-hour global reservation"
+  },
+  "features": {
+    "funding_source": "read-only funding_rates_binance BTCUSDT actual records",
+    "funding_median": "median of at most 90 strictly previous actual settlements, minimum 60; current excluded",
+    "funding_residual": "current funding_rate minus causal median, strict nonzero",
+    "residual_rank": "strict-prior midrank of absolute residual over at most 270 valid residuals, minimum 180; current excluded; rank>=0.75",
+    "btc_variation": "sqrt(sum squared exact completed 5m close-to-close BTC log returns over [settlement-24h,settlement))",
+    "variation_rank": "strict-prior midrank at actual settlement opportunities over at most 270 valid states, minimum 180; current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "actual funding_time after funding rate and prior BTC path are available",
+    "entry": "decision+5m exact BTCUSDT open",
+    "hold": "8 elapsed hours",
+    "side": "-sign(funding residual)",
+    "reservation": "chronological half-open nonoverlap; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "all exact settlements during held interval included only after novelty"
+  },
+  "policy": {
+    "funding_median_history": 90,
+    "funding_median_minimum": 60,
+    "residual_rank_history": 270,
+    "residual_rank_minimum": 180,
+    "residual_rank_min": 0.75,
+    "variation_history": 270,
+    "variation_minimum": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "no_residual_tail",
+      "raw_funding_sign_reversal",
+      "one_settlement_stale_residual",
+      "direction_flip",
+      "same_clock_forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "funding": {
+      "table": "funding_rates_binance",
+      "symbol": "BTCUSDT",
+      "actual_timestamps": true
+    },
+    "historical_market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "live_extension": "read-only Postgres BTCUSDT through 2026-08-01",
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_funding_family_outcomes_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "exact_hvefr_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent causal funding-level residual crowding mechanism"
+  },
+  "stopping_rule": "terminal first failure; no history, rank, residual, side, variation, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "ec2254ee8f283cee842e5dbad393ebc55ea8dfee9a63f8dedd827cefb07718ae"
+}
