@@ -12,6 +12,10 @@ def test_manifest_is_deterministic_and_outcome_blind():
     assert not first["gross9_rows_opened"]
     assert first["policy"]["range_rank_min"] == .65
     assert first["clock"]["hold"] == "24 elapsed hours"
+    assert set(first["diagnostic_controls"]["definitions"]) == {
+        "no_range_gate", "no_acceptance_gate", "central_close_rejection",
+        "sunday_only_geometry", "direction_flip", "same_clock_forced_long",
+    }
 
 
 def test_serialized_manifest_round_trip(tmp_path):

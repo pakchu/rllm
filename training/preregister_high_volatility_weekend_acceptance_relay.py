@@ -64,7 +64,17 @@ def build() -> dict[str, Any]:
         "novelty_gates": {"exact_entry_jaccard_max": .1, "candidate_near_6h_share_max": .35, "occupied_5m_bar_jaccard_max": .25, "absolute_signed_exposure_pearson_max": .35, "must_pass_before_economics": True},
         "economic_gates": {"absolute_return_positive": True, "cagr_to_strict_mdd_min": 3., "strict_mdd_max_pct": 15., "mean_gross_underlying_min_bp": 20., "weekly_signflip_one_sided_p_max": .1, "stress_absolute_return_positive": True, "stress_cagr_to_strict_mdd_min": 2.5, "each_calendar_half_positive": True, "stop_on_first_failure": True, "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"},
         "post_stage_volatility_audit": {"prerequisite": "unchanged candidate passes train, test, eval, final", "rv20_q90_entry_filter": False, "minimum_q90_trades": 8, "candidate_q90_absolute_return_positive": True, "identical_clock_forced_long_residual_positive": True},
-        "diagnostic_controls": {"names": ["no_range_gate", "no_acceptance_gate", "central_close_rejection", "sunday_only_geometry", "direction_flip", "same_clock_forced_long"], "cannot_be_promoted": True},
+        "diagnostic_controls": {
+            "definitions": {
+                "no_range_gate": "full-weekend directional acceptance without the range-rank gate",
+                "no_acceptance_gate": "range-ranked full weekend with any strict nonzero displacement, same displacement side",
+                "central_close_rejection": "primary range gate, close location in [0.40,0.60], opposite displacement side",
+                "sunday_only_geometry": "exact Sunday 00:00-Monday 00:00 range, displacement, acceptance, and its own strictly-prior weekend rank law",
+                "direction_flip": "negative primary side on the primary clock",
+                "same_clock_forced_long": "side +1 on the primary clock",
+            },
+            "cannot_be_promoted": True,
+        },
         "source_plan": {"historical_market": {"path": str(MARKET), "sha256": MARKET_SHA}, "live_extension": "read-only Postgres BTCUSDT 1m through 2026-08-01", "execution_prices": "sealed until source and novelty pass"},
         "research_boundary": {"prior_weekend_family_outcomes_known": True, "prior_event_sets_or_controls_reused": False, "exact_hvwar_incidence_or_outcomes_known": False, "candidate_incidence_opened": False, "postentry_return_or_pnl_opened": False, "gross9_rows_opened": False, "candidate_count": 1, "grid": False, "repair_of_prior_candidate": False, "promoted_prior_control": False, "selection_basis": "independent full-weekend terminal acceptance mechanism"},
         "stopping_rule": "terminal first failure; no weekend, rank, acceptance, side, clock, hold, subset, comparator, or control repair",
