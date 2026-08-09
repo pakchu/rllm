@@ -20,3 +20,8 @@ def test_rank_excludes_current_day():
     ranks = support.strict_prior_midrank(pd.Series(np.arange(127, dtype=float)))
     assert np.isnan(ranks.iloc[125])
     assert ranks.iloc[126] == 1.0
+
+
+def test_transport_parallelism_is_bounded():
+    assert support.FETCH_WORKERS == 4
+    assert support.PAGE_SIZE == 50

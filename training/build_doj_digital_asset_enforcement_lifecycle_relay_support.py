@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import gzip
 import hashlib
 import html
@@ -26,6 +27,7 @@ from training.build_binance_aggtrade_microstructure import _write_gzip_csv
 ENV_FILE = "/home/pakchu/rllm/.env"
 API = "https://www.justice.gov/api/v1/press_releases.json"
 PAGE_SIZE = 50
+FETCH_WORKERS = 4
 SCAN_START = pd.Timestamp("2023-01-01T00:00:00Z")
 END = pd.Timestamp("2026-08-01T00:00:00Z")
 BTC_START = pd.Timestamp("2022-12-30T22:00:00Z")
@@ -130,23 +132,30 @@ def download() -> tuple[list[dict[str, Any]], int]:
     previous_oldest: pd.Timestamp | None = None
     page = 0
     while True:
-        raw = fetch_page(page)
-        payload = json.loads(raw)
-        values = payload.get("results")
-        if not isinstance(values, list) or not values:
-            raise RuntimeError("DOJ API pagination ended before scan boundary")
-        dates = pd.to_datetime([int(item["date"]) for item in values], unit="s", utc=True)
-        newest, oldest = dates.max(), dates.min()
-        if previous_oldest is not None and newest > previous_oldest:
-            raise RuntimeError("DOJ API date ordering drift")
-        previous_oldest = oldest
-        raws.append(raw)
-        for item, stamp in zip(values, dates):
-            if stamp >= SCAN_START and stamp < END:
-                rows.append({**item, "publication_date": stamp.floor("D")})
-        if oldest < SCAN_START:
+        page_numbers = tuple(range(page, page + FETCH_WORKERS))
+        with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as executor:
+            batch = tuple(executor.map(fetch_page, page_numbers))
+        reached_boundary = False
+        for page_number, raw in zip(page_numbers, batch):
+            payload = json.loads(raw)
+            values = payload.get("results")
+            if not isinstance(values, list) or not values:
+                raise RuntimeError("DOJ API pagination ended before scan boundary")
+            dates = pd.to_datetime([int(item["date"]) for item in values], unit="s", utc=True)
+            newest, oldest = dates.max(), dates.min()
+            if previous_oldest is not None and newest > previous_oldest:
+                raise RuntimeError("DOJ API date ordering drift")
+            previous_oldest = oldest
+            raws.append(raw)
+            for item, stamp in zip(values, dates):
+                if stamp >= SCAN_START and stamp < END:
+                    rows.append({**item, "publication_date": stamp.floor("D")})
+            page = page_number + 1
+            if oldest < SCAN_START:
+                reached_boundary = True
+                break
+        if reached_boundary:
             break
-        page += 1
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     with RAW_ARCHIVE.open("wb") as target:
         with gzip.GzipFile(filename="", mode="wb", fileobj=target, mtime=0, compresslevel=9) as stream:
