@@ -1,0 +1,188 @@
+"""Outcome-blind preregistration for DFDPR-12."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+POLICY_ID = "DFDPR-12"
+SYMBOLS = ("EURUSD", "GBPUSD", "USDAUD", "USDCAD", "USDCHF", "USDJPY")
+DEFAULT_OUTPUT = Path("results/dollar_factor_dual_phase_relay_preregistration_2026-08-09.json")
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "dollar_factor_dual_phase_relay_v1",
+        "policy_id": POLICY_ID,
+        "as_of_date": "2026-08-09",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": (
+                "When robust canonical-dollar factors computed independently over the first and second "
+                "halves of the completed New York FX session have one common strict direction, global "
+                "dollar repricing has persisted rather than arrived as a terminal close shock. If BTC "
+                "variation is elevated and the weaker phase is still unusually large, inverse dollar "
+                "transmission should continue into BTC for twelve elapsed hours."
+            ),
+            "side": "opposite the common strict sign of the early and late dollar factors",
+            "why_distinct": (
+                "DFSR uses one full-session factor endpoint. HVDBR uses full-session sign breadth. "
+                "DFDPR forms two nonoverlapping six-pair standardized factors, requires directional "
+                "persistence, and ranks the weaker phase; it reuses no prior clock or diagnostic control."
+            ),
+            "volatile_market_target": "pre-decision BTC 24-hour realized-variation causal rank at least 0.65",
+            "why_low_gross9_overlap_is_plausible": "one sparse weekday 21:05 UTC dual-phase FX clock is absent from Gross9",
+        },
+        "features": {
+            "fx_source": "bars_polygon 1m rows for six frozen FX pairs on UTC weekdays",
+            "early_session": "13:00<=UTC time<17:00",
+            "late_session": "17:00<=UTC time<21:00",
+            "phase_valid": (
+                "each pair and phase has at least 225 distinct minutes, first no later than phase+5m, "
+                "last no earlier than phase end-5m, finite positive coherent OHLC; no imputation"
+            ),
+            "canonical_returns": (
+                "negative log return for EURUSD and GBPUSD; positive log return for USDAUD, USDCAD, "
+                "USDCHF, and USDJPY, independently by phase"
+            ),
+            "pair_zscores": (
+                "each pair-phase return standardized against at most 90 strictly prior valid same-phase "
+                "sessions, minimum 60, current excluded, prior sample std positive"
+            ),
+            "phase_factors": "cross-sectional median of the six finite pair z-scores independently by phase",
+            "persistence": "early and late factors are finite, strict nonzero, and have identical signs",
+            "weaker_phase_magnitude": "minimum of absolute early and late factor",
+            "persistence_rank": (
+                "strict-prior midrank of weaker-phase magnitude over at most 90 prior valid persistent "
+                "sessions, minimum 60, current excluded; rank>=0.60"
+            ),
+            "btc_realized_variation": "sqrt(sum squared exact completed hourly BTC returns over 24h ending 21:00)",
+            "variation_rank": (
+                "strict-prior midrank over at most 90 valid weekday decisions, minimum 60, current excluded; rank>=0.65"
+            ),
+            "no_imputation": True,
+        },
+        "clock": {
+            "decision": "exact weekday 21:00 UTC after both FX phases and BTC variation complete",
+            "entry": "exact BTCUSDT 21:05 UTC open",
+            "hold": "12 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding_oi_premium_rv20": "not signal inputs; exact funding after novelty; RV20 q90 only after all economics pass",
+        },
+        "policy": {
+            "pair_prior_sessions": 90,
+            "pair_prior_min_sessions": 60,
+            "persistence_prior_sessions": 90,
+            "persistence_prior_min_sessions": 60,
+            "persistence_rank_min": 0.60,
+            "variation_rank_min": 0.65,
+            "entry_delay_minutes": 5,
+            "hold_hours": 12,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.2,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.1,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.1,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held "
+                "5m favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged candidate passes train, test, eval, final",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_persistence_rank",
+                "no_variation_gate",
+                "early_factor_only",
+                "late_factor_only",
+                "one_session_stale_phases",
+                "direction_flip",
+                "same_clock_forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "fx": {"table": "bars_polygon", "symbols": list(SYMBOLS), "interval": "1m", "read_only": True},
+            "btc": "hash-bound completed-hour source through 2026-08-01",
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "prior_full_session_fx_candidate_incidence_and_outcomes_known": True,
+            "dual_phase_values_used_to_select_rule": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": "independent two-phase global-dollar persistence transmission mechanism",
+        },
+        "stopping_rule": (
+            "terminal first failure; no pair, phase, persistence, rank, threshold, variation, side, timing, "
+            "hold, subset, comparator, or control repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(payload: dict[str, Any]) -> None:
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    if payload.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("DFDPR preregistration drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    validate(result)
+    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
+    print(args.output)
