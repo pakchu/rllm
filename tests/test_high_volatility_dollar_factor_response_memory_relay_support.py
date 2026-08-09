@@ -54,6 +54,15 @@ def test_stale_control_omits_latest_but_keeps_up_to_32_older_labels():
     assert last.memory_mean_response == 1
 
 
+def test_no_variation_control_still_requires_a_valid_nonzero_factor():
+    scores = synthetic_scores()
+    scores.loc[23, ["valid_factor", "eligible"]] = False
+    scores.loc[23, "dollar_factor"] = np.nan
+    state = support.causal_state(scores, "no_variation_gate")
+    assert not state.iloc[-1].active
+    assert state.iloc[-1].side == 0
+
+
 def test_strict_prior_variation_rank_excludes_current():
     decision = pd.date_range("2023-01-03 21:00", periods=61, freq="D", tz="UTC")
     times = pd.date_range(decision[0] - pd.Timedelta(hours=24), decision[-1] + pd.Timedelta(hours=13), freq="5min")

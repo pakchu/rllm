@@ -112,6 +112,8 @@ def causal_state(scores: pd.DataFrame, control: str = "primary") -> pd.DataFrame
         if control == "one_observation_stale_memory" and prior:
             prior = prior[:-1]
         used = prior[-32:]
+        if control == "no_variation_gate" and not bool(row.valid_factor):
+            continue
         if control != "no_variation_gate" and not bool(row.eligible):
             continue
         if len(used) < 20:
