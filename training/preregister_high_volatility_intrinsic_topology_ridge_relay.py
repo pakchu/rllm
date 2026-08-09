@@ -1,0 +1,209 @@
+"""Outcome-sequenced preregistration for HVITR-8."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_OUTPUT = Path(
+    "results/high_volatility_intrinsic_topology_ridge_relay_preregistration_2026-08-10.json"
+)
+FEATURES = (
+    "normalized_full_return",
+    "normalized_late_return",
+    "variation_rank",
+    "temporal_rank_concordance",
+    "directional_change_density_0p5",
+    "directional_change_density_1p0",
+    "directional_change_density_2p0",
+    "semivariance_balance",
+    "absolute_return_autocorrelation",
+    "low_frequency_share",
+    "close_location",
+)
+
+
+def canonical_hash(payload: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "high_volatility_intrinsic_topology_ridge_relay_v1",
+        "policy_id": "HVITR-8",
+        "as_of_date": "2026-08-10",
+        "oos_outcomes_opened": False,
+        "oos_source_incidence_opened": False,
+        "pretraining_outcomes_authorized_after_preregistration": True,
+        "gross9_rows_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": (
+                "Continuation versus reversal in a volatile BTC block depends on the joint topology of "
+                "direction, monotonic ordering, intrinsic-time reversals, semivariance, serial dependence, "
+                "frequency allocation, and terminal range location. One fixed ridge trained only on "
+                "2021-2022 labels estimates the next eight-hour direction without OOS adaptation."
+            ),
+            "side": "strict sign of the frozen ridge prediction",
+            "why_distinct": (
+                "HVITR combines eleven scale-free price-topology features through one fixed linear shrinkage "
+                "model. HVMRR used flow, basis and clock features with a six-hour label; prior handcrafted "
+                "topology candidates each gated one statistic. HVITR reuses no event set, threshold, control, "
+                "or OOS outcome and uses no volume, flow, funding, OI, cross-asset or calendar input."
+            ),
+            "why_suited_to_volatile_regimes": (
+                "OOS trades require the causal eight-hour variation rank to be at least 0.65"
+            ),
+            "why_low_gross9_overlap_is_plausible": (
+                "a sparse fixed-boundary multiscale intrinsic-topology score is absent from Gross9"
+            ),
+        },
+        "training_contract": {
+            "source_window": ["2020-04-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+            "label_window": ["2021-01-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+            "decisions": "exact 00:00/08:00/16:00 UTC completed boundaries",
+            "label": "log(exit_open/entry_open), entry=D+5m, exit=entry+8 elapsed hours",
+            "training_rows": "all source-valid decisions with finite ordered features and complete label",
+            "standardization": "population mean/std on training rows only; reject nonfinite or zero scale",
+            "estimator": "closed-form ridge with intercept, standardized features, alpha=100.0",
+            "sample_weight": "none",
+            "hyperparameter_grid": False,
+            "feature_selection": False,
+            "refit_after_2022_12_31": False,
+            "prediction_strength_threshold": (
+                "strict empirical 0.75 quantile of absolute fitted predictions among training rows with "
+                "variation_rank>=0.65"
+            ),
+            "model_artifact_must_be_frozen_before_oos_incidence": True,
+        },
+        "feature_contract": {
+            "ordered_features": list(FEATURES),
+            "block": "480 exact coherent BTCUSDT bars_binance interval=1m rows [D-8h,D)",
+            "returns": "479 close-to-close log returns; realized variation is sqrt(sum squared returns)",
+            "normalized_returns": "full and final-two-hour returns divided by realized variation",
+            "variation_rank": "strict-prior midrank over at most 270 valid blocks, minimum 180, current excluded",
+            "temporal_rank_concordance": "Spearman correlation of fixed minute order and 480 log-close levels",
+            "directional_change_densities": (
+                "reversal counts divided by 478 from three close-path state machines whose fixed thresholds "
+                "are 0.5, 1.0 and 2.0 times the block RMS minute return"
+            ),
+            "semivariance_balance": "(sum positive-return squares - sum negative-return squares)/sum all squares",
+            "absolute_return_autocorrelation": "absolute lag-one Pearson correlation of absolute minute returns",
+            "low_frequency_share": "rfft demeaned-return energy bins 1..8 divided by all positive-frequency energy",
+            "close_location": "2*(last close-block low)/(block high-block low)-1",
+            "no_imputation": True,
+        },
+        "oos_clock": {
+            "start": "2023-07-01T00:00:00Z",
+            "eligibility": (
+                "source valid, variation_rank>=0.65, frozen prediction finite/nonzero, and absolute prediction "
+                ">= frozen training q75"
+            ),
+            "entry": "D+5m BTCUSDT open",
+            "side": "sign of frozen prediction",
+            "hold": "8 elapsed hours",
+            "reservation": "fixed boundaries are naturally half-open; exit first on equal open",
+            "funding": "not a signal input; exact settlements only after novelty passes",
+        },
+        "policy": {
+            "history_blocks": 270,
+            "minimum_history_blocks": 180,
+            "variation_rank_min": 0.65,
+            "ridge_alpha": 100.0,
+            "prediction_strength_quantile": 0.75,
+            "entry_delay_minutes": 5,
+            "hold_hours": 8,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.2,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.1,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.1,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held "
+                "5m favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged candidate passes train, test, eval, final",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_volatility_gate",
+                "no_prediction_strength_gate",
+                "one_boundary_stale_features",
+                "direction_flip",
+                "forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "table": "bars_binance",
+            "symbol": "BTCUSDT",
+            "interval": "1m",
+            "columns": ["ts", "open", "high", "low", "close"],
+            "oos_execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "prior_rule_and_model_family_outcomes_known": True,
+            "prior_event_sets_or_controls_promoted": False,
+            "oos_outcomes_used_to_fit_select_or_threshold_hvitr": False,
+            "oos_candidate_incidence_opened": False,
+            "oos_post_entry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": "single pre-2023 intrinsic-topology ridge specified before its labels are opened",
+        },
+        "stopping_rule": (
+            "Freeze preregistration, model, OOS source support, Gross9 novelty, then strict economics; "
+            "terminal first failure with no feature, alpha, threshold, side, hold, clock, subset, or control repair."
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    args.output.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
+    print(args.output)
