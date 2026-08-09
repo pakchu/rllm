@@ -24,3 +24,9 @@ def test_bulk_url_has_both_causal_vintages():
     url = build.bulk_url([date(2020, 1, 4)])
     assert "id=ICSA,ICSA" in url
     assert "vintage_date=2020-01-09,2020-01-16" in url
+
+
+def test_six_adjacent_references_fit_seven_unique_vintage_columns():
+    references = build.saturdays(date(2020, 1, 4), date(2020, 2, 8))
+    vintages = build.bulk_url(references).split("vintage_date=", 1)[1].split(",")
+    assert len(set(vintages)) == 7

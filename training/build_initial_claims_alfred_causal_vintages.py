@@ -73,12 +73,14 @@ def fetch_bulk(references: list[date], attempts: int = 5) -> tuple[list[dict[str
         try:
             with urllib.request.urlopen(request, timeout=120) as response:
                 payload = response.read()
-            return parse_bulk(payload, references), url, sha256(payload)
-        except Exception:
+            break
+        except (OSError, TimeoutError):
             if attempt + 1 == attempts:
                 raise
             time.sleep(10 * 2**attempt)
-    raise AssertionError("unreachable")
+    else:
+        raise AssertionError("unreachable")
+    return parse_bulk(payload, references), url, sha256(payload)
 
 
 def canonical_hash(value: object) -> str:
@@ -118,7 +120,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
-    parser.add_argument("--chunk-size", type=int, default=20)
+    # ALFRED's graph endpoint emits at most seven distinct vintage columns.
+    # Six adjacent weekly references need seven unique columns because each
+    # first-print vintage is the preceding observation's revision vintage.
+    parser.add_argument("--chunk-size", type=int, default=6)
     args = parser.parse_args()
     references = saturdays(FIRST_REFERENCE, LAST_REFERENCE)
     rows: list[dict[str, object]] = []
