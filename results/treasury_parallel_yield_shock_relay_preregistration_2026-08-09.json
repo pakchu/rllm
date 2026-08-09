@@ -1,0 +1,115 @@
+{
+  "protocol_version": "treasury_parallel_yield_shock_relay_v1",
+  "policy_id": "TPYSR-24",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A same-direction standardized daily shock in both the two-year and ten-year US Treasury par yields is a broad duration repricing rather than an isolated curve-point move. During high BTC variation, rising yields tighten the discount-rate/liquidity environment and map short BTC, while falling yields map long BTC for the next day.",
+    "side": "opposite strict sign of the median standardized two-year and ten-year yield changes",
+    "why_distinct": "No existing repository candidate uses DGS2/DGS10 or the official Treasury 2y/10y daily par-yield pair. Treasury auction candidates use issuance-event demand, SOFR candidates use money-market dislocation, and FX candidates use currency returns. TPYSR is a continuous duration-factor transmission mechanism, not a repair or diagnostic control.",
+    "why_suited_to_volatile_regimes": "the completed pre-entry BTC 24-hour realized variation must rank in its causal upper 35%.",
+    "why_low_gross9_overlap_is_plausible": "one sparse D+1 sovereign-duration shock clock is absent from Gross9 primitives."
+  },
+  "features": {
+    "source": "official US Treasury Daily Treasury Par Yield Curve Rates XML feed",
+    "source_url_template": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value={year}",
+    "observation": "official 2-year and 10-year par yields for Treasury observation date D",
+    "availability": "conservatively D+1 00:00 UTC; no same-date use",
+    "valid_transition": "current and previous official observations both finite positive and separated by 1 to 5 calendar days",
+    "yield_changes": "delta2=2y[D]-2y[previous], delta10=10y[D]-10y[previous], both strict nonzero with identical sign",
+    "standardization": "each tenor change standardized independently against at most 90 strictly prior valid changes, minimum 60, current excluded, sample std positive",
+    "parallel_factor": "cross-sectional median of the two standardized changes; strict nonzero",
+    "factor_rank": "strict-prior midrank of abs(parallel_factor) over at most 90 valid factors, minimum 60, current excluded; rank>=0.70",
+    "btc_realized_variation": "sqrt(sum squared exact completed hourly BTC log returns over [decision-24h,decision))",
+    "volatility_rank": "strict-prior midrank over at most 90 valid Treasury decisions, minimum 60, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact D+1 00:00 UTC",
+    "entry": "exact D+1 00:05 UTC BTCUSDT open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "two_year_only",
+      "ten_year_only",
+      "no_factor_tail",
+      "no_volatility_gate",
+      "one_observation_stale_factor",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "source_plan": {
+    "treasury": "download and hash-bind official annual XML feeds for 2023-2026 only after this preregistration commit",
+    "completed_btc": "hash-bound completed-hour BTC source through 2026-08-01",
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_macro_and_fx_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_tpysr_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent official sovereign-duration factor transmission"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no tenor, rank, side, hold, availability, volatility, or subset repair.",
+  "manifest_hash": "7578c3c6d2a516e2fd9c6d12999b8ff4772a22a4c8d020c2c1621e769dba2ac4"
+}
