@@ -17,7 +17,7 @@
     "decision_grid": "exact 00:00/08:00/16:00 UTC boundaries",
     "block": "480 exact coherent BTCUSDT bars_binance interval=1m rows [D-8h,D)",
     "returns": "479 close-to-close log returns aligned to bars 2..480",
-    "flow_imbalance": "(2*taker_buy_quote_asset_volume-quote_asset_volume)/quote_asset_volume for aligned bars; denominator strict positive",
+    "flow_imbalance": "(2*taker_buy_quote-quote_asset_volume)/quote_asset_volume for aligned bars; denominator strict positive",
     "ternary_states": "return and flow observations are independently assigned stable empirical rank bins floor(3*rank_index/n), capped at 2; all observations retained and ties ordered by time",
     "normalized_mutual_information": "sum p_ij*log(p_ij/(p_i*p_j)) divided by min(H(return_state),H(flow_state)); all nine cells use completed-block empirical frequencies and denominator must be positive",
     "mutual_information_rank": "strict-prior midrank over at most 270 valid blocks, minimum 180, current excluded; rank>=0.75",
@@ -150,5 +150,5 @@
     "selection_basis": "fixed ternary return-flow normalized mutual information"
   },
   "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no formula, rank, side, hold, clock, subset, or control repair.",
-  "manifest_hash": "c3856d886e670805296194007e03ec770ec835f4d7c8aa9638479a102438ba03"
+  "manifest_hash": "a627e5818e0f49e201713891ed37fdab8575dd941cf15cd6c64c815cadf83c2c"
 }

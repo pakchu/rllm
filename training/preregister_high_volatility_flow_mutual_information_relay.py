@@ -56,7 +56,7 @@ def build() -> dict[str, Any]:
             "decision_grid": "exact 00:00/08:00/16:00 UTC boundaries",
             "block": "480 exact coherent BTCUSDT bars_binance interval=1m rows [D-8h,D)",
             "returns": "479 close-to-close log returns aligned to bars 2..480",
-            "flow_imbalance": "(2*taker_buy_quote_asset_volume-quote_asset_volume)/quote_asset_volume for aligned bars; denominator strict positive",
+            "flow_imbalance": "(2*taker_buy_quote-quote_asset_volume)/quote_asset_volume for aligned bars; denominator strict positive",
             "ternary_states": (
                 "return and flow observations are independently assigned stable empirical rank bins "
                 "floor(3*rank_index/n), capped at 2; all observations retained and ties ordered by time"
