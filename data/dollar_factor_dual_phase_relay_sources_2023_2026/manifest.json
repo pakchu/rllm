@@ -1,0 +1,46 @@
+{
+  "protocol_version": "dfdpr_12_dual_phase_fx_source_v1",
+  "query": "SELECT date_trunc('day',ts) AS source_day,CASE WHEN extract(hour from ts)<17 THEN 'early' ELSE 'late' END AS phase,(array_agg(open ORDER BY ts))[1] AS phase_open,max(high) AS phase_high,min(low) AS phase_low,(array_agg(close ORDER BY ts DESC))[1] AS phase_close,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_polygon WHERE symbol=:symbol AND interval='1m' AND ts>=:start AND ts<:end AND extract(isodow from ts) BETWEEN 1 AND 5 AND extract(hour from ts)>=13 AND extract(hour from ts)<21 GROUP BY 1,2 ORDER BY 1,2",
+  "table": "bars_polygon",
+  "symbols": [
+    "EURUSD",
+    "GBPUSD",
+    "USDAUD",
+    "USDCAD",
+    "USDCHF",
+    "USDJPY"
+  ],
+  "phases_utc": {
+    "early": [
+      13,
+      17
+    ],
+    "late": [
+      17,
+      21
+    ]
+  },
+  "canonical_dollar_multipliers": {
+    "EURUSD": -1.0,
+    "GBPUSD": -1.0,
+    "USDAUD": 1.0,
+    "USDCAD": 1.0,
+    "USDCHF": 1.0,
+    "USDJPY": 1.0
+  },
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/dollar_factor_dual_phase_relay_sources_2023_2026/dollar_factor_dual_phase_sessions.csv.gz",
+    "sha256": "2110f2965aaf49a09ad3c6776be2c637cb80b6db97c7c5f84a363ad0d92e02c9",
+    "rows": 929,
+    "valid_rows": 903
+  },
+  "manifest_hash": "451381dd7766dcf79651f0ad312459e32ba0af5805fe308559ad8ce2c624db09"
+}
