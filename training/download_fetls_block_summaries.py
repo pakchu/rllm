@@ -166,7 +166,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
-    if not 1 <= args.workers <= 32:
-        raise ValueError("workers must be in [1,32]")
+    if not 1 <= args.workers <= 64:
+        raise ValueError("workers must be in [1,64]")
     download(args.workers)
     print(json.dumps(assemble(), indent=2))
