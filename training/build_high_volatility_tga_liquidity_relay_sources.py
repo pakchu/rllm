@@ -66,7 +66,9 @@ def parse(raw: bytes) -> tuple[pd.DataFrame, dict[str, Any]]:
     valid = frame.record_date.notna() & np.isfinite(frame.tga_close_millions) & frame.tga_close_millions.gt(0)
     if frame.empty or not valid.all() or frame.record_date.duplicated().any():
         raise RuntimeError("HVTGAL invalid or duplicate official rows")
-    if frame.record_date.iloc[0] > pd.Timestamp("2020-01-02") or frame.record_date.iloc[-1] < pd.Timestamp("2026-07-24"):
+    # Treasury introduced the explicit TGA Closing Balance account label on
+    # 2022-04-18; older rows use a different aggregate account taxonomy.
+    if frame.record_date.iloc[0] != pd.Timestamp("2022-04-18") or frame.record_date.iloc[-1] < pd.Timestamp("2026-07-24"):
         raise RuntimeError("HVTGAL official coverage drift")
     meta = payload.get("meta") or {}
     return frame, {"response_rows": len(data), "selected_rows": len(frame), "meta_total_count": meta.get("total-count"), "first_record_date": str(frame.record_date.iloc[0].date()), "last_record_date": str(frame.record_date.iloc[-1].date())}
