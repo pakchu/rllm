@@ -1,0 +1,25 @@
+{
+  "protocol_version": "hvpasr_12_sources_v1",
+  "queries": {
+    "premium_daily": "\nWITH minute_path AS (\n SELECT ts, date_trunc('day',ts) AS source_day, close,\n        lag(close) OVER (PARTITION BY date_trunc('day',ts) ORDER BY ts) AS previous_close\n FROM bars_binance_premium\n WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\n)\nSELECT source_day, count(*) AS source_rows, count(DISTINCT ts) AS distinct_timestamps,\n       min(ts) AS first_ts, max(ts) AS last_ts,\n       sum(abs(close-previous_close)) FILTER (WHERE previous_close IS NOT NULL) AS premium_total_variation,\n       count(previous_close) AS adjacent_pairs\nFROM minute_path GROUP BY source_day ORDER BY source_day\n",
+    "btc_daily": "\nWITH five_minute AS (\n SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS bar_time,\n        (array_agg(open ORDER BY ts))[1] AS open, max(high) AS high, min(low) AS low,\n        (array_agg(close ORDER BY ts DESC))[1] AS close, count(*) AS source_rows\n FROM bars_binance\n WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\n GROUP BY 1\n)\nSELECT date_trunc('day',bar_time) AS source_day, count(*) AS bars_5m,\n       sum(source_rows) AS source_rows_1m, min(bar_time) AS first_bar, max(bar_time) AS last_bar,\n       (array_agg(open ORDER BY bar_time))[1] AS day_open,\n       (array_agg(close ORDER BY bar_time DESC))[1] AS day_close,\n       sqrt(sum(power(ln(close/open),2))) AS btc_realized_variation,\n       bool_and(source_rows=5 AND open>0 AND high>=greatest(open,close,low)\n                AND low<=least(open,close,high) AND close>0) AS coherent\nFROM five_minute GROUP BY 1 ORDER BY 1\n"
+  },
+  "tables": [
+    "bars_binance_premium",
+    "bars_binance"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "features": {
+    "path": "data/high_volatility_premium_activity_sponsorship_relay_sources_2023_2026/daily_preentry_features.csv.gz",
+    "sha256": "52c590788aeecdae03b9821906b6b9061ba9ef6c33ee3115452fe7ea1bc8cb78",
+    "rows": 1308,
+    "valid_rows": 1306
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "7f0e813e71aca8f8e23059c7d229573c444aed6fc403b08c15f04da9b4a821f2"
+}
