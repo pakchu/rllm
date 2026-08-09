@@ -13,6 +13,11 @@ from urllib.request import urlopen
 import numpy as np
 import pandas as pd
 
+if __package__ in (None, ""):
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from training import preregister_treasury_parallel_yield_shock_relay as prereg
 from training.build_binance_aggtrade_microstructure import _write_gzip_csv
 
