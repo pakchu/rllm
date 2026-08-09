@@ -1,0 +1,140 @@
+{
+  "protocol_version": "high_volatility_serial_autocorrelation_relay_v1",
+  "policy_id": "HVSAR-12",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In an unusually volatile completed twelve-hour BTC path, an extreme positive lag-one correlation of five-minute returns indicates persistent order splitting, whereas an extreme negative correlation indicates alternating liquidity repair. The same completed displacement should therefore continue in the positive state and reverse in the negative state over the next twelve hours.",
+    "side": "sign of the completed twelve-hour return multiplied by the strict sign of its lag-one five-minute return autocorrelation",
+    "why_distinct": "HVVRR measures fine-versus-coarse variance non-additivity and always fades; HVSER measures the unconditional sign distribution and always follows; HVCRMR learns from previous post-event responses. HVSAR uses only within-path ordered return products and lets their contemporaneously completed serial-dependence sign choose continuation or reversal. It reuses no terminal event set, control, threshold, or outcome.",
+    "why_suited_to_volatile_regimes": "both completed realized variation and absolute serial dependence must be in causal upper tails",
+    "why_low_gross9_overlap_is_plausible": "sparse twelve-hour serial-dependence tail clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 00:00 and 12:00 UTC boundaries",
+    "path": "144 exact consecutive completed five-minute close-to-close log returns in [decision-12h,decision), requiring 145 contiguous finite positive closes",
+    "completed_return": "sum of the 144 returns; strict nonzero",
+    "realized_variation": "sqrt(sum of squared 144 returns)",
+    "lag_one_autocorrelation": "Pearson correlation between returns[1:] and returns[:-1]; both vectors must have strictly positive sample standard deviation",
+    "causal_ranks": "strict-prior midranks of realized variation and absolute lag-one autocorrelation over at most 270 earlier source-valid boundaries, minimum 252; current excluded",
+    "eligibility": "realized-variation rank>=0.70 and absolute-autocorrelation rank>=0.75; completed return and autocorrelation are strict nonzero",
+    "no_imputation": true,
+    "grid": false
+  },
+  "clock": {
+    "decision": "exact boundary after the entire twelve-hour path is complete",
+    "entry": "exact BTCUSDT decision+5m open",
+    "side": "sign(completed_return)*sign(lag_one_autocorrelation)",
+    "hold": "12 elapsed hours",
+    "reservation": "fixed opportunities are naturally half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "funding_oi_premium_implied_vol_rv20": "not signal inputs; exact funding only after novelty; RV20 q90 only after all economic stages pass"
+  },
+  "policy": {
+    "return_bars": 144,
+    "prior_boundaries": 270,
+    "prior_min_boundaries": 252,
+    "variation_rank_min": 0.7,
+    "absolute_autocorrelation_rank_min": 0.75,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "no_autocorrelation_tail_gate",
+      "one_boundary_stale_features",
+      "fixed_momentum",
+      "fixed_reversal",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "source_plan": {
+    "historical": "hash-bound completed BTCUSDT five-minute cache through 2026-06-01",
+    "live_extension": "read-only Postgres completed bars through 2026-08-01",
+    "columns": [
+      "date",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_path_family_outcomes_known": true,
+    "prior_candidate_events_or_controls_reused": false,
+    "prior_candidate_outcomes_used_to_set_hvsar_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "ordered-return serial-dependence mechanism"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no path, rank, sign, hold, clock, subset, threshold, or control repair.",
+  "manifest_hash": "6e142c4d804a5cc23294b6e5b114547247ff1be3523241e49857ad6416165cbb"
+}
