@@ -1,0 +1,37 @@
+{
+  "protocol_version": "hvsmam_24_source_materialization_v1",
+  "preregistration": {
+    "path": "results/high_volatility_sha256_miner_allocation_migration_relay_preregistration_2026-08-10.json",
+    "sha256": "c5036695ec4d2e9b61c11cd6d813545efa5b704a4d2431918f05f85b3ca89461",
+    "manifest_hash": "70e7a8b71ec2f4e2c135f28c38e4e4ed2aed3809c11b0549aa81706900cc25a1"
+  },
+  "transport": {
+    "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc%2Cbch&metrics=HashRate%2CBlkCnt%2CAssetEODCompletionTime&frequency=1d&start_time=2023-01-01&end_time=2026-07-31&page_size=10000",
+    "pages": [
+      {
+        "url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc%2Cbch&metrics=HashRate%2CBlkCnt%2CAssetEODCompletionTime&frequency=1d&start_time=2023-01-01&end_time=2026-07-31&page_size=10000",
+        "rows": 2616,
+        "response_sha256": "43a6e8cffc795905cb2af926276b3368120666c06d16a59b91496c355230d3a9"
+      }
+    ],
+    "page_count": 1,
+    "raw_rows": 2616
+  },
+  "pair_panel": {
+    "path": "data/high_volatility_sha256_miner_allocation_migration_relay_sources_2023_2026/btc_bch_hashrate_daily.csv.gz",
+    "sha256": "49bcca2d925e2ba5ce92e2c3be29c70dd2443b8e5b418eba7dfce47e648cd370",
+    "rows": 1308
+  },
+  "bars_query": "\nSELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+  "bars_rows": 1883520,
+  "feature_panel": {
+    "path": "data/high_volatility_sha256_miner_allocation_migration_relay_sources_2023_2026/daily_feature_panel.csv.gz",
+    "sha256": "a4c1e912c89c9001eb780d03296fc2041e62c380b906f3908a3ff0d714f5e335",
+    "rows": 1308,
+    "valid_rows": 1308
+  },
+  "no_imputation": true,
+  "oos_postentry_return_pnl_execution_price_opened": false,
+  "gross9_rows_opened": false,
+  "manifest_hash": "0182a9b06e6aa7691b9e125ea1d92601d990abb838d46a47a3eb66bb3d6f9be5"
+}
