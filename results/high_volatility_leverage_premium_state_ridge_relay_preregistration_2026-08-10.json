@@ -1,0 +1,173 @@
+{
+  "protocol_version": "high_volatility_leverage_premium_state_ridge_relay_v1",
+  "policy_id": "HVLPSR-8",
+  "as_of_date": "2026-08-10",
+  "oos_outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "pretraining_outcomes_authorized_after_preregistration": true,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In a volatile completed BTC block, leveraged inventory accumulation or liquidation has different continuation odds depending on OI path efficiency, OI terminal location and perpetual premium dislocation; one fixed pre-2023 ridge estimates that state-dependent next-eight-hour direction.",
+    "side": "strict sign of frozen ridge prediction",
+    "why_distinct": "HVLPSR is an eight-hour multivariate inventory-and-premium state model. It does not use the prior OI lead correlation, purge rule, their event sets, their diagnostic controls, or any opened economic outcome; common comparison gates remain unchanged.",
+    "volatile_market_target": "causal eight-hour variation rank>=0.65",
+    "why_low_gross9_overlap_is_plausible": "continuous OI-path and premium-state prediction is absent from Gross9"
+  },
+  "training_contract": {
+    "source_window": [
+      "2020-09-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "label_window": [
+      "2021-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "decisions": "exact 00:00/08:00/16:00 UTC completed boundaries",
+    "label": "log(exit_open/entry_open), entry=D+5m, exit=entry+8h; exit strictly before label-window end",
+    "training_rows": "all source-valid rows with finite ordered features and complete labels",
+    "standardization": "population mean/std on training rows only; reject nonfinite or zero scale",
+    "estimator": "closed-form standardized ridge with intercept alpha=100",
+    "prediction_strength_threshold": "numpy linear-method q75 of absolute fitted predictions among training rows variation_rank>=0.65; OOS uses >=",
+    "hyperparameter_grid": false,
+    "feature_selection": false,
+    "refit_after_2022_12_31": false,
+    "model_frozen_before_oos_incidence": true
+  },
+  "feature_contract": {
+    "ordered_features": [
+      "normalized_full_return",
+      "normalized_late_return",
+      "variation_rank",
+      "full_oi_log_change",
+      "late_oi_log_change",
+      "oi_path_efficiency",
+      "oi_change_variation",
+      "oi_terminal_location",
+      "full_premium_mean",
+      "late_premium_mean",
+      "terminal_premium",
+      "premium_change",
+      "premium_range",
+      "return_oi_sponsorship",
+      "return_premium_dislocation"
+    ],
+    "price": "480 exact coherent bars_binance 1m rows [D-8h,D); 96 exact aggregated 5m log(close/open) returns",
+    "premium": "480 exact coherent bars_binance_premium 1m rows [D-8h,D); close values only",
+    "open_interest": "97 exact unique positive open_interest_binance BTCUSDT period=5m source=open_interest_hist rows [D-8h-5m,D), yielding 96 log changes",
+    "normalized_returns": "full and final-two-hour price returns divided by sqrt(sum 96 squared 5m returns)",
+    "variation_rank": "strict-prior midrank over <=270 valid blocks, minimum180, current excluded",
+    "oi_features": "full/last24-change log sums; abs(full)/sum(abs changes); sqrt(sum squared changes); 2*(last-min)/(max-min)-1",
+    "premium_features": "full mean, final-two-hour mean, terminal close, terminal-minus-first close, max-minus-min",
+    "interactions": "normalized_full_return*full_oi_log_change and normalized_full_return*premium_change",
+    "source_validity": "exact timestamps, no duplicates/imputation, finite positive coherent price/premium OHLC, positive OI, all denominators positive"
+  },
+  "oos_clock": {
+    "start": "2023-07-01T00:00:00Z",
+    "eligibility": "source valid, variation_rank>=0.65, frozen prediction finite/nonzero, abs prediction>=frozen q75",
+    "entry": "D+5m BTCUSDT open",
+    "side": "sign prediction",
+    "hold": "8 elapsed hours",
+    "reservation": "fixed boundaries half-open; exit first on equal open",
+    "funding": "not input; exact settlements only after novelty"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "variation_rank_min": 0.65,
+    "ridge_alpha": 100.0,
+    "prediction_strength_quantile": 0.75,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable-then-adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged passes all stages",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_prediction_strength_gate",
+      "one_boundary_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "tables": [
+      "bars_binance",
+      "bars_binance_premium",
+      "open_interest_binance"
+    ],
+    "read_only": true,
+    "execution_prices": "sealed until source and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_oi_source_incidence_known": true,
+    "prior_oi_economic_outcomes_opened": false,
+    "prior_event_sets_or_controls_promoted": false,
+    "candidate_specific_prediction_and_incidence_opened": false,
+    "oos_postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "selection_basis": "new continuous leverage-premium state model specified before its labels or candidate incidence"
+  },
+  "stopping_rule": "freeze prereg, model, source support, novelty, economics; terminal first failure; no feature/alpha/threshold/side/hold/clock/subset/control repair",
+  "manifest_hash": "6cd6645a1e5380cef3308e24fbb1a08d15f5b8148e3b5d221da26363df33ae09"
+}
