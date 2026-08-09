@@ -1,0 +1,170 @@
+{
+  "protocol_version": "high_volatility_funding_premium_state_classifier_v1",
+  "policy_id": "HVFPSC-8",
+  "as_of_date": "2026-08-10",
+  "oos_outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "pretraining_outcomes_authorized_after_preregistration": true,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Immediately after a scheduled BTC perpetual funding settlement in a volatile regime, continuation versus crowding reversal depends on the level, change and acceleration of the last three funding rates jointly with the completed premium path; one fixed pre-2023 classifier estimates the next-eight-hour sign.",
+    "side": "strict sign frozen score",
+    "why_distinct": "HVFPSC uses a continuous scheduled funding/premium state model, not an extreme-funding event, funding residual rank, settlement ignition/cooling rule, OI rule, ordinal dynamics, or any prior event/control outcome.",
+    "volatile_market_target": "causal completed-block variation rank>=0.65",
+    "why_low_gross9_overlap_is_plausible": "scheduled post-funding 8h state classification is absent from Gross9"
+  },
+  "training_contract": {
+    "source_window": [
+      "2020-04-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "label_window": [
+      "2021-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "decisions": "exact funding_time rows on 00:00/08:00/16:00 UTC; funding at D is available at D and entry is D+5m",
+    "label": "strict sign log(exit_open/entry_open), exit=entry+8h strictly before label end; zero rejected",
+    "standardization": "population mean/std training only",
+    "estimator": "closed-form standardized ridge classifier targets {-1,+1}, intercept, alpha100",
+    "score_threshold": "numpy linear q60 absolute fitted score among high-vol training rows; OOS uses >=",
+    "hyperparameter_grid": false,
+    "feature_selection": false,
+    "refit_after_2022_12_31": false,
+    "model_frozen_before_oos_incidence": true
+  },
+  "feature_contract": {
+    "ordered_features": [
+      "normalized_full_return",
+      "normalized_late_return",
+      "variation_rank",
+      "funding_current",
+      "funding_change",
+      "funding_acceleration",
+      "funding_sum3",
+      "premium_mean",
+      "late_premium_mean",
+      "terminal_premium",
+      "premium_change",
+      "return_funding_interaction",
+      "return_premium_interaction"
+    ],
+    "price": "480 exact coherent bars_binance 1m [D-8h,D)",
+    "premium": "480 exact finite signed coherent bars_binance_premium 1m [D-8h,D)",
+    "funding": "exact unique funding_rates_binance BTCUSDT rows at D-16h,D-8h,D; rates finite; current row included only because entry is D+5m",
+    "normalized_returns": "full/final2h returns divided by sqrt(sum 479 squared close returns)",
+    "variation_rank": "strict-prior midrank <=270 valid blocks minimum180 current excluded",
+    "funding_features": "current f0, change f0-f1, acceleration f0-2f1+f2, sum f0+f1+f2",
+    "premium_features": "full mean, final2h mean, terminal, terminal-first",
+    "interactions": "normalized full return times current funding and premium change",
+    "no_imputation": true
+  },
+  "oos_clock": {
+    "start": "2023-07-01T00:00:00Z",
+    "eligibility": "source valid, variation_rank>=0.65, frozen score finite/nonzero, abs score>=q60",
+    "entry": "D+5m BTCUSDT open",
+    "side": "sign score",
+    "hold": "8 elapsed hours",
+    "reservation": "exit first on equal open",
+    "funding_accounting": "signal may use current completed rate; PnL includes exact settlements entry<=time<exit only after novelty"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "variation_rank_min": 0.65,
+    "ridge_alpha": 100.0,
+    "score_quantile": 0.6,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity exact funding 6bp/10bp sides strict held 5m MDD full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "passes all unchanged",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_score_gate",
+      "one_settlement_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "tables": [
+      "bars_binance",
+      "bars_binance_premium",
+      "funding_rates_binance"
+    ],
+    "read_only": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_funding_rule_incidence_known": true,
+    "prior_funding_economic_outcomes_opened": false,
+    "prior_event_sets_or_controls_promoted": false,
+    "candidate_specific_score_incidence_opened": false,
+    "oos_postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "selection_basis": "new continuous scheduled funding-state classifier before labels/incidence"
+  },
+  "stopping_rule": "freeze sequentially; terminal first failure; no feature/alpha/threshold/side/hold/clock/subset/control repair",
+  "manifest_hash": "284affac0cf63193067d12240726a123be7409078dbc023e2b23c1f2a777a465"
+}
