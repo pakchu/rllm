@@ -2,40 +2,43 @@
   "protocol_version": "cross_venue_efficiency_handoff_relay_v1",
   "policy_id": "CVEH-6",
   "as_of_date": "2026-08-10",
-  "outcomes_opened": false,
-  "source_incidence_opened": false,
+  "oos_outcomes_opened": false,
+  "candidate_source_incidence_opened": false,
   "gross9_rows_opened": false,
   "singleton": true,
   "mechanism": {
-    "claim": "During a completed high-variation eight-hour BTC block, accelerating BTC-denominated cash volume plus an efficient same-direction Spot path, while the perpetual path remains less efficient, marks incomplete transfer of clean cash price discovery. Follow the common late return direction for six hours.",
-    "side": "common strict sign of completed final-two-hour Spot and perpetual returns",
-    "why_distinct": "CVEH uses the conjunction of cross-venue path-efficiency asymmetry and change in relative base-volume sponsorship. CLASP used five-minute centroids, ticket surprise, basis lag, and forward response; SLVCR used price under-transmission and implied volatility; SPVIR used an hourly participation level. CVEH uses none of their event rows, price-gap rules, flow fields, tickets, implied volatility, or controls.",
-    "why_suited_to_volatile_regimes": "completed perpetual eight-hour realized variation must rank in its causal upper 35%",
-    "why_low_gross9_overlap_is_plausible": "three fixed UTC cross-venue efficiency-handoff onsets are absent from Gross9 primitives"
+    "claim": "During a volatile BTC block, clean same-direction cash and perpetual paths with accelerating spot BTC volume but inefficient perpetual displacement identify a cash-led directional handoff that should continue for six hours.",
+    "side": "common strict sign of completed spot and perpetual final-two-hour returns",
+    "why_distinct": "CVEH uses cross-venue path-efficiency asymmetry plus relative base-volume acceleration onset. It is not a cash-basis level/change, spot participation level, taker/trade-count signal, spot-price underreaction gap, or any prior diagnostic control.",
+    "volatile_market_target": "causal eight-hour perpetual variation rank>=0.65",
+    "why_low_gross9_overlap_is_plausible": "sparse cross-venue efficiency-handoff onset on eight-hour boundaries is absent from Gross9"
   },
-  "features": {
-    "decision_grid": "exact 00:00/08:00/16:00 UTC boundaries",
-    "block": "480 exact aligned coherent BTCUSDT bars_binance_spot and bars_binance interval=1m rows [D-8h,D)",
-    "early_volume": "sum BTC base volume [D-4h,D-2h), separately by venue",
-    "late_volume": "sum BTC base volume [D-2h,D), separately by venue",
-    "volume_acceleration": "log(late_volume/early_volume), separately by venue",
-    "cash_handoff": "spot volume acceleration minus perpetual volume acceleration",
-    "late_return": "log(last close/first open) over [D-2h,D), separately by venue",
-    "late_total_variation": "sum absolute one-minute close-to-close log returns over [D-2h,D), separately by venue",
-    "path_efficiency": "abs(late_return)/late_total_variation, separately by venue",
-    "realized_variation": "sum squared perpetual one-minute close-to-close log returns over [D-8h,D)",
-    "ranks": "each of realized variation, Spot efficiency, perpetual efficiency, and cash handoff uses a separate strict-prior midrank over at most 270 valid decisions, minimum 180, current excluded",
-    "eligibility": "variation rank>=0.65; Spot/perpetual late returns have one strict sign; Spot efficiency rank>=0.80; perpetual efficiency rank<=0.50; cash-handoff rank>=0.75",
-    "onset": "eligible now and immediately prior exact boundary ineligible; missing prior boundary cannot trigger",
-    "no_imputation": true
+  "feature_contract": {
+    "source_window": [
+      "2020-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "decision": "exact 00:00/08:00/16:00 UTC after [D-8h,D)",
+    "price": "480 exact unique coherent positive BTCUSDT 1m OHLC rows independently from bars_binance and bars_binance_spot; no imputation",
+    "volume": "finite strictly positive BTC base volume from both venues; late=[D-2h,D), early=[D-4h,D-2h)",
+    "late_return": "log(last close/first open) over each venue final two hours",
+    "late_path_length": "sum absolute close-to-close log returns within each final-two-hour path plus absolute log(first close/first open), exactly 120 increments",
+    "efficiency": "abs(late_return)/late_path_length, requiring positive path length",
+    "volume_acceleration": "log(late 2h base-volume sum / early 2h base-volume sum) per venue",
+    "handoff": "spot volume acceleration minus perpetual volume acceleration",
+    "variation": "sum 479 squared perpetual close-to-close log returns",
+    "causal_ranks": "strict-prior midrank over at most270 source-valid blocks minimum180 current excluded",
+    "primary_state": "variation_rank>=.65, same strict nonzero late-return signs, spot_efficiency_rank>=.80, perpetual_efficiency_rank<=.50, handoff_rank>=.75",
+    "onset": "current primary_state true and immediately preceding eight-hour primary_state not true; invalid preceding state counts not true"
   },
   "clock": {
-    "decision": "completed eight-hour boundary",
-    "entry": "exact BTCUSDT perpetual D+5m open",
-    "side": "common strict late-return sign",
+    "entry": "D+5m BTCUSDT perpetual open",
+    "side": "common late-return sign",
     "hold": "6 elapsed hours",
-    "reservation": "global half-open; exit first on equal open",
-    "funding": "not a signal input; exact settlements only after novelty passes"
+    "reservation": "global half-open, exit first on equal open",
+    "split_crossing_action": "skip",
+    "funding": "not input; exact PnL settlements only after novelty",
+    "leverage": 0.5
   },
   "policy": {
     "history_blocks": 270,
@@ -43,7 +46,7 @@
     "variation_rank_min": 0.65,
     "spot_efficiency_rank_min": 0.8,
     "perpetual_efficiency_rank_max": 0.5,
-    "cash_handoff_rank_min": 0.75,
+    "handoff_rank_min": 0.75,
     "entry_delay_minutes": 5,
     "hold_hours": 6,
     "leverage": 0.5,
@@ -81,7 +84,7 @@
   "novelty_gates": {
     "exact_entry_jaccard_max": 0.1,
     "candidate_near_6h_share_max": 0.35,
-    "occupied_5m_jaccard_max": 0.25,
+    "occupied_5m_bar_jaccard_max": 0.25,
     "absolute_signed_exposure_pearson_max": 0.35,
     "must_pass_before_economics": true
   },
@@ -95,10 +98,10 @@
     "stress_cagr_to_strict_mdd_min": 2.5,
     "each_calendar_half_positive": true,
     "stop_on_first_failure": true,
-    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+    "accounting": "fixed quantity exact funding 6bp/10bp per side strict held favorable-then-adverse 5m MDD full-calendar CAGR"
   },
   "post_stage_volatility_audit": {
-    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "prerequisite": "unchanged passes all stages",
     "rv20_q90_entry_filter": false,
     "minimum_q90_trades": 8,
     "candidate_q90_absolute_return_positive": true,
@@ -111,29 +114,14 @@
       "spot_efficiency_only",
       "one_boundary_stale_geometry",
       "direction_flip",
-      "forced_long",
-      "forced_short"
+      "same_clock_forced_long",
+      "same_clock_forced_short"
     ],
     "cannot_be_promoted": true
   },
   "source_plan": {
-    "spot": {
-      "table": "bars_binance_spot",
-      "symbol": "BTCUSDT",
-      "interval": "1m",
-      "columns": [
-        "ts",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume"
-      ]
-    },
     "perpetual": {
       "table": "bars_binance",
-      "symbol": "BTCUSDT",
-      "interval": "1m",
       "columns": [
         "ts",
         "open",
@@ -143,26 +131,33 @@
         "volume"
       ]
     },
-    "window": [
-      "2023-04-01T00:00:00Z",
-      "2026-08-01T00:00:00Z"
-    ],
-    "read_after_preregistration": true,
-    "execution_prices": "sealed until source support and Gross9 novelty pass"
+    "spot": {
+      "table": "bars_binance_spot",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ]
+    },
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "read_only": true,
+    "execution_prices": "sealed until source support and novelty pass"
   },
   "research_boundary": {
-    "prior_cross_venue_efficiency_and_participation_family_outcomes_known": true,
-    "prior_event_sets_reused": false,
-    "prior_candidate_outcomes_used_to_set_cveh_ranks_direction_hold_or_clock": false,
-    "candidate_incidence_opened": false,
-    "postentry_return_or_pnl_opened": false,
+    "shared_spot_perpetual_source_backbone_known": true,
+    "candidate_specific_geometry_incidence_opened": false,
+    "prior_event_sets_or_controls_promoted": false,
+    "oos_postentry_return_or_pnl_opened": false,
     "gross9_rows_opened": false,
     "candidate_count": 1,
     "grid": false,
     "repair_of_prior_candidate": false,
-    "promoted_prior_control": false,
-    "selection_basis": "source-complete cross-venue efficiency plus volume-sponsorship migration"
+    "selection_basis": "new cash-efficiency and base-volume migration mechanism specified before incidence/outcomes"
   },
-  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no feature, rank, side, hold, clock, subset, or control repair.",
-  "manifest_hash": "c1d77ee5d733e2e2eca40f63fb412d08809b827e2d97965d9b2dc3267db3bb00"
+  "stopping_rule": "freeze prereg/source support/novelty/economics; terminal first failure; no source/rank/onset/side/hold/clock/subset/control repair",
+  "manifest_hash": "9c1bcfe6d1feb5edf8733a9b9aff6e488661e168309b15ccf3d28c4ce7c6e3b8"
 }
