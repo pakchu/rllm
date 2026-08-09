@@ -7,6 +7,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+if __package__ in (None, ""):
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from training import export_gross9_structural_clocks as gross9
 from training import (
     evaluate_options_led_volatility_expansion_premium_relay_gross9_novelty as metric,
