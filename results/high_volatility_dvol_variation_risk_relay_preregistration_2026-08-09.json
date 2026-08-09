@@ -1,0 +1,143 @@
+{
+  "protocol_version": "high_volatility_dvol_variation_risk_relay_v1",
+  "policy_id": "HVDVVR-12",
+  "as_of_date": "2026-08-09",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "When Deribit BTC DVOL itself travels unusually violently over a completed day while BTC realized variation is also elevated, the direction of the net implied-volatility repricing identifies risk transfer: rising DVOL maps short BTC and falling DVOL maps long BTC for twelve hours.",
+    "side": "negative strict sign of the completed 24-hour DVOL close-to-close change",
+    "why_distinct": "Prior DVOL candidates used level crossings, single-hour bodies, BVOL/DVOL disagreement, or ordered handoffs. HVDVVR uses the realized quadratic variation of 24 consecutive DVOL closes as the event and DVOL net change only for direction; no BVOL, OI, funding, premium, or prior event set is used.",
+    "why_suited_to_volatile_regimes": "both options volatility-of-volatility and BTC realized variation must lie in causal upper tails",
+    "why_low_gross9_overlap_is_plausible": "one daily crypto-options VoV clock is absent from Gross9"
+  },
+  "features": {
+    "dvol_source": "hash-bound hourly Deribit BTC DVOL snapshot through 2026-08-01",
+    "decision": "each exact 00:00 UTC after 24 completed hourly DVOL bars",
+    "dvol_window": "24 exact bars with coherent positive OHLC and close_time=bar_start+1h",
+    "dvol_change": "log(last close / close immediately preceding the 24-hour window), strict nonzero",
+    "dvol_variation": "sqrt(sum squared log changes across 25 consecutive closes ending at decision)",
+    "dvol_variation_rank": "strict-prior midrank against at most 720 earlier hourly 24h variation states, minimum 336, current excluded; rank>=0.75",
+    "btc_variation": "sqrt(sum squared exact completed 5m BTC log returns over the same 24 hours)",
+    "btc_variation_rank": "strict-prior midrank against at most 720 earlier hourly 24h states, minimum 336, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact 00:00 UTC",
+    "entry": "decision+5m BTCUSDT open",
+    "hold": "12 elapsed hours",
+    "side": "opposite DVOL change sign",
+    "reservation": "daily nonoverlapping; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements after novelty"
+  },
+  "policy": {
+    "dvol_hours": 24,
+    "rank_history_hours": 720,
+    "rank_minimum_hours": 336,
+    "dvol_variation_rank_min": 0.75,
+    "btc_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes all stages",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "no_dvol_variation_gate": "DVOL direction and high BTC variation without VoV tail",
+      "no_btc_variation_gate": "DVOL VoV tail without BTC variation rank",
+      "dvol_direction": "same sign as DVOL change on primary clock",
+      "one_day_stale_dvol": "prior exact daily DVOL state with current BTC variation gate",
+      "direction_flip": "negative primary side",
+      "same_clock_forced_long": "side +1 on primary clock"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "dvol": {
+      "path": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/dvol_hourly.csv.gz",
+      "sha256": "5556bc470ce7c8134cf6d2a09fc1eab8f233604a8029fe6a4eaf838ff302446c",
+      "manifest": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/manifest.json",
+      "manifest_sha256": "5a6b8fb8d2da235afee4709d219bc3e537498e15078fafa27d57ba284723cd7e"
+    },
+    "historical_market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "live_extension": "read-only Postgres BTCUSDT 1m through 2026-08-01",
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_options_family_outcomes_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "exact_hvdvvr_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent crypto-options volatility-of-volatility mechanism"
+  },
+  "stopping_rule": "terminal first failure; no source, window, rank, variation, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "6e25b944684289f419777bc9391f824a351da812f5db9d122f2c20e84efa1533"
+}
