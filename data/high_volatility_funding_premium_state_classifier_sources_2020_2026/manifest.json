@@ -1,0 +1,43 @@
+{
+  "protocol_version": "hvfpsc_8_source_and_pretraining_v1",
+  "preregistration": {
+    "path": "results/high_volatility_funding_premium_state_classifier_preregistration_2026-08-10.json",
+    "sha256": "165cc96dfeebff14a65f103d4f5c8d2a84f802f92eeee8f5002bc315984a20e9",
+    "manifest_hash": "284affac0cf63193067d12240726a123be7409078dbc023e2b23c1f2a777a465"
+  },
+  "queries": {
+    "bars": "\nSELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "premium": "\nSELECT ts,open,high,low,close\nFROM bars_binance_premium\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "funding": "\nSELECT funding_time AS ts,funding_rate\nFROM funding_rates_binance\nWHERE symbol='BTCUSDT' AND funding_time>=:start AND funding_time<:end\nORDER BY ts\n"
+  },
+  "tables": [
+    "bars_binance",
+    "bars_binance_premium",
+    "funding_rates_binance"
+  ],
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2020-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "pretraining_label_window": [
+    "2021-01-01T00:00:00+00:00",
+    "2023-01-01T00:00:00+00:00"
+  ],
+  "oos_incidence_opened": false,
+  "oos_outcomes_opened": false,
+  "no_imputation": true,
+  "feature_panel": {
+    "path": "data/high_volatility_funding_premium_state_classifier_sources_2020_2026/eight_hour_feature_panel.csv.gz",
+    "sha256": "d44bf5b158ada7e3422b2b510d846e9855eb60230461c290efa866be6baf33ea",
+    "rows": 6939,
+    "valid_rows": 2214
+  },
+  "pretraining_rows": {
+    "path": "data/high_volatility_funding_premium_state_classifier_sources_2020_2026/pre2023_training_rows.csv.gz",
+    "sha256": "4fc08137f86b3c4311978549cfd965b8fd65b4a1095b0e65ef0e7cdeb01c396f",
+    "rows": 79
+  },
+  "manifest_hash": "d822ac24782843e982fba60cda78923a2a151d40e5160fb7d66a09d575311ccb"
+}

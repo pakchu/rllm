@@ -1,0 +1,104 @@
+{
+  "protocol_version": "hvfpsc_8_model_freeze_v1",
+  "policy_id": "HVFPSC-8",
+  "preregistration": {
+    "path": "results/high_volatility_funding_premium_state_classifier_preregistration_2026-08-10.json",
+    "sha256": "165cc96dfeebff14a65f103d4f5c8d2a84f802f92eeee8f5002bc315984a20e9",
+    "manifest_hash": "284affac0cf63193067d12240726a123be7409078dbc023e2b23c1f2a777a465"
+  },
+  "source_manifest": {
+    "path": "data/high_volatility_funding_premium_state_classifier_sources_2020_2026/manifest.json",
+    "sha256": "3237d3e237c8a2b6aeff1e8f29af9be4b4004c1f3b8c836b1f0cfdbbcf85fe0e",
+    "manifest_hash": "d822ac24782843e982fba60cda78923a2a151d40e5160fb7d66a09d575311ccb"
+  },
+  "feature_panel": {
+    "path": "data/high_volatility_funding_premium_state_classifier_sources_2020_2026/eight_hour_feature_panel.csv.gz",
+    "sha256": "d44bf5b158ada7e3422b2b510d846e9855eb60230461c290efa866be6baf33ea",
+    "rows": 6939,
+    "valid_rows": 2214
+  },
+  "pretraining_rows": {
+    "path": "data/high_volatility_funding_premium_state_classifier_sources_2020_2026/pre2023_training_rows.csv.gz",
+    "sha256": "4fc08137f86b3c4311978549cfd965b8fd65b4a1095b0e65ef0e7cdeb01c396f",
+    "rows": 79
+  },
+  "estimator": {
+    "class": "closed_form_standardized_ridge",
+    "alpha": 100.0,
+    "fit_intercept": true,
+    "sample_weight": null,
+    "hyperparameter_grid": false,
+    "feature_selection": false
+  },
+  "feature_order": [
+    "normalized_full_return",
+    "normalized_late_return",
+    "variation_rank",
+    "funding_current",
+    "funding_change",
+    "funding_acceleration",
+    "funding_sum3",
+    "premium_mean",
+    "late_premium_mean",
+    "terminal_premium",
+    "premium_change",
+    "return_funding_interaction",
+    "return_premium_interaction"
+  ],
+  "mean": [
+    -0.028101982246417967,
+    0.03535842723019577,
+    0.614313714410245,
+    0.0002195803797468354,
+    -3.036645569620253e-05,
+    -7.632784810126579e-06,
+    0.0007422077215189873,
+    0.00014759622837552742,
+    9.728281118143459e-05,
+    0.00010431455696202533,
+    -4.067037974683544e-05,
+    4.729771580432584e-05,
+    2.859573102196942e-05
+  ],
+  "scale": [
+    0.8830710775179019,
+    0.4790971885214461,
+    0.26846451057775367,
+    0.0003581503190053769,
+    0.00030382376236865176,
+    0.0005349753223622083,
+    0.0011795227122447186,
+    0.0007651525771667767,
+    0.0007273790610979358,
+    0.0008088008237872788,
+    0.0004992593390503274,
+    0.0004204970822477711,
+    0.0005391895824367993
+  ],
+  "coefficient": [
+    0.006902574164472201,
+    0.015126610154394688,
+    0.06487231865467685,
+    -0.030145237454714133,
+    -0.005114552397418283,
+    0.03352765299406215,
+    -0.008301107308794537,
+    -0.008819526608947605,
+    0.004541200789852997,
+    0.029047184180592017,
+    0.04457165424062038,
+    0.06799491744461596,
+    -0.05196985183845925
+  ],
+  "intercept": 0.11392405063291139,
+  "prediction_strength_threshold": 0.20373332669110555,
+  "training_rows": 79,
+  "training_high_volatility_rows": 38,
+  "training_label_mean": 0.11392405063291139,
+  "training_label_std": 0.9934894617898017,
+  "target": "strict_sign_next_eight_hour_log_return",
+  "oos_incidence_opened": false,
+  "oos_outcomes_opened": false,
+  "refit_authorized": false,
+  "manifest_hash": "34993c8e56f117fd3aa2a84e9a0ef78ed162f6119888fba71c1601f71b9891e8"
+}
