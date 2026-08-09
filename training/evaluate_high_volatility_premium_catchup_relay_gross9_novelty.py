@@ -131,7 +131,7 @@ def run(output: Path = OUTPUT) -> dict[str, Any]:
             "complete_roster": list(gross9.EXPECTED_WEIGHTS),
         },
         "evidence_boundary": {
-            "hvdra_clock_rows_opened": len(candidate),
+            "hvpcr_clock_rows_opened": len(candidate),
             "gross9_structural_clock_rows_opened": sum(
                 item["rows"] for item in manifest["clocks"].values()
             ),
