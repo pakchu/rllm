@@ -34,3 +34,9 @@ def test_exact_clock_collision_fails_novelty() -> None:
     result = novelty.pair(candidate, comparator)
     assert result["checks"]["exact_entry_jaccard"] is False
     assert result["passed"] is False
+
+
+def test_preregistered_limit_names_are_bound_without_changing_metric_names() -> None:
+    registration = novelty.load(novelty.PREREG)
+    assert registration["novelty_gates"]["occupied_5m_jaccard_max"] == 0.25
+    assert novelty.LIMITS["occupied_5m_bar_jaccard"] == 0.25
