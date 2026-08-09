@@ -1,0 +1,2 @@
+from training import build_cross_asset_impact_isolation_continuation_support as s
+def test_contract():assert s.PREREG_SHA=='9a01373831179b84757bb22adceb992fb609947f2323a8d97b23d77daaa9d6c5';assert 'quote_asset_volume' in s.QUERY;assert len(s.SYMBOLS)==7;assert s.CONTROLS==('btc_only_impact_tail','impact_isolation_without_return_tail','btc_return_tail_only','one_hour_stale_impact','direction_flip','forced_long')
