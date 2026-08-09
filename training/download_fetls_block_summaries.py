@@ -22,7 +22,6 @@ from training.download_bitcoin_block_summaries import (
 BASE_URLS = (
     "https://mempool.space/api/v1",
     "https://mempool.emzy.de/api/v1",
-    "https://mempool.ninja/api/v1",
 )
 START_HEIGHT = 795_000
 END_HEIGHT = 961_681
@@ -36,13 +35,13 @@ COLUMNS = (
 )
 
 
-def _fetch(cursor: int, retries: int = 4) -> tuple[int, list[dict]]:
+def _fetch(cursor: int, retries: int = 1) -> tuple[int, list[dict]]:
     for attempt in range(retries + 1):
         base_url = BASE_URLS[(cursor + attempt) % len(BASE_URLS)]
         url = f"{base_url}/blocks/{cursor}"
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "rllm-private-research/1.0"})
-            with urllib.request.urlopen(req, timeout=12) as response:
+            with urllib.request.urlopen(req, timeout=10) as response:
                 payload = json.loads(response.read())
             return cursor, payload
         except (TimeoutError, urllib.error.URLError, urllib.error.HTTPError) as exc:
@@ -92,21 +91,34 @@ def _db() -> sqlite3.Connection:
 def download(workers: int) -> None:
     cursors = list(range(END_HEIGHT, START_HEIGHT - 1, -PAGE_SIZE))
     with _db() as db:
-        have = {row[0] for row in db.execute("select cursor from pages")}
-        missing = [cursor for cursor in cursors if cursor not in have]
-        for offset in range(0, len(missing), 64):
-            batch = missing[offset : offset + 64]
-            with ThreadPoolExecutor(max_workers=workers) as pool:
-                futures = [pool.submit(_fetch, cursor) for cursor in batch]
-                for future in as_completed(futures):
-                    cursor, payload = future.result()
-                    rows = _validate_page(cursor, payload)
-                    db.execute(
-                        "insert or replace into pages(cursor,payload) values(?,?)",
-                        (cursor, json.dumps(rows, sort_keys=True, separators=(",", ":"))),
-                    )
-            db.commit()
-            print(f"checkpoint {min(offset + len(batch), len(missing))}/{len(missing)}")
+        pass_number = 0
+        while True:
+            have = {row[0] for row in db.execute("select cursor from pages")}
+            missing = [cursor for cursor in cursors if cursor not in have]
+            if not missing:
+                break
+            pass_number += 1
+            progress = 0
+            for offset in range(0, len(missing), 256):
+                batch = missing[offset : offset + 256]
+                with ThreadPoolExecutor(max_workers=workers) as pool:
+                    futures = [pool.submit(_fetch, cursor) for cursor in batch]
+                    for future in as_completed(futures):
+                        try:
+                            cursor, payload = future.result()
+                            rows = _validate_page(cursor, payload)
+                        except Exception as exc:
+                            print(f"retry-later {type(exc).__name__}")
+                            continue
+                        db.execute(
+                            "insert or replace into pages(cursor,payload) values(?,?)",
+                            (cursor, json.dumps(rows, sort_keys=True, separators=(",", ":"))),
+                        )
+                        db.commit()
+                        progress += 1
+                print(f"pass {pass_number} checkpoint {min(offset + len(batch), len(missing))}/{len(missing)}")
+            if progress == 0:
+                raise RuntimeError("source download pass made no progress")
 
 
 def assemble() -> dict:
