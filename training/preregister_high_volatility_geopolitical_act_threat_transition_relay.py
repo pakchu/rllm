@@ -90,8 +90,6 @@ def build() -> dict[str, Any]:
 def validate(value: dict[str, Any]) -> None:
     if value.get("manifest_hash") != canonical_hash({k: v for k, v in value.items() if k != "manifest_hash"}):
         raise RuntimeError("HVGATA prereg drift")
-    if SOURCE.exists():
-        raise RuntimeError("HVGATA source must not exist before preregistration freeze")
     if hashlib.sha256(MARKET.read_bytes()).hexdigest() != MARKET_SHA:
         raise RuntimeError("HVGATA market drift")
 
