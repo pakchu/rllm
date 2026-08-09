@@ -1,0 +1,169 @@
+"""Outcome-blind preregistration for AARMR-8."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+POLICY_ID = "AARMR-8"
+DEFAULT_OUTPUT = Path(
+    "results/adjacent_auction_range_migration_relay_preregistration_2026-08-09.json"
+)
+
+
+def canonical_hash(payload: Any) -> str:
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "adjacent_auction_range_migration_relay_v1",
+        "policy_id": POLICY_ID,
+        "as_of_date": "2026-08-09",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": "When the completed current one-hour BTC auction expands into its own strict-prior range tail while sharing unusually little price interval with the immediately preceding one-hour auction, the entire accepted-price set has migrated; follow the midpoint displacement for eight elapsed hours.",
+            "side": "strict sign of current-hour midpoint minus preceding-hour midpoint",
+            "why_distinct": "AARMR uses set intersection of adjacent high-low intervals plus current range expansion. It is not wick/body efficiency, close location, Donchian reclaim, variance ratio, jump size, sign persistence, volume, flow, VWAP, funding, premium, OI, cross-asset breadth, or a prior control.",
+            "volatile_market_target": "tail current range plus low adjacent-auction overlap identifies accepted-price migration during volatile discovery; causal RV20 q90 remains only a later audit",
+            "why_low_gross9_overlap_is_plausible": "only false-to-true low-overlap range-migration onsets reserve entries",
+        },
+        "features": {
+            "decision_grid": "every exact UTC hour D",
+            "preceding_auction": "exact twelve coherent completed five-minute bars [D-2h,D-1h)",
+            "current_auction": "exact twelve coherent completed five-minute bars [D-1h,D)",
+            "range": "H-L for each auction; both strictly positive",
+            "overlap_length": "max(0,min(H_prev,H_cur)-max(L_prev,L_cur))",
+            "overlap_ratio": "overlap_length/min(range_prev,range_cur), finite in [0,1]",
+            "midpoint_displacement": "0.5*(H_cur+L_cur)-0.5*(H_prev+L_prev), strict nonzero",
+            "prior_ranks": "strict-prior midranks over at most 1440 prior valid hourly decisions, minimum 960, current excluded",
+            "eligible_state": "current-range rank >=0.80 and overlap-ratio rank <=0.20",
+            "onset": "current eligible state true and immediately preceding exact hourly opportunity false; missing prior cannot trigger",
+            "side": "strict sign of midpoint_displacement",
+            "availability": "all bars complete by D; entry one full five-minute bar later",
+            "source_valid": "exact unique timestamp grids, positive finite coherent OHLC, no imputation",
+        },
+        "rv20_stress_slice": {
+            "rv20": "sqrt(365*mean exact daily returns^2 over t-20 through t-1)",
+            "threshold": "numpy linear q90 over 756 strictly prior available RV20 observations",
+            "entry_filter": False,
+            "future_use": "only after all sequential full-calendar stages pass",
+        },
+        "clock": {
+            "entry": "exact BTCUSDT decision+5m open",
+            "hold": "8 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding": "not an input; exact realized funding only after novelty",
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.2,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.1,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.1,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp base and 10bp stress per notional "
+                "side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged candidate passes train, test, eval, final",
+            "persistent_long_vol_comparator": "same accepted clock and 0.5 gross, side forced long",
+            "full_calendar_decomposition": "candidate minus comparator net return",
+            "rv20_q90_decomposition": "same decomposition on causal RV20 q90 decisions",
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "candidate_specific_q90_residual_positive": True,
+            "comparator_cannot_satisfy_candidate_claim": True,
+        },
+        "diagnostic_controls": {
+            "definitions": {
+                "range_tail_only": "current-range rank>=0.80 onset without overlap gate",
+                "low_overlap_only": "overlap-ratio rank<=0.20 onset without range gate",
+                "one_hour_stale_geometry": "primary eligibility and side shifted one exact hour before onset",
+                "midpoint_fade": "negative primary side",
+            },
+            "cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "bars": {
+                "table": "bars_binance",
+                "symbol": "BTCUSDT",
+                "interval": "1m",
+                "columns": ["ts", "open", "high", "low", "close"],
+                "read_after_preregistration": True,
+            },
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "prior_price_range_families_known": True,
+            "exact_aarmr_incidence_known": False,
+            "exact_aarmr_outcomes_known": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+        },
+        "stopping_rule": (
+            "terminal first failure; no block predicate, threshold, confirmation, embargo, "
+            "side, clock, hold, RV20, subset, comparator, control, or gate repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(payload: dict[str, Any]) -> None:
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    if payload.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("AARMR preregistration drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    validate(result)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+    print(args.output)
