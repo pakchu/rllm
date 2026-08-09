@@ -1,0 +1,150 @@
+{
+  "protocol_version": "high_volatility_equity_adjusted_btc_residual_reversal_v1",
+  "policy_id": "HVEABRR-12",
+  "as_of_date": "2026-08-09",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "At the actual US equity cash close, remove BTC's causally estimated SPY beta from the just-completed inter-close BTC return. An extreme idiosyncratic BTC residual during high realized variation reflects crypto-specific overshoot rather than broad risk repricing and should reverse over the next twelve hours.",
+    "side": "negative strict sign of the current equity-adjusted BTC residual",
+    "why_distinct": "BSCBR trades changes in a fitted DCC correlation using a published safe-haven sign. HVEABRR uses a rolling prior-only linear beta and the current return residual magnitude. Equity-volatility candidates use VIX-family levels. No BSCBR event, threshold, clock subset, or control is reused.",
+    "why_low_gross9_overlap_is_plausible": "sparse actual NYSE closes with DST, holidays, early closes and joint residual/variation tails are absent from Gross9"
+  },
+  "features": {
+    "session": "hash-bound official NYSE schedule and split/dividend-aware SPY daily source already frozen by BSCBR",
+    "spy_return": "log((split-normalized close plus effective-date cash dividend)/previous session split-normalized close)",
+    "btc_return": "log(BTC completed-hour close at current actual SPY close / completed-hour close at prior actual SPY close)",
+    "beta": "population covariance(BTC,SPY)/population variance(SPY) over at most 60 strictly prior valid paired sessions, minimum 40; current excluded; positive finite SPY variance required",
+    "residual": "btc_return-beta*spy_return, strict nonzero",
+    "residual_rank": "strict-prior midrank of abs residual over at most 90 prior valid residuals, minimum 60; current excluded; rank>=0.75",
+    "btc_variation": "sqrt(sum squared exact 5m close-to-close BTC returns over 24 hours ending at cash close)",
+    "variation_rank": "strict-prior midrank over at most 90 prior valid SPY sessions, minimum 60; current excluded; rank>=0.65",
+    "availability": "five minutes after actual SPY cash close and matched completed BTC bar; no imputation"
+  },
+  "clock": {
+    "feature_available": "actual SPY cash close+5m",
+    "entry": "actual SPY cash close+10m BTCUSDT open",
+    "hold": "12 elapsed hours",
+    "side": "negative residual sign",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "beta_prior_sessions": 60,
+    "beta_minimum_sessions": 40,
+    "rank_prior_sessions": 90,
+    "rank_minimum_sessions": 60,
+    "residual_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "feature_delay_minutes": 5,
+    "entry_delay_minutes_after_close": 10,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "no_variation_gate": "residual-tail reversal without BTC variation rank",
+      "no_residual_tail": "every high-variation strict nonzero residual",
+      "raw_btc_return_reversal": "primary eligibility clock, negative BTC-return sign",
+      "one_session_stale_beta": "current returns with beta estimated ending one additional session earlier",
+      "direction_flip": "positive primary residual sign",
+      "same_clock_forced_long": "side +1 on primary clock"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "spy": {
+      "path": "data/bitcoin_stock_correlation_break_relay_sources_2020_2026/spy_yahoo_chart.json",
+      "sha256": "701cdd80ec699a7de0dbd3f92e3928e25c9986d840bb2b8b9b62a1988b342662"
+    },
+    "session_schedule": {
+      "path": "data/bitcoin_stock_correlation_break_relay_sources_2020_2026/spy_session_schedule.csv.gz",
+      "sha256": "7bb835524c679a1c23cb10fad52d2f0423a0906ce3776ebcfcd7829f64145858"
+    },
+    "btc_completed_hour": {
+      "path": "data/bitcoin_stock_correlation_break_relay_sources_2020_2026/btc_completed_hour.csv.gz",
+      "sha256": "0310ca92fb759f0b8448046d47f70996f68c6c942358f9205136fae06f5f114c"
+    },
+    "historical_market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "live_extension": "read-only Postgres BTCUSDT 1m through 2026-08-01",
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_bscbr_source_and_outcomes_known": true,
+    "bscbr_event_sets_thresholds_or_controls_reused": false,
+    "exact_hveabrr_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent equity-adjusted idiosyncratic overshoot mechanism under high BTC variation"
+  },
+  "stopping_rule": "terminal first failure; no asset, beta, residual, rank, side, clock, delay, hold, subset, comparator, or control repair",
+  "manifest_hash": "f142a583f79e4b0e82aab257218736cc358cec399e8b4943818bb4356381248a"
+}
