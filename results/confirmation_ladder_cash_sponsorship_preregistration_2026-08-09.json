@@ -1,0 +1,162 @@
+{
+  "protocol_version": "confirmation_ladder_cash_sponsorship_v1",
+  "policy_id": "CLCS-6",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Repeated migration of BTC quote participation toward spot or perpetual across six consecutive canonical confirmation intervals, confirmed by same-sign spot aggressive flow, identifies durable cash sponsorship or leverage withdrawal; follow the migration side for six elapsed hours.",
+    "side": "strict sign of spot participation share S6-S1 when cumulative spot aggressive flow has the same sign",
+    "why_distinct": "CLCS uses the ordered six-step path of spot share over irregular block-confirmation intervals. It is not a fixed-window spot/perp ratio, ticket size, price return, VWAP, funding, premium, OI, block throughput, or a component/stale/direction diagnostic.",
+    "volatile_market_target": "during rapid repricing, sponsorship repeated across confirmation intervals separates sustained cash migration from one leveraged burst; causal RV20 q90 remains only a later audit",
+    "why_low_gross9_overlap_is_plausible": "height-modulo anchors, six irregular block intervals, path monotonicity, and q90 onset form a sparse asynchronous clock"
+  },
+  "features": {
+    "anchor": "canonical height H divisible by 36; ladder is blocks H through H+6",
+    "ladder_intervals": "six strictly increasing header-timestamp intervals (H+k-1,H+k], each 60 to 1800 seconds",
+    "completed_minutes": "for each interval use exact complete UTC minutes whose opens are >=ceil(left/60)*60 and whose closes are <=floor(right/60)*60; both spot and perpetual rows exact and coherent",
+    "spot_share": "S_k=sum spot quote volume/(sum spot quote volume+sum perpetual quote volume), denominator positive",
+    "spot_flow": "F_k=sum(2*taker_buy_quote-quote_volume)/sum(spot quote volume), denominator positive",
+    "migration": "M=S_6-S_1, strict nonzero",
+    "path_confirmation": "at least four of the five increments S_(k+1)-S_k have strict sign sign(M); zero increments do not count",
+    "prior_ranks": "strict-prior midrank of abs(M) over at most 168 prior valid anchors, minimum 112, current excluded",
+    "eligible_state": "abs(M) rank>=0.90, path confirmation true, cumulative sum(F_k) strict sign equals sign(M), and abs(sum(F_k))>0",
+    "onset": "current eligible state true and immediately preceding valid anchor state false; invalid anchors preserve prior valid state",
+    "confirmation": "block H+6 is contained before signal availability",
+    "raw_availability": "prefix maximum header timestamp and mediantime through H+6 plus 7200 seconds",
+    "decision": "raw availability ceiled to the next exact five-minute UTC boundary D",
+    "side": "strict sign of M",
+    "source_valid": "contiguous canonical chain, exact aligned spot/perpetual minutes, positive finite OHLC and nonnegative finite flow fields, no imputation"
+  },
+  "rv20_stress_slice": {
+    "rv20": "sqrt(365*mean exact daily returns^2 over t-20 through t-1)",
+    "threshold": "numpy linear q90 over 756 strictly prior available RV20 observations",
+    "entry_filter": false,
+    "future_use": "only after all sequential full-calendar stages pass"
+  },
+  "clock": {
+    "entry": "exact BTCUSDT decision+5m open",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not an input; exact realized funding only after novelty"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "persistent_long_vol_comparator": "same accepted clock and 0.5 gross, side forced long",
+    "full_calendar_decomposition": "candidate minus comparator net return",
+    "rv20_q90_decomposition": "same decomposition on causal RV20 q90 decisions",
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "candidate_specific_q90_residual_positive": true,
+    "comparator_cannot_satisfy_candidate_claim": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "endpoint_share_only": "abs(S6-S1) rank>=0.90 and flow sign agrees, without path confirmation",
+      "path_without_flow": "rank and path confirmation without cumulative spot-flow sign",
+      "one_anchor_stale_ladder": "primary valid-anchor state and side shifted one anchor before onset",
+      "direction_flip": "negative primary side"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "blocks": {
+      "source": "mempool Esplora-compatible canonical block metadata",
+      "columns": [
+        "height",
+        "id",
+        "previousblockhash",
+        "timestamp",
+        "mediantime",
+        "tx_count",
+        "size",
+        "weight"
+      ],
+      "read_after_preregistration": true
+    },
+    "bars": {
+      "tables": [
+        "bars_binance_spot",
+        "bars_binance"
+      ],
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_spot_flow_and_block_families_known": true,
+    "exact_clcs_incidence_known": false,
+    "exact_clcs_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no block predicate, threshold, confirmation, embargo, side, clock, hold, RV20, subset, comparator, control, or gate repair",
+  "manifest_hash": "da1a059b89ce72439846d4493544a3e6700fb2fa3877a4b58fe759479dfa7065"
+}
