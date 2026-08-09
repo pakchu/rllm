@@ -115,11 +115,11 @@ def build() -> dict[str, Any]:
         },
         "diagnostic_controls": {
             "definitions": {
-                "unweighted_6h_return": "same decision grid and onset machinery using the strictly-prior top-quintile absolute unweighted six-hour return, following its sign",
-                "high_volume_without_disagreement": "same H construction and high-volume side, but without requiring R_H*R_L<0",
-                "single_dominant_volume_bar": "same clock following the return sign of the single highest-(q_i,timestamp) bar at its frozen onset",
-                "temporal_half_partition": "replace H and L with the final and first 36 completed bars respectively while retaining the primary disagreement, dominance, rank, onset, and side rules",
-                "one_decision_stale_strata": "primary formula with the volume-stratum assignment shifted by one exact four-hour decision",
+                "unweighted_6h_return": "U=sum all 72 r_i; active when strict-prior midrank(abs(U))>=0.80 with the primary 540/360 history and false-to-true onset; side=sign(U)",
+                "high_volume_without_disagreement": "same H/L, S rank>=0.80, D_H>=2/3, R_H!=0, and false-to-true onset, but omit R_H*R_L<0; side=sign(R_H)",
+                "single_dominant_volume_bar": "M is r_i of the last bar in ascending lexicographic (q_i,timestamp) order; active when strict-prior midrank(abs(M))>=0.80 with the primary 540/360 history and false-to-true onset; side=sign(M)",
+                "temporal_half_partition": "R_F=sum final 36 r_i and R_E=sum first 36 r_i; S_T=abs(R_F-R_E)/V; require R_F*R_E<0, abs(R_F)/(abs(R_F)+abs(R_E))>=2/3, strict-prior midrank(S_T)>=0.80 with 540/360 history, and false-to-true onset; side=sign(R_F)",
+                "one_decision_stale_strata": "primary eligible-state boolean and primary side are both shifted by one exact four-hour decision; apply false-to-true onset to the shifted boolean",
                 "direction_flip": "negative primary side",
             },
             "cannot_be_promoted": True,
