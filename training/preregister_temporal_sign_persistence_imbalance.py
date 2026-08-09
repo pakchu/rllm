@@ -122,7 +122,16 @@ def build() -> dict[str, Any]:
             "comparator_cannot_satisfy_candidate_claim": True,
         },
         "diagnostic_controls": {
-            "names": ["body_count", "body_magnitude", "maximum_run", "direction_flip"],
+            "definitions": {
+                "body_count": "sign(number positive bodies-number negative bodies)",
+                "body_magnitude": "sign(sum log(close_i/open_i) across all 1m bodies)",
+                "maximum_run": "sign(max positive run length-max negative run length)",
+                "direction_flip": "negative primary TSPI side",
+            },
+            "clock_rule": (
+                "each control uses the same Wednesday source-valid opportunity but abstains on "
+                "its own exact-zero statistic; no tie is broken using the primary side"
+            ),
             "cannot_be_promoted": True,
         },
         "source_plan": {

@@ -97,12 +97,13 @@
     "comparator_cannot_satisfy_candidate_claim": true
   },
   "diagnostic_controls": {
-    "names": [
-      "body_count",
-      "body_magnitude",
-      "maximum_run",
-      "direction_flip"
-    ],
+    "definitions": {
+      "body_count": "sign(number positive bodies-number negative bodies)",
+      "body_magnitude": "sign(sum log(close_i/open_i) across all 1m bodies)",
+      "maximum_run": "sign(max positive run length-max negative run length)",
+      "direction_flip": "negative primary TSPI side"
+    },
+    "clock_rule": "each control uses the same Wednesday source-valid opportunity but abstains on its own exact-zero statistic; no tie is broken using the primary side",
     "cannot_be_promoted": true
   },
   "source_plan": {
@@ -132,5 +133,5 @@
     "promoted_prior_control": false
   },
   "stopping_rule": "terminal first failure; no weekday, window, run transform, direction, entry, hold, RV20, subset, comparator, control, or gate repair",
-  "manifest_hash": "8d8880511702d943690803e5c75d2510d729c5bb487b1c869f6a79008e6e25fc"
+  "manifest_hash": "c61806bc1f43cfdcdea81ec98f49dcc9d58be10c87c0dafb76a681acbf4bf5a9"
 }

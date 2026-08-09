@@ -24,3 +24,7 @@ def test_rv20_is_later_audit_only():
     assert payload["rv20_stress_slice"]["entry_filter"] is False
     assert payload["post_stage_volatility_audit"]["minimum_q90_trades"] == 8
     assert payload["diagnostic_controls"]["cannot_be_promoted"] is True
+    assert set(payload["diagnostic_controls"]["definitions"]) == {
+        "body_count", "body_magnitude", "maximum_run", "direction_flip",
+    }
+    assert "abstains" in payload["diagnostic_controls"]["clock_rule"]
