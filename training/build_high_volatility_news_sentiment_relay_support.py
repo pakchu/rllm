@@ -29,7 +29,7 @@ def score_states(sentiment:pd.DataFrame,market:pd.DataFrame)->pd.DataFrame:
 def build_clock(states:pd.DataFrame,control:str="primary")->pd.DataFrame:
  if control not in ("primary",*CONTROLS):raise ValueError(control)
  if control=="one_week_stale_sentiment":
-  indexed=states.set_index("source_day");used=indexed.reindex(states.source_day-pd.Timedelta(days=7)).reset_index(drop=True);used.index=states.index
+  indexed=states.set_index("source_day");used=indexed.reindex(states.source_day-pd.Timedelta(days=7));used["source_day"]=used.index;used=used.reset_index(drop=True);used.index=states.index
  else:used=states
  valid=used.state_valid.eq(True)&used.sentiment_change.ne(0)
  sentiment_change_gate=pd.Series(True,index=states.index) if control=="no_sentiment_tail" else used.sentiment_shock_rank.ge(.75);btc_gate=pd.Series(True,index=states.index) if control=="no_btc_variation_gate" else states.btc_variation_rank.ge(.65);active=valid&sentiment_change_gate&btc_gate;side=np.sign(used.sentiment_change).fillna(0).astype(int)

@@ -8,3 +8,5 @@ def test_primary_follows_sentiment_change_and_controls_are_diagnostic():
  s=_states();c=support.build_clock(s);assert c.side.tolist()==[1];assert c.entry_time.iloc[0]==pd.Timestamp("2023-07-03T00:05:00Z");assert support.build_clock(s,"direction_flip").side.tolist()==[-1];assert support.build_clock(s,"same_clock_forced_long").side.tolist()==[1]
 def test_sentiment_tail_is_required_only_by_control():
  s=_states(sentiment_shock_rank=.2);assert support.build_clock(s).empty;assert support.build_clock(s,"no_sentiment_tail").side.tolist()==[1]
+def test_one_week_stale_control_preserves_exact_source_day():
+ old=_states();old["source_day"]=pd.Timestamp("2023-06-24T00:00:00Z");old["decision_time"]=pd.Timestamp("2023-07-02T00:00:00Z");current=_states(sentiment_change=-.2);s=pd.concat([old,current],ignore_index=True);c=support.build_clock(s,"one_week_stale_sentiment");assert c.source_day.tolist()==[pd.Timestamp("2023-06-24T00:00:00Z")];assert c.side.tolist()==[1]
