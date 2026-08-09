@@ -19,7 +19,11 @@ from training.download_bitcoin_block_summaries import (
 )
 
 
-BASE_URL = "https://mempool.space/api/v1"
+BASE_URLS = (
+    "https://mempool.space/api/v1",
+    "https://mempool.emzy.de/api/v1",
+    "https://mempool.ninja/api/v1",
+)
 START_HEIGHT = 795_000
 END_HEIGHT = 961_681
 OUTPUT = Path("data/fetls_block_summaries_2023_2026.csv.gz")
@@ -33,11 +37,12 @@ COLUMNS = (
 
 
 def _fetch(cursor: int, retries: int = 4) -> tuple[int, list[dict]]:
-    url = f"{BASE_URL}/blocks/{cursor}"
     for attempt in range(retries + 1):
+        base_url = BASE_URLS[(cursor + attempt) % len(BASE_URLS)]
+        url = f"{base_url}/blocks/{cursor}"
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "rllm-private-research/1.0"})
-            with urllib.request.urlopen(req, timeout=45) as response:
+            with urllib.request.urlopen(req, timeout=12) as response:
                 payload = json.loads(response.read())
             return cursor, payload
         except (TimeoutError, urllib.error.URLError, urllib.error.HTTPError) as exc:
@@ -131,7 +136,7 @@ def assemble() -> dict:
     core = {
         "protocol_version": "fetls_block_summaries_source_v1",
         "official_api": "https://github.com/mempool/mempool/blob/master/docs/api/rest.md",
-        "transport": "https://mempool.space/api/v1/blocks/{height}",
+        "transport_mirrors": [f"{base}/blocks/{{height}}" for base in BASE_URLS],
         "start_height": START_HEIGHT,
         "end_height": END_HEIGHT,
         "rows": len(ordered),
