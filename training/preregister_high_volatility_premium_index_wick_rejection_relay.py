@@ -10,8 +10,6 @@ from typing import Any
 
 POLICY_ID = "HVPIWR-12"
 DEFAULT_OUTPUT = Path("results/high_volatility_premium_index_wick_rejection_relay_preregistration_2026-08-09.json")
-MARKET = Path("data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz")
-MARKET_SHA = "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
 
 
 def canonical_hash(value: Any) -> str:
@@ -52,7 +50,7 @@ def build() -> dict[str, Any]:
         "economic_gates": {"absolute_return_positive": True, "cagr_to_strict_mdd_min": 3.0, "strict_mdd_max_pct": 15.0, "mean_gross_underlying_min_bp": 20.0, "weekly_signflip_one_sided_p_max": 0.1, "stress_absolute_return_positive": True, "stress_cagr_to_strict_mdd_min": 2.5, "each_calendar_half_positive": True, "stop_on_first_failure": True, "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"},
         "post_stage_volatility_audit": {"prerequisite": "unchanged candidate passes all stages", "rv20_q90_entry_filter": False, "minimum_q90_trades": 8, "candidate_q90_absolute_return_positive": True, "identical_clock_forced_long_residual_positive": True},
         "diagnostic_controls": {"definitions": {"no_variation_gate": "premium rejection and magnitude tail without BTC variation rank", "no_magnitude_tail": "premium rejection and high BTC variation without magnitude rank", "premium_body_direction": "daily premium body sign on primary clock", "one_day_stale_rejection": "prior exact day's rejection while current variation gates eligibility", "direction_flip": "negative primary side", "same_clock_forced_long": "side +1 on primary clock"}, "cannot_be_promoted": True},
-        "source_plan": {"premium": {"table": "bars_binance_premium", "symbol": "BTCUSDT", "interval": "1m", "columns": ["ts", "open", "high", "low", "close"], "read_only": True}, "historical_market": {"path": str(MARKET), "sha256": MARKET_SHA}, "live_extension": "read-only Postgres BTCUSDT 1m through 2026-08-01", "execution_prices": "sealed until source and novelty pass"},
+        "source_plan": {"premium": {"table": "bars_binance_premium", "symbol": "BTCUSDT", "interval": "1m", "columns": ["ts", "open", "high", "low", "close"], "read_only": True}, "btc": {"table": "bars_binance", "symbol": "BTCUSDT", "interval": "1m", "columns": ["ts", "open", "high", "low", "close"], "read_only": True}, "query_window": ["2022-01-01T00:00:00Z", "2026-08-01T00:00:00Z"], "execution_prices": "sealed until source and novelty pass"},
         "research_boundary": {"prior_premium_and_wick_family_outcomes_known": True, "prior_event_sets_or_controls_reused": False, "exact_hvpiwr_incidence_or_outcomes_known": False, "candidate_incidence_opened": False, "postentry_return_or_pnl_opened": False, "gross9_rows_opened": False, "candidate_count": 1, "grid": False, "repair_of_prior_candidate": False, "promoted_prior_control": False, "selection_basis": "independent daily premium-index rejection geometry"},
         "stopping_rule": "terminal first failure; no source day, wick, body, rank, variation, side, clock, hold, subset, threshold, comparator, or control repair",
     }
@@ -63,8 +61,6 @@ def validate(payload: dict[str, Any]) -> None:
     core = {key: value for key, value in payload.items() if key != "manifest_hash"}
     if payload.get("manifest_hash") != canonical_hash(core):
         raise RuntimeError("HVPIWR preregistration drift")
-    if hashlib.sha256(MARKET.read_bytes()).hexdigest() != MARKET_SHA:
-        raise RuntimeError("HVPIWR historical market drift")
 
 
 if __name__ == "__main__":
