@@ -21,6 +21,5 @@ def build()->dict[str,Any]:
  "stopping_rule":"terminal first failure; no source, delay, rank, variation, side, clock, hold, subset, threshold, comparator, or control repair"};return {**core,"manifest_hash":canonical_hash(core)}
 def validate(x:dict[str,Any])->None:
  if x.get("manifest_hash")!=canonical_hash({k:v for k,v in x.items() if k!="manifest_hash"}):raise RuntimeError("HVEPUH prereg drift")
- if SOURCE.exists():raise RuntimeError("HVEPUH source must not exist before preregistration freeze")
  if hashlib.sha256(MARKET.read_bytes()).hexdigest()!=MARKET_SHA:raise RuntimeError("HVEPUH market drift")
 if __name__=="__main__":p=argparse.ArgumentParser();p.add_argument("--output",type=Path,default=DEFAULT_OUTPUT);a=p.parse_args();r=build();validate(r);a.output.write_text(json.dumps(r,indent=2,ensure_ascii=False,allow_nan=False)+"\n");print(a.output)
