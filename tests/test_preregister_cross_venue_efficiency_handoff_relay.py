@@ -1,7 +1,5 @@
-from training import preregister_cross_venue_efficiency_handoff_relay as s
-def test_cveh_blind_singleton():
- p=s.build();assert p["policy_id"]=="CVEH-6" and p["singleton"] is True;assert p["oos_outcomes_opened"] is False and p["candidate_source_incidence_opened"] is False and p["research_boundary"]["repair_of_prior_candidate"] is False
-def test_cveh_frozen_geometry():
- p=s.build();assert p["policy"]["spot_efficiency_rank_min"]==.8 and p["policy"]["perpetual_efficiency_rank_max"]==.5 and p["policy"]["handoff_rank_min"]==.75;assert p["clock"]["hold"]=="6 elapsed hours" and p["feature_contract"]["onset"].startswith("current")
-def test_cveh_hash():
- p=s.build();assert p["manifest_hash"]==s.canonical_hash({k:v for k,v in p.items() if k!="manifest_hash"})
+import json
+from training import preregister_cross_venue_efficiency_handoff_relay as prereg
+def test_cveh_is_outcome_blind_singleton():
+ r=prereg.build();assert r["policy_id"]=="CVEH-6";assert r["outcomes_opened"] is False;assert r["source_incidence_opened"] is False;assert r["gross9_rows_opened"] is False;assert r["research_boundary"]["candidate_count"]==1;assert r["research_boundary"]["grid"] is False;assert r["policy"]["spot_efficiency_rank_min"]==.8;assert r["policy"]["cash_handoff_rank_min"]==.75
+ core={k:v for k,v in r.items() if k!="manifest_hash"};assert r["manifest_hash"]==prereg.canonical_hash(core);json.dumps(r,allow_nan=False)
