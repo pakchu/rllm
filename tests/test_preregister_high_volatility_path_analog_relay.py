@@ -17,13 +17,15 @@ def test_hvpar_feature_and_analog_contract_is_exact() -> None:
     assert payload["feature_contract"]["ordered_features"] == list(subject.FEATURES)
     assert len(subject.FEATURES) == 33
     assert payload["training_contract"]["estimator"]["neighbors"] == 64
+    assert payload["training_contract"]["estimator"]["minimum_reference_rows"] == 67
+    assert "t+16h" in payload["training_contract"]["estimator"]["training_prediction"]
     assert payload["policy"]["prediction_strength_quantile"] == 0.75
     assert payload["oos_clock"]["hold"] == "8 elapsed hours"
     assert payload["diagnostic_controls"]["names"][-1] == "forced_long"
+    assert payload["research_boundary"]["shared_high_volatility_source_backbone_known_from_prior_candidates"] is True
 
 
 def test_hvpar_manifest_hash_binds_payload() -> None:
     payload = subject.build()
     core = {key: value for key, value in payload.items() if key != "manifest_hash"}
     assert payload["manifest_hash"] == subject.canonical_hash(core)
-

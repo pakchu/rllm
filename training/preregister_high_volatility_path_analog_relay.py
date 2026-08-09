@@ -40,8 +40,10 @@ def build() -> dict[str, Any]:
             "why_distinct": (
                 "HVPAR is a nonparametric path-recurrence model over 32 ordered half-hour coordinates and one "
                 "causal volatility rank. HVITR was one linear ridge over aggregate topology statistics; prior "
-                "handcrafted candidates used individual topology gates. HVPAR reuses no event set, prediction, "
-                "threshold, control, or OOS outcome and uses no flow, funding, OI, basis, calendar, or cross-asset input."
+                "handcrafted candidates used individual topology gates. HVPAR reuses no candidate event set, "
+                "prediction, fitted threshold, diagnostic result, or OOS outcome. It intentionally retains the "
+                "project-wide comparison clock, volatility gate, controls and economic gates, and uses no flow, "
+                "funding, OI, basis, calendar, or cross-asset input."
             ),
             "why_suited_to_volatile_regimes": (
                 "both reference analogs and OOS queries require causal eight-hour variation rank at least 0.65"
@@ -56,7 +58,10 @@ def build() -> dict[str, Any]:
             "decisions": "exact 00:00/08:00/16:00 UTC completed boundaries",
             "label": "log(exit_open/entry_open), entry=D+5m, exit=entry+8 elapsed hours",
             "training_rows": "all source-valid decisions with finite ordered features and complete label",
-            "standardization": "population mean/std on all training rows only; reject nonfinite or zero scale",
+            "standardization": (
+                "one population mean/std fit once on all training rows; the same full-training transform is used "
+                "for purged leave-one-out calibration and frozen OOS inference; reject nonfinite or zero scale"
+            ),
             "reference_population": "training rows with variation_rank>=0.65 only",
             "estimator": {
                 "distance": "Euclidean distance over all 33 standardized ordered features",
@@ -64,11 +69,18 @@ def build() -> dict[str, Any]:
                 "tie_break": "ascending distance then ascending decision_time",
                 "weight": "1/max(distance,1e-12), normalized to sum one",
                 "prediction": "weighted arithmetic mean of neighbor labels",
-                "training_prediction": "leave current reference row out before selecting its 64 neighbors",
+                "training_prediction": (
+                    "purged leave-one-out: for query decision t, exclude the current reference and every reference "
+                    "whose [decision-8h,decision) feature window intersects query label interval [t+5m,t+8h+5m]; "
+                    "on the fixed grid this excludes t and any available t+8h and t+16h references"
+                ),
+                "minimum_reference_rows": 67,
             },
             "prediction_strength_threshold": (
-                "strict empirical 0.75 quantile of absolute leave-one-out predictions over every reference row"
+                "numpy linear-method empirical 0.75 quantile of absolute purged leave-one-out predictions over "
+                "every reference row; OOS eligibility uses absolute prediction greater than or equal to this value"
             ),
+            "label_endpoint": "require entry and exit opens finite/positive and exit strictly before 2023-01-01T00:00:00Z",
             "hyperparameter_grid": False,
             "feature_selection": False,
             "refit_after_2022_12_31": False,
@@ -85,9 +97,14 @@ def build() -> dict[str, Any]:
             "variation_shares": (
                 "each close-to-close squared return is assigned to the segment containing its later close; "
                 "the first segment therefore has 29 returns and each later segment has 30; each segment sum "
-                "is divided by the full 479-return squared sum"
+                "is divided by the full 479-return squared sum. The first normalized path return intentionally "
+                "starts at first-bar open while variation uses only close-to-close returns."
             ),
             "variation_rank": "strict-prior midrank over at most 270 valid blocks, minimum 180, current excluded",
+            "source_validity": (
+                "exactly 480 unique expected timestamps, finite positive OHLC, high>=max(open,close), "
+                "low<=min(open,close), high>=low, positive full variation, no imputation"
+            ),
             "no_imputation": True,
         },
         "oos_clock": {
@@ -178,12 +195,15 @@ def build() -> dict[str, Any]:
             "oos_candidate_incidence_opened": False,
             "oos_post_entry_return_or_pnl_opened": False,
             "gross9_rows_opened": False,
+            "shared_high_volatility_source_backbone_known_from_prior_candidates": True,
+            "candidate_specific_analog_prediction_and_incidence_opened": False,
             "candidate_count": 1,
             "grid": False,
             "repair_of_prior_candidate": False,
             "promoted_prior_control": False,
             "selection_basis": (
-                "single nonlinear path-analog mechanism specified independently after terminating HVITR unchanged"
+                "single nonlinear path-recurrence mechanism; proposed after terminating HVITR unchanged and "
+                "therefore prospectively confirmatory only for its still-sealed candidate-specific analog incidence/outcomes"
             ),
         },
         "stopping_rule": (

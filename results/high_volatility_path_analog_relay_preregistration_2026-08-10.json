@@ -10,7 +10,7 @@
   "mechanism": {
     "claim": "The next eight-hour direction after a volatile BTC block is conditional on analog recurrence of the completed block's half-hour directional path and within-block variation allocation. A fixed nearest-analog estimator can represent nonlinear path states without OOS adaptation.",
     "side": "strict sign of the frozen nearest-analog prediction",
-    "why_distinct": "HVPAR is a nonparametric path-recurrence model over 32 ordered half-hour coordinates and one causal volatility rank. HVITR was one linear ridge over aggregate topology statistics; prior handcrafted candidates used individual topology gates. HVPAR reuses no event set, prediction, threshold, control, or OOS outcome and uses no flow, funding, OI, basis, calendar, or cross-asset input.",
+    "why_distinct": "HVPAR is a nonparametric path-recurrence model over 32 ordered half-hour coordinates and one causal volatility rank. HVITR was one linear ridge over aggregate topology statistics; prior handcrafted candidates used individual topology gates. HVPAR reuses no candidate event set, prediction, fitted threshold, diagnostic result, or OOS outcome. It intentionally retains the project-wide comparison clock, volatility gate, controls and economic gates, and uses no flow, funding, OI, basis, calendar, or cross-asset input.",
     "why_suited_to_volatile_regimes": "both reference analogs and OOS queries require causal eight-hour variation rank at least 0.65",
     "why_low_gross9_overlap_is_plausible": "fixed-boundary high-dimensional price-path recurrence is absent from Gross9"
   },
@@ -26,7 +26,7 @@
     "decisions": "exact 00:00/08:00/16:00 UTC completed boundaries",
     "label": "log(exit_open/entry_open), entry=D+5m, exit=entry+8 elapsed hours",
     "training_rows": "all source-valid decisions with finite ordered features and complete label",
-    "standardization": "population mean/std on all training rows only; reject nonfinite or zero scale",
+    "standardization": "one population mean/std fit once on all training rows; the same full-training transform is used for purged leave-one-out calibration and frozen OOS inference; reject nonfinite or zero scale",
     "reference_population": "training rows with variation_rank>=0.65 only",
     "estimator": {
       "distance": "Euclidean distance over all 33 standardized ordered features",
@@ -34,9 +34,11 @@
       "tie_break": "ascending distance then ascending decision_time",
       "weight": "1/max(distance,1e-12), normalized to sum one",
       "prediction": "weighted arithmetic mean of neighbor labels",
-      "training_prediction": "leave current reference row out before selecting its 64 neighbors"
+      "training_prediction": "purged leave-one-out: for query decision t, exclude the current reference and every reference whose [decision-8h,decision) feature window intersects query label interval [t+5m,t+8h+5m]; on the fixed grid this excludes t and any available t+8h and t+16h references",
+      "minimum_reference_rows": 67
     },
-    "prediction_strength_threshold": "strict empirical 0.75 quantile of absolute leave-one-out predictions over every reference row",
+    "prediction_strength_threshold": "numpy linear-method empirical 0.75 quantile of absolute purged leave-one-out predictions over every reference row; OOS eligibility uses absolute prediction greater than or equal to this value",
+    "label_endpoint": "require entry and exit opens finite/positive and exit strictly before 2023-01-01T00:00:00Z",
     "hyperparameter_grid": false,
     "feature_selection": false,
     "refit_after_2022_12_31": false,
@@ -81,8 +83,9 @@
     "block": "480 exact coherent BTCUSDT bars_binance interval=1m rows [D-8h,D)",
     "path_partition": "sixteen consecutive 30-minute segments indexed 00..15",
     "path_levels": "17 levels: first bar open followed by closes at minute offsets 29,59,...,479; the 16 log differences are divided by sqrt(full close-to-close squared-return sum)",
-    "variation_shares": "each close-to-close squared return is assigned to the segment containing its later close; the first segment therefore has 29 returns and each later segment has 30; each segment sum is divided by the full 479-return squared sum",
+    "variation_shares": "each close-to-close squared return is assigned to the segment containing its later close; the first segment therefore has 29 returns and each later segment has 30; each segment sum is divided by the full 479-return squared sum. The first normalized path return intentionally starts at first-bar open while variation uses only close-to-close returns.",
     "variation_rank": "strict-prior midrank over at most 270 valid blocks, minimum 180, current excluded",
+    "source_validity": "exactly 480 unique expected timestamps, finite positive OHLC, high>=max(open,close), low<=min(open,close), high>=low, positive full variation, no imputation",
     "no_imputation": true
   },
   "oos_clock": {
@@ -190,12 +193,14 @@
     "oos_candidate_incidence_opened": false,
     "oos_post_entry_return_or_pnl_opened": false,
     "gross9_rows_opened": false,
+    "shared_high_volatility_source_backbone_known_from_prior_candidates": true,
+    "candidate_specific_analog_prediction_and_incidence_opened": false,
     "candidate_count": 1,
     "grid": false,
     "repair_of_prior_candidate": false,
     "promoted_prior_control": false,
-    "selection_basis": "single nonlinear path-analog mechanism specified independently after terminating HVITR unchanged"
+    "selection_basis": "single nonlinear path-recurrence mechanism; proposed after terminating HVITR unchanged and therefore prospectively confirmatory only for its still-sealed candidate-specific analog incidence/outcomes"
   },
   "stopping_rule": "Freeze preregistration, analog model, OOS source support, Gross9 novelty, then strict economics; terminal first failure with no feature, neighbor count, distance, weight, threshold, side, hold, clock, subset, or control repair.",
-  "manifest_hash": "31b51f2eb9f97eba2b699aee1bf7649f6c5d2aa41b95090d580a8b6c96c59048"
+  "manifest_hash": "6157efaaf34a9effb39864b59bf322feba68a418740d12b860bcb8a68bcb39e0"
 }
