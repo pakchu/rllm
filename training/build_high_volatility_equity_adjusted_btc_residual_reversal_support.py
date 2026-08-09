@@ -15,8 +15,9 @@ STATE=Path("data/high_volatility_equity_adjusted_btc_residual_reversal_sources_2
 SPLITS={"train":(pd.Timestamp("2023-07-01T00:00:00Z"),pd.Timestamp("2024-01-01T00:00:00Z")),"test":(pd.Timestamp("2024-01-01T00:00:00Z"),pd.Timestamp("2025-01-01T00:00:00Z")),"eval":(pd.Timestamp("2025-01-01T00:00:00Z"),pd.Timestamp("2026-01-01T00:00:00Z")),"final":(pd.Timestamp("2026-01-01T00:00:00Z"),END)};MINIMUM={"train":8,"test":12,"eval":12,"final":8};CONTROLS=("no_variation_gate","no_residual_tail","raw_btc_return_reversal","one_session_stale_beta","direction_flip","same_clock_forced_long");COLUMNS=("candidate","control","split","session_date","cash_close_time","feature_available_time","entry_time","exit_time","side","spy_return","btc_return","beta","residual","residual_rank","variation","variation_rank")
 def sha(p:Path)->str:return hashlib.sha256(p.read_bytes()).hexdigest()
 def beta(prior:pd.DataFrame)->float:
+ if len(prior)<40 or not {"spy_return","btc_return"}.issubset(prior.columns):return np.nan
  x=prior.spy_return.to_numpy(float);y=prior.btc_return.to_numpy(float)
- if len(x)<40 or not np.isfinite(x).all() or not np.isfinite(y).all():return np.nan
+ if not np.isfinite(x).all() or not np.isfinite(y).all():return np.nan
  variance=float(np.mean(np.square(x-x.mean())))
  return float(np.mean((x-x.mean())*(y-y.mean()))/variance) if variance>0 else np.nan
 def score_states(paired:pd.DataFrame,market:pd.DataFrame)->pd.DataFrame:
