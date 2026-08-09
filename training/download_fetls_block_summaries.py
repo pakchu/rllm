@@ -32,7 +32,7 @@ COLUMNS = (
 )
 
 
-def _fetch(cursor: int, retries: int = 10) -> tuple[int, list[dict]]:
+def _fetch(cursor: int, retries: int = 4) -> tuple[int, list[dict]]:
     url = f"{BASE_URL}/blocks/{cursor}"
     for attempt in range(retries + 1):
         try:
@@ -44,7 +44,7 @@ def _fetch(cursor: int, retries: int = 10) -> tuple[int, list[dict]]:
             retryable = not isinstance(exc, urllib.error.HTTPError) or exc.code == 429 or exc.code >= 500
             if not retryable or attempt == retries:
                 raise
-            time.sleep(min(60.0, 0.5 * 2**attempt))
+            time.sleep(min(8.0, 0.5 * 2**attempt))
     raise AssertionError("unreachable")
 
 
@@ -89,8 +89,8 @@ def download(workers: int) -> None:
     with _db() as db:
         have = {row[0] for row in db.execute("select cursor from pages")}
         missing = [cursor for cursor in cursors if cursor not in have]
-        for offset in range(0, len(missing), 256):
-            batch = missing[offset : offset + 256]
+        for offset in range(0, len(missing), 64):
+            batch = missing[offset : offset + 64]
             with ThreadPoolExecutor(max_workers=workers) as pool:
                 futures = [pool.submit(_fetch, cursor) for cursor in batch]
                 for future in as_completed(futures):
