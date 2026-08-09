@@ -1,0 +1,130 @@
+{
+  "protocol_version": "high_volatility_knn_analog_relay_v1",
+  "policy_id": "HVKAR-12",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "At a daily boundary in an RV20 top-decile regime, the nearest prior microstructure states provide a non-parametric estimate of whether urgent inventory is more likely to persist or mean-revert over the next twelve hours.",
+    "side": "sign of the median net twelve-hour return among 21 nearest fit analogs",
+    "why_distinct": "HVKAR is a once-daily, fit-period-only analog retrieval policy. It is not a threshold repair, control promotion, tree/linear classifier, fixed momentum rule, external release clock, or any Gross9 state-conditioned policy.",
+    "why_suited_to_volatile_regimes": "eligibility uses the exact causal RV20 rolling-90th-percentile contract",
+    "why_low_gross9_overlap_is_plausible": "one 00:05 UTC decision per eligible calendar day is structurally sparse"
+  },
+  "rv20": {
+    "reference": "BTCUSDT perpetual exact UTC calendar-day 00:00 close series",
+    "daily_return": "log(C_d/C_{d-1}) assigned to day d",
+    "feature": "sqrt(365*mean(r_d^2)) for exact days t-20 through t-1",
+    "threshold": "numpy linear 0.90 quantile of the preceding 756 available RV20 observations with timestamps strictly before t; current excluded",
+    "eligibility": "RV20(t)>=threshold(t)",
+    "missing_or_duplicate_day": "ineligible; no imputation"
+  },
+  "features": {
+    "window": "exact 288 completed BTCUSDT 5m bars in [t-24h,t)",
+    "vector": [
+      "log close/open return",
+      "sqrt sum squared close-to-close 5m returns",
+      "log maximum high/minimum low",
+      "upside minus downside semivariance divided by total semivariance",
+      "2*taker_buy_quote/sum_quote_volume-1",
+      "log final close/quote-volume-weighted typical price",
+      "signed-return entropy over eight equal-width sign-count bins",
+      "log total quote volume",
+      "log total trade count"
+    ],
+    "finite_complete_path_required": true,
+    "normalization": "componentwise median and max(IQR,1e-12) from fit rows only; frozen after fit"
+  },
+  "model": {
+    "family": "deterministic Euclidean k-nearest analog regression",
+    "fit_decisions": [
+      "2021-01-01T00:00:00Z",
+      "2023-07-01T00:00:00Z"
+    ],
+    "label": "fixed-quantity 0.5-gross twelve-hour return from 00:05 open to 12:05 open, including 6bp per-notional-side costs and exact funding; labels whose exit is not strictly before fit end are excluded",
+    "neighbors": 21,
+    "distance": "Euclidean after frozen robust normalization",
+    "tie_break": "distance, then decision timestamp ascending",
+    "prediction": "median neighbor label; zero abstains",
+    "training_labels_cannot_enter_source_support_report": true,
+    "refit_after_2023_07_01": false
+  },
+  "clock": {
+    "decision": "each exact 00:00 UTC after all prior-day bars complete",
+    "entry": "exact 00:05 UTC BTCUSDT 5m open",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact realized funding only"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "historical": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "live_extension": "read-only Postgres bars_binance BTCUSDT 5m through 2026-08-01; exact overlap parity required before append",
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_knn_analog_candidate_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_stage_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no feature, k, fit period, RV20, side, timing, hold, threshold, subset, or gate repair",
+  "manifest_hash": "da0d7d2ef6ac34e789cbdf23a133c7e3c318cc27b77f7c91144a9952c316206e"
+}
