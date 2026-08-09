@@ -22,7 +22,7 @@ def test_normalized_mutual_information_detects_exact_dependence():
 
 
 def test_contract_is_frozen():
-    assert support.PREREG_SHA == "1f5b98ec368309e1d20500548bf1ef8c2bed7d65182fcd7e5d71602e8563d36c"
+    assert support.PREREG_SHA == "572694f70406d2fa26f1d0a0be6eea6a54258c793ba67b305a67a8b0e9d299c1"
     assert "FROM bars_binance" in support.QUERY
     assert support.CONTROLS == (
         "no_mutual_information_tail",

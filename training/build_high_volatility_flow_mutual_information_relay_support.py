@@ -17,7 +17,7 @@ from training.build_binance_aggtrade_microstructure import _write_gzip_csv
 ENV_FILE = "/home/pakchu/rllm/.env"
 START = pd.Timestamp("2023-04-01T00:00:00Z")
 END = pd.Timestamp("2026-08-01T00:00:00Z")
-PREREG_SHA = "1f5b98ec368309e1d20500548bf1ef8c2bed7d65182fcd7e5d71602e8563d36c"
+PREREG_SHA = "572694f70406d2fa26f1d0a0be6eea6a54258c793ba67b305a67a8b0e9d299c1"
 SPLITS = {
     "train": (pd.Timestamp("2023-07-01T00:00:00Z"), pd.Timestamp("2024-01-01T00:00:00Z")),
     "test": (pd.Timestamp("2024-01-01T00:00:00Z"), pd.Timestamp("2025-01-01T00:00:00Z")),
@@ -39,7 +39,7 @@ MANIFEST = ROOT / "manifest.json"
 CLOCK = Path("data/high_volatility_flow_mutual_information_relay_clocks_2023_2026.csv.gz")
 CONTROL_DIR = Path("data/high_volatility_flow_mutual_information_relay_controls_2023_2026")
 RESULT = Path("results/high_volatility_flow_mutual_information_relay_support_2026-08-10.json")
-QUERY = """SELECT ts,open,high,low,close,quote_asset_volume,taker_buy_quote_asset_volume
+QUERY = """SELECT ts,open,high,low,close,quote_asset_volume,taker_buy_quote
 FROM bars_binance
 WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end
 ORDER BY ts"""
@@ -118,7 +118,7 @@ def materialize() -> tuple[pd.DataFrame, dict[str, Any]]:
         )
     database.dispose()
     frame["ts"] = pd.to_datetime(frame["ts"], utc=True)
-    for column in ("open", "high", "low", "close", "quote_asset_volume", "taker_buy_quote_asset_volume"):
+    for column in ("open", "high", "low", "close", "quote_asset_volume", "taker_buy_quote"):
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
     if frame["ts"].duplicated().any():
         raise RuntimeError("duplicate HVFMI source timestamps")
@@ -131,8 +131,8 @@ def materialize() -> tuple[pd.DataFrame, dict[str, Any]]:
             len(window) == 480
             and np.isfinite(window).all().all()
             and window[["open", "high", "low", "close", "quote_asset_volume"]].gt(0).all().all()
-            and window["taker_buy_quote_asset_volume"].ge(0).all()
-            and window["taker_buy_quote_asset_volume"].le(window["quote_asset_volume"]).all()
+            and window["taker_buy_quote"].ge(0).all()
+            and window["taker_buy_quote"].le(window["quote_asset_volume"]).all()
             and window["high"].ge(window[["open", "close"]].max(axis=1)).all()
             and window["low"].le(window[["open", "close"]].min(axis=1)).all()
             and window["high"].ge(window["low"]).all()
@@ -140,7 +140,7 @@ def materialize() -> tuple[pd.DataFrame, dict[str, Any]]:
         if valid:
             returns = np.diff(np.log(window["close"].to_numpy(float)))
             variation = float(np.sqrt(np.square(returns).sum()))
-            flow = (2.0 * window["taker_buy_quote_asset_volume"].to_numpy(float)[1:] - window["quote_asset_volume"].to_numpy(float)[1:]) / window["quote_asset_volume"].to_numpy(float)[1:]
+            flow = (2.0 * window["taker_buy_quote"].to_numpy(float)[1:] - window["quote_asset_volume"].to_numpy(float)[1:]) / window["quote_asset_volume"].to_numpy(float)[1:]
             mutual_information = normalized_mutual_information(returns, flow)
             block_return = float(np.log(window["close"].iloc[-1] / window["open"].iloc[0]))
             late_return = float(np.log(window["close"].iloc[-1] / window["open"].iloc[-120]))
