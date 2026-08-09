@@ -1,0 +1,21 @@
+{
+  "protocol_version": "hvpcr_8_btc_source_v1",
+  "query": "\nSELECT p.ts,p.open AS premium_open,p.high AS premium_high,p.low AS premium_low,p.close AS premium_close,\n       b.open AS btc_open,b.high AS btc_high,b.low AS btc_low,b.close AS btc_close\nFROM bars_binance_premium p JOIN bars_binance b\n  ON b.symbol='BTCUSDT' AND b.interval='1m' AND b.ts=p.ts\nWHERE p.symbol='BTCUSDT' AND p.interval='1m' AND p.ts>=:start AND p.ts<:end ORDER BY p.ts\n",
+  "table": "bars_binance",
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "exact_candidate_outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_premium_catchup_relay_sources_2023_2026/eight_hour_premium_catchup_panel.csv.gz",
+    "sha256": "9134669dfa47c57903f644ad65cb81d5310b8de9a3b27a1f4018e78dbb7c7dbc",
+    "rows": 3654,
+    "valid_rows": 3651
+  },
+  "manifest_hash": "838434f00b5eb1c247c9b854247fe8870a32f947dc46277c08b09ec7eaecc322"
+}
