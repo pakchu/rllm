@@ -2108,6 +2108,58 @@ def _load_rank7_bundle_cached(path: str | Path) -> Rank7Bundle:
     return bundle
 
 
+def _rank7_effective_lookback_minutes(
+    portfolio: dict[str, Any],
+    *,
+    asof: pd.Timestamp,
+    configured_minutes: int,
+    interval_minutes: int = 5,
+) -> int:
+    """Keep the DB tail continuous with Rank7's frozen hourly warm start."""
+
+    effective = max(
+        int(configured_minutes),
+        int(portfolio.get("minimum_feature_history_minutes", 0) or 0),
+    )
+    asof_ts = pd.Timestamp(asof)
+    asof_ts = (
+        asof_ts.tz_localize("UTC")
+        if asof_ts.tzinfo is None
+        else asof_ts.tz_convert("UTC")
+    )
+    for sleeve in portfolio.get("base_sleeves", []):
+        rank7_expected = (
+            str(sleeve.get("policy_type", "")).lower() == "frozen_annual_rank7"
+            or str(sleeve.get("name", "")).lower() == "frozen_annual_rank7"
+        )
+        if not rank7_expected:
+            continue
+        source = Path(str(sleeve.get("source", ""))).expanduser()
+        if not source.is_file():
+            raise Rank7BundleError(f"Rank7 sleeve runtime config is missing: {source}")
+        config = _load_json(source)
+        minimum_bars = int(config.get("minimum_feature_history_bars", 18_000))
+        effective = max(effective, minimum_bars * int(interval_minutes))
+        bundle_path = config.get("bundle_path")
+        if not bundle_path:
+            raise Rank7BundleError("Rank7 config bundle_path is missing")
+        bundle = _load_rank7_bundle_cached(str(bundle_path))
+        history = bundle.hourly_history
+        if history is None or history.empty:
+            continue
+        history_end = pd.Timestamp(pd.to_datetime(history["date"], utc=True).max())
+        # Query one complete source hour before the frozen endpoint.  This gives
+        # _hourly_state_inputs an actual overlap row on which it can enforce
+        # CSV/DB value parity instead of merely assuming the boundary joins.
+        bridge_start = history_end - pd.Timedelta(hours=1)
+        bridge_minutes = max(
+            0,
+            int(math.ceil((asof_ts - bridge_start).total_seconds() / 60.0)),
+        )
+        effective = max(effective, bridge_minutes)
+    return effective
+
+
 def _rank7_score_from_config(config: dict[str, Any], enriched: pd.DataFrame) -> Rank7Decision:
     """Build and score the latest Rank7 decision under its frozen bundle."""
 
@@ -4983,8 +5035,14 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 _assert_portfolio_db_lease(db_lease)
             if asof.tzinfo is None:
                 asof = asof.tz_localize("UTC")
+            effective_lookback_minutes = _rank7_effective_lookback_minutes(
+                portfolio,
+                asof=asof,
+                configured_minutes=int(cfg.lookback_minutes),
+                interval_minutes=exec_cfg.interval_minutes,
+            )
             live_cfg = LiveDbFeatureConfig(
-                lookback_minutes=int(cfg.lookback_minutes),
+                lookback_minutes=effective_lookback_minutes,
                 include_spot_source=include_rank7,
             )
             freshness_waited, latest_1m_ts, expected_bar, freshness_mode, latest_source_ts, freshness_missing = await _wait_for_expected_1m_tail(
@@ -5535,7 +5593,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 f"open={list(state['open_sleeves'])} recovered={len(recovered_positions)} reconciled={len(reconciled_positions)} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
                 f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
                 f"fb={frame_build_sec:.2f}s score={alpha_score_sec:.2f}s workers={len({s.get('worker_pid') for s in sleeve_scores if s.get('worker_pid')})} "
-                f"fw={freshness_waited:.1f}s fm={freshness_mode} miss={len(freshness_missing)} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} alt={alt_pool_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
+                f"fw={freshness_waited:.1f}s fm={freshness_mode} miss={len(freshness_missing)} lb={effective_lookback_minutes}m src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} alt={alt_pool_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
             )
             iterations += 1
             if cfg.max_iterations is not None and iterations >= cfg.max_iterations:

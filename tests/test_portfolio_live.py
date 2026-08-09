@@ -58,6 +58,7 @@ from execution.portfolio_live import (
     _freshness_requirements_for_decision,
     _infer_signal_id_from_digest,
     _interval_slot,
+    _rank7_effective_lookback_minutes,
     _portfolio_uses_feature,
     _release_portfolio_runner_lock,
     _release_portfolio_db_lease,
@@ -109,6 +110,58 @@ class FakeClient:
 
 
 class PortfolioLiveSafetyTests(unittest.TestCase):
+    def test_rank7_effective_lookback_bridges_frozen_hourly_history_to_db_tail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "rank7.json"
+            source.write_text(
+                json.dumps(
+                    {
+                        "policy_type": "frozen_annual_rank7",
+                        "bundle_path": "unused-in-test",
+                        "minimum_feature_history_bars": 18_000,
+                    }
+                )
+            )
+            portfolio = {
+                "minimum_feature_history_minutes": 90_000,
+                "base_sleeves": [
+                    {
+                        "name": "frozen_annual_rank7",
+                        "policy_type": "frozen_annual_rank7",
+                        "source": str(source),
+                    }
+                ],
+            }
+            history = pd.DataFrame(
+                {
+                    "date": pd.date_range(
+                        "2026-05-31 13:00:00",
+                        "2026-05-31 15:00:00",
+                        freq="1h",
+                    )
+                }
+            )
+            bundle = SimpleNamespace(hourly_history=history)
+
+            with patch(
+                "execution.portfolio_live._load_rank7_bundle_cached",
+                return_value=bundle,
+            ):
+                actual = _rank7_effective_lookback_minutes(
+                    portfolio,
+                    asof=pd.Timestamp("2026-08-09 03:04:00", tz="UTC"),
+                    configured_minutes=90_000,
+                )
+
+            query_start = pd.Timestamp("2026-08-09 03:04:00", tz="UTC") - pd.Timedelta(
+                minutes=actual
+            )
+            self.assertLessEqual(
+                query_start,
+                pd.Timestamp("2026-05-31 14:00:00", tz="UTC"),
+            )
+            self.assertGreater(actual, 90_000)
+
     def test_cli_help_renders_percent_literals(self):
         output = io.StringIO()
         with patch.object(sys, "argv", ["portfolio_live", "--help"]), redirect_stdout(output):

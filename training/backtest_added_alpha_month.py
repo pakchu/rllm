@@ -34,6 +34,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from execution.portfolio_live import (
+    _rank7_effective_lookback_minutes,
     _required_availability_flags,
     build_live_portfolio_frames,
 )
@@ -600,11 +601,17 @@ async def _query_frames(
     cfg: Config,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Any]:
     engine = sqlalchemy_engine_from_env(cfg.env_path)
+    asof = _utc(cfg.asof)
+    effective_lookback_minutes = _rank7_effective_lookback_minutes(
+        _load_json(cfg.portfolio_config),
+        asof=asof,
+        configured_minutes=int(cfg.lookback_minutes),
+        interval_minutes=INTERVAL_MINUTES,
+    )
     live_cfg = LiveDbFeatureConfig(
-        lookback_minutes=int(cfg.lookback_minutes),
+        lookback_minutes=effective_lookback_minutes,
         include_spot_source=True,
     )
-    asof = _utc(cfg.asof)
     enriched, features = await build_live_portfolio_frames(
         engine=engine,
         asof=asof,
@@ -849,6 +856,17 @@ def run(cfg: Config) -> dict[str, Any]:
         raise RuntimeError(
             f"unexpected promoted sleeve order: {tuple(weights)} != {CURRENT_SLEEVES}"
         )
+    cache_paths = (cfg.enriched_cache, cfg.features_cache, cfg.funding_cache)
+    effective_lookback_minutes = (
+        None
+        if any(cache_paths)
+        else _rank7_effective_lookback_minutes(
+            portfolio,
+            asof=_utc(cfg.asof),
+            configured_minutes=int(cfg.lookback_minutes),
+            interval_minutes=INTERVAL_MINUTES,
+        )
+    )
     enriched, features, raw_funding, engine = _load_frames(cfg)
     enriched = enriched.copy()
     enriched["date"] = pd.to_datetime(enriched["date"], utc=True).dt.tz_convert(None)
@@ -1043,6 +1061,7 @@ def run(cfg: Config) -> dict[str, Any]:
             "funding_cache": (
                 None if cfg.funding_cache is None else str(cfg.funding_cache)
             ),
+            "effective_lookback_minutes": effective_lookback_minutes,
         },
         "window": {
             "requested_start": str(requested_start),
