@@ -1,0 +1,175 @@
+"""Outcome-blind preregistration for CCRE-6."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+POLICY_ID = "CCRE-6"
+DEFAULT_OUTPUT = Path(
+    "results/canonical_confirmation_range_escape_preregistration_2026-08-09.json"
+)
+
+
+def canonical_hash(payload: Any) -> str:
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "canonical_confirmation_range_escape_v1",
+        "policy_id": POLICY_ID,
+        "as_of_date": "2026-08-09",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": "A strict 24-hour range escape observed only after a canonical six-block confirmation and conservative header-time embargo identifies persistent volatile price discovery; follow the escape direction for six elapsed hours.",
+            "side": "+1 above the frozen prior-24h high, -1 below the frozen prior-24h low",
+            "why_distinct": "CCRE uses no ladder return path, block payload, flow, funding, premium, OI, fitted threshold, or prior rank. Canonical blocks provide only an asynchronous causal observation clock; the signal is a strict completed-bar range escape.",
+            "volatile_market_target": "new 24-hour extremes sampled on an irregular confirmation clock target directional volatility expansion; causal RV20 q90 remains only a later audit",
+            "why_low_gross9_overlap_is_plausible": "height-modulo confirmation anchors, strict range escapes, and six-hour reservation create a sparse asynchronous clock",
+        },
+        "features": {
+            "anchor": "canonical height H divisible by 36; confirmation is block H+6",
+            "raw_availability": "prefix maximum header timestamp and mediantime through H+6 plus 7200 seconds",
+            "decision": "raw availability ceiled to exact five-minute UTC boundary D",
+            "signal_bar": "the exact completed BTCUSDT five-minute bar [D-5m,D); signal close C is its close",
+            "reference_window": "the 288 exact five-minute bars immediately preceding the signal bar, [D-24h-5m,D-5m)",
+            "reference_high_low": "U=max(high) and L=min(low) over the 288 reference bars, finite positive",
+            "eligible_state": "+1 iff C>U, -1 iff C<L, otherwise 0; inequalities are strict",
+            "onset": "current valid state nonzero and prior valid anchor state is not the same side; invalid anchors preserve prior valid state",
+            "confirmation": "block H+6 and every price input are complete before entry",
+            "side": "eligible state sign",
+            "source_valid": "contiguous canonical chain and exact coherent five-minute grid with five unique one-minute rows per bar, no imputation",
+        },
+        "rv20_stress_slice": {
+            "rv20": "sqrt(365*mean exact daily returns^2 over t-20 through t-1)",
+            "threshold": "numpy linear q90 over 756 strictly prior available RV20 observations",
+            "entry_filter": False,
+            "future_use": "only after all sequential full-calendar stages pass",
+        },
+        "clock": {
+            "entry": "exact BTCUSDT decision+5m open",
+            "hold": "6 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding": "not an input; exact realized funding only after novelty",
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.2,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.1,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.1,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp base and 10bp stress per notional "
+                "side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged candidate passes train, test, eval, final",
+            "persistent_long_vol_comparator": "same accepted clock and 0.5 gross, side forced long",
+            "full_calendar_decomposition": "candidate minus comparator net return",
+            "rv20_q90_decomposition": "same decomposition on causal RV20 q90 decisions",
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "candidate_specific_q90_residual_positive": True,
+            "comparator_cannot_satisfy_candidate_claim": True,
+        },
+        "diagnostic_controls": {
+            "definitions": {
+                "one_anchor_stale_escape": "primary valid-anchor state and side shifted one anchor before onset",
+                "direction_flip": "negative primary side",
+                "same_clock_forced_long": "same accepted primary clock with side forced long",
+            },
+            "cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "blocks": {
+                "source": "mempool Esplora-compatible canonical block metadata",
+                "columns": [
+                    "height", "id", "previousblockhash", "timestamp", "mediantime",
+                    "tx_count", "size", "weight",
+                ],
+                "read_after_preregistration": True,
+            },
+            "bars": {
+                "table": "bars_binance",
+                "symbol": "BTCUSDT",
+                "interval": "1m",
+                "columns": ["ts", "open", "high", "low", "close"],
+                "aggregation": "exact five unique coherent one-minute rows per five-minute bar",
+                "read_after_preregistration": True,
+            },
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "prior_candidate_outcomes_known": True,
+            "exact_ccre_incidence_known": False,
+            "exact_ccre_outcomes_known": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+        },
+        "stopping_rule": (
+            "terminal first failure; no block predicate, threshold, confirmation, embargo, "
+            "side, clock, hold, RV20, subset, comparator, control, or gate repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(payload: dict[str, Any]) -> None:
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    if payload.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("CCRE preregistration drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    validate(result)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+    print(args.output)
