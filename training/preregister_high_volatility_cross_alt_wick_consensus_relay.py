@@ -1,0 +1,25 @@
+"""Outcome-blind preregistration for HVCAWCR-8."""
+from __future__ import annotations
+import argparse,copy,hashlib,json
+from pathlib import Path
+from typing import Any
+from training import preregister_high_volatility_ticket_elasticity_sponsorship_relay as template
+POLICY_ID="HVCAWCR-8";DEFAULT_OUTPUT=Path("results/high_volatility_cross_alt_wick_consensus_relay_preregistration_2026-08-10.json")
+def canonical_hash(x:Any)->str:return hashlib.sha256(json.dumps(x,sort_keys=True,separators=(",",":"),allow_nan=False).encode()).hexdigest()
+def build()->dict[str,Any]:
+ c=copy.deepcopy(template.build());c.pop("manifest_hash")
+ c.update(protocol_version="high_volatility_cross_alt_wick_consensus_relay_v1",policy_id=POLICY_ID,
+ mechanism={"claim":"Broad agreement in signed rejection-wick pressure across six liquid altcoin perpetuals identifies crypto-wide failed excursion direction before BTC fully resolves it. During elevated BTC variation, follow a new upper-tail cross-alt wick consensus in BTC.","side":"strict sign of the cross-sectional median normalized signed-wick pressure","why_distinct":"Cross-alt candidates use returns, flow, funding, turnover, tickets, correlations, variation, or residuals. BTC wick candidates use one BTC path. HVCAWCR uses cross-sectional consensus of normalized alt-only upper-versus-lower rejection geometry and no BTC directional return.","why_suited_to_volatile_regimes":"BTC completed variation must be in its causal upper 35%, while five of six alt auctions must agree on rejection polarity","why_low_gross9_overlap_is_plausible":"offset three-daily cross-alt wick-consensus onsets are absent from Gross9 primitives"},
+ features={"decision_grid":"exact 05:00/13:00/21:00 UTC boundaries","symbols":["ADAUSDT","BNBUSDT","DOGEUSDT","ETHUSDT","SOLUSDT","XRPUSDT"],"source_window":"480 exact coherent bars_binance one-minute rows per symbol [D-8h,D)","upper_wick":"sum log(high/max(open,close)) per symbol","lower_wick":"sum log(min(open,close)/low) per symbol","normalized_signed_wick":"(lower_wick-upper_wick)/(lower_wick+upper_wick), denominator strict positive and value strict nonzero","consensus_polarity":"strict sign of cross-sectional median normalized_signed_wick","breadth":"count of six symbol signs equal to consensus_polarity; require at least five","consensus_strength":"absolute cross-sectional median normalized_signed_wick","strength_rank":"strict-prior midrank over at most 270 earlier source-valid blocks, minimum 180, current excluded; rank>=0.75","btc_realized_variation":"sum squared BTCUSDT one-minute log(close/open) returns over the same completed block, finite strict positive","variation_rank":"strict-prior 270/180 midrank, current excluded; rank>=0.65","eligible_state":"breadth, strength-rank, and variation gates pass","onset":"eligible now and immediately previous exact source-valid block ineligible; missing prior cannot trigger","no_imputation":True},
+ clock={"decision":"completed eight-hour boundary","entry":"exact BTCUSDT D+5m open","hold":"8 elapsed hours","reservation":"global half-open; exit first on equal open","gross_exposure":.5,"funding":"not a signal input; exact settlements only after novelty passes"},
+ policy={"history_blocks":270,"minimum_history_blocks":180,"minimum_consensus_breadth":5,"strength_rank_min":.75,"variation_rank_min":.65,"entry_delay_minutes":5,"hold_hours":8,"leverage":.5,"base_cost_per_notional_side":.0006,"stress_cost_per_notional_side":.001},
+ diagnostic_controls={"names":["no_strength_tail","no_variation_gate","equal_weight_signed_wick_sum","one_boundary_stale_geometry","direction_flip"],"cannot_be_promoted":True},
+ source_plan={"bars":{"table":"bars_binance","symbols":["BTCUSDT","ADAUSDT","BNBUSDT","DOGEUSDT","ETHUSDT","SOLUSDT","XRPUSDT"],"interval":"1m","columns":["ts","symbol","open","high","low","close"],"window":["2023-04-01T00:00:00Z","2026-08-01T00:00:00Z"],"read_after_preregistration":True},"execution_prices":"sealed until source support and Gross9 novelty pass"},
+ research_boundary={"prior_cross_alt_and_wick_outcomes_known":True,"repository_cross_alt_wick_consensus_candidate_found":False,"prior_event_sets_reused":False,"prior_candidate_outcomes_used_to_set_formula_rank_side_hold_or_clock":False,"candidate_incidence_opened":False,"postentry_return_or_pnl_opened":False,"gross9_rows_opened":False,"candidate_count":1,"grid":False,"repair_of_prior_candidate":False,"promoted_prior_control":False,"selection_basis":"alt-only cross-sectional rejection geometry"},
+ stopping_rule="Terminal first failure; no symbol basket, wick formula, breadth, rank, side, hold, clock, subset, or control repair.")
+ return {**c,"manifest_hash":canonical_hash(c)}
+def validate(x):
+ core={k:v for k,v in x.items() if k!="manifest_hash"}
+ if x.get("manifest_hash")!=canonical_hash(core) or x!=build():raise RuntimeError("HVCAWCR preregistration drift")
+if __name__=="__main__":
+ a=argparse.ArgumentParser();a.add_argument("--output",type=Path,default=DEFAULT_OUTPUT);z=a.parse_args();x=build();validate(x);z.output.parent.mkdir(parents=True,exist_ok=True);z.output.write_text(json.dumps(x,indent=2,allow_nan=False)+"\n");print(z.output)
