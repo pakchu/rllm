@@ -1,0 +1,56 @@
+{
+  "protocol_version": "hvotsc_8_source_execution_failure_v1",
+  "policy_id": "HVOTSC-8",
+  "as_of_date": "2026-08-10",
+  "preregistration": {
+    "path": "results/high_volatility_oi_turnover_scarcity_continuation_preregistration_2026-08-10.json",
+    "sha256": "02ae650c5f935f879cc36d7ac6e1cdf520b0732dd9a68059f0a3b1740b3a0e36",
+    "manifest_hash": "11b6c2d6483ce14b2b103c7125e0b8e5ccd580e2fd6fb260cf450327b29f7754"
+  },
+  "source_evaluator": {
+    "path": "training/build_high_volatility_oi_turnover_scarcity_continuation_support.py",
+    "sha256": "c94c645d88cd231af604b278a17f5ffce03fd7c1c933f780b97667261cb4178d",
+    "commit": "0215334a"
+  },
+  "execution": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python -B -m training.build_high_volatility_oi_turnover_scarcity_continuation_support",
+    "exception": "RuntimeError: HVOTSC invalid OI key",
+    "failed_stage": "prepare_oi",
+    "first_scientific_or_source_failure": true
+  },
+  "source_audit": {
+    "table": "open_interest_binance",
+    "symbol": "BTCUSDT",
+    "period": "5m",
+    "source": "open_interest_hist",
+    "window": [
+      "2023-01-01T00:00:00+00:00",
+      "2026-08-01T00:00:00+00:00"
+    ],
+    "missing_required_field": "observed_at",
+    "rows": 376570,
+    "null_observed_at_rows": 376570,
+    "null_observed_at_share": 1.0,
+    "minimum_ts": "2023-01-01T00:00:00+00:00",
+    "maximum_ts": "2026-07-31T23:55:00+00:00"
+  },
+  "evidence_opened": {
+    "completed_preentry_sources": true,
+    "candidate_incidence": true,
+    "postentry_return_pnl_execution_price": false,
+    "funding_values": false,
+    "gross9_rows": false
+  },
+  "artifacts": {
+    "candidate_clock_produced": false,
+    "source_support_artifact_produced": false,
+    "partial_candidate_source_artifacts": false
+  },
+  "support_passed": false,
+  "advance_to_gross9_novelty": false,
+  "advance_to_economic_outcomes": false,
+  "decision": "terminal_source_execution_reject_no_repair",
+  "repair_forbidden": true,
+  "downstream_stages_opened": false,
+  "manifest_hash": "f501209c66a0548dc3a6b4715965590e1cda94fae214df466aa097bdcc4ff31d"
+}
