@@ -1,0 +1,37 @@
+{
+  "protocol_version": "egvrr_12_sources_v1",
+  "frozen_sources": {
+    "vxeem_panel": {
+      "path": "data/emerging_market_volatility_confirmation_relay_sources_2022_2026/cboe_vxeem_vix_panel.csv.gz",
+      "sha256": "7d332f56676bd40c2b7bc816b432ffa2e31c113dbf4f5605fbe8eb4d0dca18ea",
+      "date_column": "observation_date",
+      "value_column": "VXEEM_close"
+    },
+    "vxn": {
+      "path": "data/cboe_vxn_2021_2026/source/VXN_History.csv",
+      "sha256": "a856a08bbec6c5fabd23c98d4b75bc28b93c24370ef8780e3e75243c22f66716",
+      "date_column": "DATE",
+      "value_column": "CLOSE"
+    }
+  },
+  "btc_query": "\nSELECT ts,open,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+  "btc_window": [
+    "2022-12-29T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "btc_rows": 1887840,
+  "builder": {
+    "path": "training/build_emerging_growth_volatility_rotation_relay_support.py",
+    "sha256": "85c40d1c35a04e9cb2490004f528cb9af6f9e5ce9de253a694d01dc7993ecaf0"
+  },
+  "outputs": {
+    "features": {
+      "path": "data/emerging_growth_volatility_rotation_relay_sources_2022_2026/emerging_growth_volatility_rotation_relay_preentry_features.csv.gz",
+      "sha256": "cc6716ae6341a007f525dca13d33a0e46347b97c83e269dc49419f3991cbfb81",
+      "rows": 1147
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "8fdf38646e511e5e99376ecf544c8b6edf4e4e4338c727a7461a7cae38a6174f"
+}
