@@ -1,0 +1,161 @@
+{
+  "protocol_version": "high_volatility_ewma_conditional_skew_relay_v1",
+  "policy_id": "HVEWCS-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In turbulent Bitcoin regimes, the sign of a fixed exponentially weighted conditional skew estimate represents the direction of time-varying expected return compensation. Follow the sign of thirty completed daily returns' EWMA skew for twenty-four hours when both skew magnitude and twenty-day variation are causally high.",
+    "side": "strict sign of the completed thirty-day EWMA conditional skew estimate",
+    "why_distinct": "HVRSR fades one day's intraday normalized third moment; directional-tail candidates compare positive and negative minute tails. HVEWCS uses thirty separate completed daily close-to-close returns, a fixed seven-day half-life central-moment estimator, and follows rather than fades conditional skew only in a high daily-variation state, with no prior event, fitted return, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed twenty-day daily realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "one 02:05 UTC daily conditional-skew clock with twenty-four-hour reservation is absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every calendar day at exact 02:00 UTC",
+    "daily_returns": "thirty completed UTC-02:00 close-to-close BTC log returns ending at decision, requiring thirty-one exact coherent daily endpoint closes",
+    "weights": "fixed exponentially decaying weights with seven-day half-life, newest return highest, normalized to sum one",
+    "weighted_mean": "sum(weight*return)",
+    "weighted_variance": "sum(weight*(return-weighted_mean)^2), finite strict positive",
+    "conditional_skew": "sum(weight*(return-weighted_mean)^3)/weighted_variance^(3/2), finite strict nonzero",
+    "variation": "sqrt(sum squared final twenty daily returns), finite strict positive",
+    "prior_ranks": "strict-prior midranks over at most 180 earlier source-valid daily decisions, minimum 120, current excluded",
+    "skew_strength_gate": "absolute conditional-skew rank>=0.70",
+    "variation_gate": "variation rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed daily endpoint at 02:00 UTC",
+    "entry": "exact BTCUSDT 02:05 UTC open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "return_days": 30,
+    "variation_days": 20,
+    "weight_half_life_days": 7,
+    "history_days": 180,
+    "minimum_history_days": 120,
+    "skew_strength_rank_min": 0.7,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_skew_strength",
+      "no_variation_gate",
+      "unweighted_skew",
+      "one_day_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-02-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "external_primary_mechanism_read": true,
+    "prior_intraday_realized_skew_and_tail_outcomes_known": true,
+    "repository_ewma_conditional_skew_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "paper-supported positive conditional-skew relation in turbulent regimes with fixed EWMA estimator"
+  },
+  "stopping_rule": "Terminal first failure; no return window, half-life, moment estimator, rank history, skew strength, variation, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "paper": "Time-varying expected returns, conditional skewness and Bitcoin return predictability",
+    "authors": "David Atance and Gregorio Serna",
+    "published": "2024-08",
+    "doi": "10.1016/j.qref.2024.101868",
+    "reported_relation": "conditional skewness predicts future Bitcoin returns; relation is positive in the turmoil subsample",
+    "selection_use": "mechanism sign in volatile regimes only; no repository incidence or outcome opened"
+  },
+  "manifest_hash": "cb32fcd1a8a279ca73dc8567d774eaa0dfa6794c4064062df6f2251b05d54b76"
+}
