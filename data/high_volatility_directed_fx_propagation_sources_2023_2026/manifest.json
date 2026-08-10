@@ -1,0 +1,36 @@
+{
+  "protocol_version": "hvdfxpr_12_directed_fx_source_v1",
+  "query": "SELECT ts,symbol,open,high,low,close FROM bars_polygon\nWHERE symbol IN ('EURUSD','GBPUSD','USDAUD','USDCAD','USDCHF','USDJPY')\nAND interval='1m' AND ts>=:start AND ts<:end\nAND extract(isodow from ts) BETWEEN 1 AND 5 AND extract(hour from ts)>=13 AND extract(hour from ts)<21\nORDER BY ts,symbol",
+  "table": "bars_polygon",
+  "symbols": [
+    "EURUSD",
+    "GBPUSD",
+    "USDAUD",
+    "USDCAD",
+    "USDCHF",
+    "USDJPY"
+  ],
+  "canonical_dollar_multipliers": {
+    "EURUSD": -1.0,
+    "GBPUSD": -1.0,
+    "USDAUD": 1.0,
+    "USDCAD": 1.0,
+    "USDCHF": 1.0,
+    "USDJPY": 1.0
+  },
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": true,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_directed_fx_propagation_sources_2023_2026/directed_sessions.csv.gz",
+    "sha256": "7d81d6b73328f55aeff0fc3f16e16446928f6a45f3174914088baf22c1e4a439",
+    "rows": 929,
+    "valid_rows": 902
+  },
+  "manifest_hash": "c1f7b8cb976c407b9dfdc29ac20e9ebaa4617a73097ebeb1d93e0510ee81e33e"
+}
