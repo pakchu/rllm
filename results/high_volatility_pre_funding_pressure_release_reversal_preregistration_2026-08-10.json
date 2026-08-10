@@ -1,0 +1,152 @@
+{
+  "protocol_version": "high_volatility_pre_funding_pressure_release_reversal_v1",
+  "policy_id": "HVPFPR-6",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "At each regular BTC funding boundary, an upper-tail completed final-hour price move whose direction agrees with the completed premium-index pressure identifies leverage-driven pre-settlement demand. In a high realized-variation regime, fade that pressure for six hours after settlement.",
+    "side": "negative strict sign of the completed pre-boundary one-hour BTC return",
+    "why_distinct": "HVSAR uses a six-hour shock followed by a two-hour opposing volume-backed move; PPCSR uses a premium zero crossing; HVEFR uses the actual funding-rate residual; funding-price concordance candidates use the funding value itself. HVPFPR uses no funding value: its primary object is directional agreement between the completed final-hour BTC move and mean premium pressure immediately before the fixed funding boundary. No event set or control is reused.",
+    "why_suited_to_volatile_regimes": "the completed prior-24-hour BTC variation must rank in its causal upper 35%, while the pre-boundary displacement must rank in its upper quartile",
+    "why_low_gross9_overlap_is_plausible": "only sparse price-premium pressure states at settlement boundaries survive, rather than every fixed funding clock"
+  },
+  "features": {
+    "decision_grid": "exact 00:00,08:00,16:00 UTC boundaries",
+    "pre_boundary_window": "60 exact completed one-minute rows [decision-1h,decision) for BTCUSDT perpetual and BTCUSDT premium index",
+    "btc_return": "log(last BTC close/first BTC open), strict nonzero",
+    "premium_pressure": "arithmetic mean of 60 finite premium-index closes, strict nonzero",
+    "pressure_alignment": "strict sign(premium_pressure)=strict sign(btc_return)",
+    "return_tail_rank": "strict-prior midrank of abs(btc_return) over at most 270 previous source-valid boundaries, minimum 180, current excluded; rank>=0.75",
+    "btc_realized_variation": "sqrt(sum squared exact BTC one-minute log(close/open) returns over [decision-24h,decision))",
+    "variation_rank": "strict-prior midrank over at most 270 previous source-valid boundaries, minimum 180, current excluded; rank>=0.65",
+    "source_valid": "exact unique coherent finite positive BTC OHLC and finite coherent premium-index OHLC on both required grids; no imputation",
+    "actual_funding_value": "not read or used"
+  },
+  "clock": {
+    "decision": "exact regular funding boundary after all pre-boundary source minutes complete",
+    "entry": "exact BTCUSDT decision+5m open",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact realized funding cash only after novelty",
+    "oi_rv20": "not signal inputs; RV20 q90 only after all stages pass"
+  },
+  "policy": {
+    "prior_boundaries": 270,
+    "minimum_prior_boundaries": 180,
+    "return_tail_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "btc": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "read_after_preregistration": true
+    },
+    "premium": {
+      "table": "bars_binance_premium",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "read_after_preregistration": true
+    },
+    "funding_rate_values": "sealed and not read during source support",
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_return_tail",
+      "no_volatility_gate",
+      "no_premium_alignment",
+      "one_boundary_stale_pressure",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_calendar_funding_scan_outcomes_known": true,
+    "prior_exact_event_set_reused": false,
+    "exact_rule_selected_from_prior_scan": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent pre-settlement price-premium pressure release mechanism"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no window, rank, alignment, side, hold, clock, subset, or control repair.",
+  "manifest_hash": "4a7bd59a030ef77b729d5dc9e7b36545df862a7bc242fb9a58980f1065c35a4a"
+}
