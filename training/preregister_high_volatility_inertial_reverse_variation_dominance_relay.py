@@ -77,9 +77,9 @@ def build() -> dict[str, Any]:
         },
         "features": {
             "decision_grid": "exact 00:00/08:00/16:00 UTC boundaries",
-            "block": "97 exact coherent BTCUSDT five-minute closes in [D-8h,D]",
-            "five_minute_returns": "96 values r_i=log(close_i/close_(i-1))",
-            "transition_pairs": "95 consecutive pairs (r_(i-1),r_i); zero products are excluded",
+            "block": "96 exact coherent BTCUSDT five-minute bars in [D-8h,D)",
+            "five_minute_returns": "95 values r_i=log(close_i/close_(i-1))",
+            "transition_pairs": "94 consecutive pairs (r_(i-1),r_i); zero products are excluded",
             "inertial_variation": "sum r_i squared where r_i*r_(i-1)>0",
             "reverse_variation": "sum r_i squared where r_i*r_(i-1)<0",
             "dominance": "inertial variation minus reverse variation, strict nonzero",
@@ -87,7 +87,7 @@ def build() -> dict[str, Any]:
                 "abs(dominance)/(inertial variation+reverse variation), strict positive denominator"
             ),
             "completed_return": "log(last close/first close), finite strict nonzero",
-            "realized_variation": "sqrt(sum of all 96 r_i squared), finite strict positive",
+            "realized_variation": "sqrt(sum of all 95 r_i squared), finite strict positive",
             "causal_ranks": (
                 "strict-prior midranks of dominance share and realized variation over at most 270 "
                 "earlier source-valid blocks, minimum 180; current excluded"
@@ -109,9 +109,9 @@ def build() -> dict[str, Any]:
             "funding": "not a signal input; exact settlements only after novelty passes",
         },
         "policy": {
-            "close_observations": 97,
-            "return_observations": 96,
-            "transition_observations": 95,
+            "bar_observations": 96,
+            "return_observations": 95,
+            "transition_observations": 94,
             "history_blocks": 270,
             "minimum_history_blocks": 180,
             "dominance_share_rank_min": 0.75,
