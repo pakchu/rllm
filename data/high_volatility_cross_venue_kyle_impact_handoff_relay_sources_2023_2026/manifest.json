@@ -1,0 +1,27 @@
+{
+  "protocol_version": "hvckihr_8_btc_source_v1",
+  "queries": {
+    "perp": "\nSELECT ts,open,high,low,close,volume,quote_asset_volume,taker_buy_quote\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "spot": "\nSELECT ts,open,high,low,close,volume,quote_asset_volume,taker_buy_quote\nFROM bars_binance_spot\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n"
+  },
+  "tables": [
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "exact_candidate_outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_cross_venue_kyle_impact_handoff_relay_sources_2023_2026/eight_hour_impact_handoff_panel.csv.gz",
+    "sha256": "c8b086e7f8d0ac8f14c8d7289676aa387e6e952e0660df8089a12a4c0e200af9",
+    "rows": 3654,
+    "valid_rows": 81
+  },
+  "manifest_hash": "f4effe40200592e0f8a3bec3f055d5bd1c1df2c9a9fda41a98ea42df3eee7e14"
+}
