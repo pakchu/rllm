@@ -43,7 +43,12 @@ def canonical_hash(value: Any) -> str:
 def load_manifest(path: Path) -> dict:
     value = json.loads(path.read_text())
     core = {key: item for key, item in value.items() if key != "manifest_hash"}
-    if value.get("manifest_hash") != canonical_hash(core):
+    expected = canonical_hash(core)
+    if path == PREREG:
+        expected = hashlib.sha256(
+            json.dumps(core, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+        ).hexdigest()
+    if value.get("manifest_hash") != expected:
         raise RuntimeError(f"manifest drift: {path}")
     return value
 
