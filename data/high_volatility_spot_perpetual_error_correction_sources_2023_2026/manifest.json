@@ -1,0 +1,25 @@
+{
+  "protocol_version": "hvsper_8_synchronized_source_v1",
+  "query": "SELECT p.ts,\np.open AS perpetual_open,p.high AS perpetual_high,p.low AS perpetual_low,p.close AS perpetual_close,\ns.open AS spot_open,s.high AS spot_high,s.low AS spot_low,s.close AS spot_close\nFROM bars_binance p\nJOIN bars_binance_spot s ON s.symbol=p.symbol AND s.interval=p.interval AND s.ts=p.ts\nWHERE p.symbol='BTCUSDT' AND p.interval='1m' AND p.ts>=:start AND p.ts<:end\nORDER BY p.ts",
+  "tables": [
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-03-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": true,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_spot_perpetual_error_correction_sources_2023_2026/states.csv.gz",
+    "sha256": "3ec00da0b0dcc30c96ecb0413c332b3b1351f52e5d5cb4411925ba3ed8423493",
+    "rows": 3726,
+    "source_valid_rows": 0,
+    "model_valid_rows": 0
+  },
+  "manifest_hash": "ad66198ef669ca1cd6105cdb36d6dc3c21d01708348937b98e91953745126c5b"
+}
