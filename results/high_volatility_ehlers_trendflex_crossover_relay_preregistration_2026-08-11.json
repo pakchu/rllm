@@ -1,0 +1,159 @@
+{
+  "protocol_version": "high_volatility_ehlers_trendflex_crossover_relay_v1",
+  "policy_id": "HVETF-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated realized variation, John Ehlers' published fast/slow TrendFlex crossover on completed four-hour BTC auctions identifies a normalized low-lag trend transition; follow the faster component for twenty-four hours.",
+    "side": "long when period-20 TrendFlex strictly crosses above period-50 TrendFlex; short when it strictly crosses below",
+    "why_distinct": "Each component SuperSmooths close at half its TrendFlex length, averages its displacement from the prior Length observations, and recursively normalizes that displacement by mean square before the two normalized components cross. It is not a raw or moving-average price crossover, fixed-threshold oscillator reentry, volume, flow, OI, funding, fitted outcome, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "the published normalized fast/slow trend transition must occur while completed trailing twenty-four-hour realized variation ranks in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "a crossover between two recursively variance-normalized multi-horizon filtered-displacement fields is absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact four-hour UTC boundary",
+    "source_bar": "exact aggregation of 240 coherent BTCUSDT one-minute rows [T-4h,T)",
+    "fast_trendflex": "published period-20 TrendFlex of completed close",
+    "slow_trendflex": "published period-50 TrendFlex of completed close",
+    "super_smoother": "for each Length, a1=exp(-1.414*pi/(.5*Length)); b1=2*a1*cos(1.414*pi/(.5*Length)); c2=b1; c3=-a1^2; c1=1-c2-c3; Filt=c1*(Close+Close[1])/2+c2*Filt[1]+c3*Filt[2]",
+    "normalization": "Sum is the mean of current Filt minus each prior filtered value from lag one through Length; MS=.04*Sum^2+.96*prior_MS; TrendFlex=Sum/sqrt(MS) when MS>0",
+    "event": "strict finite fast-versus-slow crossover relative to the immediately prior valid decision",
+    "variation": "sqrt(sum squared completed one-minute open-to-close log returns over [T-24h,T)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 180 earlier valid decisions, minimum 120, current excluded; rank>=0.65",
+    "recursive_reset": "all recursive state resets after any invalid completed four-hour bar; initialize the first three filtered values to close and MS to zero; require at least 51 uninterrupted observations and finite current/prior components before crossing",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "four-hour boundary after completed source bar",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "fast_length": 20,
+    "slow_length": 50,
+    "mean_square_current_weight": 0.04,
+    "mean_square_prior_weight": 0.96,
+    "warmup_observations": 51,
+    "variation_hours": 24,
+    "variation_history_decisions": 180,
+    "minimum_variation_history_decisions": 120,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "fast_trendflex_zero_cross",
+      "slow_trendflex_zero_cross",
+      "direction_flip"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2020-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "canonical_ehlers_trendflex_strategy_read": true,
+    "repository_trendflex_candidate_found": false,
+    "prior_ehlers_filter_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "published Ehlers TrendFlex 20/50 crossover under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no length, recursion, initialization, normalization, crossing, variation, side, hold, clock, subset, control, or other repair.",
+  "external_basis": {
+    "origin": "John F. Ehlers, Reflex: A New Zero-Lag Indicator, TASC February 2020",
+    "source": "https://traders.com/Documentation/FEEDbk_docs/2020/02/TradersTips.html",
+    "fixed_definition": "TrendFlex lengths 20 and 50; SuperSmoother critical period one-half Length; Sum=mean over count 1..Length of current Filt minus Filt[count]; MS=.04*Sum^2+.96*MS[1]; TrendFlex=Sum/sqrt(MS); published strategy buys when fast crosses over slow and sells short when fast crosses under slow",
+    "selection_use": "published parameters, recursions, normalization, crossover, and side only; no incidence or outcomes"
+  },
+  "manifest_hash": "88345a115ab0b092695f72fc0a3452a5ed7e43d4194e4c4398ff1a70a438d1d8"
+}
