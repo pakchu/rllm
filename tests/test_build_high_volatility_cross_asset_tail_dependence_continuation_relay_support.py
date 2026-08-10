@@ -26,3 +26,8 @@ def test_clock_side_and_timing() -> None:
     clock = support.build_clock(states)
     assert list(clock.side) == [1, -1]
     assert (clock.entry_time - clock.decision_time).eq(pd.Timedelta(minutes=5)).all()
+
+
+def test_block_query_uses_expanding_in_binding() -> None:
+    assert "symbol IN :symbols" in support.BLOCK_QUERY
+    assert "ANY(:symbols)" not in support.BLOCK_QUERY

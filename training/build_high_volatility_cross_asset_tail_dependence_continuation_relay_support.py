@@ -31,7 +31,7 @@ SELECT symbol,
        bool_and(open>0 AND high>0 AND low>0 AND close>0
                 AND high>=greatest(open,close) AND low<=least(open,close) AND high>=low) AS values_valid
 FROM bars_binance
-WHERE interval='1m' AND symbol = ANY(:symbols) AND ts>=:start AND ts<:end
+WHERE interval='1m' AND symbol IN :symbols AND ts>=:start AND ts<:end
 GROUP BY symbol, block_start
 ORDER BY block_start, symbol
 """
@@ -177,10 +177,14 @@ def stats(clock: pd.DataFrame, split: str) -> dict[str, Any]:
 
 def run() -> dict[str, Any]:
     if sha(prereg.DEFAULT_OUTPUT) != PREREG_SHA: raise RuntimeError("HVCTDC preregistration drift")
+    from sqlalchemy import bindparam, text
+
+    block_statement = text(BLOCK_QUERY).bindparams(bindparam("symbols", expanding=True))
+    btc_statement = text(BTC_QUERY)
     engine = postgres_engine()
     try:
-        aggregates = pd.read_sql_query(BLOCK_QUERY, engine, params={"symbols": list(SYMBOLS), "start": START, "end": END})
-        btc = pd.read_sql_query(BTC_QUERY, engine, params={"start": START, "end": END})
+        aggregates = pd.read_sql_query(block_statement, engine, params={"symbols": list(SYMBOLS), "start": START, "end": END})
+        btc = pd.read_sql_query(btc_statement, engine, params={"start": START, "end": END})
     finally: engine.dispose()
     states = add_tail_dependence(add_variation(joint_blocks(aggregates), btc)); primary = build_clock(states)
     controls = {name: build_clock(states, name) for name in CONTROLS}
