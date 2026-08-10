@@ -14,6 +14,7 @@ if __package__ in (None, ""):
 
 from training import export_gross9_structural_clocks as gross9
 from training import evaluate_options_led_volatility_expansion_premium_relay_gross9_novelty as metric
+from training import preregister_high_volatility_ehlers_laguerre_rsi_reentry_relay as registration
 
 POLICY = "HVELRSI-24"
 PROTOCOL = "hvelrsi_24_gross9_novelty_v1"
@@ -40,10 +41,10 @@ def canonical_hash(value: Any) -> str:
     return gross9.canonical_hash(value)
 
 
-def load_manifest(path: Path) -> dict:
+def load_manifest(path: Path, hash_fn=canonical_hash) -> dict:
     value = json.loads(path.read_text())
     core = {key: item for key, item in value.items() if key != "manifest_hash"}
-    if value.get("manifest_hash") != canonical_hash(core):
+    if value.get("manifest_hash") != hash_fn(core):
         raise RuntimeError(f"manifest drift: {path}")
     return value
 
@@ -58,7 +59,7 @@ def evaluate_pair(candidate, comparator):
 def run(output: Path = OUTPUT) -> dict:
     if sha(PREREG) != PREREG_SHA or sha(SUPPORT) != SUPPORT_SHA or sha(CLOCK) != CLOCK_SHA:
         raise RuntimeError("HVELRSI predecessor hash drift")
-    preregistration = load_manifest(PREREG)
+    preregistration = load_manifest(PREREG, registration.canonical_hash)
     support = load_manifest(SUPPORT)
     expected_limits = {
         "exact_entry_jaccard_max": 0.1,
