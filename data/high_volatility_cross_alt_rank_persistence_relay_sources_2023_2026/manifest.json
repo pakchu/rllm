@@ -1,0 +1,52 @@
+{
+  "protocol_version": "hvcarp_8_cross_alt_rank_persistence_source_v1",
+  "query": "SELECT ts,symbol,open,high,low,close\nFROM bars_binance\nWHERE symbol IN ('BTCUSDT','ADAUSDT','BNBUSDT','DOGEUSDT','ETHUSDT','SOLUSDT','XRPUSDT')\nAND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts,symbol",
+  "query_sha256": "6c7f8e45ead5ce9bb6eb76c833916056909df3084d7740371cef5896f8f51bde",
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ADAUSDT",
+    "BNBUSDT",
+    "DOGEUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "interval": "1m",
+  "columns": [
+    "ts",
+    "symbol",
+    "open",
+    "high",
+    "low",
+    "close"
+  ],
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 12277440,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_rank_persistence_relay_support.py",
+    "sha256": "78397e7716d19c44b773c317d09ce3520e2ee2ecf00c956309d24546df8464b1"
+  },
+  "pair_panel": {
+    "path": "data/high_volatility_cross_alt_rank_persistence_relay_sources_2023_2026/hourly_rank_persistence_pairs.csv.gz",
+    "sha256": "ce26fd447883b8a45e1df87c7e787cac9ff44d04c2090e3f3157d52a8f349aee",
+    "rows": 29226
+  },
+  "feature_panel": {
+    "path": "data/high_volatility_cross_alt_rank_persistence_relay_sources_2023_2026/hourly_preentry_features.csv.gz",
+    "sha256": "5f73dee52ff93b496cf08b3a9d6796203af6732166b16b7d7bdcfb757fc82202",
+    "rows": 29226,
+    "valid_rows": 29200
+  },
+  "completed_preentry_sources_opened": true,
+  "candidate_incidence_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "funding_values_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "deterministic_immutable_artifacts": true,
+  "manifest_hash": "877434a82ffc342e0294ad34cff93cf7d30391989693b860d3c588b3c1f145fc"
+}
