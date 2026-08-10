@@ -1,0 +1,184 @@
+{
+  "protocol_version": "high_volatility_multifractal_coherence_relay_v1",
+  "policy_id": "HVMFCR-8",
+  "slug": "high_volatility_multifractal_coherence_relay",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When ordinary and extreme fluctuations in a completed high-variation BTC path share unusually similar detrended scaling exponents, the repricing is a scale-coherent cascade rather than isolated heterogeneous jumps. A new lower-tail generalized-Hurst gap should continue in the completed displacement direction for eight hours.",
+    "side": "strict sign of completed eight-hour BTC return",
+    "why_distinct": "Rescaled-range estimates one Hurst-like slope, Higuchi estimates graph dimension, Haar and DFT candidates allocate spectral energy, and recurrence candidates count repeated states. HVMFCR uses the cross-moment MF-DFA scaling gap abs(h1-h4), with no prior event set or control reused.",
+    "volatile_market_target": "completed eight-hour realized-variation strict-prior rank>=0.65",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily onsets from a cross-moment scaling gap are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 04:00, 12:00 and 20:00 UTC boundaries D",
+    "source_window": "480 exact coherent bars_binance BTCUSDT interval=1m rows [D-8h,D)",
+    "returns": "480 log(close/open) minute returns, finite; completed block return log(last close/first open) strict nonzero",
+    "profile": "cumulative sum of returns after subtracting the 480-return arithmetic mean",
+    "scales": [
+      8,
+      12,
+      16,
+      24,
+      30,
+      40,
+      60,
+      80,
+      120
+    ],
+    "segmentation": "forward exact non-overlapping segments at each scale; all scales divide 480",
+    "detrending": "within every segment OLS intercept plus integer position 0..s-1; population mean squared residual strict positive",
+    "fluctuation": "F_q(s)=[mean(segment_variance^(q/2))]^(1/q) for q in {1,4}, finite strict positive",
+    "generalized_hurst": "h_q is OLS slope of log(F_q(s)) on log(s) across all nine frozen scales",
+    "scaling_gap": "abs(h_1-h_4), finite",
+    "gap_rank": "strict-prior midrank over at most 270 earlier source-valid blocks, minimum 180; current excluded; rank<=0.25",
+    "h1_rank_control": "strict-prior h1 midrank under the same 270/180 history; diagnostic q1_persistence requires rank>=0.75",
+    "realized_variation": "sum squared minute returns, finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank; current excluded; rank>=0.65",
+    "eligible_state": "scaling-gap and variation gates pass",
+    "onset": "eligible now and immediately previous exact source-valid block ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after the full path completes",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "strict sign(completed block return)",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact realized funding only after novelty"
+  },
+  "policy": {
+    "window_minutes": 480,
+    "scales": [
+      8,
+      12,
+      16,
+      24,
+      30,
+      40,
+      60,
+      80,
+      120
+    ],
+    "moments": [
+      1,
+      4
+    ],
+    "detrend_degree": 1,
+    "prior_blocks": 270,
+    "minimum_prior_blocks": 180,
+    "gap_rank_max": 0.25,
+    "q1_persistence_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_coherence_tail_gate",
+      "no_variation_gate",
+      "q1_persistence",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "query_window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_hurst_higuchi_haar_fourier_and_recurrence_outcomes_known": true,
+    "repository_multifractal_cross_moment_gap_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cross-moment detrended scaling coherence"
+  },
+  "stopping_rule": "terminal first failure; no scale, moment, detrending, gap, rank, onset, side, clock, hold, subset, threshold, or control repair",
+  "manifest_hash": "bf8a78d857dd1b60fb0abdc2ebf6602bcb1876aac2e2de8c2842a269a1691aaf"
+}
