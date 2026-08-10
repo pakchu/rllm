@@ -82,7 +82,9 @@ def stats(c,s):
  e=pd.to_datetime(x.entry_time,utc=True);lo=int(x.side.eq(1).sum());sh=int(x.side.eq(-1).sum());return {"events":len(x),"longs":lo,"shorts":sh,"minority_side_share":min(lo,sh)/len(x),"max_month_share":int(e.dt.strftime("%Y-%m").value_counts().max())/len(x)}
 def run():
  if sha(prereg.DEFAULT_OUTPUT)!=PREREG_SHA:raise RuntimeError("YLIRTR prereg drift")
- reg=json.loads(prereg.DEFAULT_OUTPUT.read_text());prereg.validate(reg);btc,fx=load_sources();features=build_features(btc,fx);primary=build_clock(features);controls={n:build_clock(features,n) for n in CONTROLS};SOURCE_DIR.mkdir(parents=True,exist_ok=True);CONTROL_DIR.mkdir(parents=True,exist_ok=True);CLOCK.parent.mkdir(parents=True,exist_ok=True);_write_gzip_csv(features,FEATURES);_write_gzip_csv(primary,CLOCK)
+ reg=json.loads(prereg.DEFAULT_OUTPUT.read_text())
+ if reg!=prereg.build():raise RuntimeError("YLIRTR prereg content drift")
+ btc,fx=load_sources();features=build_features(btc,fx);primary=build_clock(features);controls={n:build_clock(features,n) for n in CONTROLS};SOURCE_DIR.mkdir(parents=True,exist_ok=True);CONTROL_DIR.mkdir(parents=True,exist_ok=True);CLOCK.parent.mkdir(parents=True,exist_ok=True);_write_gzip_csv(features,FEATURES);_write_gzip_csv(primary,CLOCK)
  for n,x in controls.items():_write_gzip_csv(x,CONTROL_DIR/f"{n}.csv.gz")
  sc={"protocol_version":"ylirtr_12_sources_v1","queries":{"btc":BTC_QUERY,"fx":FX_QUERY},"windows":{"btc":[BTC_START.isoformat(),SOURCE_END.isoformat()],"fx":[FX_START.isoformat(),SOURCE_END.isoformat()]},"rows":{"btc":len(btc),"fx":len(fx),"features":len(features)},"builder":{"path":str(BUILDER),"sha256":sha(BUILDER)},"feature_output":{"path":str(FEATURES),"sha256":sha(FEATURES)},"candidate_outcomes_opened":False,"no_imputation":True};sm={**sc,"manifest_hash":chash(sc)};MANIFEST.write_text(json.dumps(sm,indent=2,ensure_ascii=False,allow_nan=False)+"\n");support={n:stats(primary,n) for n in SPLITS};checks={}
  for n,v in support.items():checks[f"{n}_minimum_events"]=v["events"]>=MINIMUM_EVENTS[n];checks[f"{n}_side_balance"]=v["minority_side_share"]>=.2;checks[f"{n}_month_concentration"]=v["max_month_share"]<=.45
