@@ -1,0 +1,174 @@
+{
+  "protocol_version": "high_volatility_alt_basket_leadership_relay_v1",
+  "policy_id": "HVABLR-6",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A broad alt-perpetual basket that consistently leads the next BTC minute more than BTC leads the next basket minute identifies cross-asset price discovery flowing into BTC. During elevated BTC path variation, final-hour directional agreement should continue while that information transfer is absorbed.",
+    "side": "common strict sign of the final-hour median-alt cumulative return and BTC return",
+    "why_distinct": "HVABLR measures directional one-minute lead asymmetry between a fixed six-alt median return basket and BTC. Prior cross-alt work used contemporaneous return breadth, residuals, flow, turnover, ticket size, or variation dispersion; premium leadership used a BTC premium-index source rather than cross-asset price discovery.",
+    "volatile_market_target": "BTC completed six-hour variation strict-prior rank >=0.65",
+    "why_low_gross9_overlap_is_plausible": "hourly false-to-true alt-to-BTC lead-asymmetry onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact UTC hour D",
+    "universe": [
+      "BTCUSDT",
+      "ADAUSDT",
+      "BNBUSDT",
+      "DOGEUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "aligned_window": "360 exact aligned unique bars_binance interval=1m rows [D-6h,D) per symbol",
+    "source_valid": "finite positive coherent OHLC for every symbol and timestamp; no duplicate, missing, nearest-time join, or imputation",
+    "minute_returns": "360 natural-log close/open returns per symbol",
+    "alt_basket_return": "cross-sectional median of the six alt minute returns at each of the 360 timestamps",
+    "alt_leads_btc": "Pearson corr(alt_basket_return[t], btc_return[t+1]) over 359 pairs",
+    "btc_leads_alt": "Pearson corr(btc_return[t], alt_basket_return[t+1]) over 359 pairs",
+    "leadership_advantage": "alt_leads_btc minus btc_leads_alt; both variances strict positive",
+    "leadership_rank": "strict-prior midrank over at most 2,160 valid hourly decisions, minimum 1,440, current excluded; rank>=0.80",
+    "btc_variation": "sum squared BTC minute returns over the same completed six hours",
+    "btc_variation_rank": "same strict-prior 2,160/1,440 rule; rank>=0.65",
+    "final_hour_returns": "sum of the final 60 BTC returns and sum of the final 60 median-alt basket returns",
+    "direction_confirmation": "both final-hour returns share one strict nonzero sign",
+    "eligible_state": "leadership, BTC variation, and direction-confirmation gates pass",
+    "onset": "eligible now and immediately preceding exact source-valid hour ineligible"
+  },
+  "clock": {
+    "decision": "D after all seven completed paths are available",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "confirmed final-hour direction",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open; exit first on equal-time entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not an input; exact realized funding only after novelty passes"
+  },
+  "policy": {
+    "window_hours": 6,
+    "history_hours": 2160,
+    "minimum_history_hours": 1440,
+    "leadership_rank_min": 0.8,
+    "btc_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, and final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_btc_variation_gate",
+      "no_leadership_gate",
+      "contemporaneous_correlation",
+      "one_hour_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbols": [
+        "BTCUSDT",
+        "ADAUSDT",
+        "BNBUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "XRPUSDT"
+      ],
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_cross_alt_scan_and_premium_leadership_outcomes_known": true,
+    "repository_exact_alt_basket_leadership_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_outcomes_used_to_set_formula_ranks_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent fixed-basket cross-asset lead-lag price discovery"
+  },
+  "stopping_rule": "terminal first failure; no universe, window, basket, lag, correlation, rank, onset, side, hold, clock, subset, control, or gate repair",
+  "manifest_hash": "71ff9c1afaf90a3f97a6663d781608b02baa35dffc93e6940593a42bb31d6b3d"
+}
