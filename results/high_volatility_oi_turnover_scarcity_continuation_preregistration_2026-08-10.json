@@ -1,0 +1,169 @@
+{
+  "protocol_version": "high_volatility_oi_turnover_scarcity_continuation_v1",
+  "policy_id": "HVOTSC-8",
+  "slug": "high_volatility_oi_turnover_scarcity_continuation",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When average outstanding BTC perpetual open-interest value is unusually large relative to completed quote turnover, the market carries a large leveraged inventory through limited transaction capacity. During elevated realized variation, a new upper-tail inventory/turnover scarcity state should propagate the completed displacement for eight hours.",
+    "side": "strict sign of completed eight-hour BTC return",
+    "why_distinct": "GOICR and HVOIPCSR use changes in OI; price-impact candidates divide displacement by turnover but ignore outstanding inventory. HVOTSC uses the level ratio mean(sum_open_interest_value)/sum(quote_asset_volume), no OI change, flow direction, tickets, premium, funding, or prior event/control.",
+    "volatile_market_target": "completed eight-hour variation strict-prior rank>=0.65",
+    "why_low_gross9_overlap_is_plausible": "three daily inventory-capacity onset opportunities are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 00:00/08:00/16:00 UTC boundaries D",
+    "price_volume_path": "480 exact coherent BTCUSDT bars_binance 1m rows [D-8h,D)",
+    "oi_path": "96 exact unique positive BTCUSDT open_interest_binance period=5m observations D-8h through D-5m, each observed_at<=D",
+    "quote_turnover": "sum quote_asset_volume over 480 rows, finite strict positive",
+    "average_oi_value": "arithmetic mean sum_open_interest_value over 96 observations, finite strict positive",
+    "inventory_turnover_scarcity": "average_oi_value/quote_turnover, finite strict positive",
+    "scarcity_rank": "strict-prior midrank over at most 270 earlier source-valid blocks, minimum 180; current excluded; rank>=0.80",
+    "realized_variation": "sum squared log(close/open) over 480 one-minute rows, finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank; current excluded; rank>=0.65",
+    "completed_return": "log(last close/first open), finite strict nonzero",
+    "eligible_state": "scarcity and variation gates pass",
+    "onset": "eligible now and immediately previous exact source-valid block ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after all source rows complete",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "sign(completed_return)",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not an input; exact realized funding only after novelty"
+  },
+  "policy": {
+    "window_minutes": 480,
+    "oi_points": 96,
+    "prior_blocks": 270,
+    "minimum_prior_blocks": 180,
+    "scarcity_rank_min": 0.8,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_scarcity_tail_gate",
+      "no_variation_gate",
+      "oi_level_only",
+      "turnover_scarcity_only",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ]
+    },
+    "oi": {
+      "table": "open_interest_binance",
+      "symbol": "BTCUSDT",
+      "period": "5m",
+      "columns": [
+        "ts",
+        "sum_open_interest_value",
+        "observed_at"
+      ]
+    },
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "database_metadata_only_opened_before_preregistration": true,
+    "prior_oi_and_turnover_family_outcomes_known": true,
+    "repository_inventory_turnover_ratio_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent outstanding-inventory to transaction-capacity ratio"
+  },
+  "stopping_rule": "terminal first failure; no window, ratio, rank, onset, side, clock, hold, subset, threshold, or control repair",
+  "manifest_hash": "11b6c2d6483ce14b2b103c7125e0b8e5ccd580e2fd6fb260cf450327b29f7754"
+}
