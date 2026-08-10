@@ -1,0 +1,4 @@
+import hashlib,json
+from training import evaluate_high_volatility_dual_half_signed_volume_persistence_relay_economics as economics
+def test_hvdhsvpr_train_rejection_is_terminal_and_later_stages_are_sealed():
+ p=economics.OUTPUTS["train"];assert hashlib.sha256(p.read_bytes()).hexdigest()=="c23f1d9066a3178f81890f261309830a9e0ffd73a4b6d3d5167223b9154b9494";x=json.loads(p.read_text());core={k:v for k,v in x.items() if k!="manifest_hash"};assert x["manifest_hash"]==economics.canonical_hash(core);assert x["passed"] is False and x["decision"]=="terminal_reject_no_repair" and x["later_stage_outcomes_opened"] is False;assert x["primary"]["base"]["absolute_return_pct"]< -3 and x["primary"]["stress"]["absolute_return_pct"]< -5;assert not economics.OUTPUTS["test"].exists() and not economics.OUTPUTS["eval"].exists() and not economics.OUTPUTS["final"].exists()
