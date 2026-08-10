@@ -1,0 +1,20 @@
+{
+  "protocol_version": "spidr_source_v1",
+  "queries": {
+    "perpetual": "SELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts",
+    "spot": "SELECT ts,open,high,low,close\nFROM bars_binance_spot\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts"
+  },
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened_before_materialization": false,
+  "output": {
+    "path": "data/spot_perpetual_intraday_desynchronization_sources_2023_2026/states.csv.gz",
+    "sha256": "fadc222db171c74a36227b732fc92949d0c23e759fd4b279c0285af0d83e8d7d",
+    "rows": 3654,
+    "valid_rows": 3652
+  },
+  "manifest_hash": "4036199a2229912084f53168d6a41a88d10b4620020898753398a7cc478b434c"
+}
