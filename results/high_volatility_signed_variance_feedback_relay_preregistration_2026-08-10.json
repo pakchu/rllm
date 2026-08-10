@@ -1,0 +1,156 @@
+{
+  "protocol_version": "high_volatility_signed_variance_feedback_relay_v1",
+  "policy_id": "HVSVF-8",
+  "slug": "high_volatility_signed_variance_feedback_relay",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Within a completed high-variation BTC path, the normalized lagged product of each five-minute return with the next return squared identifies which signed shocks systematically propagate into subsequent activity. A new upper-tail absolute propagation state should continue in the feedback sign for eight hours.",
+    "side": "strict sign of the signed return-to-next-variance feedback score",
+    "why_distinct": "Realized-skew candidates sum contemporaneous return cubes; HVSAR correlates adjacent signed returns; HAR and VoV candidates forecast variation magnitude; HVRSSR estimates negative covariance and fades total displacement. HVSVF uses a directional lag operator from signed return r_t to unsigned next-interval energy r_(t+1)^2, reusing no event set or control.",
+    "volatile_market_target": "completed eight-hour realized-variation strict-prior rank >=0.65",
+    "why_low_gross9_overlap_is_plausible": "three daily onset opportunities based on a lagged third-order path functional are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 00:00, 08:00 and 16:00 UTC boundaries D",
+    "source_window": "480 exact coherent bars_binance BTCUSDT interval=1m rows [D-8h,D)",
+    "five_minute_aggregation": "96 exact left-labeled groups of five consecutive rows; OHLC first/max/min/last",
+    "five_minute_returns": "95 close-to-close natural-log returns from aggregated closes",
+    "feedback_numerator": "sum over t=1..94 of r_t * r_(t+1)^2",
+    "feedback_denominator": "sqrt(sum r_t^2 * sum r_(t+1)^4), finite strict positive",
+    "feedback_score": "numerator/denominator, finite in [-1,1] and strict nonzero",
+    "feedback_magnitude_rank": "strict-prior midrank of abs(feedback_score) over at most 270 earlier source-valid blocks, minimum 180; current excluded; rank>=0.80",
+    "realized_variation": "sum squared 95 five-minute returns, finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank; current excluded; rank>=0.65",
+    "eligible_state": "feedback-magnitude and variation gates pass",
+    "onset": "eligible now and immediately previous exact source-valid block ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after the full path completes",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "strict sign(feedback_score)",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact realized funding only after novelty"
+  },
+  "policy": {
+    "window_minutes": 480,
+    "five_minute_bars": 96,
+    "return_observations": 95,
+    "feedback_pairs": 94,
+    "prior_blocks": 270,
+    "minimum_prior_blocks": 180,
+    "feedback_magnitude_rank_min": 0.8,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_feedback_tail_gate",
+      "no_variation_gate",
+      "contemporaneous_signed_quarticity",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "query_window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_skew_serial_dependence_variation_outcomes_known": true,
+    "repository_signed_return_to_next_variance_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent lagged signed-return-to-variance propagation functional"
+  },
+  "stopping_rule": "terminal first failure; no window, functional, rank, onset, side, clock, hold, subset, threshold, or control repair",
+  "manifest_hash": "d9945ef921e103b8649834729b78e212591d8c68ea01b1911861e570a0e2b85e"
+}
