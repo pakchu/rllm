@@ -19,7 +19,7 @@ from training import evaluate_options_led_volatility_expansion_premium_relay_eco
 from training import evaluate_options_led_volatility_expansion_premium_relay_economics_v5 as engine
 
 
-POLICY_ID = "HVFXCSR-8"
+POLICY_ID = "HVFXCSR-12"
 BAR = pd.Timedelta(minutes=5)
 LEVERAGE = 0.5
 BASE_COST = 0.0006
@@ -207,7 +207,7 @@ def run(stage: str, output: Path | None = None) -> dict[str, Any]:
     passed = all(checks.values())
     predecessor = None if stage == "train" else {"stage": PREDECESSOR[stage], "path": str(OUTPUTS[PREDECESSOR[stage]]), "sha256": sha256(OUTPUTS[PREDECESSOR[stage]])}
     core = {
-        "protocol_version": "hvfxcsr_8_sequential_economics_v1", "policy_id": POLICY_ID,
+        "protocol_version": "hvfxcsr_12_sequential_economics_v1", "policy_id": POLICY_ID,
         "stage": stage, "window": [start_text, end_text], "predecessor": predecessor,
         "evaluator_freeze": {"path": str(FREEZE), "sha256": sha256(FREEZE), "manifest_hash": freeze["manifest_hash"]},
         "novelty_authorization": {"path": str(NOVELTY), "sha256": NOVELTY_SHA, "manifest_hash": novelty["manifest_hash"]},
