@@ -1,0 +1,33 @@
+{
+  "protocol_version": "cymrr_12_sources_v1",
+  "queries": {
+    "btc": "SELECT ts,open,close FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY ts",
+    "fx": "SELECT ts,open,close FROM bars_polygon WHERE symbol='USDCNY' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY ts"
+  },
+  "windows": {
+    "btc": [
+      "2022-12-29T00:00:00+00:00",
+      "2026-08-01T00:00:00+00:00"
+    ],
+    "fx": [
+      "2023-01-01T00:00:00+00:00",
+      "2026-08-01T00:00:00+00:00"
+    ]
+  },
+  "rows": {
+    "btc": 1887840,
+    "fx": 240929,
+    "features": 12
+  },
+  "builder": {
+    "path": "training/build_china_morning_yuan_risk_relay_support.py",
+    "sha256": "3130d6e8dbe66536b90bc3a670cd0f7032347729ba55eebd104175ac15ddc306"
+  },
+  "feature_output": {
+    "path": "data/china_morning_yuan_risk_relay_sources_2023_2026/cymrr_preentry_features.csv.gz",
+    "sha256": "21b7875870303fce7fe0ff8cbb7968c228d3cc1701342f3a7c8bf69eec8923d0"
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "ecbb1ed457718674853d81a099ae25797d997077eb8dc8332cc94950350d048e"
+}
