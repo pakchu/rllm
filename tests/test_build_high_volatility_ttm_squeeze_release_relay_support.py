@@ -3,7 +3,7 @@ import pandas as pd
 from training import build_high_volatility_ttm_squeeze_release_relay_support as s
 
 def test_regression_last_returns_newest_fitted_value():
- series=pd.Series(np.arange(5,dtype=float));result=s.regression_last(series,pd.Series([True]*5),3);assert np.isclose(result.iloc[5],4)
+ series=pd.Series(np.arange(5,dtype=float));result=s.regression_last(series,pd.Series([True]*5),3);assert np.isclose(result.iloc[4],4)
 
 def test_prior_rank_excludes_current():
  r=s.prior_rank(pd.Series(np.arange(121,dtype=float)));assert np.isnan(r.iloc[119]) and r.iloc[120]==1
