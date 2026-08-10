@@ -1,0 +1,148 @@
+{
+  "protocol_version": "high_volatility_opening_drive_hold_relay_v1",
+  "policy_id": "HVODHR-8",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A directional opening-hour drive that establishes a fresh range, followed by seven completed hours whose closes never surrender the opening-range midpoint and whose terminal close extends the opening boundary, represents sustained initiative price discovery. Follow that accepted direction for eight hours when the completed block has elevated realized variation.",
+    "side": "long after an upward opening drive with midpoint hold and upper extension; short after the symmetric downward drive",
+    "why_distinct": "Opening-range failure trades rejection in three two-hour phases; break-retest uses a preceding four-hour range and explicit later retest; inside-resolution begins with containment. HVODHR requires a one-hour initiative drive, seven-hour close-by-close midpoint preservation, and terminal extension within one completed block, with no volume, flow, funding, OI, cross-asset, fitted outcome, prior event, or control.",
+    "why_suited_to_volatile_regimes": "the full completed eight-hour realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "three daily opening-drive acceptance clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 02:00/10:00/18:00 UTC boundaries",
+    "block": "480 exact coherent BTCUSDT one-minute rows [D-8h,D)",
+    "opening_drive": "first 60 rows; opening high=max high, low=min low, midpoint=(high+low)/2, direction=sign(last close-first open), strict nonzero",
+    "acceptance_window": "remaining 420 rows",
+    "long_acceptance": "opening direction positive, every acceptance-window minute close>opening midpoint, and terminal close>opening high",
+    "short_acceptance": "opening direction negative, every acceptance-window minute close<opening midpoint, and terminal close<opening low",
+    "ambiguity": "exactly one acceptance side must hold",
+    "realized_variation": "sqrt(sum squared one-minute log(close/open) returns across [D-8h,D)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier source-valid blocks, minimum 180, current excluded; rank>=0.65",
+    "eligible_state": "accepted opening drive and variation gate pass",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed eight-hour boundary",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_midpoint_hold",
+      "no_variation_gate",
+      "terminal_break_only",
+      "one_block_stale_opening_range",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_opening_failure_break_retest_inside_resolution_and_price_path_outcomes_known": true,
+    "repository_opening_drive_hold_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "opening-hour initiative followed by seven-hour close-by-close midpoint preservation and extension"
+  },
+  "stopping_rule": "Terminal first failure; no drive, range, midpoint, preservation, extension, variation, side, hold, clock, subset, threshold, or control repair.",
+  "manifest_hash": "ec7f9fab50967b30652a292cf82af38a51ab654e702fe0cd09647176aff9bef6"
+}
