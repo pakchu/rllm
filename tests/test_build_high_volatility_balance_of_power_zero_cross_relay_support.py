@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from training import build_high_volatility_balance_of_power_cross_relay_support as s
+from training import build_high_volatility_balance_of_power_zero_cross_relay_support as s
 
 def test_cross_side():
  assert s.cross_side(pd.Series([-1.,1.,2.,-1.])).tolist()==[0,1,0,-1]

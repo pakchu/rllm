@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from training import preregister_high_volatility_balance_of_power_cross_relay as prereg
+from training import preregister_high_volatility_balance_of_power_zero_cross_relay as prereg
 
 ENV_FILE = "/home/pakchu/rllm/.env"
 START = pd.Timestamp("2020-01-01T00:00:00Z")
@@ -24,13 +24,13 @@ SPLITS = {name: tuple(map(pd.Timestamp, window)) for name, window in REG["stages
 GATES = REG["source_support_gates"]
 CONTROLS = tuple(REG["diagnostic_controls"]["names"])
 QUERY = """SELECT ts,open,high,low,close FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY ts"""
-ROOT = Path("data/high_volatility_balance_of_power_cross_relay_sources_2023_2026")
+ROOT = Path("data/high_volatility_balance_of_power_zero_cross_relay_sources_2023_2026")
 PANEL = ROOT / "four_hour_states.csv.gz"
 MANIFEST = ROOT / "manifest.json"
-CLOCK = Path("data/high_volatility_balance_of_power_cross_relay_clocks_2023_2026.csv.gz")
-SPLIT_DIR = Path("data/high_volatility_balance_of_power_cross_relay_split_clocks_2023_2026")
-CONTROL_DIR = Path("data/high_volatility_balance_of_power_cross_relay_controls_2023_2026")
-RESULT = Path("results/high_volatility_balance_of_power_cross_relay_support_2026-08-11.json")
+CLOCK = Path("data/high_volatility_balance_of_power_zero_cross_relay_clocks_2023_2026.csv.gz")
+SPLIT_DIR = Path("data/high_volatility_balance_of_power_zero_cross_relay_split_clocks_2023_2026")
+CONTROL_DIR = Path("data/high_volatility_balance_of_power_zero_cross_relay_controls_2023_2026")
+RESULT = Path("results/high_volatility_balance_of_power_zero_cross_relay_support_2026-08-11.json")
 BUILDER = Path(__file__).relative_to(Path.cwd())
 PANEL_COLUMNS = (
     "source_start", "feature_available_time", "source_valid", "bar_open", "bar_high",
