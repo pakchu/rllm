@@ -1,0 +1,151 @@
+{
+  "protocol_version": "high_volatility_directional_excursion_area_dominance_relay_v1",
+  "policy_id": "HVDEADR-8",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Within a volatile completed BTC block, sustained log-price displacement on one side of the opening level represents directional inventory migration rather than a brief endpoint impulse. Follow the sign of the integrated displacement area for eight hours when its normalized dominance is historically extreme.",
+    "side": "strict sign of the sum of one-minute log(close/initial block open)",
+    "why_distinct": "Price-level occupation counts time above versus below the opening level but discards distance; endpoint momentum uses only the last level; path hysteresis integrates price against realized variation; chord bow measures deviation from a line joining endpoints. HVDEADR integrates signed distance from the fixed initial opening level across every minute and uses no endpoint gate, volume, flow, funding, OI, cross-asset, prior event, fitted outcome, or control.",
+    "why_suited_to_volatile_regimes": "completed realized variation must rank in its causal upper 35% while normalized signed excursion-area dominance enters its upper quartile",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily integrated excursion-area onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 03:00/11:00/19:00 UTC boundaries",
+    "block": "480 exact coherent bars_binance BTCUSDT one-minute rows [D-8h,D)",
+    "opening_anchor": "first one-minute open in the completed block",
+    "minute_displacement": "log(each one-minute close/opening_anchor), finite",
+    "signed_excursion_area": "sum minute_displacement across all 480 rows, finite strict nonzero",
+    "absolute_excursion_area": "sum abs(minute_displacement), finite strict positive",
+    "directional_area_dominance": "signed_excursion_area/absolute_excursion_area, finite in [-1,1] and strict nonzero",
+    "dominance_rank": "strict-prior midrank of abs(directional_area_dominance) over at most 270 earlier source-valid blocks, minimum 180, current excluded; rank>=0.75",
+    "realized_variation": "sqrt(sum squared one-minute log(close/open) returns), finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank, current excluded; rank>=0.65",
+    "eligible_state": "dominance and variation gates pass",
+    "onset": "eligible now and immediately previous exact source-valid block ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed eight-hour boundary",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "dominance_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_dominance_tail",
+      "no_variation_gate",
+      "endpoint_displacement",
+      "one_block_stale_area",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_price_occupation_endpoint_hysteresis_and_chord_outcomes_known": true,
+    "repository_directional_excursion_area_dominance_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "integrated signed log-price distance from a fixed completed-block opening anchor"
+  },
+  "stopping_rule": "Terminal first failure; no anchor, integration, normalization, rank, onset, side, hold, clock, subset, threshold, or control repair.",
+  "manifest_hash": "a54ec8e0a63d498e7b3100c22089bdf47cc00abf53c412b9a74750e27982581a"
+}
