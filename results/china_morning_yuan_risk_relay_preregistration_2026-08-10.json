@@ -1,0 +1,133 @@
+{
+  "protocol_version": "china_morning_yuan_risk_relay_v1",
+  "policy_id": "CYMRR-12",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "The managed onshore yuan is a direct China-risk channel. A completed 01:30-02:00 UTC USD/CNY morning repricing toward yuan weakness signals regional risk stress and maps short BTC; yuan strength maps long BTC, only when BTC is already in a high realized-variation regime.",
+    "side": "negative sign of completed USDCNY 01:30-02:00 UTC log return",
+    "external_support": {
+      "economic_channel": "the onshore yuan is managed but tradable, and USD/CNY appreciation represents yuan weakness and China-linked risk stress",
+      "implementation_is_not_a_published_replication": true,
+      "untested_adaptation": "the completed onshore-China morning repricing is tested as a twelve-hour BTC relay"
+    },
+    "why_distinct": "EMDFR used USDCNY only as one leg of a three-country 13:00-16:00 UTC common-dollar median and never isolated the China morning channel. CYMRR uses a fixed 01:30-02:00 UTC onshore-yuan repricing, no prior event set or control, and no crypto flow, funding, OI, or premium.",
+    "why_suited_to_volatile_regimes": "BTC prior-24h realized variation must rank at least 0.65 causally",
+    "why_low_gross9_overlap_is_plausible": "weekday 02:05 UTC entries conditioned on the China morning yuan channel are absent from Gross9 primitives"
+  },
+  "features": {
+    "fx_session": "exact USDCNY Polygon 1m bars [01:30,02:00) UTC on each Monday-Friday; all 30 timestamps required",
+    "fx_return": "log(close of 01:59 minute/open of 01:30 minute); zero is ineligible",
+    "availability": "02:00 UTC after all 30 source bars complete",
+    "btc_variation": "sqrt(sum squared log(close/open)) over exact BTCUSDT 1m bars in the prior 24 elapsed hours ending at decision",
+    "btc_variation_rank": "strict-prior midrank against at most 252 previous valid weekday decision variations; minimum 126; current excluded; rank>=0.65",
+    "missing_duplicate_or_nonpositive": "ineligible or source failure; no imputation"
+  },
+  "clock": {
+    "decision": "each Monday-Friday 02:00 UTC with complete FX and BTC source paths",
+    "entry": "exact 02:05 UTC BTCUSDT 5m open",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+    "no_imputation": true
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "fx": {
+      "table": "bars_polygon",
+      "symbol": "USDCNY",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "btc": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "one_session_stale_fx",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "database_metadata_only_opened_before_preregistration": true,
+    "fx_values_used_to_select_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent onshore-China morning risk channel plus user-required high volatility"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, strict economics; no session, side, hold, timing, volatility, or subset repair",
+  "manifest_hash": "9d9732ae45149552a5c20202569a9a64072844abe3883bf9b79f49d2327ffbe6"
+}
