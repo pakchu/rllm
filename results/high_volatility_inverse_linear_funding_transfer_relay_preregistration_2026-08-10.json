@@ -1,0 +1,155 @@
+{
+  "protocol_version": "high_volatility_inverse_linear_funding_transfer_relay_v1",
+  "policy_id": "HVILFT-8",
+  "as_of_date": "2026-08-10",
+  "oos_outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Binance BTCUSD COIN-M and BTCUSDT USD-M perpetuals express leverage demand against different collateral. During volatile BTC trading, a sharp completed increase in COIN-M funding relative to USD-M funding indicates increasingly crowded BTC-collateral leverage and is faded short; a sharp relative decrease indicates inverse-side deleveraging and is faded long.",
+    "side": "negative strict sign of the one-settlement change in COIN-M minus USD-M funding",
+    "why_distinct": "Prior cross-collateral candidates used OI, liquidation snapshots, order-book geometry, or dated-futures curves. HVILFT uses only the realized funding-transfer difference between the two perpetual collateral systems and reuses no event set or diagnostic control.",
+    "volatile_market_target": "strict-prior prior-24h BTC realized-variation rank >=0.65",
+    "why_low_gross9_overlap_is_plausible": "funding-transfer onsets enter at settlement+10m on an endogenous sparse subset; Gross9 has no inverse-versus-linear funding differential primitive"
+  },
+  "source_contract": {
+    "official_archive": "https://data.binance.vision/",
+    "coinm_template": "data/futures/cm/monthly/fundingRate/BTCUSD_PERP/BTCUSD_PERP-fundingRate-{YYYY-MM}.zip",
+    "usdm_template": "data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-{YYYY-MM}.zip",
+    "official_live_extension": {
+      "coinm": "https://dapi.binance.com/dapi/v1/fundingRate",
+      "usdm": "https://fapi.binance.com/fapi/v1/fundingRate"
+    },
+    "instruments": {
+      "coinm": "BTCUSD_PERP",
+      "usdm": "BTCUSDT"
+    },
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "archive_schema": [
+      "calc_time",
+      "funding_interval_hours",
+      "last_funding_rate"
+    ],
+    "row_validity": "exact integer millisecond calc_time on a five-minute boundary; finite funding rate; integer funding_interval_hours exactly 8; unique timestamp per instrument",
+    "pair_validity": "exact one-to-one calc_time match for BTCUSD_PERP and BTCUSDT; no nearest join, interpolation, forward fill, or partial pair",
+    "causal_availability": "funding is economically realized at calc_time; decision is conservatively fixed at calc_time+5m and entry at calc_time+10m",
+    "transport": "checksum-verified monthly Binance Vision ZIPs through the latest complete month; official REST funding history only for the unarchived final tail; every response and normalized panel hash-bound",
+    "revision_boundary": "archives and REST payloads freeze this replay vintage; Binance does not expose a historical first-seen revision archive",
+    "bounded_probe_disclosure": "before preregistration, HTTP metadata for four months and only the two January 2023 CSV header lines were opened to confirm coverage and identical schema; no funding value, incidence, BTC outcome, or Gross9 row was read"
+  },
+  "feature_contract": {
+    "funding_differential": "COIN-M last_funding_rate minus USD-M last_funding_rate",
+    "funding_transfer": "current funding_differential minus the immediately previous exact paired eight-hour settlement differential; strict nonzero",
+    "absolute_transfer_rank": "strict-prior midrank of abs(funding_transfer), current excluded, at most 1,095 valid paired settlements and minimum 540",
+    "btc_variation": "sum squared close-to-close log returns from the exact 1,440 completed BTCUSDT bars_binance 1m rows ending at calc_time",
+    "btc_variation_rank": "same strict-prior 1,095/540 rule",
+    "eligible_state": "absolute_transfer_rank>=0.80, btc_variation_rank>=0.65, and funding_transfer strict nonzero",
+    "onset": "current paired settlement eligible and immediately previous paired settlement ineligible",
+    "no_imputation": true
+  },
+  "oos_clock": {
+    "start": "2023-07-01T00:00:00Z",
+    "decision": "paired calc_time+5m",
+    "entry": "paired calc_time+10m BTCUSDT perpetual open",
+    "side": "negative sign(funding_transfer)",
+    "hold": "8 elapsed hours",
+    "reservation": "chronological first eligible onset while flat; intervals half-open and exit first on an equal-time entry",
+    "funding": "signal inputs are paired realized rates; PnL funding opened only after novelty passes"
+  },
+  "policy": {
+    "history_settlements": 1095,
+    "minimum_history_settlements": 540,
+    "absolute_transfer_rank_min": 0.8,
+    "btc_variation_rank_min": 0.65,
+    "decision_delay_minutes": 5,
+    "entry_delay_after_decision_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45,
+    "complete_exact_paired_grid_required": true
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, favorable-then-adverse held 5m path, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged passes every sequential economic stage",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_transfer_magnitude_gate",
+      "coinm_funding_change_only",
+      "one_settlement_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_cross_collateral_outcomes_known": true,
+    "prior_direct_coinm_usdm_funding_differential_outcomes_known": false,
+    "candidate_specific_incidence_opened": false,
+    "candidate_specific_postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent realized funding-transfer mechanism fixed before funding values, candidate incidence, or outcomes"
+  },
+  "stopping_rule": "freeze preregistration, source support, Gross9 novelty, and sequential economics; terminal first failure with no instrument, pairing, history, rank, volatility gate, onset, side, delay, hold, subset, or control repair",
+  "manifest_hash": "d72649e6e7711091e9e8a32e0dab879222dfc9ff669ad5c89ecc0b9bb9ead943"
+}
