@@ -1,0 +1,36 @@
+{
+  "protocol_version": "hvigdr_6_btc_ohlc_source_v1",
+  "query": "SELECT ts,open,high,low,close,count(*) OVER (PARTITION BY ts) AS duplicate_count\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts",
+  "query_sha256": "4b24e62a9c96550d40ff143dc57868c13532d6a39e03f51613b5ba9ecc257f5b",
+  "table": "bars_binance",
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "columns": [
+    "ts",
+    "open",
+    "high",
+    "low",
+    "close"
+  ],
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 1753920,
+  "builder": {
+    "path": "training/build_high_volatility_interbar_gap_dominance_relay_support.py",
+    "sha256": "c870e391af857516cb29ae7abe3df59669cd42e6458d785389755f81566ceb65"
+  },
+  "features": {
+    "path": "data/high_volatility_interbar_gap_dominance_relay_sources_2023_2026/hourly_preentry_features.csv.gz",
+    "sha256": "18fc1b83ee0fc8623cb3fefd78ec5cb14d4cf9a52617e6fc4b64f7eed08272a2",
+    "rows": 29208,
+    "valid_rows": 29205
+  },
+  "completed_preentry_sources_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "funding_values_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "39b7f24de3e360f09c3eaf6cbaca9b0213439f1549a7553eeb50f72bb1bf6611"
+}
