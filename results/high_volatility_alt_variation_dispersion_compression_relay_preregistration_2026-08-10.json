@@ -1,0 +1,173 @@
+{
+  "protocol_version": "high_volatility_alt_variation_dispersion_compression_relay_v1",
+  "policy_id": "HVAVDCR-6",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When six liquid alt perpetuals realize unusually similar six-hour path variation, the volatility impulse is broad rather than concentrated in one speculative name. During elevated BTC variation, agreement between the alt final-hour majority and BTC identifies coordinated crypto risk transfer whose direction should persist.",
+    "side": "strict four-of-six-or-greater alt final-hour majority sign, confirmed by BTC",
+    "why_distinct": "HVAVDCR uses the cross-sectional dispersion of six log realized variations. Existing cross-alt candidates use return breadth, return correlation, flow, funding, turnover, ticket size, or BTC residuals; none uses compression of alt path-energy dispersion.",
+    "volatile_market_target": "BTC completed six-hour variation strict-prior rank >=0.65",
+    "why_low_gross9_overlap_is_plausible": "hourly false-to-true cross-sectional variation-compression onsets are absent from Gross9"
+  },
+  "features": {
+    "decision_grid": "every exact UTC hour D",
+    "universe": [
+      "BTCUSDT",
+      "ADAUSDT",
+      "BNBUSDT",
+      "DOGEUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "aligned_window": "360 exact aligned unique bars_binance interval=1m rows per symbol [D-6h,D)",
+    "source_valid": "finite positive coherent OHLC for every symbol and timestamp; no duplicate, missing, nearest-time join, or imputation",
+    "symbol_variation": "sum squared log(close/open) over 360 minutes, independently strict positive",
+    "alt_log_variation_dispersion": "population standard deviation across the six natural-log alt symbol variations, finite and strict positive",
+    "dispersion_rank": "strict-prior midrank over at most 2,160 valid hourly decisions, minimum 1,440, current excluded; rank<=0.15",
+    "btc_variation_rank": "same strict-prior 2,160/1,440 rule; rank>=0.65",
+    "final_hour_return": "log(last close/first open) over final exact 60 minutes per symbol",
+    "alt_direction_breadth": "at least four of six alt returns share one strict sign; a 3-3 split or zeros without four votes are ineligible",
+    "btc_confirmation": "BTC final-hour return has the same strict sign as the alt majority",
+    "eligible_state": "dispersion compression, BTC variation, alt breadth, and BTC confirmation pass",
+    "onset": "eligible now and immediately preceding exact source-valid hour ineligible"
+  },
+  "clock": {
+    "decision": "D after all seven completed paths are available",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "confirmed alt majority direction",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open; exit first on equal-time entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not an input; exact realized funding only after novelty passes"
+  },
+  "policy": {
+    "window_hours": 6,
+    "direction_hours": 1,
+    "alt_majority_min": 4,
+    "history_hours": 2160,
+    "minimum_history_hours": 1440,
+    "dispersion_rank_max": 0.15,
+    "btc_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, and final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_btc_variation_gate",
+      "no_dispersion_compression",
+      "btc_direction_only",
+      "one_hour_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbols": [
+        "BTCUSDT",
+        "ADAUSDT",
+        "BNBUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "XRPUSDT"
+      ],
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_cross_alt_return_flow_turnover_ticket_outcomes_known": true,
+    "repository_alt_variation_dispersion_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_outcomes_used_to_set_formula_ranks_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cross-sectional path-energy dispersion compression"
+  },
+  "stopping_rule": "terminal first failure; no universe, window, variation, dispersion, breadth, rank, onset, side, hold, clock, subset, control, or gate repair",
+  "manifest_hash": "40c0bff8624b875c22a9fb4f3ca31336ec98b23736fa220c402ff4fd104142f9"
+}
