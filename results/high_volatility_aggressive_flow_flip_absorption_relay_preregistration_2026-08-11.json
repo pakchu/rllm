@@ -1,0 +1,148 @@
+{
+  "protocol_version": "high_volatility_aggressive_flow_flip_absorption_relay_v1",
+  "policy_id": "HVFFA-8",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Within a volatile completed eight-hour BTC block, if both four-hour price returns persist in one direction while aggressive quote flow changes from supporting that direction in the first half to opposing it in the second half, price has absorbed a newly adverse flow regime. Follow the resilient price direction for eight hours.",
+    "side": "common strict sign of the two completed four-hour price returns",
+    "why_distinct": "Dual-half flow absorption requires persistent same-sign aggressive flow opposing the full-block return; passive absorption uses only a final two-hour contradiction; flow confirmation requires agreement. HVFFA requires an ordered supporting-to-opposing taker-flow sign transition while both price halves retain one direction, with no magnitude threshold, prior event, fitted outcome, or promoted control.",
+    "why_suited_to_volatile_regimes": "the completed eight-hour realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily ordered flow-flip absorption clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 02:00/10:00/18:00 UTC boundaries",
+    "block": "480 exact coherent BTCUSDT bars_binance one-minute rows [D-8h,D)",
+    "half_returns": "log(last close/first open) separately in fixed 240-minute halves, each strict nonzero and sharing one sign",
+    "half_taker_imbalance": "(2*sum(taker_buy_quote)-sum(quote_asset_volume))/sum(quote_asset_volume) in each half, each denominator positive and imbalance strict nonzero",
+    "ordered_flow_flip": "first-half imbalance sign equals common price sign and second-half imbalance sign is opposite",
+    "realized_variation": "sqrt(sum squared one-minute log(close/open) returns), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier source-valid blocks, minimum 180, current excluded; rank>=0.65",
+    "eligible_state": "price persistence, ordered flow flip, and variation gate pass",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed eight-hour boundary",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_flow_flip_requirement",
+      "no_variation_gate",
+      "flow_transition_only",
+      "one_block_stale_flow",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_dual_half_passive_and_confirmation_flow_outcomes_known": true,
+    "repository_aggressive_flow_flip_absorption_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "ordered supporting-to-opposing aggressive-flow transition under persistent price direction"
+  },
+  "stopping_rule": "Terminal first failure; no half partition, flow definition, sign ordering, variation, side, hold, clock, subset, threshold, or control repair.",
+  "manifest_hash": "9dbb870d289d130d954cd8ebc43344c64670f56f131ea1ff55799fa67d4665c1"
+}
