@@ -14,6 +14,7 @@ from training import preregister_high_volatility_functional_curve_projection_rel
 from training.build_binance_aggtrade_microstructure import _write_gzip_csv
 
 
+POLICY_ID = prereg.POLICY_ID
 ENV_FILE = "/home/pakchu/rllm/.env"
 START = pd.Timestamp("2022-01-01T00:00:00Z")
 END = pd.Timestamp("2026-08-01T00:00:00Z")
