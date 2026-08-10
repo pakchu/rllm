@@ -23,7 +23,7 @@ def test_pair_applies_all_frozen_limits() -> None:
         ["2023-07-03T00:05:00Z", "2023-07-11T12:05:00Z"],
         [-1, 1],
     )
-    result = novelty.pair(candidate, comparator)
+    result = novelty.evaluate_pair(candidate, comparator)
     assert set(result["checks"]) == set(novelty.LIMITS)
     assert result["passed"] is True
 
@@ -31,12 +31,12 @@ def test_pair_applies_all_frozen_limits() -> None:
 def test_exact_clock_collision_fails_novelty() -> None:
     candidate = _clock(["2023-07-01T00:05:00Z"], [1])
     comparator = _clock(["2023-07-01T00:05:00Z"], [1])
-    result = novelty.pair(candidate, comparator)
+    result = novelty.evaluate_pair(candidate, comparator)
     assert result["checks"]["exact_entry_jaccard"] is False
     assert result["passed"] is False
 
 
 def test_preregistered_limit_names_are_bound_without_changing_metric_names() -> None:
-    registration = novelty.load(novelty.PREREG)
+    registration = novelty.load_manifest(novelty.PREREG)
     assert registration["novelty_gates"]["occupied_5m_jaccard_max"] == 0.25
     assert novelty.LIMITS["occupied_5m_bar_jaccard"] == 0.25
