@@ -1,0 +1,152 @@
+{
+  "protocol_version": "high_volatility_market_facilitation_green_state_relay_v1",
+  "policy_id": "HVMFI-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated realized variation, a completed four-hour Bill Williams Market Facilitation Index green state\u2014both range-per-volume and volume increasing\u2014indicates new participation accelerating in the direction of bar development; follow that completed bar direction for twenty-four hours.",
+    "side": "strict sign of completed bar close minus open when both BW MFI and base volume exceed their immediately prior completed values",
+    "why_distinct": "BW MFI is current high-low expansion per unit of base volume and its green state requires facilitation and participation to rise together. It is not Money Flow Index, raw range or volume alone, volume-weighted momentum, taker flow, OI, funding, fitted outcome, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "the participation-backed facilitation state must coincide with completed trailing twenty-four-hour realized variation in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "four-hour joint range-per-volume and volume acceleration states are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact four-hour UTC boundary",
+    "source_bar": "exact aggregation of 240 coherent BTCUSDT one-minute rows [T-4h,T), with high=max, low=min, open=first, close=last, base volume=sum",
+    "bw_mfi": "(completed bar high-completed bar low)/completed base volume, strict positive range and volume",
+    "green_state": "current finite BW MFI strictly exceeds immediately prior finite BW MFI and current base volume strictly exceeds immediately prior positive base volume",
+    "bar_direction": "strict sign of completed close-open; zero body is ineligible",
+    "variation": "sqrt(sum squared completed five-minute open-to-close log returns over [T-24h,T)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 180 earlier valid decisions, minimum 120, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "four-hour boundary after completed source bar",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "variation_hours": 24,
+    "variation_history_decisions": 180,
+    "minimum_variation_history_decisions": 120,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "range_and_volume_up",
+      "one_bar_stale_state",
+      "direction_flip"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "window": [
+        "2020-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "canonical_market_facilitation_definition_read": true,
+    "repository_market_facilitation_candidate_found": false,
+    "prior_money_flow_range_volume_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "official Bill Williams green state under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no volume field, state, bar direction, variation, side, hold, clock, subset, control, or other repair.",
+  "external_basis": {
+    "origin": "Bill Williams Market Facilitation Index as documented by MetaQuotes",
+    "source": "https://www.metatrader5.com/en/terminal/help/indicators/bw_indicators/market_facilitation",
+    "fixed_definition": "BW MFI=(HIGH-LOW)/VOLUME; green state when BW MFI increases and volume increases; new players align positions in the direction of bar development",
+    "selection_use": "official formula, green-state classification, and stated bar-direction interpretation only; no incidence or outcomes"
+  },
+  "manifest_hash": "fdcfb720f18a88f2c2915050430ea66308b6cf7c1e30f458c56de3aaff3e33bc"
+}
