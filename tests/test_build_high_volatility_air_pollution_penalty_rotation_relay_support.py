@@ -14,7 +14,7 @@ def test_pm25_aqi_breakpoints_and_truncation():
 
 
 def test_range_parser_selects_only_nyc_pm25():
-    body = b"partial\n07/01/23|23:00|360050080|Morrisania|-5|PM2.5|UG/M3|31.1|Agency\r\n07/01/23|23:00|360050080|Morrisania|-5|OZONE|PPB|60|Agency\r\n07/01/23|23:00|360010005|Albany|-5|PM2.5|UG/M3|10|Agency\r\npartial"
+    body = b"partial\n07/01/23|23:00|360050080|Morrisania|-5|PM2.5|UG/M3|31.1|Agency\r\n07/01/23|23:00|360050081|Missing|-5|PM2.5|UG/M3|-999|Agency\r\n07/01/23|23:00|360050080|Morrisania|-5|OZONE|PPB|60|Agency\r\n07/01/23|23:00|360010005|Albany|-5|PM2.5|UG/M3|10|Agency\r\npartial"
     assert support.parse_range_body(body) == [("07/01/23", "360050080", 31.1)]
 
 

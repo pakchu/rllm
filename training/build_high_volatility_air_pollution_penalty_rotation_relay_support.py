@@ -133,8 +133,11 @@ def parse_range_body(body: bytes) -> list[tuple[str, str, float]]:
         if site[2:5] not in NYC_COUNTIES or pollutant != "PM2.5" or unit != "UG/M3":
             continue
         value = float(fields[7])
+        # AirNow uses negative numeric sentinels for unavailable observations.
+        # They are not valid monitor-hours and are handled by the frozen >=18
+        # valid-hour monitor-day completeness rule below.
         if not math.isfinite(value) or value < 0:
-            raise RuntimeError("HVAPPR invalid NYC PM2.5 observation")
+            continue
         rows.append((fields[0].decode(), site, value))
     return rows
 
