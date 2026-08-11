@@ -1,0 +1,163 @@
+{
+  "protocol_version": "high_volatility_kospi_asymmetric_transition_relay_v1",
+  "policy_id": "HVKATR-24",
+  "as_of_date": "2026-08-12",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Peer-reviewed connectedness evidence identifies the Korean stock market as a significant volatility emitter to Bitcoin in an asymmetric East-Asian spillover system. Follow the current KOSPI return direction when a large completed-session return reverses the prior session's sign during elevated completed BTC variation.",
+    "side": "strict sign of the current KOSPI close-to-close return after a strict sign transition",
+    "external_support": {
+      "paper": "Zeng (2023), Volatility spillover effect between Bitcoin and the East Asian stock market, International Journal of Managerial Finance",
+      "doi": "10.1108/IJMF-03-2021-0161",
+      "reported_fact": "The study reports two-way asymmetric spillovers and identifies the Korean market as a significant volatility emitter in the Bitcoin/East-Asian stock system.",
+      "inference_disclosure": "The Yahoo KOSPI proxy, strict-prior absolute-return rank, sign-transition event, BTC variation gate, five-minute publication buffer and 24-hour BTC hold are preregistered adaptations."
+    },
+    "why_distinct": "HVKATR uses the Korean cash equity index at its native 15:30 Asia/Seoul close. Existing Korean candidates use Upbit/Binance crypto microstructure, premium, volume or venue leadership; the old cross-asset portability battery trades KODEX 200 and explicitly does not use KOSPI as a BTC signal.",
+    "why_suited_to_volatile_regimes": "Both a top-40% KOSPI absolute-return shock and upper-35% completed BTC variation are required.",
+    "why_low_gross9_overlap_is_plausible": "Sparse KOSPI polarity transitions are released at the native 06:30 UTC cash close, a primitive and clock absent from Gross9."
+  },
+  "features": {
+    "sessions": "Yahoo ^KS11 completed exchange sessions, dated in Asia/Seoul",
+    "kospi_return": "log(close_t / close_(t-1 observed exchange session)), strict nonzero",
+    "kospi_shock_rank": "strict-prior midrank of abs(KOSPI return) over at most 252 valid sessions, minimum 126, current excluded; rank>=0.60",
+    "transition": "current and previous valid-session KOSPI returns are strict nonzero and opposite in sign",
+    "btc_variation": "sqrt(sum squared BTCUSDT 1m log(close/open)) over the exact 24 hours ending at 15:30 Asia/Seoul",
+    "btc_variation_rank": "strict-prior midrank over at most 270 valid KOSPI decisions, minimum 180, current excluded; rank>=0.65",
+    "availability": "the completed KOSPI daily bar is treated as available five elapsed minutes after the native close",
+    "missing": "duplicate, weekend, nonpositive, nonfinite or implausibly gapped KOSPI sessions and missing BTC minutes reject; no imputation"
+  },
+  "clock": {
+    "decision": "KOSPI native 15:30 Asia/Seoul cash close plus 5 elapsed minutes",
+    "entry": "exact BTCUSDT five-minute open 5 minutes after decision (normally 06:40 UTC)",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+    "no_imputation": true
+  },
+  "policy": {
+    "asset_symbol": "^KS11",
+    "asset_timezone": "Asia/Seoul",
+    "cash_close_local": "15:30",
+    "shock_prior_sessions": 252,
+    "shock_prior_minimum": 126,
+    "shock_midrank_min": 0.6,
+    "variation_prior_sessions": 270,
+    "variation_prior_minimum": 180,
+    "variation_midrank_min": 0.65,
+    "feature_delay_minutes": 5,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "gross_exposure": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "equity": {
+      "provider": "Yahoo chart API current KOSPI history",
+      "symbol": "^KS11",
+      "interval": "1d",
+      "window": [
+        "2021-01-01",
+        "2026-08-01"
+      ],
+      "exchange_timezone": "Asia/Seoul",
+      "read_after_preregistration": true
+    },
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_btc_volatility_gate",
+      "no_kospi_shock_gate",
+      "one_session_stale_transition",
+      "return_level_without_transition",
+      "direction_flip",
+      "same_clock_forced_long"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "post_stage_volatility_audit": {
+    "rv20_q90_entry_filter": false,
+    "opened_only_after_all_train_test_eval_final_economic_gates_pass": true,
+    "cannot_repair_or_promote": true
+  },
+  "research_boundary": {
+    "paper_definition_opened": true,
+    "repository_exact_kospi_btc_transition_candidate_found": false,
+    "yahoo_transport_schema_only_opened": true,
+    "kospi_rows_returns_ranks_or_event_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "published Korean-market volatility-emitter result, asymmetric transition mechanism, volatile-state relevance, native-close novelty and exact repository absence"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, train/test/eval/final strict economics, then RV20 q90; no source, market, threshold, transition, side, hold, clock, subset or control repair",
+  "gross9_rows_opened": false,
+  "manifest_hash": "8564a2a3322b7ecb504e4d69ae84ea18269cbf21fa225b0bc0b43db6b305e68b"
+}
