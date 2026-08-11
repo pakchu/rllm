@@ -141,6 +141,9 @@ def _download_equity(symbol: str, base_url: str) -> tuple[bytes, pd.DataFrame]:
     frame = pd.DataFrame({"timestamp": result["timestamp"], **quote})
     local = pd.to_datetime(frame.pop("timestamp"), unit="s", utc=True).dt.tz_convert("America/New_York")
     frame.insert(0, "session_date", pd.to_datetime(local.dt.date))
+    # Yahoo can vary object-key order while returning identical values. Freeze the
+    # research snapshot's tabular order so byte hashes do not depend on transport order.
+    frame = frame[["session_date", "open", "high", "low", "close", "volume"]]
     frame = frame.sort_values("session_date").reset_index(drop=True)
     if frame.empty or frame.session_date.duplicated().any():
         raise RuntimeError(f"HVETSR {symbol} session dates invalid")
