@@ -49,6 +49,12 @@ def test_strict_prior_midrank_uses_270_180_contract():
     assert ranks.iloc[180] == 1.0
 
 
+def test_crossref_filter_uses_api_accepted_utc_shape():
+    source = open(b.__file__).read()
+    assert "from-created-date:2022-01-01T00:00:00,until-created-date:2026-07-30T23:59:59" in source
+    assert "from-created-date:2022-01-01T00:00:00Z" not in source
+
+
 def test_primary_clock_holds_24_hours():
     features = pd.DataFrame(
         {

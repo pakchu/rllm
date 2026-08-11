@@ -108,7 +108,7 @@ def fetch_query(term: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     while True:
         params = {
             "query.title": term,
-            "filter": "from-created-date:2022-01-01T00:00:00Z,until-created-date:2026-07-30T23:59:59Z",
+            "filter": "from-created-date:2022-01-01T00:00:00,until-created-date:2026-07-30T23:59:59",
             "select": "DOI,title,type,created,deposited",
             "rows": 1000,
             "cursor": cursor,
