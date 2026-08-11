@@ -1,0 +1,157 @@
+{
+  "protocol_version": "hvgcdr_24_sources_v1",
+  "preregistration_sha256": "6fa9a27c8465aa4c7dff5928a9141df142af458cae58d283936c3f55fce9927a",
+  "outcomes_opened": false,
+  "postentry_return_pnl_execution_price_opened": false,
+  "equities": {
+    "SPY": {
+      "path": "data/high_volatility_global_correlation_demand_relay_sources_2022_2026/spy_yahoo_adjusted_chart.json",
+      "sha256": "edcc25b127cd282eaf8b88233744f0d360d8a360fdb884e583e4e20073d2cc97",
+      "provider": "Yahoo chart API current adjusted history",
+      "metadata": {
+        "symbol": "SPY",
+        "exchange_timezone": "America/New_York",
+        "rows": 1148,
+        "first_session": "2022-01-03",
+        "last_session": "2026-07-31",
+        "adjusted_close_read": true
+      }
+    },
+    "EFA": {
+      "path": "data/high_volatility_global_correlation_demand_relay_sources_2022_2026/efa_yahoo_adjusted_chart.json",
+      "sha256": "b167eda26ddda606c54e724319b7dc84e54815d53001ae548dfb131c8393eea0",
+      "provider": "Yahoo chart API current adjusted history",
+      "metadata": {
+        "symbol": "EFA",
+        "exchange_timezone": "America/New_York",
+        "rows": 1148,
+        "first_session": "2022-01-03",
+        "last_session": "2026-07-31",
+        "adjusted_close_read": true
+      }
+    },
+    "EEM": {
+      "path": "data/high_volatility_global_correlation_demand_relay_sources_2022_2026/eem_yahoo_adjusted_chart.json",
+      "sha256": "fb1d4f363a1f85867cd20f479065cbb24d11b5a952401b31e150f2d77136d5aa",
+      "provider": "Yahoo chart API current adjusted history",
+      "metadata": {
+        "symbol": "EEM",
+        "exchange_timezone": "America/New_York",
+        "rows": 1148,
+        "first_session": "2022-01-03",
+        "last_session": "2026-07-31",
+        "adjusted_close_read": true
+      }
+    }
+  },
+  "equity_panel": {
+    "path": "data/high_volatility_global_correlation_demand_relay_sources_2022_2026/common_adjusted_sessions.csv.gz",
+    "sha256": "395ad15bb24912deea26a670a813db2a675fc3cca070dd4c251dbf9b0e040672",
+    "rows": 1148,
+    "closed_dates": [
+      "2019-12-25",
+      "2020-01-01",
+      "2020-01-20",
+      "2020-02-17",
+      "2020-04-10",
+      "2020-05-25",
+      "2020-07-03",
+      "2020-09-07",
+      "2020-11-26",
+      "2020-12-25",
+      "2021-01-01",
+      "2021-01-18",
+      "2021-02-15",
+      "2021-04-02",
+      "2021-05-31",
+      "2021-07-05",
+      "2021-09-06",
+      "2021-11-25",
+      "2021-12-24",
+      "2022-01-17",
+      "2022-02-21",
+      "2022-04-15",
+      "2022-05-30",
+      "2022-06-20",
+      "2022-07-04",
+      "2022-09-05",
+      "2022-11-24",
+      "2022-12-26",
+      "2023-01-02",
+      "2023-01-16",
+      "2023-02-20",
+      "2023-04-07",
+      "2023-05-29",
+      "2023-06-19",
+      "2023-07-04",
+      "2023-09-04",
+      "2023-11-23",
+      "2023-12-25",
+      "2024-01-01",
+      "2024-01-15",
+      "2024-02-19",
+      "2024-03-29",
+      "2024-05-27",
+      "2024-06-19",
+      "2024-07-04",
+      "2024-09-02",
+      "2024-11-28",
+      "2024-12-25",
+      "2025-01-01",
+      "2025-01-09",
+      "2025-01-20",
+      "2025-02-17",
+      "2025-04-18",
+      "2025-05-26",
+      "2025-06-19",
+      "2025-07-04",
+      "2025-09-01",
+      "2025-11-27",
+      "2025-12-25",
+      "2026-01-01",
+      "2026-01-19",
+      "2026-02-16",
+      "2026-04-03",
+      "2026-05-25",
+      "2026-06-19",
+      "2026-07-03"
+    ],
+    "early_close_dates": [
+      "2020-11-27",
+      "2020-12-24",
+      "2021-11-26",
+      "2022-11-25",
+      "2023-07-03",
+      "2023-11-24",
+      "2024-07-03",
+      "2024-11-29",
+      "2024-12-24",
+      "2025-07-03",
+      "2025-11-28",
+      "2025-12-24"
+    ]
+  },
+  "btc": {
+    "path": "data/high_volatility_global_correlation_demand_relay_sources_2022_2026/btc_1m_ts_open_close.csv.gz",
+    "sha256": "d2e42ca3ea6e440ce50bea01beb709a212f4e531a49c560819652ef8db735dd2",
+    "query": "SELECT ts,open,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts",
+    "columns": [
+      "ts",
+      "open",
+      "close"
+    ],
+    "rows": 2407680,
+    "read_only": true
+  },
+  "features": {
+    "path": "data/high_volatility_global_correlation_demand_relay_sources_2022_2026/hvgcdr_preentry_features.csv.gz",
+    "sha256": "cda086e3238b29bee0c61b47b7f436a33d888b584d2f451712672d63e8ea32cf",
+    "rows": 1148
+  },
+  "builder": {
+    "path": "training/build_high_volatility_global_correlation_demand_relay_support.py",
+    "sha256": "3ad7383903c9d9800cdf5a345553e170a845f16c66ccce54aca1da1cbe535556"
+  },
+  "no_imputation": true,
+  "manifest_hash": "32e62baed35c26eb3969c6a1e2648ba89990376f579285cf266f7a1e9e970f38"
+}
