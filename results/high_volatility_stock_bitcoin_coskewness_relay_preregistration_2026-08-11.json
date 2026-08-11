@@ -1,0 +1,174 @@
+{
+  "protocol_version": "high_volatility_stock_bitcoin_coskewness_relay_v1",
+  "policy_id": "HVSBCR-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "The completed rolling coskewness of Bitcoin with squared S&P 500 returns measures asymmetric cross-market dependence. Published evidence maps higher coskewness to lower following-day Bitcoin excess returns; in elevated causal BTC variation, trade opposite a large standardized coskewness deviation for twenty-four hours.",
+    "side": "negative sign of the strictly-prior standardized 63-session BTC-with-SPY coskewness deviation; zero is ineligible",
+    "external_support": {
+      "paper": "Chen, Liu, and Zhang (2024), Coskewness and the short-term predictability for Bitcoin return",
+      "doi": "10.1016/j.techfore.2023.123196",
+      "paper_fixed_facts": [
+        "daily coskewness between Bitcoin and S&P 500 returns forecasts following-day Bitcoin excess returns",
+        "the in-sample coskewness regression coefficient is significantly negative",
+        "rolling and recursive out-of-sample forecasts are significant",
+        "the predictor remains informative alongside volatility, momentum, and illiquidity and produces economic benefits"
+      ],
+      "implementation_choices_not_claimed_as_replication": [
+        "SPY raw closes as a liquid investable S&P 500 proxy",
+        "a fixed 63-common-session normalized cross third moment",
+        "a 252-session prior-only z-score with 126 minimum observations and absolute threshold 0.75",
+        "a causal BTC prior-24-hour variation-rank gate of 0.65",
+        "24-hour BTC hold starting ten minutes after actual NYSE close"
+      ]
+    },
+    "why_distinct": "Repository scans found no coskewness, co-skewness, systematic-skew, or BTC-SPY cross-third-moment candidate. Existing realized and conditional skew candidates use BTC-only third moments; this candidate uses the cross moment BTC return times squared SPY return and no prior event or control.",
+    "why_suited_to_volatile_regimes": "Asymmetric stock-Bitcoin dependence is most relevant when joint tails matter; the frozen policy independently requires prior-24-hour BTC variation rank >=0.65.",
+    "why_low_gross9_overlap_is_plausible": "A completed NYSE-close cross-asset third-moment state is absent from Gross9 primitives."
+  },
+  "features": {
+    "daily_returns": "for each actual SPY session close, raw SPY close/current prior common-session close and BTC exact close-to-close log return over the same two NYSE closes",
+    "coskewness": "over the latest 63 completed common-session pairs, mean((BTC_return-mean_BTC)*(SPY_return-mean_SPY)^2)/(population_sd_BTC*population_variance_SPY); both scales strict positive",
+    "coskewness_z": "causal z-score versus at most 252 strictly prior finite coskewness values; minimum 126; population scale; current excluded",
+    "event": "absolute coskewness_z >=0.75; side is negative sign(coskewness_z)",
+    "btc_variation": "sqrt(sum squared log(close/open)) over 1,440 exact BTCUSDT 1m bars ending at but excluding actual NYSE close",
+    "btc_variation_rank": "strict-prior midrank versus at most 252 prior valid common-session variations; minimum 126; current excluded; rank >=0.65",
+    "missing": "any missing/nonfinite/nonpositive source or incomplete BTC grid is ineligible; no imputation"
+  },
+  "clock": {
+    "source_session": "actual NYSE regular-session close, including early closes",
+    "feature_available": "five minutes after actual NYSE close",
+    "entry": "exact BTCUSDT five-minute open ten minutes after actual NYSE close",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+    "no_imputation": true
+  },
+  "policy": {
+    "coskewness_sessions": 63,
+    "coskewness_z_prior_sessions": 252,
+    "coskewness_z_prior_minimum": 126,
+    "coskewness_abs_z_min": 0.75,
+    "variation_prior_sessions": 252,
+    "variation_prior_minimum": 126,
+    "variation_midrank_min": 0.65,
+    "feature_delay_minutes": 5,
+    "entry_delay_minutes_after_feature": 5,
+    "hold_hours": 24,
+    "gross_exposure": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "spy": {
+      "url": "https://query1.finance.yahoo.com/v8/finance/chart/SPY",
+      "fields": [
+        "timestamp",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "raw_unadjusted_only": true,
+      "download_after_preregistration": true
+    },
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_btc_volatility_gate",
+      "raw_coskewness_level",
+      "btc_skew_only",
+      "one_session_stale_coskewness",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "post_stage_volatility_audit": {
+    "rv20_q90_entry_filter": false,
+    "opened_only_after_all_train_test_eval_final_economic_gates_pass": true,
+    "cannot_repair_or_promote": true
+  },
+  "research_boundary": {
+    "source_schema_and_transport_checked": false,
+    "source_values_used_to_select_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "repository_stock_bitcoin_coskewness_candidate_found": false,
+    "prior_btc_only_skew_candidates_known": true,
+    "prior_event_sets_reused": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "primary published negative stock-Bitcoin coskewness relation plus exact repository absence"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, train/test/eval/final strict economics, then RV20 q90 audit; no proxy, return alignment, window, normalization, threshold, side, hold, clock, subset, or control repair",
+  "manifest_hash": "5cd239827342edabdecc5cec27343e38c79e0900e5539d94e4515b5f8a061181"
+}
