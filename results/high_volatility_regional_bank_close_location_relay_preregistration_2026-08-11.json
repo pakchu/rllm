@@ -1,0 +1,147 @@
+{
+  "protocol_version": "high_volatility_regional_bank_close_location_relay_v1",
+  "policy_id": "HVKRECLV-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A completed US cash-session close in the outer quarter of the regional-bank ETF range identifies accepted bank-credit risk pressure rather than a transient intraday excursion. During elevated BTC variation, follow that accepted pressure for twenty-four hours after the close is certainly public.",
+    "side": "long when KRE close-location value is at least +0.5; short when at most -0.5",
+    "why_distinct": "KRE close location uses one regional-bank cash auction's high-low-close geometry. It is not semiconductor/utilities or HYG/LQD relative return, broad financial ETF direction, an opening gap, crypto price geometry, OI, funding, prior event artifact, repair, ETF substitution inside a prior candidate, or promoted control.",
+    "why_suited_to_volatile_regimes": "the preceding twenty-four-hour BTC realized variation must rank in its causal upper 35%, restricting bank-credit transmission to July-like crypto states",
+    "why_low_gross9_overlap_is_plausible": "only outer-quarter regional-bank cash-auction closes create one external 23:05 UTC clock; this primitive is absent from Gross9"
+  },
+  "features": {
+    "source": "candidate-specific Yahoo chart raw unadjusted KRE regular-session daily open/high/low/close snapshot downloaded only after preregistration push",
+    "session": "US trading date D with finite positive raw OHLC, high>=max(open,close), low<=min(open,close), and high>low",
+    "close_location": "((close-low)-(high-close))/(high-low), finite in [-1,1] up to numerical tolerance",
+    "event": "close_location>=+0.5 or <=-0.5; interior values are ineligible",
+    "availability": "D 23:00 UTC, safely after the 16:00 America/New_York regular close in EST and EDT",
+    "btc_variation": "sqrt(sum squared exact BTCUSDT five-minute open-to-close log returns over the prior 24 elapsed hours ending at decision)",
+    "variation_rank": "strict-prior midrank over at most 270 previous valid daily 23:00 UTC states, minimum 180, current excluded; rank>=0.65",
+    "no_adjusted_close": true,
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "each valid KRE regular-session date D at 23:00 UTC",
+    "entry": "exact BTCUSDT 23:05 UTC open",
+    "hold": "24 elapsed hours",
+    "side": "strict outer-quarter close-location sign",
+    "reservation": "chronological global half-open nonoverlap; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "absolute_close_location_min": 0.5,
+    "variation_history_decisions": 270,
+    "minimum_variation_history_decisions": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "any_nonzero_close_location",
+      "cash_return_direction",
+      "one_session_stale_location",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "kre": "Yahoo chart query1=2022-09-01 query2=2026-08-02 exclusive interval=1d events=history; raw OHLC only",
+    "destination": "data/high_volatility_regional_bank_close_location_relay_sources_2022_2026/kre_sessions.csv.gz",
+    "btc": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "official_etf_definition_read": true,
+    "repository_kre_close_location_candidate_found": false,
+    "kre_values_opened": false,
+    "prior_external_etf_economic_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_economic_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent single-auction regional-bank credit-pressure channel plus requested high BTC variation"
+  },
+  "stopping_rule": "Terminal first failure; no ETF substitution, adjusted-price use, CLV boundary, variation, side, session, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "official_source": "https://www.ssga.com/us/en/intermediary/etfs/state-street-spdr-sp-regional-banking-etf-kre",
+    "definition": "KRE seeks exposure to the regional banks segment of the S&P Total Market Index through a modified equal-weighted regional-bank index",
+    "fixed_geometry": "CLV=((close-low)-(high-close))/(high-low)=2*(close-low)/(high-low)-1; +/-0.5 is the boundary of the upper/lower quarter of the completed range",
+    "selection_use": "official regional-bank exposure and algebraic outer-quarter auction acceptance only; no candidate incidence or economic outcomes"
+  },
+  "manifest_hash": "20b3dd1dd2a706322504bcf4e6295ae3c345faa0b666c7859323661ae80cc4ee"
+}
