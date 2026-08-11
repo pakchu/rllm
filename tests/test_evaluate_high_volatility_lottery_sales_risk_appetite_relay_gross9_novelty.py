@@ -23,6 +23,7 @@ def test_hvlsra_novelty_binds_predecessors():
     assert novelty.sha(novelty.PREREG) == novelty.PREREG_SHA
     assert novelty.sha(novelty.SUPPORT) == novelty.SUPPORT_SHA
     assert novelty.sha(novelty.CLOCK) == novelty.CLOCK_SHA
+    assert novelty.load(novelty.PREREG)["novelty_gates"]["occupied_5m_jaccard_max"] == 0.25
 
 
 def test_pair_enforces_all_registered_limits(monkeypatch):
