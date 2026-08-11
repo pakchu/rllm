@@ -1,0 +1,30 @@
+{
+  "protocol_version": "hvrlxc_12_sources_v1",
+  "btc_query": "SELECT date_bin(interval '5 minutes', ts, timestamptz '2023-01-01 00:00:00+00') AS bar_time,\ncount(*) source_rows, count(DISTINCT ts) distinct_timestamps, min(ts) first_ts, max(ts) last_ts,\n(array_agg(open ORDER BY ts))[1] open, max(high) high, min(low) low, (array_agg(close ORDER BY ts DESC))[1] close,\nbool_and(open>0 AND high>0 AND low>0 AND close>0 AND low<=least(open,close) AND high>=greatest(open,close) AND high>=low) coherent\nFROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m'\nAND ts>='2023-01-01T00:00:00Z' AND ts<'2026-08-01T00:00:00Z'\nGROUP BY 1 ORDER BY 1",
+  "source_counts": {
+    "five_minute_rows": 376704,
+    "valid_five_minute_rows": 376704,
+    "four_hour_decisions": 7848,
+    "finite_cross_moments": 7843
+  },
+  "builder": {
+    "path": "training/build_high_volatility_realized_leverage_cross_moment_relay_support.py",
+    "sha256": "f39506dba1d7e40bd29422ad1730686fb8ad57c447b9f662c8f913fbf2cb43b4"
+  },
+  "outputs": {
+    "five_minute_panel": {
+      "path": "data/high_volatility_realized_leverage_cross_moment_relay_sources_2023_2026/causal_five_minute_moments.csv.gz",
+      "sha256": "9e989f76a571ea1bdb014829084853bd3b6e486453c12c6797ee1527df4807e1",
+      "rows": 376704
+    },
+    "features": {
+      "path": "data/high_volatility_realized_leverage_cross_moment_relay_sources_2023_2026/four_hour_preentry_states.csv.gz",
+      "sha256": "6187fa11f8edd08e01228e4ccbedf6f462b9f2b2d59204e1f0796bce404481f3",
+      "rows": 7848
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "execution_prices_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "b11487799c6ee6c04b24804f6df6e66521b05b39ae0bba1ecfd4551557736a75"
+}
