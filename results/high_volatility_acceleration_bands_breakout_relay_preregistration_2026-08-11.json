@@ -1,0 +1,160 @@
+{
+  "protocol_version": "high_volatility_acceleration_bands_breakout_relay_v1",
+  "policy_id": "HVABANDS-B10-W4-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated completed realized variation, a four-hour close newly escaping the official Acceleration Bands(10,4,SMA) envelope identifies directional price acceleration beyond a range-expanded high/low boundary. Follow the outward break for twenty-four hours.",
+    "side": "long on a strict close cross above the completed upper band; short on a strict close cross below the completed lower band",
+    "why_distinct": "Acceleration Bands first expands every high and low by its own contemporaneous range-to-midprice coefficient and then averages those transformed boundaries. This is neither close dispersion (Bollinger), ATR around a center (Keltner), raw extrema (Donchian), nor OLS residual dispersion (Regression Channel). No fitted outcome, volume, flow, OI, funding, reused event set, or promoted control is used.",
+    "why_suited_to_volatile_regimes": "the transformed envelope demands acceleration beyond recent range geometry while trailing twenty-four-hour realized variation ranks in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "sparse four-hour transformed-range envelope crossings are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact four-hour UTC boundary",
+    "source_bar": "exact aggregation of 240 coherent BTCUSDT one-minute rows [T-4h,T)",
+    "coefficient": "4*(high-low)/(high+low), denominator strict positive for valid BTC prices",
+    "upper_band": "SMA(10) of high*(1+coefficient), including current completed bar",
+    "lower_band": "SMA(10) of low*(1-coefficient), including current completed bar",
+    "event": "current close>current upper and previous close<=previous upper gives long; current close<current lower and previous close>=previous lower gives short; exactly one side",
+    "variation": "sqrt(sum squared completed one-minute open-to-close log returns over [T-24h,T)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 180 earlier source-valid four-hour decisions, minimum 120, current excluded; rank>=0.65",
+    "recursive_reset": "bar aggregation, all three SMA windows, crossing state, and variation history reset after any invalid completed source bar",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "four-hour boundary after completed source bar",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "period": 10,
+    "width": 4.0,
+    "moving_average": "simple",
+    "variation_hours": 24,
+    "variation_history_decisions": 180,
+    "minimum_variation_history_decisions": 120,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "middle_band_cross",
+      "raw_transformed_boundary_break",
+      "one_bar_stale_cross",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2020-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "canonical_acceleration_bands_definition_read": true,
+    "repository_acceleration_bands_candidate_found": false,
+    "prior_bollinger_keltner_donchian_and_regression_channel_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "official documented AccelerationBands(10,4,SMA) outward crossing under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no period, width, average type, transformation, crossing, variation, side, hold, clock, subset, threshold, control, or other repair.",
+  "external_basis": {
+    "origin": "Price Headley Acceleration Bands; QuantConnect LEAN canonical implementation",
+    "definition_source": "https://github.com/QuantConnect/Lean/blob/master/Indicators/AccelerationBands.cs",
+    "definition_source_sha256": "e1e6e364022d59bcf780746237437f747b84a1c75e4ecc9ea1c6202fdd3eb9c0",
+    "documentation_source": "https://www.quantconnect.com/docs/v2/writing-algorithms/indicators/supported-indicators/acceleration-bands",
+    "fixed_definition": "official documentation example period=10,width=4,Simple; coefficient=4*(high-low)/(high+low) with SafeDivision; raw upper=high*(1+coefficient), raw lower=low*(1-coefficient), raw middle=close; each output is its 10-period SMA; warmup 10",
+    "selection_use": "official example period, default width, SMA type, formulas, readiness, and outward crossing only; no incidence or outcomes"
+  },
+  "manifest_hash": "1452d890217faa52d68e4492c603fd27f2b16848b5d4c7e6e865f17a31d96fe2"
+}
