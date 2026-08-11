@@ -123,7 +123,10 @@ def normalize_record(raw: Any) -> dict[str, Any]:
     if missing or extras:
         raise RuntimeError(f"WHO item schema drift: missing={sorted(missing)!r}, extras={sorted(extras)!r}")
     item_id = str(uuid.UUID(str(raw["Id"]))).lower()
-    system_key = str(uuid.UUID(str(raw["SystemSourceKey"]))).lower()
+    system_key = raw["SystemSourceKey"]
+    if not isinstance(system_key, str) or not system_key.strip():
+        raise RuntimeError("WHO SystemSourceKey identity is empty")
+    system_key = system_key.strip()
     strings = {key: raw[key] for key in ("DonId", "UrlName", "Title")}
     if any(not isinstance(value, str) or not value.strip() for value in strings.values()):
         raise RuntimeError("WHO item string identity is empty")

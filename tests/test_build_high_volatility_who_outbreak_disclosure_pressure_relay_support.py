@@ -5,12 +5,13 @@ from training import build_high_volatility_who_outbreak_disclosure_pressure_rela
 
 
 def _record() -> dict:
-    return {"Id": "4dfe0e00-b342-41c4-ba5f-96e2a18639a4", "SystemSourceKey": "757b04d9-b223-4443-8a33-23e6df86a54e", "DonId": "2023-DON001", "UrlName": "sample", "Title": "Sample outbreak", "PublicationDate": "2023-01-01T10:00:00Z", "PublicationDateAndTime": "2023-01-01T10:00:00Z", "DateCreated": "2023-01-01T09:00:00Z", "LastModified": "2023-01-01T11:00:00Z"}
+    return {"Id": "4dfe0e00-b342-41c4-ba5f-96e2a18639a4", "SystemSourceKey": "WHO-DON-source-key", "DonId": "2023-DON001", "UrlName": "sample", "Title": "Sample outbreak", "PublicationDate": "2023-01-01T10:00:00Z", "PublicationDateAndTime": "2023-01-01T10:00:00Z", "DateCreated": "2023-01-01T09:00:00Z", "LastModified": "2023-01-01T11:00:00Z"}
 
 
 def test_normalize_record_fixes_identity_and_publication_time():
     row = b.normalize_record(_record())
     assert row["don_id"] == "2023-DON001"
+    assert row["system_source_key"] == "WHO-DON-source-key"
     assert row["publication_at"] == "2023-01-01T10:00:00+00:00"
 
 
