@@ -1,0 +1,153 @@
+{
+  "protocol_version": "cftc_asset_manager_option_position_second_week_relay_v1",
+  "policy_id": "CAMOP2W-168",
+  "as_of_date": "2026-08-11",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "public_source_basis": {
+    "research": "https://www.sciencedirect.com/science/article/pii/S1544612326008287",
+    "research_claim": "Using weekly CFTC CME Bitcoin derivatives data, asset managers' option positions selectively predict the second-week-ahead weekly futures return.",
+    "cftc_historical": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/HistoricalCompressed/index.htm",
+    "cftc_release": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/AbouttheCOTReports/index.htm",
+    "official_claims": [
+      "TFF futures-only and futures-and-options-combined annual files are public",
+      "combined option positions are futures-equivalent and COT reports are normally released Friday 15:30 ET"
+    ],
+    "implementation_is_unpublished_adaptation": true
+  },
+  "mechanism": {
+    "claim": "A week-over-week increase in CME BTC asset-manager net option exposure represents new institutional directional convexity demand. Follow that change only during an already high-variation BTC state in the causally available second week after the CFTC report.",
+    "side": "strict sign of the week-over-week change in isolated asset-manager option net = delta[(combined long-short)-(futures-only long-short)]",
+    "why_distinct": "This is an external weekly regulatory-position clock. It uses neither Binance/Deribit positioning, funding, premium, OI, CFTC enforcement events, BTC trend direction, prior event rows, fitted outcomes, nor prior controls. The two-week conservative availability/forecast alignment and seven-day hold are absent from Gross9.",
+    "why_suited_to_volatile_regimes": "entry requires prior-24h BTC realized variation in its causal upper 40%",
+    "why_low_gross9_overlap_is_plausible": "at most one Tuesday 00:05 UTC institutional-position trade per week"
+  },
+  "features": {
+    "contract": "CFTC TFF CME BITCOIN contract, identical market code in futures-only and futures+options combined files",
+    "report_date": "official Tuesday as-of date",
+    "isolated_option_net": "(asset_mgr_long_combined-asset_mgr_short_combined)-(asset_mgr_long_futures-asset_mgr_short_futures)",
+    "position_change": "current isolated option net minus immediately prior report's value; exact consecutive report dates seven calendar days apart; strict nonzero",
+    "conservative_availability": "report_date+7 calendar days 00:00 UTC, later than the normal Friday release and robust to ordinary holiday delay",
+    "second_week_entry_schedule": "availability+7 calendar days 00:05 UTC",
+    "btc_variation": "sqrt(sum squared exact completed BTCUSDT 5m close/open log returns over [entry-24h,entry)); strict-prior daily-boundary midrank over 270 states, minimum 180; current excluded; rank>=0.60",
+    "no_imputation": true,
+    "grid": false
+  },
+  "clock": {
+    "decision": "report_date+14 calendar days 00:00 UTC after CFTC report and prior-day BTC path are available",
+    "entry": "exact decision+5m BTCUSDT open",
+    "side": "option-net weekly-change sign",
+    "hold": "168 elapsed hours",
+    "reservation": "weekly half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact held settlements only after novelty",
+    "rv20": "q90 audit only after all economics pass"
+  },
+  "policy": {
+    "variation_history_days": 270,
+    "variation_minimum_days": 180,
+    "variation_rank_min": 0.6,
+    "conservative_report_delay_days": 7,
+    "second_week_wait_days": 7,
+    "entry_delay_minutes": 5,
+    "hold_hours": 168,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "combined_net_without_futures_isolation",
+      "one_report_stale_position_change",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "cftc": {
+      "files": [
+        "fut_fin_txt_2021.zip through fut_fin_txt_2026.zip",
+        "com_fin_txt_2021.zip through com_fin_txt_2026.zip"
+      ],
+      "official_host": "https://www.cftc.gov/files/dea/history/",
+      "open_after_preregistration": true
+    },
+    "btc": "hash-bound completed 5m cache plus read-only Postgres extension through 2026-08-01",
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "paper_abstract_and_official_metadata_opened": true,
+    "cftc_candidate_rows_not_opened": true,
+    "exact_candidate_incidence_or_outcomes_known": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "published external institutional-option second-week predictability"
+  },
+  "stopping_rule": "Terminal first failure; no position field, sign, threshold, lag, hold, clock, subset, source, or control repair.",
+  "manifest_hash": "289fc59a42a33601fa818dbcc45b548f0b9d531aa19a900b3867cf72b7eebcd7"
+}
