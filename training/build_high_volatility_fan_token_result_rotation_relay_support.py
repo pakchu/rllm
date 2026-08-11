@@ -78,7 +78,7 @@ def download_matches() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     else:
         documents = []
         for year in (2023, 2024, 2025, 2026):
-            url = prereg.ESPN_SCOREBOARD.format(year=year); request = Request(url, headers={"User-Agent": "rllm-hvftrr-source-support/1.0"})
+            url = prereg.ESPN_SCOREBOARD.format(year=year); request = Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urlopen(request, timeout=60) as response: document = json.loads(response.read())
             documents.append({"year": year, "url": url, "document": document})
         write_gzip_json(documents, RAW_MATCHES)
