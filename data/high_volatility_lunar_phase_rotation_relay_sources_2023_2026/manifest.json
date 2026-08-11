@@ -1,0 +1,39 @@
+{
+  "protocol_version": "hvlpr_24_sources_v1",
+  "usno_api_version": "4.0.1",
+  "usno_urls": [
+    "https://aa.usno.navy.mil/api/moon/phases/year?year=2023",
+    "https://aa.usno.navy.mil/api/moon/phases/year?year=2024",
+    "https://aa.usno.navy.mil/api/moon/phases/year?year=2025",
+    "https://aa.usno.navy.mil/api/moon/phases/year?year=2026"
+  ],
+  "btc_query": "SELECT\n  date_trunc('day', ts) AS source_day,\n  count(*) AS source_rows,\n  count(DISTINCT ts) AS distinct_timestamps,\n  min(ts) AS first_ts,\n  max(ts) AS last_ts,\n  bool_and(open > 0 AND close > 0) AS positive_prices,\n  sqrt(sum(power(ln(close / open), 2))) AS realized_variation\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1",
+  "btc_window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "btc_days": 1308,
+  "builder": {
+    "path": "training/build_high_volatility_lunar_phase_rotation_relay_support.py",
+    "sha256": "cee488071e108eed4a2cfe2dd2df23e16a71b5b51bc14211246ef858f00f9b96"
+  },
+  "outputs": {
+    "raw_phases": {
+      "path": "data/high_volatility_lunar_phase_rotation_relay_sources_2023_2026/usno_phases_2023_2026.json",
+      "sha256": "7ba032067efd132bd8c981fa4e333704071e644bb5178358fad9abbc46f4a86d"
+    },
+    "eligible_phases": {
+      "path": "data/high_volatility_lunar_phase_rotation_relay_sources_2023_2026/eligible_phases.csv.gz",
+      "sha256": "7649387c4c4b61828dad6d47de56de108f2eea027f99ea6336aa84e2cca199bd",
+      "rows": 99
+    },
+    "features": {
+      "path": "data/high_volatility_lunar_phase_rotation_relay_sources_2023_2026/daily_preentry_states.csv.gz",
+      "sha256": "2bb997c477ecdd9106348e9ebfb4d7770f19d191f155f8910367cdffc78cb9f0",
+      "rows": 1307
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "b32b9c9419dbef4ab3122e560409f59c95bfa9820be87c5b3d911d281140cccf"
+}
