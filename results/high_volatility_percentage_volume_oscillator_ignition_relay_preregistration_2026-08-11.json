@@ -1,0 +1,159 @@
+{
+  "protocol_version": "high_volatility_percentage_volume_oscillator_ignition_relay_v1",
+  "policy_id": "HVPVO-12",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated realized variation, a completed four-hour canonical Percentage Volume Oscillator crossing above its signal identifies fresh participation acceleration; follow the completed four-hour price direction for twelve hours.",
+    "side": "strict sign of the completed four-hour close/open log return at a bullish PVO-signal crossover",
+    "why_distinct": "PVO divides the EMA(12)-EMA(26) base-volume spread by the positive slow volume EMA, then compares that scale-free participation rate with its EMA(9). It supplies no price direction itself and is distinct from price PPO, raw relative volume, ticket expansion, cumulative flow, PVT, OBV, OI, funding, fitted outcomes, reused event sets, and promoted controls.",
+    "why_suited_to_volatile_regimes": "completed trailing twenty-four-hour realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "sparse four-hour volume-acceleration ignition clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact four-hour UTC boundary",
+    "source_bar": "exact aggregation of 240 coherent BTCUSDT one-minute rows [T-4h,T), including finite nonnegative base volume with strict positive completed sum",
+    "fast_ema": "causal EMA(12) of completed base volume using alpha=2/13, reset across gaps",
+    "slow_ema": "causal EMA(26) of completed base volume using alpha=2/27 and required strictly positive",
+    "pvo": "100*(fast volume EMA-slow volume EMA)/slow volume EMA",
+    "signal": "causal EMA(9) of PVO using alpha=2/10",
+    "event": "current PVO-signal is strictly positive and immediately prior finite PVO-signal is <=0",
+    "terminal_return": "log(completed four-hour close/open), finite strict nonzero",
+    "variation": "sqrt(sum squared completed one-minute open-to-close log returns over [T-24h,T)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 180 earlier valid decisions, minimum 120, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "four-hour boundary after completed source bar",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "side": "terminal_return sign",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "fast_periods": 12,
+    "slow_periods": 26,
+    "signal_periods": 9,
+    "variation_hours": 24,
+    "variation_history_decisions": 180,
+    "minimum_variation_history_decisions": 120,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "zero_line_ignition",
+      "one_bar_stale_cross",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "window": [
+        "2020-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "canonical_pvo_definition_read": true,
+    "repository_pvo_candidate_found": false,
+    "prior_price_and_volume_indicator_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "canonical PVO(12,26,9) upward signal crossover under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no periods, smoothing convention, scaling, crossing, variation, side, hold, clock, subset, control, or other repair.",
+  "external_basis": {
+    "origin": "canonical Percentage Volume Oscillator convention",
+    "fixed_definition": "EMA(12) of volume minus EMA(26), divided by EMA(26) and multiplied by 100; EMA(9) signal; strict upward line crossover",
+    "selection_use": "published defaults 12,26,9, percentage normalization, and upward signal crossover only; BTC direction and holding application are untested; no incidence or outcomes"
+  },
+  "manifest_hash": "840aec350f5415a1a54d551b6900c71669f89b68f7148de0e7d33297b06d356a"
+}
