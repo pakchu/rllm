@@ -104,6 +104,36 @@ def test_role_to_host_pool_identity_calls_are_exact():
     assert all(call[1] == "latest" for call in calls)
 
 
+def test_chain_source_preflights_both_roles_before_historical_collection(monkeypatch):
+    order: list[str] = []
+
+    class Client:
+        def __init__(self, url: str, **_: Any) -> None:
+            self.url = url
+
+    def identity(client: Client, role: str) -> dict[str, Any]:
+        order.append("identity:" + role)
+        return {"role": role, "url": client.url}
+
+    def collect(client: Client, role: str, frozen: dict[str, Any]):
+        order.append("collect:" + role)
+        assert frozen["role"] == role and frozen["url"] == client.url
+        return [], [], {"role": role}
+
+    monkeypatch.setattr(b.eth, "JsonRpcClient", Client)
+    monkeypatch.setattr(b, "verify_pool_identity", identity)
+    monkeypatch.setattr(b, "collect_host_source", collect)
+    logs, boundaries, audit = b.load_chain_source()
+    assert logs == boundaries == []
+    assert audit["dual_host_exact_replay"] is True
+    assert order == [
+        "identity:primary",
+        "identity:verification",
+        "collect:primary",
+        "collect:verification",
+    ]
+
+
 def test_swap_normalization_binds_full_abi_and_identity():
     row = b.normalize_swap_log(_log(), 90, 110)
     assert row["amount0_raw"] == -100_000_000

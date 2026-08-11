@@ -350,8 +350,12 @@ def find_first_blocks_at_or_after(
     return output
 
 
-def collect_host_source(rpc: eth.Rpc, role: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
-    identity = verify_pool_identity(rpc, role)
+def collect_host_source(
+    rpc: eth.Rpc,
+    role: str,
+    identity: dict[str, Any] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    identity = identity or verify_pool_identity(rpc, role)
     source = prereg.build()["source_plan"]["ethereum_uniswap_v3_logs"]
     days = pd.date_range(source["source_day_start"], source["source_day_end_exclusive"], freq="D", inclusive="left", tz="UTC")
     boundary_times = days.append(pd.DatetimeIndex([pd.Timestamp(source["source_day_end_exclusive"], tz="UTC")]))
@@ -403,7 +407,13 @@ def load_chain_source() -> tuple[list[dict[str, Any]], list[dict[str, Any]], dic
         "primary": eth.JsonRpcClient(source["primary_rpc"], timeout_sec=60, max_retries=6),
         "verification": eth.JsonRpcClient(source["verification_rpc"], timeout_sec=60, max_retries=6),
     }
-    replay = {role: collect_host_source(client, role) for role, client in clients.items()}
+    identities = {
+        role: verify_pool_identity(client, role) for role, client in clients.items()
+    }
+    replay = {
+        role: collect_host_source(client, role, identities[role])
+        for role, client in clients.items()
+    }
     primary_logs, primary_boundaries, primary_audit = replay["primary"]
     verify_logs, verify_boundaries, verify_audit = replay["verification"]
     if primary_logs != verify_logs:
