@@ -227,7 +227,7 @@ class JsonRpcClient:
                 ) as response:
                     return json.loads(response.read().decode("utf-8"))
             except urllib.error.HTTPError as exc:
-                if exc.code not in {429, 500, 502, 503, 504}:
+                if exc.code not in {408, 429, 500, 502, 503, 504}:
                     raise
                 if attempt >= self._max_retries:
                     raise

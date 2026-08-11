@@ -24,7 +24,7 @@ from training import preregister_high_volatility_ethereum_staking_deposit_pressu
 ENV_FILE = "/home/pakchu/rllm/.env"
 BUILDER = Path("training/build_high_volatility_ethereum_staking_deposit_pressure_relay_support.py")
 PREREG_SHA = "3779ce7d9ebf120c92ed979e9d44747b9926c828967413a2cd646a39820dbeef"
-ETH_HELPER_SHA = "af699d91404e44298573ca148c6cf1b90b68d9aac2972da9ad228a26b9e8a9a5"
+ETH_HELPER_SHA = "66936f283ecf8060c32d60767af504475329dfa556fb554596c2e27229f6c952"
 SOURCE_DIR = Path("data/high_volatility_ethereum_staking_deposit_pressure_relay_sources_2023_2026")
 RAW_EVENTS = SOURCE_DIR / "deposit_events_2022_2026.json.gz"
 DAILY_PANEL = SOURCE_DIR / "daily_deposit_counts.csv.gz"
