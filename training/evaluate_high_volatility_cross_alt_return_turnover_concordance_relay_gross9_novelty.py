@@ -1,4 +1,4 @@
-"""Evaluate frozen HVCARTC-24 structural novelty against every Gross9 sleeve."""
+"""Evaluate frozen HVCARTC-8 structural novelty against every Gross9 sleeve."""
 from __future__ import annotations
 
 import argparse
@@ -15,8 +15,8 @@ if __package__ in (None, ""):
 from training import export_gross9_structural_clocks as gross9
 from training import evaluate_options_led_volatility_expansion_premium_relay_gross9_novelty as metric
 
-POLICY = "HVCARTC-24"
-PROTOCOL = "hvcartc_24_gross9_novelty_v1"
+POLICY = "HVCARTC-8"
+PROTOCOL = "hvcartc_8_gross9_novelty_v1"
 PREREG = Path("results/high_volatility_cross_alt_return_turnover_concordance_relay_preregistration_2026-08-11.json")
 PREREG_SHA = "0a2d2efd2ed8642d5befc9a48923d7354dc1aeb6f60e01f640bb865e18269618"
 SUPPORT = Path("results/high_volatility_cross_alt_return_turnover_concordance_relay_support_2026-08-11.json")
