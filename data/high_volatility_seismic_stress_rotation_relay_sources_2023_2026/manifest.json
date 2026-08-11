@@ -1,0 +1,38 @@
+{
+  "protocol_version": "hvssr_24_sources_v1",
+  "usgs_window": [
+    "2023-04-23T00:00:00+00:00",
+    "2026-08-07T00:00:00+00:00"
+  ],
+  "btc_query": "SELECT\n  date_trunc('day', ts - interval '12 hours') + interval '1 day 12 hours' AS decision_time,\n  count(*) AS source_rows,\n  count(DISTINCT ts) AS distinct_timestamps,\n  min(ts) AS first_ts,\n  max(ts) AS last_ts,\n  bool_and(open > 0 AND close > 0) AS positive_prices,\n  sqrt(sum(power(ln(close / open), 2))) AS realized_variation\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1",
+  "builder": {
+    "path": "training/build_high_volatility_seismic_stress_rotation_relay_support.py",
+    "sha256": "11ea1052f59825fc783242646632b2f1b93c87fab0485bc5a49ac6cfaa8db7b0"
+  },
+  "outputs": {
+    "event_versions": {
+      "path": "data/high_volatility_seismic_stress_rotation_relay_sources_2023_2026/causal_candidate_event_versions.json.gz",
+      "sha256": "2d653db583bc0f5110b32caa0c6e42b0c2c968c3ffc9289bc312c925207a0c35",
+      "events": 6140
+    },
+    "raw_index": {
+      "path": "data/high_volatility_seismic_stress_rotation_relay_sources_2023_2026/usgs_quakeml_response_index.json",
+      "sha256": "0c01a8b60cc9077e70bc462ea625b53febfe8eb226b0c6ca2ea9787a551c0523",
+      "responses": 81,
+      "response_bytes": 1247350199
+    },
+    "stress": {
+      "path": "data/high_volatility_seismic_stress_rotation_relay_sources_2023_2026/daily_seismic_stress.csv.gz",
+      "sha256": "84d2258075389b0d28755b36022277a826fe9b1c1229711f217a94b10463ce32",
+      "rows": 1188
+    },
+    "features": {
+      "path": "data/high_volatility_seismic_stress_rotation_relay_sources_2023_2026/daily_preentry_states.csv.gz",
+      "sha256": "622eeb113c6b28a0d54b52c18cd8f841f6b356971a66fae85f23c24211acf96f",
+      "rows": 1188
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "fe22f2d1c5938177b6409cb53b24dd2e092357cef8520768ac98c46bcfca8bb7"
+}
