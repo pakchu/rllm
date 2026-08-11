@@ -22,6 +22,11 @@ def test_parse_event_retains_only_ever_eligible_histories():
     assert len(parsed["event_id_sha256"]) == 64
 
 
+def test_event_without_magnitude_is_non_candidate():
+    raw = b'''<q:quakeml xmlns:q="http://quakeml.org/xmlns/quakeml/1.2" xmlns="http://quakeml.org/xmlns/bed/1.2"><eventParameters><event publicID="event/a"/></eventParameters></q:quakeml>'''
+    assert support.parse_event(ET_from(raw)) is None
+
+
 def ET_from(raw: bytes):
     import xml.etree.ElementTree as ET
     return ET.fromstring(raw).find(".//b:event", support.NS)

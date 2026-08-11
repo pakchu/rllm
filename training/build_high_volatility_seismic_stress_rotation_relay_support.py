@@ -119,21 +119,26 @@ def text_required(node: ET.Element, path: str) -> str:
 def parse_event(event: ET.Element) -> dict[str, Any] | None:
     public_id = event.attrib.get("publicID")
     if not public_id: raise RuntimeError("HVSSR missing event publicID")
+    magnitude_nodes = event.findall("b:magnitude", NS)
+    if not magnitude_nodes:
+        return None
+    magnitude_values = [float(text_required(node, "b:mag/b:value")) for node in magnitude_nodes]
+    if not all(math.isfinite(value) for value in magnitude_values):
+        raise RuntimeError("HVSSR nonfinite magnitude")
+    if max(magnitude_values) < 5.0:
+        return None
     origins: dict[str, dict[str, str]] = {}
     for origin in event.findall("b:origin", NS):
         origin_id = origin.attrib.get("publicID")
         if not origin_id or origin_id in origins: raise RuntimeError("HVSSR duplicate origin id")
         origins[origin_id] = {"event_time": text_required(origin, "b:time/b:value"), "creation_time": text_required(origin, "b:creationInfo/b:creationTime")}
     magnitudes: list[dict[str, Any]] = []
-    for magnitude in event.findall("b:magnitude", NS):
+    for magnitude, value in zip(magnitude_nodes, magnitude_values):
         origin_id = text_required(magnitude, "b:originID")
         if origin_id not in origins: raise RuntimeError("HVSSR unlinked magnitude")
-        value = float(text_required(magnitude, "b:mag/b:value"))
         creation = text_required(magnitude, "b:creationInfo/b:creationTime")
-        if not math.isfinite(value): raise RuntimeError("HVSSR nonfinite magnitude")
         magnitudes.append({"magnitude": value, "origin_id": origin_id, "creation_time": creation})
-    if not origins or not magnitudes: raise RuntimeError("HVSSR incomplete event history")
-    if max(item["magnitude"] for item in magnitudes) < 5.0: return None
+    if not origins: raise RuntimeError("HVSSR candidate event lacks origin history")
     return {
         "event_id_sha256": hashlib.sha256(public_id.encode()).hexdigest(),
         "origins": [{"origin_id_sha256": hashlib.sha256(key.encode()).hexdigest(), **value} for key, value in sorted(origins.items())],
