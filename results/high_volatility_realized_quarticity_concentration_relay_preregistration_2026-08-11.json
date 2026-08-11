@@ -1,0 +1,157 @@
+{
+  "protocol_version": "high_volatility_realized_quarticity_concentration_relay_v1",
+  "policy_id": "HVRQC-8",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated realized variation, a fresh upper-tail onset in scale-free realized-quarticity concentration means the completed eight-hour auction's variance was carried by a small number of disproportionately large shocks rather than diffuse noise; follow the completed block displacement for eight hours.",
+    "side": "strict sign of the completed eight-hour close-to-close return at a fresh quarticity-concentration upper-tail onset",
+    "why_distinct": "HVRQC aggregates every completed five-minute return to the fourth power and normalizes by squared realized variation. Dominant-shock candidates select one argmax return; realized skew uses signed cubes; semivariance separates signed squares; variance concentration compares fixed time partitions. HVRQC uses no argmax identity, sign inside the concentration statistic, fixed subwindow, volume, flow, OI, funding, fitted outcome, reused event, repair, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed eight-hour realized variation must independently rank in its causal upper 35%, while quarticity concentration must newly enter its upper quartile, targeting July-like discontinuous risk transfer",
+    "why_low_gross9_overlap_is_plausible": "sparse scale-free fourth-moment concentration onsets on fixed eight-hour clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact eight-hour UTC boundary",
+    "source_bars": "exact aggregation of coherent BTCUSDT one-minute rows into five-minute closes",
+    "returns": "96 consecutive completed five-minute close-to-close log returns ending at T, requiring 97 closes",
+    "variation": "sqrt(sum of squared 96 returns), finite strict positive",
+    "quarticity_concentration": "96*sum of fourth powers divided by squared sum of squares, finite",
+    "variation_rank": "strict-prior midrank over at most 180 earlier valid eight-hour decisions, minimum 120, current excluded; rank>=0.65",
+    "concentration_rank": "strict-prior midrank over the same causal history; rank>=0.75",
+    "event": "current concentration rank>=0.75 after the immediately prior valid decision was below 0.75, with current variation rank>=0.65",
+    "direction": "strict completed trailing eight-hour close-to-close return",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "eight-hour boundary after all source closes",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "side": "strict trailing eight-hour displacement sign",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "bar_minutes": 5,
+    "sample_returns": 96,
+    "decision_hours": 8,
+    "variation_history_decisions": 180,
+    "minimum_history_decisions": 120,
+    "variation_rank_min": 0.65,
+    "concentration_rank_min": 0.75,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "diffuse_variation",
+      "one_decision_stale_onset",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-05-25T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "realized_quarticity_definition_read": true,
+    "repository_exact_quarticity_candidate_found": false,
+    "adjacent_dominant_shock_skew_semivariance_candidates_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "fixed normalized fourth-power concentration onset under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no bar size, sample, moment power, normalization, ranks, onset, variation, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "origin": "realized-quarticity fourth-power-variation construction",
+    "fixed_definition": "for 96 completed five-minute log returns, concentration = 96*sum(r^4)/(sum(r^2)^2), finite with positive denominator; unity is the equal-magnitude lower bound",
+    "selection_use": "the fourth-power variation construction and scale normalization only; no published directional-return claim, incidence, or outcome is imported"
+  },
+  "manifest_hash": "bb11450b1bab2234377a8110b247450e972ab68f06e9f3dce17607ba61320ef5"
+}
