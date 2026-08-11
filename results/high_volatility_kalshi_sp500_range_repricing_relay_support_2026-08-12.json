@@ -1,0 +1,43 @@
+{
+  "protocol_version": "high_volatility_kalshi_sp500_range_repricing_relay_source_rejection_v1",
+  "policy_id": "HVKSRR-24",
+  "as_of_date": "2026-08-12",
+  "stage": "source_contract",
+  "preregistration": "results/high_volatility_kalshi_sp500_range_repricing_relay_preregistration_2026-08-12.json",
+  "preregistration_sha256": "c104194ec19164f709900cdc16c94070d159908db1e941ca319b16826656dee5",
+  "preregistration_manifest_hash": "139071e9ae10ec718c45525ec50053f9fffa04b402faa44cc87fb977c2aa38d5",
+  "outcomes_opened": false,
+  "historical_candidate_market_prices_opened": false,
+  "funding_opened": false,
+  "gross9_rows_opened": false,
+  "source_incidence_boundary": {
+    "series_metadata_opened": true,
+    "query_series": "KXINX",
+    "listed_event_count": 1094,
+    "listed_newest_event": "KXINX-26AUG14H1600",
+    "listed_oldest_event": "INX-22APR28",
+    "historical_candidate_repricings_computed": false,
+    "candidate_clocks_written": false
+  },
+  "first_failure": {
+    "gate": "historical_event_identity_resolves_on_preregistered_official_endpoint",
+    "event_ticker": "INX-23AUG01",
+    "event_was_returned_by_series_query": true,
+    "url": "https://external-api.kalshi.com/trade-api/v2/events/INX-23AUG01?with_nested_markets=true",
+    "http_status": 404,
+    "exception": "urllib.error.HTTPError: HTTP Error 404: Not Found",
+    "failed_before_nested_market_or_candlestick_payload": true
+  },
+  "gates": {
+    "official_series_pagination": true,
+    "historical_event_replay": false,
+    "source_support": false,
+    "gross9_novelty": null,
+    "economics": null,
+    "rv20_q90": null
+  },
+  "decision": "REJECT_NO_REPAIR",
+  "advance": false,
+  "repair_prohibition": "Do not substitute historical/markets, infer nested markets from ticker grammar, change accepted lineage, shorten the source interval, or select another Kalshi series, endpoint, anchor, side, hold, threshold, subset, or control for HVKSRR-24.",
+  "manifest_hash": "335868577d8d6a6aebcd9e83ce6b9b54766d8bcda0ea630ea414e63c18bc7f79"
+}
