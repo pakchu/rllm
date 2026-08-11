@@ -130,6 +130,8 @@ def fetch_query(term: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         records.extend(normalize_item(item) for item in items)
         if not items:
             break
+        if total_results is not None and len(records) >= total_results:
+            break
         next_cursor = message.get("next-cursor")
         if not isinstance(next_cursor, str) or not next_cursor or next_cursor in seen_cursors:
             raise RuntimeError("HVDRA Crossref cursor drift")
