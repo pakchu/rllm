@@ -1,0 +1,165 @@
+{
+  "protocol_version": "high_volatility_liquidity_volatility_premium_relay_v1",
+  "policy_id": "HVLVPR-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "The volatility of market liquidity commands a positive, time-varying cryptocurrency risk premium. During elevated BTC realized variation, an upper-tail daily innovation in intraday Amihud-liquidity volatility maps long and a lower-tail innovation maps short for the next day.",
+    "side": "long when the signed liquidity-volatility innovation rank is at least 0.80; short when it is at most 0.20",
+    "why_distinct": "HVALPR ranked the level innovation of daily mean Amihud illiquidity and HVLIR ranked one hourly price-impact level. HVLVPR instead measures the within-day second moment of 288 five-minute Amihud observations, then ranks the signed change in that liquidity-risk state. It uses no completed return direction, flow, basis, OI, funding, fitted outcome, prior event, or promoted control.",
+    "why_suited_to_volatile_regimes": "the completed daily BTC realized-variation rank must be in its causal upper 35%, targeting July-like unstable markets",
+    "why_low_gross9_overlap_is_plausible": "sparse daily liquidity-risk innovation clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every calendar day at exact 00:00 UTC",
+    "window": "288 exact coherent five-minute groups from 1,440 BTCUSDT one-minute rows [D-24h,D)",
+    "five_minute_return": "log(group close/group open), finite",
+    "five_minute_quote_turnover": "sum quote_asset_volume, finite strict positive in every group",
+    "five_minute_amihud": "abs(five-minute return)/five-minute quote turnover, finite nonnegative",
+    "daily_liquidity_volatility": "sample standard deviation (ddof=1) of all 288 five-minute Amihud observations, finite strict positive",
+    "reference": "median log daily liquidity volatility over thirty exact source-valid days ending strictly before current day",
+    "innovation": "log(current daily liquidity volatility)-strictly-prior thirty-day median log liquidity volatility, finite strict nonzero",
+    "realized_variation": "sqrt(sum squared five-minute returns), finite strict positive",
+    "prior_ranks": "strict-prior midranks of innovation and variation over at most 180 earlier source-valid days, minimum 120, current excluded",
+    "liquidity_volatility_tail": "innovation rank>=0.80 or <=0.20",
+    "variation_gate": "realized-variation rank>=0.65",
+    "source_validity": "exact distinct minute grid, finite positive coherent OHLC, finite positive quote turnover, no imputation",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "00:00 UTC after the completed daily window",
+    "entry": "exact BTCUSDT 00:05 UTC open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "intraday_groups": 288,
+    "reference_days": 30,
+    "history_days": 180,
+    "minimum_history_days": 120,
+    "innovation_rank_long_min": 0.8,
+    "innovation_rank_short_max": 0.2,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_liquidity_volatility_tail",
+      "no_variation_gate",
+      "daily_mean_amihud_innovation",
+      "one_day_stale_innovation",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "external_liquidity_volatility_basis_read": true,
+    "repository_liquidity_volatility_candidate_found": false,
+    "nearest_amihud_level_and_impact_candidates_known": true,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "prior_event_sets_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "paper-reported volatility-of-liquidity premium expressed as a fixed transparent second-moment innovation state"
+  },
+  "stopping_rule": "Terminal first failure; no liquidity measure, intraday aggregation, reference window, rank history, tail, variation, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "paper": "Cryptocurrency returns and the volatility of liquidity",
+    "author": "Thomas Leirvik",
+    "journal": "Finance Research Letters 44 (2022), 102031",
+    "doi": "10.1016/j.frl.2021.102031",
+    "reported_relation": "positive but highly time-varying relation between idiosyncratic volatility of cryptocurrency market liquidity and expected returns",
+    "untested_adaptation": "five-minute Binance perpetual Amihud observations, within-day sample volatility, prior-median signed innovation, two-sided ranks, high-variation gate, and one-day BTC hold are a transparent causal adaptation rather than a claimed replication"
+  },
+  "manifest_hash": "faf463a56294738d8b1fc02e95b80b576ac7af014936366f1db191efccc55bd3"
+}
