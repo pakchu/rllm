@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 from training import preregister_high_volatility_ticket_elasticity_sponsorship_relay as template
 POLICY_ID="HVRWI-24";DEFAULT_OUTPUT=Path("results/high_volatility_random_walk_index_cross_relay_preregistration_2026-08-11.json")
-def canonical_hash(v:Any)->str:return hashlib.sha256(json.dumps(v,sort_keys=True,separators=(",",":"),allow_nan=False).encode()).hexdigest()
+def canonical_hash(v:Any)->str:return hashlib.sha256(json.dumps(v,sort_keys=True,separators=(",",":"),ensure_ascii=False,allow_nan=False).encode()).hexdigest()
 def build()->dict[str,Any]:
  c=copy.deepcopy(template.build());c.pop("manifest_hash")
  c.update(protocol_version="high_volatility_random_walk_index_cross_relay_v1",policy_id=POLICY_ID,as_of_date="2026-08-11",
