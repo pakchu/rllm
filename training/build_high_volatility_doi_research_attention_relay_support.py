@@ -82,7 +82,7 @@ def strict_prior_midrank(values: pd.Series, lookback: int = 270, minimum: int = 
 
 def normalize_item(item: dict[str, Any]) -> dict[str, Any]:
     titles = item.get("title")
-    if not isinstance(titles, list) or len(titles) != 1 or not isinstance(titles[0], str):
+    if not isinstance(titles, list) or not all(isinstance(value, str) for value in titles):
         raise RuntimeError("HVDRA title schema drift")
     created = item.get("created", {}).get("date-time")
     deposited = item.get("deposited", {}).get("date-time")
@@ -92,7 +92,7 @@ def normalize_item(item: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError("HVDRA Crossref selected-field drift")
     return {
         "doi": doi.lower(),
-        "title": " ".join(titles[0].split()),
+        "titles": [" ".join(value.split()) for value in titles],
         "type": work_type,
         "created": created,
         "deposited": deposited,
@@ -173,11 +173,11 @@ def build_daily_panel(documents: list[dict[str, Any]]) -> pd.DataFrame:
             raise RuntimeError("HVDRA non-UTC Crossref timestamp")
         created = created.tz_convert("UTC")
         deposited = deposited.tz_convert("UTC")
-        if item["type"] not in prereg.WORK_TYPES or not TITLE_PATTERN.search(item["title"]):
+        if len(item["titles"]) != 1 or item["type"] not in prereg.WORK_TYPES or not TITLE_PATTERN.search(item["titles"][0]):
             continue
         if created.date() != deposited.date():
             continue
-        eligible.append({"doi": item["doi"], "title": item["title"], "type": item["type"], "created_time": created, "deposited_time": deposited, "source_day": created.floor("D")})
+        eligible.append({"doi": item["doi"], "title": item["titles"][0], "type": item["type"], "created_time": created, "deposited_time": deposited, "source_day": created.floor("D")})
     eligible_frame = pd.DataFrame(eligible, columns=["doi", "title", "type", "created_time", "deposited_time", "source_day"])
     start = pd.Timestamp("2022-01-01T00:00:00Z")
     end = pd.Timestamp("2026-07-31T00:00:00Z")

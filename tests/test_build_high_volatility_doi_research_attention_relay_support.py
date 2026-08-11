@@ -4,7 +4,7 @@ from training import build_high_volatility_doi_research_attention_relay_support 
 
 
 def item(doi: str, title: str, created: str, deposited: str, work_type: str = "journal-article") -> dict:
-    return {"doi": doi, "title": title, "type": work_type, "created": created, "deposited": deposited}
+    return {"doi": doi, "titles": [title], "type": work_type, "created": created, "deposited": deposited}
 
 
 def test_normalize_item_freezes_selected_fields():
@@ -19,7 +19,7 @@ def test_normalize_item_freezes_selected_fields():
     )
     assert value == {
         "doi": "10.1/abc",
-        "title": "Bitcoin Attention",
+        "titles": ["Bitcoin Attention"],
         "type": "journal-article",
         "created": "2025-01-01T01:02:03Z",
         "deposited": "2025-01-01T01:02:09Z",
