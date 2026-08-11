@@ -1,0 +1,175 @@
+{
+  "protocol_version": "high_volatility_gold_platinum_risk_relay_v1",
+  "policy_id": "HVAUPTR-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A completed US cash-session increase in gold relative to platinum identifies an aggregate-risk impulse that published evidence maps to higher future Bitcoin returns. During elevated causal BTC variation, follow the signed gold/platinum impulse for twenty-four hours.",
+    "side": "sign of log(GLD close/open)-log(PPLT close/open); zero is ineligible",
+    "external_support": {
+      "paper": "Huynh, Burggraf, and Wang (2020), Gold, platinum, and expected Bitcoin returns",
+      "doi": "10.1016/j.mulfin.2020.100628",
+      "paper_fixed_facts": [
+        "the gold-to-platinum price ratio is examined as an aggregate-market-risk state variable",
+        "the ratio predicts future Bitcoin returns across models and Bitcoin data sources",
+        "when gold rises relative to platinum, future Bitcoin return rises",
+        "gold and platinum volatility can influence Bitcoin volatility"
+      ],
+      "implementation_choices_not_claimed_as_replication": [
+        "GLD and PPLT as liquid investable metal-price proxies",
+        "same-session raw open-to-close log relative return rather than the paper's ratio-level regressions",
+        "absolute causal z-score threshold of 0.75",
+        "causal BTC realized-variation rank gate of 0.65",
+        "24-hour BTC hold beginning ten minutes after the actual NYSE close"
+      ]
+    },
+    "why_distinct": "Repository collision scans found no gold/platinum, GLD/PPLT, PPLT, XPT, or precious-metal-ratio candidate. Existing gold candidates compare gold with QQQ or implied gold/oil volatility and do not use platinum or the published aggregate-risk ratio channel.",
+    "why_suited_to_volatile_regimes": "The paper reports precious-metal volatility transmission into Bitcoin; the frozen implementation requires prior-24-hour BTC realized-variation rank >= 0.65.",
+    "why_low_gross9_overlap_is_plausible": "A completed cash-session gold-versus-platinum shock is absent from Gross9 primitives."
+  },
+  "features": {
+    "gld_intraday_return": "log(raw unadjusted GLD close/open) on the completed common session",
+    "pplt_intraday_return": "log(raw unadjusted PPLT close/open) on the completed common session",
+    "ratio_impulse": "gld_intraday_return-pplt_intraday_return",
+    "ratio_impulse_z": "causal z-score against at most 252 previous finite common-session impulses; minimum 126; current excluded; population standard deviation; zero variance is ineligible",
+    "event": "absolute ratio_impulse_z >= 0.75; side is sign(ratio_impulse)",
+    "btc_variation": "sqrt(sum squared log(close/open)) over 1,440 exact BTCUSDT 1m bars ending at but excluding the actual NYSE close",
+    "btc_variation_rank": "strict-prior midrank against at most 252 prior valid common-session variations; minimum 126; current excluded; rank >= 0.65",
+    "common_rows": "exact common GLD/PPLT NYSE dates with finite positive raw opens/closes; no imputation"
+  },
+  "clock": {
+    "source_session": "actual NYSE regular-session close for each common GLD/PPLT date, including early closes",
+    "feature_available": "five minutes after the actual NYSE close",
+    "entry": "exact BTCUSDT five-minute open ten minutes after the actual NYSE close",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+    "no_imputation": true
+  },
+  "policy": {
+    "ratio_impulse_z_prior_sessions": 252,
+    "ratio_impulse_z_prior_minimum": 126,
+    "ratio_impulse_abs_z_min": 0.75,
+    "variation_prior_sessions": 252,
+    "variation_prior_minimum": 126,
+    "variation_midrank_min": 0.65,
+    "feature_delay_minutes": 5,
+    "entry_delay_minutes_after_feature": 5,
+    "hold_hours": 24,
+    "gross_exposure": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "metals": {
+      "urls": {
+        "GLD": "https://query1.finance.yahoo.com/v8/finance/chart/GLD",
+        "PPLT": "https://query1.finance.yahoo.com/v8/finance/chart/PPLT"
+      },
+      "fields": [
+        "timestamp",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "raw_unadjusted_only": true,
+      "download_after_preregistration": true
+    },
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_btc_volatility_gate",
+      "gld_only",
+      "inverse_pplt_only",
+      "one_session_stale_impulse",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "post_stage_volatility_audit": {
+    "rv20_q90_entry_filter": false,
+    "opened_only_after_all_train_test_eval_final_economic_gates_pass": true,
+    "cannot_repair_or_promote": true
+  },
+  "research_boundary": {
+    "source_schema_and_transport_checked": false,
+    "source_values_used_to_select_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "repository_gold_platinum_candidate_found": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "primary published positive gold/platinum-to-Bitcoin predictability plus exact repository absence"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, train/test/eval/final strict economics, then RV20 q90 audit; no metal proxy, threshold, side, hold, clock, subset, or control repair",
+  "manifest_hash": "80e566bb8b5628730eee84c60115986e3a0d10e7313779fdf9bc04b02166c57a"
+}
