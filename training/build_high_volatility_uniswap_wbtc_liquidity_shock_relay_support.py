@@ -306,12 +306,58 @@ def _verify_descendants(rpc: eth.Rpc, boundary: eth.BlockHeader, count: int = 64
     return {"descendants": count, "tip": _header_record(previous)}
 
 
+def find_first_blocks_at_or_after(
+    rpc: eth.Rpc, timestamps: Sequence[int], batch_size: int = 100
+) -> list[eth.BlockHeader]:
+    """Resolve many exact timestamp boundaries with batched binary-search rounds."""
+    targets = [int(value) for value in timestamps]
+    if not targets:
+        return []
+    if targets != sorted(targets) or len(targets) != len(set(targets)):
+        raise ValueError("Ethereum boundary timestamps must be unique and increasing")
+    latest = eth.get_header(rpc, "latest")
+    if targets[-1] > latest.timestamp:
+        raise RuntimeError("source boundary is later than the Ethereum head")
+    low = [0] * len(targets)
+    high = [latest.number] * len(targets)
+    while any(left < right for left, right in zip(low, high, strict=True)):
+        middles = {
+            (left + right) // 2
+            for left, right in zip(low, high, strict=True)
+            if left < right
+        }
+        headers = eth.fetch_headers(rpc, sorted(middles), batch_size=batch_size)
+        for index, target in enumerate(targets):
+            if low[index] >= high[index]:
+                continue
+            middle = (low[index] + high[index]) // 2
+            if headers[middle].timestamp < target:
+                low[index] = middle + 1
+            else:
+                high[index] = middle
+    numbers = high
+    boundaries = eth.fetch_headers(rpc, numbers, batch_size=batch_size)
+    previous_numbers = [number - 1 for number in numbers if number]
+    previous = eth.fetch_headers(rpc, previous_numbers, batch_size=batch_size)
+    output: list[eth.BlockHeader] = []
+    for target, number in zip(targets, numbers, strict=True):
+        boundary = boundaries[number]
+        if boundary.timestamp < target:
+            raise RuntimeError("failed to locate Ethereum time boundary")
+        if number and previous[number - 1].timestamp >= target:
+            raise RuntimeError("Ethereum time boundary is not the first matching block")
+        output.append(boundary)
+    return output
+
+
 def collect_host_source(rpc: eth.Rpc, role: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     identity = verify_pool_identity(rpc, role)
     source = prereg.build()["source_plan"]["ethereum_uniswap_v3_logs"]
     days = pd.date_range(source["source_day_start"], source["source_day_end_exclusive"], freq="D", inclusive="left", tz="UTC")
     boundary_times = days.append(pd.DatetimeIndex([pd.Timestamp(source["source_day_end_exclusive"], tz="UTC")]))
-    boundaries = [eth.find_first_block_at_or_after(rpc, int(item.timestamp())) for item in boundary_times]
+    boundaries = find_first_blocks_at_or_after(
+        rpc, [int(item.timestamp()) for item in boundary_times]
+    )
     if any(left.number >= right.number for left, right in zip(boundaries, boundaries[1:])):
         raise RuntimeError("UTC day boundary blocks are not strictly increasing")
     boundary_rows: list[dict[str, Any]] = []

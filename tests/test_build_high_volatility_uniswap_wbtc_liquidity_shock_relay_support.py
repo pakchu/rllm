@@ -173,6 +173,39 @@ def test_log_queries_never_exceed_2000_inclusive_blocks():
         b.fetch_logs(rpc, 0, 1, 2001)
 
 
+class BoundaryRpc:
+    def __init__(self, timestamps: list[int]) -> None:
+        self.timestamps = timestamps
+        self.batch_calls = 0
+
+    def call(self, method: str, params: list[Any]) -> Any:
+        assert method == "eth_getBlockByNumber" and params == ["latest", False]
+        number = len(self.timestamps) - 1
+        return self._raw(number)
+
+    def batch(self, requests: list[tuple[str, list[Any]]]) -> list[Any]:
+        self.batch_calls += 1
+        return [self._raw(int(params[0], 16)) for method, params in requests]
+
+    def _raw(self, number: int) -> dict[str, Any]:
+        return {
+            "number": hex(number),
+            "hash": _hash(number + 1),
+            "parentHash": _hash(number),
+            "timestamp": hex(self.timestamps[number]),
+        }
+
+
+def test_batched_boundary_search_is_exact_and_not_one_full_search_per_target():
+    rpc = BoundaryRpc(list(range(0, 10_001, 10)))
+    result = b.find_first_blocks_at_or_after(rpc, [1, 2501, 5000, 9999], batch_size=100)
+    assert [item.number for item in result] == [1, 251, 500, 1000]
+    assert [item.timestamp for item in result] == [10, 2510, 5000, 10_000]
+    assert rpc.batch_calls < 20
+    with pytest.raises(ValueError):
+        b.find_first_blocks_at_or_after(rpc, [10, 10])
+
+
 def _boundary(day: str, first: int, last: int) -> dict[str, Any]:
     return {
         "source_day": day,
