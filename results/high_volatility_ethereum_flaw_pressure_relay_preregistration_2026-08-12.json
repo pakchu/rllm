@@ -1,0 +1,173 @@
+{
+  "protocol_version": "high_volatility_ethereum_flaw_pressure_relay_v1",
+  "policy_id": "HVEFPR-24",
+  "as_of_date": "2026-08-12",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Immutable flaw-related integration subjects in the official go-ethereum first-parent history reveal changing implementation-friction pressure. Recent research reports that newly revealed cryptocurrency technology flaws predict negative next-day returns. During elevated causal BTC variation, short when the completed UTC day's flaw-subject count exceeds the same weekday one week earlier and long when it is lower.",
+    "side": "daily flaw count D greater than D-7 maps short; lower maps long; equality is ineligible",
+    "external_support": {
+      "paper": "The Coevolution of Technology and Prices in Cryptocurrencies (2025)",
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5426235",
+      "reported_fact": "The paper reports that a newly emerging technology flaw predicts a next-day cryptocurrency return decline without subsequent reversal.",
+      "inference_disclosure": "Immutable integration-subject flaw pressure and transmission from Ethereum implementation activity to BTC are preregistered adaptations, not the paper's exact issue-event estimator."
+    },
+    "why_distinct": "Exact repository scans found no go-ethereum, geth, technology-flaw, bug-pressure, or Ethereum implementation-commit trading clock. It uses no Bitcoin Core history, EIP/BIP specification blob, mutable GitHub issue or API state, market direction, flow, funding, OI, premium, prior event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "Only decisions whose completed prior-24-hour BTC variation ranks in the upper 35% are admitted.",
+    "why_low_gross9_overlap_is_plausible": "Conservative D+2 Ethereum implementation-history clocks and immutable flaw-subject counts are absent from Gross9."
+  },
+  "features": {
+    "authority": "official ethereum/go-ethereum Git object graph at the sealed master tip",
+    "history": "complete sealed-tip first-parent chain, oldest to newest; commit object and parent integrity verified; strict UTF-8 subject first line",
+    "effective_day": "running maximum of normalized UTC committer calendar day, preventing backward committer timestamps from creating an earlier publication clock",
+    "flaw_grammar": "case-insensitive ASCII token boundary match of exactly the frozen terms in the immutable first subject line; body, diff, paths, author identity, GitHub metadata, issues, PRs and current checkout excluded",
+    "daily_count": "number of qualifying first-parent commits on each explicit UTC effective day, including zero-count days",
+    "pressure_change": "daily_count[D]-daily_count[D-7], strict nonzero",
+    "side": "negative sign of pressure_change",
+    "availability": "12:00 UTC on D+2; live use is later of that floor and durable fetch/object verification",
+    "btc_variation": "sqrt(sum squared log(close/open)) over 1,440 exact BTCUSDT 1m bars in [decision-24h,decision)",
+    "btc_variation_rank": "strict-prior midrank versus at most 270 prior source-valid decisions; minimum 180; current excluded; rank >=0.65",
+    "missing": "remote/default-branch/tip/object/schema/UTF-8 drift or missing/duplicate/nonpositive BTC bars rejects; no imputation"
+  },
+  "clock": {
+    "decision": "12:00 UTC on effective commit day D+2",
+    "entry": "exact BTCUSDT five-minute open 5 minutes after decision",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+    "no_imputation": true
+  },
+  "policy": {
+    "flaw_terms": [
+      "bug",
+      "bugs",
+      "fix",
+      "fixes",
+      "fixed",
+      "crash",
+      "panic",
+      "security",
+      "vulnerability",
+      "vulnerabilities"
+    ],
+    "same_weekday_lag_days": 7,
+    "publication_delay_days": 2,
+    "decision_utc_hour": 12,
+    "variation_prior_days": 270,
+    "variation_prior_minimum": 180,
+    "variation_midrank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "gross_exposure": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "git": {
+      "remote": "https://github.com/ethereum/go-ethereum.git",
+      "branch": "master",
+      "sealed_tip": "87ab9435f542d48e70f65652242118e84795b83e",
+      "object_format": "sha1",
+      "source_day_start": "2022-01-01",
+      "source_day_end_exclusive": "2026-07-30",
+      "clone_after_preregistration": true,
+      "read_only_snapshot": true
+    },
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_btc_volatility_gate",
+      "pressure_direction_flip",
+      "one_day_stale_pressure",
+      "raw_day_over_day_pressure",
+      "same_clock_forced_long"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "post_stage_volatility_audit": {
+    "rv20_q90_entry_filter": false,
+    "opened_only_after_all_train_test_eval_final_economic_gates_pass": true,
+    "cannot_repair_or_promote": true
+  },
+  "research_boundary": {
+    "remote_symref_and_tip_only_opened": true,
+    "git_commit_incidence_or_subjects_opened": false,
+    "source_values_used_to_fit_rule": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "repository_go_ethereum_flaw_candidate_found": false,
+    "cross_asset_inference_disclosed": true,
+    "prior_event_sets_reused": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "official immutable implementation history, published flaw-return evidence, conservative availability, dense daily source, and exact repository absence"
+  },
+  "stopping_rule": "terminal first-failure sequence: source contract/support, Gross9 novelty, train/test/eval/final strict economics, then RV20 q90 audit; no repository, branch, tip, traversal, grammar, delay, lag, variation threshold, side, hold, clock, subset, source, or control repair",
+  "manifest_hash": "33858c2b2715ed0b12a6775a984b0bab819cb7d8fbf76cf1b434f32cce55ebac"
+}
