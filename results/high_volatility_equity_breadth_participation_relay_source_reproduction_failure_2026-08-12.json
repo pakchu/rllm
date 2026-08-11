@@ -1,0 +1,82 @@
+{
+  "protocol_version": "hvebpr_24_source_reproduction_failure_v1",
+  "policy_id": "HVEBPR-24",
+  "source_support_statistics_passed": true,
+  "source_support": {
+    "train": {
+      "events": 13,
+      "longs": 9,
+      "shorts": 4,
+      "minority_side_share": 0.3076923076923077,
+      "max_month_share": 0.38461538461538464
+    },
+    "test": {
+      "events": 40,
+      "longs": 17,
+      "shorts": 23,
+      "minority_side_share": 0.425,
+      "max_month_share": 0.175
+    },
+    "eval": {
+      "events": 32,
+      "longs": 18,
+      "shorts": 14,
+      "minority_side_share": 0.4375,
+      "max_month_share": 0.21875
+    },
+    "final": {
+      "events": 21,
+      "longs": 14,
+      "shorts": 7,
+      "minority_side_share": 0.3333333333333333,
+      "max_month_share": 0.3333333333333333
+    }
+  },
+  "reproduction_attempts": 3,
+  "second_attempt_sha256": {
+    "rsp_raw": "d79e3feb9f0c0768953332c26eed0b7a9b168008df86402b040e6f3edec0e7ff",
+    "spy_raw": "c95b371767bdf4d2742d311e2020227bb0972422e0b21d79210ab5f3e09a4a03",
+    "equity_panel": "5461620cc9a4021be3dacc52b3eb42a1c5ad2332ec7f1bd24bd3803b12293d59"
+  },
+  "third_attempt_sha256": {
+    "rsp_raw": "00d76448b0579f2983fc4a35d8be4eab2de2416e96d00ff1289a6ba74c90d6d6",
+    "spy_raw": "18c6d97339a5780749ba8ff9d8cd88bd03bcd5d2135bdae37a8b40c98830dc3e",
+    "equity_panel": "668a6942c5d78ea596f04bb3e0f057b65013bf0cce063575adda37386480b769",
+    "features": "34d86c22e633d79d99efce8641b89c182e932c009302919f07818b28f3689556",
+    "clock": "a01acdebab49d1c6b0795757e9e32a102e4357d1d8784c576a6b8a6bf9847529",
+    "support": "b8ec73f4817c1e637aeb6a721c9274393fda0eb08bc39ea6403b628ad0ea277f"
+  },
+  "mismatch": {
+    "raw_sources_changed": [
+      "RSP Yahoo adjusted-close vector",
+      "SPY Yahoo adjusted-close vector"
+    ],
+    "derived_outputs_changed": [
+      "common adjusted-session panel",
+      "preentry features",
+      "candidate and control clocks",
+      "source manifest",
+      "support artifact"
+    ],
+    "event_statistics_unchanged": true,
+    "fixed_request_window_unchanged": true
+  },
+  "scientific_gate": "byte-identical completed-source reproduction",
+  "failure_reason": "Yahoo returned different historical adjusted-close vectors across immediate identical requests",
+  "decision": "terminal_source_reproduction_reject_no_repair",
+  "advance_to_gross9_novelty": false,
+  "advance_to_economic_outcomes": false,
+  "repair_authorized": false,
+  "prohibited_repairs": [
+    "substitute raw close",
+    "select one response",
+    "change provider",
+    "change symbols",
+    "change spread",
+    "change threshold",
+    "change clock"
+  ],
+  "postentry_return_pnl_execution_price_opened": false,
+  "gross9_rows_opened": false,
+  "manifest_hash": "456d2aceb1c974f12fe18ac7f329e589ea04b3ea64122ccf9fdb05707e3b5e4c"
+}
