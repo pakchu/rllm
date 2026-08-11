@@ -1,0 +1,30 @@
+{
+  "protocol_version": "hvtds_s9_24_sources_v1",
+  "btc_query": "SELECT date_bin(interval '5 minutes', ts, timestamptz '2020-01-01 00:00:00+00') AS bar_time,\ncount(*) AS source_rows, count(DISTINCT ts) AS distinct_timestamps, min(ts) AS first_ts, max(ts) AS last_ts,\n(array_agg(open ORDER BY ts))[1] AS open, max(high) AS high, min(low) AS low,\n(array_agg(close ORDER BY ts DESC))[1] AS close,\nbool_and(open > 0 AND high > 0 AND low > 0 AND close > 0 AND low <= least(open, close)\n         AND high >= greatest(open, close) AND high >= low) AS coherent\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts >= '2020-01-01T00:00:00Z' AND ts < '2026-08-01T00:00:00Z'\nGROUP BY 1 ORDER BY 1",
+  "source_counts": {
+    "five_minute_rows": 692352,
+    "valid_five_minute_rows": 692352,
+    "four_hour_decisions": 14424,
+    "setup_completions": 334
+  },
+  "builder": {
+    "path": "training/build_high_volatility_tom_demark_setup_completion_relay_support.py",
+    "sha256": "81ff5c48842e3d8d5f749c421ca4068b1c09cbb64cb343fa8699b081a376dbf2"
+  },
+  "outputs": {
+    "five_minute_panel": {
+      "path": "data/high_volatility_tom_demark_setup_completion_relay_sources_2023_2026/causal_five_minute_bars.csv.gz",
+      "sha256": "846ffea49bfd02c709ba0ace06963a4b8da62e8631bf861a1b4b51865d3de92c",
+      "rows": 692352
+    },
+    "feature_panel": {
+      "path": "data/high_volatility_tom_demark_setup_completion_relay_sources_2023_2026/four_hour_setup_states.csv.gz",
+      "sha256": "d5fbca4669181ca5066663752dbe4abc8cbca5f8cac1a7769c0a977811d67ed4",
+      "rows": 14424
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "execution_prices_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "230c000d46fb2f6bcb23a73345805e3accd4927c7b55794f704b8eb78a98bf98"
+}
