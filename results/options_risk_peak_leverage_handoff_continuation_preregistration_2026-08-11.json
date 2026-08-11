@@ -1,0 +1,160 @@
+{
+  "protocol_version": "options_risk_peak_leverage_handoff_continuation_v1",
+  "policy_id": "ORPLHC-6",
+  "as_of_date": "2026-08-11",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "public_source_basis": {
+    "dvol": "https://insights.deribit.com/exchange-updates/dvol-deribit-implied-volatility-index/",
+    "perpetual_theory": "https://arxiv.org/html/2212.06888v5",
+    "open_interest": "https://arxiv.org/abs/2310.14973",
+    "claims_used": [
+      "DVOL is forward-looking 30-day implied volatility and an action gauge",
+      "premium is the high-frequency perpetual basis input",
+      "OI is outstanding leveraged inventory rather than direction"
+    ],
+    "implementation_is_unpublished_adaptation": true
+  },
+  "mechanism": {
+    "claim": "After an unusually large positive completed-hour DVOL repricing, the first immediately following negative DVOL body while DVOL remains elevated marks an options-risk peak. If the cooling hour still has an upper-tail premium displacement and increasing perpetual OI, directional risk discovery has handed off from options repricing to fresh leveraged basis demand; follow the premium direction for six hours.",
+    "side": "strict sign of the cooling hour premium close-minus-open displacement",
+    "why_distinct": "PVIAR uses same-hour premium acceleration during joint BVOL/DVOL expansion. FSVCCR uses actual funding settlement, BTC pre/post price continuation, and joint BVOL/DVOL cooling. CVTR requires two price-trend hours, stable OI, neutral funding, and simultaneous BVOL/DVOL contraction. ORPLHC uses a two-hour DVOL positive-to-negative peak transition, current premium direction, and current OI increase; it uses no BTC price, BVOL, funding, prior event set, or prior control.",
+    "why_suited_to_volatile_regimes": "the prior DVOL body magnitude is in its causal upper quartile and current DVOL level remains in its upper 40%",
+    "why_low_gross9_overlap_is_plausible": "a sparse two-hour options-to-perpetual handoff event is absent from Gross9 clocks"
+  },
+  "features": {
+    "decision_grid": "each exact UTC hour D",
+    "dvol_peak": "previous completed hour normalized DVOL body>0, current completed hour normalized body<0, abs(previous body) strict-prior 720h midrank>=0.75, current close strict-prior rank>=0.60; minimum 672 and current excluded",
+    "premium_hour": "60 exact unique one-minute rows in [D-1h,D); close-minus-open strict nonzero; absolute displacement strict-prior rank>=0.60",
+    "oi_hour": "12 exact unique five-minute OI rows in [D-1h,D); log(last/first)>0",
+    "availability": "D after all constituent rows complete",
+    "no_imputation": true,
+    "grid": false
+  },
+  "clock": {
+    "decision": "exact completed-hour boundary D",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "cooling-hour premium displacement sign",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open; earliest event wins; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact held settlements only after novelty",
+    "rv20": "q90 audit only after all economics pass"
+  },
+  "policy": {
+    "history_hours": 720,
+    "minimum_history_hours": 672,
+    "prior_dvol_body_rank_min": 0.75,
+    "current_dvol_level_rank_min": 0.6,
+    "premium_displacement_rank_min": 0.6,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_prior_dvol_shock",
+      "no_current_dvol_cooling",
+      "no_dvol_level",
+      "no_premium_tail",
+      "no_oi_increase",
+      "one_hour_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "premium": {
+      "table": "bars_binance_premium",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "read_only": true
+    },
+    "oi": {
+      "table": "open_interest_binance",
+      "symbol": "BTCUSDT",
+      "period": "5m",
+      "read_only": true
+    },
+    "dvol": {
+      "path": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/dvol_hourly.csv.gz",
+      "read_only": true
+    },
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_options_and_leverage_outcomes_known": true,
+    "exact_candidate_incidence_or_outcomes_known": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent options-risk-peak to fresh-leverage handoff transition"
+  },
+  "stopping_rule": "Terminal first failure; no threshold, side, hold, clock, subset, source, or control repair.",
+  "manifest_hash": "ef9aa5bdd51b6b402bfefc97e50b18da86344c314210c44885b5bebca4b34d3e"
+}
