@@ -117,6 +117,20 @@ def _download_sse() -> tuple[bytes, pd.DataFrame]:
     if result["meta"]["symbol"] != "000001.SS" or result["meta"]["exchangeTimezoneName"] != "Asia/Shanghai":
         raise RuntimeError("HVSFR Yahoo metadata drift")
     quote = result["indicators"]["quote"][0]
+    stable_source = {
+        "meta": {
+            key: result["meta"].get(key)
+            for key in (
+                "currency", "symbol", "exchangeName", "fullExchangeName", "instrumentType",
+                "firstTradeDate", "timezone", "exchangeTimezoneName", "dataGranularity",
+            )
+        },
+        "timestamp": result["timestamp"],
+        "quote": quote,
+    }
+    payload = json.dumps(
+        stable_source, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+    ).encode()
     frame = pd.DataFrame({"timestamp": result["timestamp"], **quote})
     frame["sse_session_date"] = pd.to_datetime(frame.timestamp, unit="s", utc=True).dt.tz_convert("Asia/Shanghai").dt.date
     frame["close_time"] = pd.to_datetime(frame.sse_session_date.astype(str) + " 15:00:00").dt.tz_localize("Asia/Shanghai").dt.tz_convert("UTC")
