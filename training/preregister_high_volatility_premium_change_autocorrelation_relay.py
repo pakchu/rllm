@@ -1,0 +1,124 @@
+"""Outcome-blind preregistration for HVPACR-12."""
+from __future__ import annotations
+
+import argparse
+import copy
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+from training import preregister_high_volatility_ticket_elasticity_sponsorship_relay as template
+
+POLICY_ID = "HVPACR-12"
+DEFAULT_OUTPUT = Path("results/high_volatility_premium_change_autocorrelation_relay_preregistration_2026-08-11.json")
+
+
+def canonical_hash(value: Any) -> str:
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    contract = copy.deepcopy(template.build())
+    contract.pop("manifest_hash")
+    contract.update(
+        protocol_version="high_volatility_premium_change_autocorrelation_relay_v1",
+        policy_id=POLICY_ID,
+        as_of_date="2026-08-11",
+        mechanism={
+            "claim": "During an already volatile BTC block, unusually strong positive serial dependence in completed Binance premium-index changes identifies persistent leveraged basis pressure rather than a one-off dislocation. When the completed premium displacement and perpetual return agree, follow their common direction for twelve hours at the fresh persistence onset.",
+            "side": "common strict nonzero sign of completed four-hour premium-index displacement and BTCUSDT perpetual return",
+            "why_distinct": "Prior premium candidates used displacement catch-up, premium/price lead asymmetry, wick rejection, activity sponsorship, acceleration, funding-window state, open interest, or fitted classifiers. Prior serial-correlation candidates measured traded-price returns. HVPACR instead measures lag-one normalized dependence solely inside the signed premium-index change path; it uses no prior event set, promoted control, fitted model, flow, volume, trade count, open interest, or funding value.",
+            "why_suited_to_volatile_regimes": "completed BTCUSDT perpetual four-hour realized variation must rank in its causal upper 35%",
+            "why_low_gross9_overlap_is_plausible": "fresh premium-index persistence onsets at four-hour boundaries are absent from Gross9 primitives",
+        },
+        external_basis={
+            "official_definition": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Premium-Index-Kline-Data",
+            "paper": "https://arxiv.org/pdf/2212.06888",
+            "paper_sha256": "678e233e60fe430ae8dd6ed3b0b2681d8f61736e5894847b1edbfd01124be1a6",
+            "support": "Binance publishes premium-index kline history; perpetual-futures research models the funding-linked gap between perpetual and spot and documents economically material deviations from no-arbitrage values.",
+            "selection_use": "fixed lag-one normalized premium-change dependence only; its threshold, direction agreement, onset, side and holding application are untested and no candidate incidence or outcomes were read",
+        },
+        features={
+            "decision_grid": "every completed four-hour UTC boundary",
+            "sources": "240 exact aligned coherent BTCUSDT one-minute rows from bars_binance_premium and bars_binance over [T-4h,T)",
+            "five_minute_paths": "48 exact nonoverlapping groups per source; each close is the fifth constituent minute close",
+            "premium_changes": "47 arithmetic differences of consecutive five-minute premium-index closes; premium index may be signed",
+            "premium_change_autocorrelation": "normalized lag-one dot product sum(dx[:-1]*dx[1:])/sqrt(sum(dx[:-1]^2)*sum(dx[1:]^2)); finite strict positive",
+            "persistence_rank": "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded; rank>=0.80",
+            "directions": "premium displacement is last minus first five-minute premium close; perpetual return is log(last/first) five-minute close; both strict nonzero and same sign",
+            "perpetual_variation": "sqrt(sum squared 47 perpetual five-minute close-to-close log returns), finite strict positive",
+            "variation_rank": "strict-prior 270/180 midrank, current excluded; rank>=0.65",
+            "eligible_state": "positive premium-change autocorrelation, persistence rank and variation rank pass, and premium/perpetual directions agree",
+            "onset": "eligible now and immediately prior source-valid decision ineligible; missing prior cannot trigger",
+            "no_imputation": True,
+        },
+        clock={
+            "feature_available": "completed four-hour boundary",
+            "entry": "exact BTCUSDT perpetual boundary+5m open",
+            "hold": "12 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "gross_exposure": 0.5,
+            "funding": "not a signal input; exact settlements only after novelty passes",
+        },
+        policy={
+            "five_minute_bars": 48,
+            "persistence_history_decisions": 270,
+            "minimum_persistence_history_decisions": 180,
+            "persistence_rank_min": 0.80,
+            "variation_rank_min": 0.65,
+            "entry_delay_minutes": 5,
+            "hold_hours": 12,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        diagnostic_controls={
+            "names": ["no_persistence_gate", "no_variation_gate", "negative_persistence", "one_bar_stale_onset", "direction_flip", "forced_long"],
+            "cannot_be_promoted": True,
+        },
+        source_plan={
+            "premium": {"table": "bars_binance_premium", "symbol": "BTCUSDT", "interval": "1m", "columns": ["ts", "open", "high", "low", "close"]},
+            "perpetual": {"table": "bars_binance", "symbol": "BTCUSDT", "interval": "1m", "columns": ["ts", "open", "high", "low", "close"]},
+            "window": ["2023-04-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+            "read_after_preregistration": True,
+            "execution_price": "sealed until source support and Gross9 novelty pass",
+        },
+        research_boundary={
+            "official_premium_index_definition_read": True,
+            "perpetual_futures_mechanics_paper_read": True,
+            "repository_premium_change_autocorrelation_candidate_found": False,
+            "prior_premium_and_price_autocorrelation_outcomes_known": True,
+            "prior_event_sets_reused": False,
+            "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_premium_catchup_or_lead_asymmetry": False,
+            "repair_of_price_serial_correlation": False,
+            "promoted_prior_control": False,
+            "selection_basis": "published premium-index mechanics and perpetual basis deviations applied as a premium-change persistence mechanism",
+        },
+        stopping_rule="Terminal first failure; no block length, autocorrelation formula, persistence rank, variation rank, direction agreement, onset, side, hold, clock, subset, control, or other repair.",
+    )
+    return {**contract, "manifest_hash": canonical_hash(contract)}
+
+
+def validate(value: dict[str, Any]) -> None:
+    core = {key: item for key, item in value.items() if key != "manifest_hash"}
+    if value.get("manifest_hash") != canonical_hash(core) or value != build():
+        raise RuntimeError("HVPACR-12 preregistration drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    registration = build()
+    validate(registration)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(registration, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
+    print(args.output)
