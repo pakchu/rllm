@@ -35,7 +35,7 @@ CONTROL_DIR = Path("data/high_volatility_air_pollution_penalty_rotation_relay_co
 RESULT = Path("results/high_volatility_air_pollution_penalty_rotation_relay_support_2026-08-12.json")
 SOURCE_START = pd.Timestamp("2023-04-30T00:00:00Z")
 SOURCE_END = pd.Timestamp("2026-08-01T00:00:00Z")
-RANGE_START, RANGE_END = 350_000, 480_000
+RANGE_FRACTIONS = (0.48, 0.68)
 NYC_COUNTIES = {"005", "047", "061", "081", "085"}
 SPLITS = {
     "train": (pd.Timestamp("2023-07-01T00:00:00Z"), pd.Timestamp("2024-01-01T00:00:00Z")),
@@ -153,14 +153,24 @@ def connection() -> http.client.HTTPSConnection:
 def fetch_hour(day: pd.Timestamp, hour: int) -> tuple[list[tuple[str, str, float]], str]:
     stamp = day.strftime("%Y%m%d")
     path = f"/airnow/{day.year}/{stamp}/HourlyData_{stamp}{hour:02d}.dat"
-    headers = {"Range": f"bytes={RANGE_START}-{RANGE_END}", "User-Agent": "rllm-hvappr-source-support/1.0"}
     for attempt in range(3):
         conn = connection()
         try:
+            probe_headers = {"Range": "bytes=0-0", "User-Agent": "rllm-hvappr-source-support/1.0"}
+            conn.request("GET", path, headers=probe_headers)
+            probe = conn.getresponse()
+            probe.read()
+            content_range = probe.getheader("Content-Range", "")
+            if probe.status != 206 or "/" not in content_range:
+                raise RuntimeError(f"HTTP {probe.status} length probe drift")
+            total = int(content_range.rsplit("/", 1)[1])
+            range_start = int(total * RANGE_FRACTIONS[0])
+            range_end = min(total - 1, int(total * RANGE_FRACTIONS[1]))
+            headers = {"Range": f"bytes={range_start}-{range_end}", "User-Agent": "rllm-hvappr-source-support/1.0"}
             conn.request("GET", path, headers=headers)
             response = conn.getresponse()
             body = response.read()
-            if response.status != 206 or len(body) != RANGE_END - RANGE_START + 1:
+            if response.status != 206 or len(body) != range_end - range_start + 1:
                 raise RuntimeError(f"HTTP {response.status} range bytes {len(body)}")
             return parse_range_body(body), hashlib.sha256(body).hexdigest()
         except Exception:
@@ -178,7 +188,10 @@ def fetch_day(day: pd.Timestamp) -> dict[str, Any]:
     hashes: list[str] = []
     expected_date = day.strftime("%m/%d/%y")
     for hour in range(24):
-        rows, digest = fetch_hour(day, hour)
+        try:
+            rows, digest = fetch_hour(day, hour)
+        except Exception as exc:
+            raise RuntimeError(f"HVAPPR AirNow fetch failed for {day.date()} hour {hour:02d}") from exc
         hashes.append(digest)
         seen: set[str] = set()
         for date_text, site, value in rows:
@@ -298,7 +311,7 @@ def run() -> dict[str, Any]:
     for name, frame in controls.items(): write_gzip_csv(frame, CONTROL_DIR / f"{name}.csv.gz")
     source_core = {
         "protocol_version": "hvappr_24_sources_v1", "airnow_url_template": prereg.AIRNOW_HOURLY_URL,
-        "airnow_window": [SOURCE_START.isoformat(), SOURCE_END.isoformat()], "byte_range": [RANGE_START, RANGE_END],
+        "airnow_window": [SOURCE_START.isoformat(), SOURCE_END.isoformat()], "relative_byte_range": list(RANGE_FRACTIONS),
         "btc_query": QUERY, "builder": {"path": str(BUILDER), "sha256": sha(BUILDER)},
         "outputs": {"aqi": {"path": str(AQI_PANEL), "sha256": sha(AQI_PANEL), "rows": len(aqi)}, "features": {"path": str(FEATURE_PANEL), "sha256": sha(FEATURE_PANEL), "rows": len(features)}},
         "candidate_outcomes_opened": False, "no_imputation": True,

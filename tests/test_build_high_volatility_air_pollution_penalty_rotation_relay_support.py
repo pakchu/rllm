@@ -40,3 +40,7 @@ def test_primary_clock_uses_both_frozen_gates():
     clock = support.build_clock(features)
     assert clock.side.tolist() == [-1, 1]
     assert (pd.to_datetime(clock.entry_time, utc=True) - pd.to_datetime(clock.decision_time, utc=True)).eq(pd.Timedelta(minutes=5)).all()
+
+
+def test_relative_range_encloses_observed_new_york_region():
+    assert support.RANGE_FRACTIONS == (0.48, 0.68)
