@@ -44,3 +44,16 @@ def test_primary_clock_uses_both_frozen_gates():
 
 def test_relative_range_encloses_observed_new_york_region():
     assert support.RANGE_FRACTIONS == (0.48, 0.68)
+
+
+def test_missing_monitor_day_is_not_imputed_into_change():
+    aqi = pd.DataFrame({
+        "source_day": pd.to_datetime(["2023-05-01", "2023-05-02", "2023-05-03"], utc=True),
+        "city_pm25_aqi": [40.0, np.nan, 50.0], "eligible_monitors": [2, 0, 2],
+        "hourly_slice_set_sha256": ["a", "b", "c"],
+    })
+    decisions = aqi.source_day + pd.Timedelta(days=1, hours=1)
+    variation = pd.DataFrame({"decision_time": decisions, "realized_variation": [1.0, 2.0, 3.0]})
+    features = support.build_features(aqi, variation)
+    assert features.aqi_change.isna().all()
+    assert features.pollution_side.eq(0).all()

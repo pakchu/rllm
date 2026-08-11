@@ -208,11 +208,17 @@ def fetch_day(day: pd.Timestamp) -> dict[str, Any]:
 
 def download_aqi_panel() -> pd.DataFrame:
     days = list(pd.date_range(SOURCE_START, SOURCE_END, freq="1D", inclusive="left"))
+    if AQI_PANEL.exists():
+        frame = pd.read_csv(AQI_PANEL)
+        frame.source_day = pd.to_datetime(frame.source_day, utc=True, errors="raise")
+        expected = pd.Series(days, name="source_day")
+        if len(frame) != len(expected) or not frame.source_day.equals(expected):
+            raise RuntimeError("HVAPPR cached AQI source grid drift")
+        return frame
     with ThreadPoolExecutor(max_workers=24) as pool:
         rows = list(pool.map(fetch_day, days))
     frame = pd.DataFrame(rows).sort_values("source_day").reset_index(drop=True)
-    if frame.city_pm25_aqi.isna().any() or frame.eligible_monitors.lt(1).any():
-        raise RuntimeError(f"HVAPPR missing eligible monitor-day {frame.loc[frame.city_pm25_aqi.isna()].head().to_dict('records')}")
+    write_gzip_csv(frame, AQI_PANEL)
     return frame
 
 
@@ -313,7 +319,7 @@ def run() -> dict[str, Any]:
         "protocol_version": "hvappr_24_sources_v1", "airnow_url_template": prereg.AIRNOW_HOURLY_URL,
         "airnow_window": [SOURCE_START.isoformat(), SOURCE_END.isoformat()], "relative_byte_range": list(RANGE_FRACTIONS),
         "btc_query": QUERY, "builder": {"path": str(BUILDER), "sha256": sha(BUILDER)},
-        "outputs": {"aqi": {"path": str(AQI_PANEL), "sha256": sha(AQI_PANEL), "rows": len(aqi)}, "features": {"path": str(FEATURE_PANEL), "sha256": sha(FEATURE_PANEL), "rows": len(features)}},
+        "outputs": {"aqi": {"path": str(AQI_PANEL), "sha256": sha(AQI_PANEL), "rows": len(aqi), "missing_days": int(aqi.city_pm25_aqi.isna().sum())}, "features": {"path": str(FEATURE_PANEL), "sha256": sha(FEATURE_PANEL), "rows": len(features)}},
         "candidate_outcomes_opened": False, "no_imputation": True,
     }
     source_manifest = {**source_core, "manifest_hash": canonical_hash(source_core)}
