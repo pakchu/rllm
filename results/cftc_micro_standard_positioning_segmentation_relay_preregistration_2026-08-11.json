@@ -1,0 +1,144 @@
+{
+  "protocol_version": "cftc_micro_standard_positioning_segmentation_relay_v1",
+  "policy_id": "CFTCMSPS-168",
+  "as_of_date": "2026-08-11",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A weekly increase in standard CME Bitcoin asset-manager net share relative to the simultaneous change in Micro Bitcoin leveraged-money net share identifies institutional positioning that is not mirrored by the smaller-contract speculative segment. During elevated BTC variation, follow the sign of that cross-contract segmentation for one report cycle.",
+    "side": "strict sign of delta[(standard asset-manager long-short)/standard OI] minus delta[(micro leveraged-money long-short)/micro OI]",
+    "why_distinct": "CAMOP2W isolated standard-contract option positions and waited for a published second-week effect. CITA compared standard-contract participant classes. CFTCMSPS uses futures-only cross-contract segmentation between standard institutional and Micro leveraged-money positioning, no options, no prior event set, and no prior control.",
+    "why_suited_to_volatile_regimes": "prior-24h BTC realized variation must be in its causal upper half",
+    "why_low_gross9_overlap_is_plausible": "one conservative weekly external regulatory segmentation clock is absent from Gross9"
+  },
+  "features": {
+    "source": "official CFTC TFF futures-only annual files",
+    "standard_contract": {
+      "name": "BITCOIN - CHICAGO MERCANTILE EXCHANGE",
+      "code": "133741",
+      "position": "Asset_Mgr_Positions_Long_All minus Asset_Mgr_Positions_Short_All, divided by Open_Interest_All"
+    },
+    "micro_contract": {
+      "name": "MICRO BITCOIN - CHICAGO MERCANTILE EXCHANGE",
+      "code": "133742",
+      "position": "Lev_Money_Positions_Long_All minus Lev_Money_Positions_Short_All, divided by Open_Interest_All"
+    },
+    "weekly_changes": "current net share minus immediately prior report net share; both contracts require exact consecutive report dates seven calendar days apart",
+    "segmentation": "standard asset-manager share change minus micro leveraged-money share change; strict nonzero",
+    "conservative_availability": "Tuesday report date plus seven calendar days 00:00 UTC",
+    "btc_variation": "sqrt(sum squared exact completed BTCUSDT 5m close/open log returns over the prior 24 hours); daily-boundary strict-prior midrank over 270 states, minimum 180, current excluded; rank>=0.50",
+    "no_imputation": true,
+    "grid": false
+  },
+  "clock": {
+    "decision": "report_date+7 calendar days 00:00 UTC",
+    "entry": "decision+5m BTCUSDT open",
+    "hold": "168 elapsed hours",
+    "reservation": "weekly half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact held settlements only after novelty",
+    "rv20": "q90 audit only after all economics pass"
+  },
+  "policy": {
+    "variation_history_days": 270,
+    "variation_minimum_days": 180,
+    "variation_rank_min": 0.5,
+    "report_delay_days": 7,
+    "entry_delay_minutes": 5,
+    "hold_hours": 168,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "standard_asset_manager_only",
+      "micro_leveraged_only",
+      "one_report_stale_segmentation",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "cftc": {
+      "paths": "data/cftc_camop2w_raw/fut_fin_txt_2021.zip through fut_fin_txt_2026.zip",
+      "opened_for_prior_candidate_but_no_CFTCMSPS_formula_or_incidence_computed": true
+    },
+    "btc": "hash-bound completed 5m cache plus read-only Postgres extension through 2026-08-01",
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_CFTC_raw_rows_opened": true,
+    "exact_cross_contract_segmentation_formula_incidence_or_outcomes_known": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent standard-versus-micro regulated positioning segmentation"
+  },
+  "stopping_rule": "Terminal first failure; no contract, participant class, normalization, threshold, side, lag, hold, clock, subset, source, or control repair.",
+  "manifest_hash": "11c310ae345a89f8f882f7d884e8e051baf2898c4804dffae18f67488bac0465"
+}
