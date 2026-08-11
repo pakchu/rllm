@@ -104,7 +104,6 @@ def fetch_query(term: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     records: list[dict[str, Any]] = []
     pages = 0
     total_results: int | None = None
-    seen_cursors: set[str] = set()
     while True:
         params = {
             "query.title": term,
@@ -127,15 +126,16 @@ def fetch_query(term: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         pages += 1
         if total_results is None:
             total_results = int(message.get("total-results"))
+        if total_results is not None and pages > (total_results // 1000) + 2:
+            raise RuntimeError("HVDRA Crossref cursor did not terminate")
         records.extend(normalize_item(item) for item in items)
         if not items:
             break
         if total_results is not None and len(records) >= total_results:
             break
         next_cursor = message.get("next-cursor")
-        if not isinstance(next_cursor, str) or not next_cursor or next_cursor in seen_cursors:
+        if not isinstance(next_cursor, str) or not next_cursor:
             raise RuntimeError("HVDRA Crossref cursor drift")
-        seen_cursors.add(next_cursor)
         cursor = next_cursor
     return records, {"term": term, "pages": pages, "total_results": total_results, "returned_rows": len(records)}
 
