@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvlowr_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVLOWR-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_leverage_only_wick_rejection_reversal_economics.py",
+    "sha256": "85e2eac54b114be461675f030253f00f18dd2c99842450c56cfd3160cfb8280a"
+  },
+  "authorization": {
+    "path": "results/high_volatility_leverage_only_wick_rejection_reversal_gross9_novelty_2026-08-13.json",
+    "sha256": "fc38e13e1cb3b41186c4de48bb4c259e4b976cf8482ed4cbc8d1d0ce602320c1"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "fdb4b512c33a074b7fd52bf0d969026af3351ef7cb3e8c570c781b3a778df93c"
+}
