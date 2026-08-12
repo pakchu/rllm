@@ -1,0 +1,34 @@
+{
+  "protocol_version": "hvcaspc_8_sources_v1",
+  "query": "WITH five AS (SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS bar_start,symbol,ln((array_agg(close ORDER BY ts DESC))[1]/(array_agg(open ORDER BY ts))[1]) AS bar_return,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS minute_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2), tagged AS (SELECT *,date_bin('8 hours',bar_start,TIMESTAMPTZ '1970-01-01 03:00:00+00') AS block_start FROM five), lagged AS (SELECT *,lag(bar_return) OVER (PARTITION BY block_start,symbol ORDER BY bar_start) AS prior_return FROM tagged) SELECT block_start,symbol,sum(bar_return) AS displacement,corr(prior_return,bar_return) FILTER (WHERE prior_return IS NOT NULL) AS serial_persistence,sum(minute_squared_return) AS minute_squared_return,sum(minute_rows) AS source_rows,count(*) AS five_minute_bars,min(bar_start) AS first_bar,max(bar_start) AS last_bar,bool_and(minute_rows=5 AND distinct_rows=5 AND first_ts=bar_start AND last_ts=bar_start+INTERVAL '4 minutes' AND coherent) AS coherent FROM lagged GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "e675819854275ad8ee91e51741eb774cc4fdee4007e3ca56517cd06cd93421f0",
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 27475,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_serial_persistence_consensus_relay_support.py",
+    "sha256": "0db0c132f1bb94a8d23d1ee5236ba14dffa4727e97ab9c5760b455e2f961dd65"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_serial_persistence_consensus_relay_sources_2023_2026/block_states.csv.gz",
+    "sha256": "2c477148f5121e39f9b87e7d572b0c760a82039b8e728fca5af8b223a90e501d",
+    "rows": 3924,
+    "valid_rows": 3743
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "8454c3ee661e8b8fa901359d4e198a270c7456fdfd26171382e9e2f12fa84876"
+}
