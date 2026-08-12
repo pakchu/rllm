@@ -1,0 +1,170 @@
+{
+  "protocol_version": "high_volatility_alt_breadth_diffusion_slope_relay_v1",
+  "policy_id": "HVABDS-8",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "When directional participation across six liquid alt perpetuals rises steadily through a completed eight-hour auction, price discovery is diffusing from a narrow impulse into market-wide repricing. During elevated BTC variation, follow the aggregate alt direction for eight elapsed hours at a fresh upper-tail participation-slope state.",
+    "side": "strict sign of the sum of six completed eight-hour alt log returns",
+    "why_distinct": "Static breadth candidates count one endpoint sign, L1 coherence measures one cross-section, synchrony uses BTC-alt path correlations, and synchronized flip compares two half-block majorities. CLD-72 required prior leadership, flow alignment, BTC underreaction, and six-hour geometry. HVABDS uses the OLS time slope of eight disjoint hourly directional-participation shares inside the current block, with no BTC return direction, flow, volume, OI, funding, premium, prior event set, fitted outcome, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed trailing twenty-four-hour BTC realized variation must occupy its causal upper 35%, while positive participation slope enters its upper 20%",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily within-auction cross-alt diffusion-slope onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "symbols": [
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "decision_grid": "exact 03:00, 11:00, and 19:00 UTC boundaries D",
+    "source_block": "480 exact coherent bars_binance one-minute rows [D-8h,D) for each alt and BTC",
+    "hourly_alt_return": "log(last completed close/first completed open) in each of eight disjoint exact hours, finite; zero contributes no directional participation",
+    "aggregate_alt_return": "sum of each alt's eight hourly returns across all six alts, finite strict nonzero",
+    "hourly_participation": "for aggregate direction s, fraction of six hourly alt returns having strict sign s",
+    "diffusion_slope": "OLS slope of the eight hourly participation shares on fixed coordinates 0..7; finite strict positive",
+    "slope_rank": "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded; rank>=0.80",
+    "btc_realized_variation": "sqrt(sum squared exact BTC one-minute open-to-close log returns over [D-24h,D))",
+    "variation_rank": "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "eligible_state": "positive diffusion slope and both causal ranks pass",
+    "onset": "eligible now and immediately preceding exact source-valid boundary ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after all seven completed paths are available",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "sign(aggregate_alt_return)",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes",
+    "rv20": "q90 audit only after unchanged all-stage pass"
+  },
+  "policy": {
+    "block_minutes": 480,
+    "hour_minutes": 60,
+    "history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "slope_rank_min": 0.8,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp and 10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, and final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_slope_tail_gate",
+      "no_variation_gate",
+      "endpoint_static_breadth",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "symbol",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_cross_alt_breadth_diffusion_synchrony_and_flip_outcomes_known": true,
+    "repository_within_block_hourly_participation_slope_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent within-auction acceleration of cross-alt directional participation"
+  },
+  "stopping_rule": "terminal first failure; no universe, block, aggregation, slope, history, rank, variation, side, hold, clock, subset, threshold, source, or control repair",
+  "manifest_hash": "bb6ed8c13eb11fa2e82eabbc11ed120e29180481999d46c353a2fa09577bbb89"
+}
