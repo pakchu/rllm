@@ -1,0 +1,174 @@
+{
+  "protocol_version": "high_volatility_cross_alt_lagged_transfer_consensus_relay_v1",
+  "policy_id": "HVCALT-6",
+  "slug": "high_volatility_cross_alt_lagged_transfer_consensus_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "At fixed three-times-daily decisions, causal lag-1 transfer coefficients identify which completed alt returns have recently preceded BTC returns. When at least four unusually strong transfer channels predict the same direction from the latest completed alt bar, BTC follows that cross-alt information relay for six hours during locally elevated variation.",
+    "side": "strict sign of the absolute-beta-weighted lag-transfer contribution score",
+    "why_distinct": "Correlation-fracture candidates use contemporaneous dependence; flow-price transmission uses trade flow; cojump and barrier candidates use synchronous shocks or crossings; frozen ridge uses a multivariate fitted response law. HVCALT uses six independent zero-intercept lag-1 return-transfer coefficients, causal coefficient-strength ranks, and a current signed transfer consensus. It uses no current BTC direction, post-entry fit, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "BTC completed 24-hour realized variation must rank in the upper 35 percent against the 20 strictly prior scheduled source-valid decisions, adapting causally to local July-like volatility",
+    "why_low_gross9_overlap_is_plausible": "entries at fixed 02:35, 10:35, and 18:35 UTC plus a six-hour hold are not Gross9 primitive clocks"
+  },
+  "features": {
+    "bars": "exact five-minute OHLC bars aggregated from five consecutive bars_binance one-minute rows; all seven symbols complete, finite, positive, coherent; no imputation",
+    "decision_times": "every calendar day at exact 02:30, 10:30, and 18:30 UTC",
+    "return": "log(5m close/open)",
+    "lag_transfer_beta": "for each alt independently, over the 288 completed predictor-response pairs ending before decision: sum(alt_return[t-1]*BTC_return[t])/sum(alt_return[t-1]^2); denominator strict positive; current latest alt return is excluded from beta estimation",
+    "beta_strength_rank": "strict-prior midrank of absolute beta at the same scheduled decision stream over at most 120 prior jointly valid decisions, minimum 60, current excluded; selected when rank>=0.65",
+    "latest_alt_return": "completed [D-5m,D) alt log return, finite strict nonzero",
+    "contribution": "sign(beta)*sign(latest_alt_return)",
+    "score": "sum(abs(beta)*contribution over selected alts)/sum(abs(beta) over selected alts)",
+    "consensus_gate": "at least four selected alts, abs(score)>=0.50, and at least three selected contributions have score sign",
+    "btc_realized_variation": "sqrt(sum squared exact BTC five-minute log(close/open) returns over [D-24h,D))",
+    "variation_rank": "strict-prior midrank over 20 prior jointly source-valid scheduled decisions, minimum 15, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact daily 02:30, 10:30, or 18:30 UTC",
+    "entry": "exact BTCUSDT perpetual decision+5m open",
+    "side": "score sign",
+    "hold": "6 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "beta_bars": 288,
+    "beta_strength_prior_decisions": 120,
+    "beta_strength_minimum_decisions": 60,
+    "beta_strength_rank_min": 0.65,
+    "minimum_selected_alts": 4,
+    "score_absolute_min": 0.5,
+    "minimum_agreeing_contributions": 3,
+    "variation_prior_decisions": 20,
+    "variation_minimum_decisions": 15,
+    "variation_rank_min": 0.65,
+    "decision_hours_utc": [
+      2,
+      10,
+      18
+    ],
+    "decision_minute": 30,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "no_beta_tail",
+      "three_alt_consensus",
+      "contemporaneous_beta",
+      "one_decision_stale_transfer",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "market": {
+      "table": "bars_binance",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "ADAUSDT",
+        "DOGEUSDT"
+      ],
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ]
+    },
+    "read_after_preregistration_commit": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_cross_alt_family_outcomes_known": true,
+    "repository_exact_lagged_transfer_consensus_event_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent lag-structured causal cross-alt information-transfer mechanism"
+  },
+  "stopping_rule": "terminal first failure; no universe, aggregation, lag, beta law, histories, ranks, consensus, local-volatility gate, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "c8368deec1604fc679ff084c17c4706493d4830fae7ec4255295dba14aee3c74"
+}
