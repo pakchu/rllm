@@ -1,0 +1,36 @@
+{
+  "protocol_version": "hvalcr_8_sources_v1",
+  "query": "\nSELECT date_trunc('hour', ts) AS hour_time, symbol,\n       (array_agg(open ORDER BY ts))[1] AS hour_open,\n       (array_agg(close ORDER BY ts DESC))[1] AS hour_close,\n       sum(power(ln(close/open),2)) AS squared_variation,\n       count(*) AS source_rows, count(DISTINCT ts) AS distinct_rows,\n       min(ts) AS first_ts, max(ts) AS last_ts,\n       bool_and(open>0 AND high>0 AND low>0 AND close>0\n                AND high>=greatest(open,close,low)\n                AND low<=least(open,close,high)) AS coherent\nFROM bars_binance\nWHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1,2 ORDER BY 1,2\n",
+  "query_sha256": "9f67477b0664c3c76d5cd5fbf108e786219c4fab5060a1c6afc516b370f77d55",
+  "tables": [
+    "bars_binance"
+  ],
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 219744,
+  "builder": {
+    "path": "training/build_high_volatility_alt_leader_concentration_relay_support.py",
+    "sha256": "93d34f96e9f69cf258749da05d41002cbe35d2e7dcc73f4810387b77e8db3e27"
+  },
+  "panel": {
+    "path": "data/high_volatility_alt_leader_concentration_relay_sources_2023_2026/eight_hour_states.csv.gz",
+    "sha256": "26765cfc3b285a042a0edbe6cf0458fb362334ebe7106be24095fa3a5e3967ff",
+    "rows": 3921,
+    "valid_rows": 3921
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "52f069ce0b35d3dc0a8de550320611ebb45689c8043dd271188fcd3bf2831eb8"
+}
