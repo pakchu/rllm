@@ -1,0 +1,159 @@
+{
+  "protocol_version": "high_volatility_spot_first_passage_leadership_relay_v1",
+  "policy_id": "HVSFL-8",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated BTC variation, a spot market that first crosses a strictly-prior-volatility-scaled directional barrier and is only later confirmed through the same barrier by the perpetual market identifies cash-led price discovery rather than leveraged anticipation; follow the spot-led direction for eight elapsed hours.",
+    "side": "direction of the spot market's first symmetric-barrier passage",
+    "why_distinct": "HVSFL compares ordered first-passage times of cash and perpetual prices through one frozen barrier. Spot-flow leadership uses signed trade flow; error correction uses contemporaneous basis displacement; variance transfer compares volatility; permutation entropy compares symbolic complexity. HVSFL uses no flow, volume, basis level, fitted outcome, OI, funding, prior event, or control.",
+    "why_suited_to_volatile_regimes": "current perpetual variation must occupy its causal upper thirty-five percent and both markets must complete the same volatility-scaled directional move",
+    "why_low_gross9_overlap_is_plausible": "offset eight-hour cross-market first-passage clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 02:00, 10:00, and 18:00 UTC boundaries",
+    "prior_scale": "288 exact completed spot five-minute closes over [D-32h,D-8h), yielding 287 returns",
+    "barrier": "sqrt(sum squared prior-scale returns / 24), a finite strict-positive one-hour spot realized standard-deviation frozen before the current block",
+    "current_paths": "96 exact completed spot and BTCUSDT perpetual five-minute closes over [D-8h,D), each normalized by its own first bar open",
+    "spot_first_passage": "earliest completed spot close reaching either +barrier or -barrier; ties or simultaneous opposite ambiguity are ineligible",
+    "perpetual_confirmation": "earliest completed perpetual close reaching the same directional barrier",
+    "lead_requirement": "spot passage precedes perpetual confirmation by at least two completed five-minute bars; perpetual must not cross the opposite barrier before same-direction confirmation",
+    "variation": "sqrt(sum squared current perpetual close-to-close returns), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier jointly source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "eligibility": "valid directional spot first passage, valid lagged same-direction perpetual confirmation, and variation gate",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "offset eight-hour boundary after both paths complete",
+    "entry": "exact perpetual BTCUSDT open five elapsed minutes later",
+    "side": "spot first-passage direction",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "bar_minutes": 5,
+    "prior_scale_bars": 288,
+    "current_path_bars": 96,
+    "prior_scale_hours": 24,
+    "minimum_lead_bars": 2,
+    "history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "one_bar_minimum_lead",
+      "perpetual_first_passage",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "spot": {
+      "table": "bars_binance_spot",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "perpetual": {
+      "table": "bars_binance",
+      "same_symbol_interval_columns_window": true,
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "cross_market_first_passage_definition_selected": true,
+    "repository_exact_spot_first_passage_leadership_candidate_found": false,
+    "adjacent_spot_flow_error_correction_variance_transfer_and_entropy_candidates_known": true,
+    "adjacent_candidate_outcomes_used_to_set_formula_side_hold_clock_or_threshold": false,
+    "prior_event_sets_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "fixed prior-spot-volatility symmetric first passage with ten-minute cash lead and later perpetual confirmation"
+  },
+  "stopping_rule": "Terminal first failure; no scale, barrier, lead, confirmation, variation rank, side, hold, clock, subset, threshold, or control repair.",
+  "manifest_hash": "1ca9c4bc73e753f86deb640810765928049e054ab02872949bebfff7f2afd778"
+}
