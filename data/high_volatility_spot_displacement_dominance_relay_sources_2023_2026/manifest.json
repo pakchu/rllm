@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvsdd_8_source_v1",
+  "query": "SELECT 'perpetual' AS venue,ts,open,high,low,close FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nUNION ALL SELECT 'spot' AS venue,ts,open,high,low,close FROM bars_binance_spot WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY venue,ts",
+  "query_sha256": "caccb5a0011ca2a754d55a786ee283cebb849d39b0de07dc6c284a11caee31fc",
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 3507833,
+  "builder": {
+    "path": "training/build_high_volatility_spot_displacement_dominance_relay_support.py",
+    "sha256": "fe95373d3ca2727322b6a310ae0958f65a691e8d0d791de0578b6bfd12771850"
+  },
+  "panel": {
+    "path": "data/high_volatility_spot_displacement_dominance_relay_sources_2023_2026/block_states.csv.gz",
+    "sha256": "118be6864175cf2ad75f2e58a9a7a9af05b7477d09880b87715e55fb032d55e8",
+    "rows": 3653,
+    "valid_rows": 3652
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "8c11c41fbd23a79afa57d798f334d4edf9f23791b5fa669f29a3535b7e38c641"
+}
