@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvcrs_8_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,'perpetual' AS venue,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 UNION ALL SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,'spot' AS venue,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance_spot WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1,2",
+  "query_sha256": "4515e04427954e0375248e96618373596d1ffd243ab59e8a916baee607f5a229",
+  "window": [
+    "2023-05-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 684288,
+  "builder": {
+    "path": "training/build_high_volatility_cash_range_sponsorship_relay_support.py",
+    "sha256": "f75343b13874317db1e4ebb98e2b81f0e4cb686d1f5cb5069342b9b71bf7ed66"
+  },
+  "panel": {
+    "path": "data/high_volatility_cash_range_sponsorship_relay_sources_2023_2026/five_minute_barrier_states.csv.gz",
+    "sha256": "6e8573e8f9aa65717674b0aad03e25682b7a4b99ba9c05b950e60b90599e5a41",
+    "rows": 342144,
+    "valid_rows": 335807
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "67f104a2dfed31fec69bf034602b5b14439d152909ebe6d0f9f185d63bb0912c"
+}
