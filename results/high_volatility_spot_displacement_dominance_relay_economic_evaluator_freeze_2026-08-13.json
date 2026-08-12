@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvsdd_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVSDD-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_spot_displacement_dominance_relay_economics.py",
+    "sha256": "4e30d42b29d706566447786b76681b4a5dca99e9eca917e9155f5131305abc9d"
+  },
+  "authorization": {
+    "path": "results/high_volatility_spot_displacement_dominance_relay_gross9_novelty_2026-08-13.json",
+    "sha256": "c9f7d66a4c12fca96242b802b10620229f1fca597754db50847618865dd9fa51"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "86764b6f0b71454c6be8a1694a804b11cfc2affea1e90849badfae65b0ab1d9d"
+}
