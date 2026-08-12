@@ -1,0 +1,34 @@
+{
+  "protocol_version": "hvcasce_8_sources_v1",
+  "query": "SELECT date_bin('15 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS bar_start,symbol,(array_agg(open ORDER BY ts))[1] AS open,(array_agg(close ORDER BY ts DESC))[1] AS close,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "d2f8481483f7c3353a323891712b81276376d2081ecf067add9eba4538f3af97",
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ADAUSDT",
+    "BNBUSDT",
+    "DOGEUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 878976,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_sign_configuration_entropy_relay_support.py",
+    "sha256": "6bca11cdfe1c449f583939a411189b716b7ac8bd1e862f5021851958f386f6d7"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_sign_configuration_entropy_relay_sources_2023_2026/half_hour_states.csv.gz",
+    "sha256": "37e85bab92c73505de0d7fb64ad4b2ef6f9a41ca1f182b44619578b339fcbdee",
+    "rows": 62736,
+    "valid_rows": 62736
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "298caae573fe34417a74cb6ac68c500350d2330e0f5f52806867d159addbaa67"
+}
