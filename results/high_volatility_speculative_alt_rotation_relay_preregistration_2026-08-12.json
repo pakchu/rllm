@@ -1,0 +1,165 @@
+{
+  "protocol_version": "high_volatility_speculative_alt_rotation_relay_v1",
+  "policy_id": "HVSARR-8",
+  "as_of_date": "2026-08-12",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated BTC path variation, relative strength in a fixed speculative alt basket (DOGE, ADA, XRP) versus a fixed core smart-contract/exchange basket (ETH, BNB, SOL) measures migration toward or away from high-beta crypto risk. A new upper-tail absolute rotation should relay into BTC for eight hours: follow speculative leadership and short speculative retreat.",
+    "side": "strict sign of median speculative-basket eight-hour return minus median core-basket eight-hour return",
+    "why_distinct": "Cross-alt breadth counts signs, return dispersion measures an unsigned spread, tail asymmetry measures distribution shape, market-mode candidates use common correlation, and alt-basket leadership estimates minute lead-lag against BTC. HVSARR uses a predeclared semantic two-tier relative-return spread; it uses no BTC return direction, flow, volume, funding, OI, premium, fitted outcome, prior event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "BTC completed trailing twenty-four-hour realized variation must rank in its causal upper 35%, targeting July-like unstable markets",
+    "why_low_gross9_overlap_is_plausible": "new onsets of an offset three-daily semantic cross-alt rotation tail are absent from Gross9 primitives"
+  },
+  "features": {
+    "speculative_basket": [
+      "DOGEUSDT",
+      "ADAUSDT",
+      "XRPUSDT"
+    ],
+    "core_basket": [
+      "ETHUSDT",
+      "BNBUSDT",
+      "SOLUSDT"
+    ],
+    "block": "exact 480 one-minute rows [D-8h,D) for every alt",
+    "symbol_return": "log(last minute close / first minute open), strict finite nonzero",
+    "basket_return": "cross-sectional median of the three fixed symbol returns",
+    "rotation": "speculative basket return minus core basket return, strict nonzero",
+    "rotation_magnitude_rank": "strict-prior midrank of absolute rotation against at most 270 prior source-valid decisions; minimum 180; current excluded; rank at least 0.70",
+    "btc_variation": "sum squared log(close/open) over exact 1440 BTCUSDT one-minute rows [D-24h,D)",
+    "variation_rank": "strict-prior midrank against at most 270 prior source-valid decisions; minimum 180; current excluded; rank at least 0.65",
+    "trigger": "false-to-true onset of both ranks against the previous source-valid decision",
+    "invalid": "missing, duplicate, nonpositive, inconsistent OHLC, zero symbol return, zero rotation, or incomplete exact grid; no imputation"
+  },
+  "clock": {
+    "decision": "exact 01:00, 09:00, and 17:00 UTC after the completed eight-hour block",
+    "entry": "exact BTCUSDT open five elapsed minutes after decision",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "block_minutes": 480,
+    "history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "rotation_magnitude_rank_min": 0.7,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, and final",
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_rotation_tail",
+      "no_variation_gate",
+      "unsigned_dispersion_side",
+      "one_block_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "interval": "1m",
+    "symbols": [
+      "BTCUSDT",
+      "ADAUSDT",
+      "BNBUSDT",
+      "DOGEUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "columns": [
+      "ts",
+      "symbol",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_only": true,
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "repository_collision_search_opened": true,
+    "exact_semantic_speculative_vs_core_alt_rotation_candidate_found": false,
+    "prior_cross_alt_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_controls_promoted": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "selection_basis": "independent fixed semantic two-tier crypto risk-rotation mechanism"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, train/test/eval/final strict economics, then RV20 q90 audit; no basket, symbol, block, median, rotation, history, rank, variation, onset, side, hold, clock, subset, threshold, source, or control repair",
+  "manifest_hash": "0eba0691063c4471137d497faf856b932cc04a56cd1c6504d174282212d9a34c"
+}
