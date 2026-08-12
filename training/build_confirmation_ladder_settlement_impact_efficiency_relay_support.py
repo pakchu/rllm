@@ -12,7 +12,6 @@ import pandas as pd
 
 from training import preregister_confirmation_ladder_settlement_impact_efficiency_relay as prereg
 from training.build_binance_aggtrade_microstructure import _write_gzip_csv
-from training.download_fetls_block_summaries import OUTPUT as BLOCKS
 
 
 ENV_FILE = "/home/pakchu/rllm/.env"
@@ -28,6 +27,8 @@ SPLITS = {
 MINIMUM = {"train": 8, "test": 12, "eval": 12, "final": 8}
 CONTROLS = ("late_unanimity_only", "impact_efficiency_only", "one_anchor_stale_ladder", "direction_flip")
 QUERY = """SELECT ts,open,high,low,close,count(*) OVER (PARTITION BY ts) AS duplicate_count FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY ts"""
+CACHED_PANEL = Path("data/confirmation_ladder_transaction_density_relay_sources_2023_2026/confirmation_ladders.csv.gz")
+CACHED_PANEL_SHA = "e62fb5bc98a49e819ca43d8a8b0529a901f07a1ef1d07fe9ae3beb4d5f3585e8"
 SOURCE_DIR = Path("data/confirmation_ladder_settlement_impact_efficiency_relay_sources_2023_2026")
 FEATURES = SOURCE_DIR / "confirmation_ladders.csv.gz"
 MANIFEST = SOURCE_DIR / "manifest.json"
@@ -172,6 +173,33 @@ def build_features(blocks: pd.DataFrame, market: pd.DataFrame) -> pd.DataFrame:
     output["eligible_state"] = output.source_valid & output.late_unanimous & output.impact_efficiency_escalation
     return output[list(FEATURE_COLUMNS)]
 
+
+def build_features_from_cache(cached: pd.DataFrame) -> pd.DataFrame:
+    input_columns = (
+        "anchor_height", "confirmation_height", "feature_available_time", "source_valid",
+        *RETURN_COLUMNS, *WEIGHT_COLUMNS,
+    )
+    if not set(input_columns).issubset(cached.columns):
+        raise RuntimeError("CLSIER cached pre-entry panel schema drift")
+    output = cached.loc[:, input_columns].copy()
+    output["feature_available_time"] = pd.to_datetime(output.feature_available_time, utc=True, errors="raise")
+    for column in (*RETURN_COLUMNS, *WEIGHT_COLUMNS):
+        output[column] = pd.to_numeric(output[column], errors="raise")
+    valid = output.source_valid.astype(bool)
+    returns = output.loc[:, RETURN_COLUMNS].to_numpy(float)
+    weights = output.loc[:, WEIGHT_COLUMNS].to_numpy(float)
+    valid &= np.isfinite(returns).all(axis=1) & np.isfinite(weights).all(axis=1) & (weights > 0).all(axis=1) & (returns != 0).all(axis=1)
+    impacts = np.abs(returns) / weights
+    output["late_return"] = returns[:, 3:].sum(axis=1)
+    late_signs = np.sign(returns[:, 3:])
+    output["late_unanimous"] = valid & (late_signs != 0).all(axis=1) & (late_signs == late_signs[:, [0]]).all(axis=1)
+    output["early_impact"] = impacts[:, :3].mean(axis=1)
+    output["late_impact"] = impacts[:, 3:].mean(axis=1)
+    output["impact_efficiency_escalation"] = valid & output.late_impact.gt(output.early_impact)
+    output["source_valid"] = valid
+    output["eligible_state"] = valid & output.late_unanimous & output.impact_efficiency_escalation
+    return output.loc[:, FEATURE_COLUMNS].sort_values("anchor_height", kind="mergesort").reset_index(drop=True)
+
 def active_and_side(features: pd.DataFrame, control: str = "primary"):
     if control not in ("primary", *CONTROLS):
         raise ValueError(control)
@@ -229,8 +257,10 @@ def run() -> dict[str, Any]:
     if sha(prereg.DEFAULT_OUTPUT) != PREREG_SHA:
         raise RuntimeError("CLSIER preregistration drift")
     registration = json.loads(prereg.DEFAULT_OUTPUT.read_text()); prereg.validate(registration)
-    blocks = pd.read_csv(BLOCKS, compression="gzip"); market = load_minutes()
-    features = build_features(blocks, market); primary = build_clock(features)
+    if sha(CACHED_PANEL) != CACHED_PANEL_SHA:
+        raise RuntimeError("CLSIER cached pre-entry panel hash drift")
+    cached = pd.read_csv(CACHED_PANEL, compression="gzip")
+    features = build_features_from_cache(cached); primary = build_clock(features)
     controls = {name: build_clock(features, name) for name in CONTROLS}
     SOURCE_DIR.mkdir(parents=True, exist_ok=True); CONTROL_DIR.mkdir(parents=True, exist_ok=True)
     _write_gzip_csv(features, FEATURES); _write_gzip_csv(primary, CLOCK)
@@ -238,7 +268,8 @@ def run() -> dict[str, Any]:
         _write_gzip_csv(clock, CONTROL_DIR / f"{name}.csv.gz")
     source_core = {
         "protocol_version": "clsier_6_source_v1", "query_sha256": hashlib.sha256(QUERY.encode()).hexdigest(), "window": [QUERY_START.isoformat(), END.isoformat()],
-        "physical_rows": {"blocks": len(blocks), "market": len(market)},
+        "physical_rows": {"cached_preentry_ladders": len(cached)},
+        "cache_input": {"path": str(CACHED_PANEL), "sha256": CACHED_PANEL_SHA, "definition_recomputed": True},
         "features": {"path": str(FEATURES), "sha256": sha(FEATURES), "rows": len(features)},
         "completed_preentry_sources_opened": True, "execution_prices_opened": False,
         "postentry_return_or_pnl_opened": False, "gross9_rows_opened": False, "rv20_opened": False,
