@@ -1,0 +1,19 @@
+{
+  "protocol_version": "hvinor_8_source_v1",
+  "query": "WITH tagged AS (\n SELECT ts,open,high,low,close,date_trunc('day',ts+interval '2 hours 30 minutes') AS decision_day\n FROM bars_polygon WHERE symbol='USDINR' AND interval='1m' AND ts>=:start AND ts<:end\n AND ((ts-date_trunc('day',ts))>=interval '21 hours 30 minutes' OR (ts-date_trunc('day',ts))<interval '4 hours 30 minutes')\n), segmented AS (\n SELECT *,CASE WHEN ts<decision_day+interval '3 hours 30 minutes' THEN 'pre_open' ELSE 'opening' END AS segment\n FROM tagged WHERE extract(isodow from decision_day) BETWEEN 1 AND 5\n)\nSELECT decision_day,segment,(array_agg(open ORDER BY ts))[1] AS first_open,max(high) AS session_high,min(low) AS session_low,(array_agg(close ORDER BY ts DESC))[1] AS last_close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts\nFROM segmented GROUP BY decision_day,segment ORDER BY decision_day,segment",
+  "table": "bars_polygon",
+  "symbol": "USDINR",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "raw_segment_rows": 1854,
+  "output": {
+    "path": "data/high_volatility_india_opening_reversal_relay_sources_2023_2026/india_opening_sessions.csv.gz",
+    "sha256": "c95a7a37d494e9796ba773306cea51829a9e1fcef31acdb6808b3ace05ca4900",
+    "rows": 930
+  },
+  "postentry_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "manifest_hash": "861ff008059ff13d5b6045a55015f6b07dcff5c62eba244beab6d25cd16d62b2"
+}
