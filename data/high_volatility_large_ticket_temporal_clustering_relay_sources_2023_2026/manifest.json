@@ -1,0 +1,21 @@
+{
+  "protocol_version": "hvlttc_8_source_v1",
+  "query": "SELECT\n  date_trunc('hour', ts) AS source_hour,\n  (array_agg(open ORDER BY ts))[1] AS first_open,\n  (array_agg(close ORDER BY ts DESC))[1] AS last_close,\n  count(*) AS source_rows,\n  count(DISTINCT ts) AS distinct_timestamps,\n  min(ts) AS first_ts,\n  max(ts) AS last_ts,\n  bool_and(\n    open IS NOT NULL AND high IS NOT NULL AND low IS NOT NULL AND close IS NOT NULL\n    AND quote_asset_volume IS NOT NULL AND number_of_trades IS NOT NULL\n    AND open > 0 AND high > 0 AND low > 0 AND close > 0\n    AND high >= open AND high >= close AND low <= open AND low <= close AND high >= low\n    AND quote_asset_volume >= 0 AND number_of_trades > 0\n  ) AS coherent,\n  sum(quote_asset_volume) AS turnover_sum,\n  sum(quote_asset_volume * quote_asset_volume) AS turnover_square_sum,\n  sum(number_of_trades) AS execution_sum,\n  sum(number_of_trades::numeric * number_of_trades::numeric) AS execution_square_sum,\n  sum(power(ln(close / open), 2)) AS squared_return_sum\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1\nORDER BY 1",
+  "table": "bars_binance",
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened_before_materialization": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_large_ticket_temporal_clustering_relay_sources_2023_2026/hourly_states.csv.gz",
+    "sha256": "43ce46b8f6fda038888554e7b0e33e09f737fc4d862471ac2c5b20fd6f88733a",
+    "rows": 29232,
+    "valid_rows": 29178
+  },
+  "manifest_hash": "d25f908139b0b711de13433398db032a65ae4e2837a57c030f26e17bb7e40b7c"
+}
