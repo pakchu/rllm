@@ -1,0 +1,182 @@
+{
+  "protocol_version": "confirmation_ladder_multistate_ridge_relay_v1",
+  "policy_id": "CLMSRR-6",
+  "as_of_date": "2026-08-12",
+  "outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "pretraining_outcomes_authorized_after_preregistration": true,
+  "singleton": true,
+  "mechanism": {
+    "claim": "The next six-hour BTC direction after an irregular six-block confirmation ladder depends jointly on the normalized within-ladder price path, finalized block-weight allocation, transaction-density allocation, and confirmation-tempo allocation. One fixed ridge trained only on May-June 2023 can estimate this multistate transmission before 2023H2 begins.",
+    "side": "strict sign of the frozen ridge prediction",
+    "why_distinct": "Prior ladder candidates each froze one hand-written rule over returns, aggregate weight, transaction density, or duration. CLMSRR uses all 24 ordered per-interval coordinates in one standardized linear shrinkage model, no prior candidate event set or control, no OOS adaptation, and no hand-selected interaction. Repository collision search found no confirmation-ladder fitted model.",
+    "why_suited_to_volatile_regimes": "OOS ladders must exceed the frozen 65th percentile of pre-2023H2 ladder return variation and the 75th percentile of absolute fitted prediction strength.",
+    "why_low_gross9_overlap_is_plausible": "height-modulo asynchronous confirmations and sparse frozen score tails are absent from Gross9 primitives"
+  },
+  "training_contract": {
+    "fit_window": [
+      "2023-05-01T00:00:00Z",
+      "2023-07-01T00:00:00Z"
+    ],
+    "label": "log(exit_open/entry_open), entry=feature_available_time+5m, exit=entry+6h; both contained in fit window",
+    "training_rows": "all source-valid exact merged ladder rows with finite ordered features and complete label; no outcome filtering or reservation",
+    "standardization": "population mean/std on fit rows only; reject nonfinite or zero scale",
+    "estimator": "closed-form ridge with unpenalized intercept, alpha=100.0",
+    "feature_selection": false,
+    "hyperparameter_grid": false,
+    "refit_after_2023_06_30": false,
+    "model_frozen_before_oos_incidence": true,
+    "prediction_strength_threshold": "numpy linear-method q75 of absolute fitted predictions",
+    "variation_threshold": "numpy linear-method q65 of ladder variation sqrt(sum six interval returns squared)"
+  },
+  "feature_contract": {
+    "ordered_features": [
+      "return_unit_1",
+      "return_unit_2",
+      "return_unit_3",
+      "return_unit_4",
+      "return_unit_5",
+      "return_unit_6",
+      "log_weight_centered_1",
+      "log_weight_centered_2",
+      "log_weight_centered_3",
+      "log_weight_centered_4",
+      "log_weight_centered_5",
+      "log_weight_centered_6",
+      "log_tx_density_centered_1",
+      "log_tx_density_centered_2",
+      "log_tx_density_centered_3",
+      "log_tx_density_centered_4",
+      "log_tx_density_centered_5",
+      "log_tx_density_centered_6",
+      "log_duration_centered_1",
+      "log_duration_centered_2",
+      "log_duration_centered_3",
+      "log_duration_centered_4",
+      "log_duration_centered_5",
+      "log_duration_centered_6"
+    ],
+    "returns": "six exact confirmation-interval returns divided by their positive L2 norm",
+    "weights": "log of six positive finalized block weights minus their within-ladder mean log weight",
+    "transaction_density": "log(tx_count/weight) for each positive block, centered by within-ladder mean",
+    "durations": "log of six header-time durations in [60,1800] seconds, centered by within-ladder mean",
+    "availability": "prefix maximum header timestamp and mediantime through H+6 plus 7200 seconds, ceiled to 5m",
+    "source_validity": "canonical height H divisible by 36, exact H..H+6 chain, six exact complete minute intervals, finite features; no imputation"
+  },
+  "oos_clock": {
+    "start": "2023-07-01T00:00:00Z",
+    "eligibility": "source valid, ladder variation>=frozen q65, abs frozen prediction>=frozen q75, prediction strict nonzero",
+    "entry": "feature availability+5m BTCUSDT open",
+    "side": "sign frozen prediction",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "funding": "not input; exact settlements only after novelty"
+  },
+  "policy": {
+    "ridge_alpha": 100.0,
+    "prediction_strength_quantile": 0.75,
+    "variation_quantile": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train/test/eval/final",
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "no_prediction_strength_gate",
+      "one_anchor_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "preentry_panels": {
+      "returns_weights_tx": {
+        "path": "data/confirmation_ladder_transaction_density_relay_sources_2023_2026/confirmation_ladders.csv.gz",
+        "sha256": "e62fb5bc98a49e819ca43d8a8b0529a901f07a1ef1d07fe9ae3beb4d5f3585e8"
+      },
+      "durations": {
+        "path": "data/confirmation_ladder_tempo_compression_relay_sources_2023_2026/confirmation_ladders.csv.gz",
+        "sha256": "3dbfd8d4418559814c2a711c2f0bd67429d57268a8b031a9d64c131b31956dd8"
+      }
+    },
+    "pretraining_execution_labels": "read-only bars_binance only after preregistration",
+    "oos_execution_prices": "sealed until source and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "repository_collision_search_opened": true,
+    "exact_ladder_multistate_ridge_found": false,
+    "prior_ladder_rule_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_controls_promoted": false,
+    "pretraining_labels_opened": false,
+    "model_fit_runs": 0,
+    "oos_incidence_opened": false,
+    "oos_postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "selection_basis": "independent fixed multistate fitted model specified before labels and OOS incidence"
+  },
+  "stopping_rule": "freeze prereg, trainer, model, source, novelty, economics; terminal first failure; no feature, alpha, fit window, threshold, variation, side, hold, clock, subset, source, model, or control repair",
+  "manifest_hash": "463343c489004950e4cd56b77ef109fa651b80dfada6d3020e0942d547bc9c03"
+}
