@@ -1,0 +1,51 @@
+{
+  "protocol_version": "hvspcl_8_spot_perpetual_correlation_leadership_source_v1",
+  "query": "SELECT ts,'spot' AS venue,open,high,low,close\nFROM bars_binance_spot\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nUNION ALL\nSELECT ts,'perpetual' AS venue,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts,venue",
+  "query_sha256": "4b5053b536c35ae9559d6854d400b1c0e0fc10c04cc53c42f0262bf4a7a95ba3",
+  "tables": [
+    "bars_binance_spot",
+    "bars_binance"
+  ],
+  "venues": [
+    "spot",
+    "perpetual"
+  ],
+  "interval": "1m",
+  "symbol": "BTCUSDT",
+  "columns": [
+    "ts",
+    "venue",
+    "open",
+    "high",
+    "low",
+    "close"
+  ],
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 3507833,
+  "builder": {
+    "path": "training/build_high_volatility_spot_perpetual_correlation_leadership_relay_support.py",
+    "sha256": "60839b1c1fe0159786dc1f1581d60d07055fc093916de3373d115b66d4e00f58"
+  },
+  "pair_panel": {
+    "path": "data/high_volatility_spot_perpetual_correlation_leadership_relay_sources_2023_2026/hourly_leadership_pairs.csv.gz",
+    "sha256": "ea82740ab6face41f2fa7d8ec4a4a3ccd704d2b6985de22383eaa716a219d4cd",
+    "rows": 29226
+  },
+  "feature_panel": {
+    "path": "data/high_volatility_spot_perpetual_correlation_leadership_relay_sources_2023_2026/hourly_preentry_features.csv.gz",
+    "sha256": "c90c66e03a6e5b48fedd284105ed902f85c56e6a999a7f6b2b288425a8ad9383",
+    "rows": 29226,
+    "valid_rows": 1678
+  },
+  "completed_preentry_sources_opened": true,
+  "candidate_incidence_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "funding_values_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "deterministic_immutable_artifacts": true,
+  "manifest_hash": "185fc81d5433b8937e1f2831103d0657dc08a14688db7588641d35c7268216ca"
+}
