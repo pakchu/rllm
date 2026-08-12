@@ -178,7 +178,7 @@ def materialize() -> dict[str, Any]:
 def features() -> pd.DataFrame:
     frame = pd.read_csv(PANEL, compression="gzip")
     for column in ("settlement_time", "decision_time"):
-        frame[column] = pd.to_datetime(frame[column], utc=True)
+        frame[column] = pd.to_datetime(frame[column], utc=True, format="mixed")
     frame["source_valid"] = frame.source_valid.astype(str).str.lower().eq("true")
     for column in ("funding_rate", "funding_rank", "pre_settlement_return", "pre_settlement_variation", "variation_rank", "spot_return", "spot_aggressive_quote_flow"):
         frame[column] = pd.to_numeric(frame[column], errors="coerce")

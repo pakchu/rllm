@@ -10,6 +10,25 @@ def test_rank_excludes_current_and_requires_252_prior():
     assert ranked.iloc[252] == 1.0
 
 
+def test_features_accepts_mixed_iso_timestamp_precision(tmp_path, monkeypatch):
+    panel = pd.DataFrame(
+        {
+            "settlement_time": ["2022-12-01 00:00:00.000000+00:00", "2022-12-01 08:00:00+00:00"],
+            "decision_time": ["2022-12-01 01:00:00.000000+00:00", "2022-12-01 09:00:00+00:00"],
+            "source_valid": [True, True], "funding_rate": [0.1, -0.1],
+            "funding_rank": [0.8, 0.8], "pre_settlement_return": [0.1, -0.1],
+            "pre_settlement_variation": [0.2, 0.2], "variation_rank": [0.8, 0.8],
+            "spot_return": [0.1, -0.1], "spot_aggressive_quote_flow": [1.0, -1.0],
+        }
+    )
+    path = tmp_path / "panel.csv.gz"
+    panel.to_csv(path, index=False, compression="gzip")
+    monkeypatch.setattr(support, "PANEL", path)
+    loaded = support.features()
+    assert str(loaded.settlement_time.dtype) == "datetime64[ns, UTC]"
+    assert loaded.decision_time.notna().all()
+
+
 def _frame(**updates):
     row = {
         "settlement_time": pd.Timestamp("2023-07-01T00:00:00Z"),
