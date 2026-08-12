@@ -1,0 +1,161 @@
+{
+  "protocol_version": "high_volatility_adverse_funding_contraction_relay_v1",
+  "policy_id": "HVAFC-8",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "After an actual extreme BTC perpetual funding settlement, a completed four-hour price move opposite the funding sign accompanied by open-interest contraction is adverse crowd liquidation rather than carry collection; during elevated variation, follow the deleveraging direction for eight elapsed hours.",
+    "side": "strict sign of the completed post-settlement four-hour BTC return, necessarily opposite the funding-rate sign",
+    "why_distinct": "HVAFC combines the exact settled funding polarity with subsequent endpoint OI contraction and adverse price displacement. Funding-volatility unwind conditions on pre-settlement alignment and post-settlement volatility reset without OI; OI purge ignores funding; funding/OI rotation uses premium state. HVAFC uses no cross-alt spread, fitted outcome, prior event, or control.",
+    "why_suited_to_volatile_regimes": "absolute settled funding and completed post-settlement variation must occupy causal upper regimes while falling OI proves inventory exit",
+    "why_low_gross9_overlap_is_plausible": "actual funding timestamps delayed four hours by adverse price/OI confirmation are absent from Gross9 primitives"
+  },
+  "features": {
+    "event": "actual Binance BTCUSDT USD-M funding settlement S with finite strict-nonzero rate known at S",
+    "funding_extremeness": "strict-prior midrank of abs(rate) over at most 270 earlier settlements, minimum 180, current excluded; rank>=0.65",
+    "price_window": "48 exact coherent five-minute perpetual bars [S,S+4h)",
+    "post_settlement_return": "log(last close/first open), strict nonzero and sign=-sign(funding rate)",
+    "oi_path": "49 exact positive period=5m OI observations S through S+4h",
+    "oi_contraction": "log(OI[S+4h]/OI[S])<0",
+    "variation": "sqrt(sum squared 48 five-minute log(close/open) returns), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier jointly source-valid settlement windows whose S+4h availability precedes current S+4h, minimum 180, current excluded; rank>=0.65",
+    "eligibility": "funding extreme, adverse price direction, OI contraction, and variation gate",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "S+4h after all price and OI observations complete",
+    "entry": "exact BTCUSDT S+4h+5m open",
+    "side": "post-settlement return direction",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "current settlement precedes entry and is not earned; later exact settlements only after novelty passes"
+  },
+  "policy": {
+    "price_bars": 48,
+    "window_hours": 4,
+    "history_events": 270,
+    "minimum_history_events": 180,
+    "funding_rank_min": 0.65,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_funding_rank_gate",
+      "no_variation_gate",
+      "no_oi_contraction",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "funding": {
+      "table": "funding_rates_binance",
+      "symbol": "BTCUSDT",
+      "columns": [
+        "funding_time",
+        "funding_rate"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "same_window_plus_4h": true,
+      "read_after_preregistration": true
+    },
+    "open_interest": {
+      "table": "open_interest_binance",
+      "symbol": "BTCUSDT",
+      "period": "5m",
+      "same_window_plus_4h": true,
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "actual_funding_adverse_oi_contraction_selected": true,
+    "repository_exact_adverse_funding_contraction_candidate_found": false,
+    "adjacent_funding_unwind_oi_purge_and_premium_rotation_candidates_known": true,
+    "adjacent_candidate_outcomes_used_to_set_formula_side_hold_clock_or_threshold": false,
+    "prior_event_sets_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "actual funding polarity followed by four-hour adverse return and endpoint OI contraction under elevated variation"
+  },
+  "stopping_rule": "Terminal first failure; no funding rank, window, OI definition, variation rank, side, hold, clock, subset, threshold, or control repair.",
+  "manifest_hash": "78b03a7c968d887a327eb98a15dfe762e7f604e2cd481d9f41c805e8a7e177e8"
+}
