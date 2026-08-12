@@ -1,0 +1,165 @@
+{
+  "protocol_version": "high_volatility_funding_acceleration_divergence_relay_v1",
+  "policy_id": "HVFADR-8",
+  "slug": "high_volatility_funding_acceleration_divergence_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "When the realized BTC funding rate changes sharply from the previous settlement while the completed intervening BTC price move has the opposite sign, price has absorbed and overcome leverage repricing. In elevated realized variation, follow the completed price direction through the next funding cycle.",
+    "side": "strict sign of the completed price return, required opposite to the one-settlement funding-rate change",
+    "why_distinct": "HVEFR fades an extreme funding level residual. HVAFC waits four post-settlement hours and requires OI contraction. HVPFPR uses premium pressure without funding values. HVFADR uses the first difference of two realized BTC funding settlements and the already-completed intervening price path, with no funding level tail, post-decision confirmation, OI, premium, cross-alt source, fitted outcome, prior event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "the intervening eight-hour BTC realized variation must rank in its causal upper 35 percent, directly selecting July-like volatile cycles",
+    "why_low_gross9_overlap_is_plausible": "funding-change/price-divergence settlement events are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "actual BTCUSDT funding_time S",
+    "previous_settlement": "immediately prior actual BTCUSDT funding record P, requiring S-P exactly 8 elapsed hours",
+    "funding_change": "funding_rate[S]-funding_rate[P], finite strict nonzero",
+    "change_history": "at most 270 strictly prior source-valid changes, minimum 180, current excluded",
+    "change_extremity_rank": "strict-prior midrank of abs(funding_change); rank>=0.75",
+    "price_path": "480 exact coherent BTCUSDT bars_binance one-minute rows [P,S)",
+    "completed_return": "log(last completed close/first completed open), finite strict nonzero",
+    "divergence": "strict sign(completed_return)=-strict sign(funding_change)",
+    "realized_variation": "sqrt(sum squared one-minute log(close/open) returns over [P,S)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier source-valid cycles, minimum 180, current excluded; rank>=0.65",
+    "eligible_state": "change tail, price/funding divergence, and variation gate",
+    "onset": "eligible now and immediately prior source-valid settlement cycle ineligible; missing prior cannot trigger",
+    "causal_availability": "both funding records and all price minutes are complete at S; entry is delayed five minutes",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "actual settlement S",
+    "entry": "exact BTCUSDT S+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "signal settlement precedes entry; exact held-interval funding only after novelty"
+  },
+  "policy": {
+    "required_settlement_gap_hours": 8,
+    "history_cycles": 270,
+    "minimum_history_cycles": 180,
+    "change_extremity_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_change_tail",
+      "no_variation_gate",
+      "funding_change_direction",
+      "one_settlement_stale_change",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "funding": {
+      "table": "funding_rates_binance",
+      "symbol": "BTCUSDT",
+      "columns": [
+        "funding_time",
+        "funding_rate"
+      ],
+      "actual_timestamps": true
+    },
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ]
+    },
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "database_symbol_coverage_metadata_only_opened_before_preregistration": true,
+    "prior_funding_level_postsettlement_oi_and_premium_family_outcomes_known": true,
+    "repository_funding_first_difference_preprice_divergence_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent leverage-repricing absorption mechanism"
+  },
+  "stopping_rule": "terminal first failure; no settlement gap, change, history, rank, divergence, variation, onset, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "2def6c6295e01317657fe6d3a871b3679bce6fe21b01aae800eb3b1aeffe4e05"
+}
