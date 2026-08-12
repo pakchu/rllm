@@ -97,6 +97,7 @@ def active(panel:pd.DataFrame,control:str="primary"):
  if control=="no_rotation_tail":state=valid&variation
  elif control=="no_variation_gate":state=valid&tail
  elif control=="unsigned_dispersion_side":state=valid&tail&variation&used.dispersion_side.ne(0);side=pd.to_numeric(used.dispersion_side,errors="coerce").fillna(0).astype(int)
+ onset=previous_valid_onset(state,valid)
  if control=="direction_flip":side=-side
  elif control=="forced_long":side=side.where(side.eq(0),1)
  return onset&side.ne(0),side,used
