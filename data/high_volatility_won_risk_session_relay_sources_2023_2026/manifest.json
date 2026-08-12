@@ -1,0 +1,23 @@
+{
+  "protocol_version": "hvwrsr_8_won_source_v1",
+  "query": "SELECT date_trunc('day',ts) AS source_day,(array_agg(open ORDER BY ts))[1] AS session_open,max(high) AS session_high,min(low) AS session_low,(array_agg(close ORDER BY ts DESC))[1] AS session_close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_polygon WHERE symbol=:symbol AND interval='1m' AND ts>=:start AND ts<:end AND extract(isodow from ts) BETWEEN 1 AND 5 AND extract(hour from ts)>=0 AND extract(hour from ts)<8 GROUP BY 1 ORDER BY 1",
+  "table": "bars_polygon",
+  "symbols": [
+    "USDKRW"
+  ],
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_won_risk_session_relay_sources_2023_2026/won_sessions.csv.gz",
+    "sha256": "373e123acd806a2b9b6bff417cc7bdb7a04255acb49f67f0dc4967f89cbf0c6c",
+    "rows": 923,
+    "valid_rows": 806
+  },
+  "manifest_hash": "8d7b89ef67b7c41bf5fcca90f676b067e57b6089a972c97208efee543e582a29"
+}
