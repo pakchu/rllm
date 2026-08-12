@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvcacid_8_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,symbol,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(open ORDER BY ts DESC))[1] AS final_open,(array_agg(close ORDER BY ts DESC))[1] AS close,sum(abs(ln(close/open))) AS absolute_path,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol IN ('BTCUSDT','ADAUSDT','BNBUSDT','DOGEUSDT','ETHUSDT','SOLUSDT','XRPUSDT') AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,symbol ORDER BY 1,symbol",
+  "query_sha256": "9ad05108e9b99ffb5a04d1c9964736a631565dc75b93b6fe680beeb8ca8d8bfe",
+  "window": [
+    "2023-05-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 2395008,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_closing_impulse_dominance_relay_support.py",
+    "sha256": "2e12ea6faea91db77e864a48f6a1455b64c625fb59e830d150b9d5aa5ec6f2d4"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_closing_impulse_dominance_relay_sources_2023_2026/five_minute_barrier_states.csv.gz",
+    "sha256": "8aa893f12174f4f7aa69d9b1317487df6a05bb7c8c4c415c53e67cd6942e226f",
+    "rows": 342144,
+    "valid_rows": 335809
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "111336cd1b2156f42aa9efd64d531b7b1974b548bb9cd21245bd4c15dcea0774"
+}
