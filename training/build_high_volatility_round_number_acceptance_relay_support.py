@@ -181,7 +181,7 @@ def clock(states: pd.DataFrame, control: str = "primary") -> pd.DataFrame:
         elif control == "forced_long": direction = 1
         next_available = exit_time
         rows.append({
-            "candidate": POLICY_ID, "control": control, "split": split,
+            "candidate": prereg.POLICY_ID, "control": control, "split": split,
             "decision_time": decision, "feature_available_time": decision,
             "entry_time": entry, "exit_time": exit_time, "side": direction,
             "realized_variation": float(states.at[index, "realized_variation"]),
@@ -217,7 +217,7 @@ def run() -> dict[str, Any]:
     passed = all(checks.values())
     registration = json.loads(prereg.DEFAULT_OUTPUT.read_text())
     core = {
-        "protocol_version": "hvrnar_8_source_support_v1", "policy_id": POLICY_ID,
+        "protocol_version": "hvrnar_8_source_support_v1", "policy_id": prereg.POLICY_ID,
         "preregistration": {"path": str(prereg.DEFAULT_OUTPUT), "sha256": sha256(prereg.DEFAULT_OUTPUT), "manifest_hash": registration["manifest_hash"]},
         "source_manifest": {"path": str(MANIFEST), "sha256": sha256(MANIFEST), "manifest_hash": source_manifest["manifest_hash"]},
         "completed_preentry_sources_opened": True, "postentry_return_pnl_execution_price_opened": False, "gross9_rows_opened": False,
