@@ -1,0 +1,34 @@
+{
+  "protocol_version": "hvciic_8_sources_v1",
+  "query": "SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 02:00:00+00') AS block_start,symbol,(array_agg(open ORDER BY ts))[1] AS first_open,(array_agg(close ORDER BY ts DESC))[1] AS last_close,sum(quote_asset_volume) AS quote_turnover,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high) AND quote_asset_volume>=0) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "11fe237f3ac72b4c68ca97f12639b2fd0b0239d5892c49bc6c1ccd4d5cdc748c",
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 27475,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_illiquidity_impulse_consensus_relay_support.py",
+    "sha256": "6285e8ff824f598a5890bb9b784a0e6bdcff61ac606a913ea9439f9bf17cb86d"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_illiquidity_impulse_consensus_relay_sources_2023_2026/block_states.csv.gz",
+    "sha256": "895ebd0e55ccb2afba5360c67aec49537a848731a2539535d8f3f36dbf7a38ce",
+    "rows": 3924,
+    "valid_rows": 3563
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "c1c85760004fe83a77efb7d31b1a3beac6ff52d740e4f65a19e96d1bbd07ed48"
+}
