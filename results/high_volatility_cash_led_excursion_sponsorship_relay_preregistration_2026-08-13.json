@@ -1,0 +1,161 @@
+{
+  "protocol_version": "high_volatility_cash_led_excursion_sponsorship_relay_v1",
+  "policy_id": "HVCLES-8",
+  "slug": "high_volatility_cash_led_excursion_sponsorship_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "When BTC spot makes an extreme normalized intrabar excursion beyond the simultaneous perpetual excursion and both markets complete the auction in that excursion direction, cash price discovery is sponsoring the move rather than leveraged anticipation. During elevated BTC variation, follow the cash-led excursion for eight hours.",
+    "side": "long an upper cash-led excursion; short a lower cash-led excursion",
+    "why_distinct": "Spot first passage measures ordered crossings of a prior volatility barrier over eight hours; spot displacement and flow leadership use closes or aggressive flow. HVLOWR studies perpetual-only excursion with cash nonconfirmation and fades it. HVCLES instead compares actual simultaneous spot and perpetual high/open or open/low excursions, requires both closes to confirm cash direction, and follows cash sponsorship. It uses no basis level, premium index, volume, flow, funding, OI, fitted outcome, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "causal trailing perpetual 24-hour realized variation must occupy its upper 35 percent",
+    "why_low_gross9_overlap_is_plausible": "irregular cash-led cross-market excursion divergence onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact UTC five-minute boundary D",
+    "market_bars": "five exact coherent native one-minute BTCUSDT perpetual and spot rows [D-5m,D)",
+    "normalized_upper_excursion": "log(five-minute high/five-minute open) separately by market",
+    "normalized_lower_excursion": "log(five-minute open/five-minute low) separately by market",
+    "upper_cash_excess": "spot upper excursion minus perpetual upper excursion",
+    "lower_cash_excess": "spot lower excursion minus perpetual lower excursion",
+    "excess_ranks": "separate strict-prior midranks over at most 8640 jointly valid decisions, minimum 6048, current excluded",
+    "upper_sponsorship": "upper_cash_excess rank>=0.995 and both spot and perpetual log(close/open)>0",
+    "lower_sponsorship": "lower_cash_excess rank>=0.995 and both spot and perpetual log(close/open)<0",
+    "direction": "exactly one sponsorship side; simultaneous upper and lower is ineligible",
+    "btc_realized_variation": "sqrt(sum squared exact perpetual one-minute log(close/open) returns over [D-24h,D))",
+    "variation_rank": "strict-prior midrank over at most 8640 jointly valid decisions, minimum 6048, current excluded; rank>=0.65",
+    "onset": "directional sponsorship true now and false at immediately prior exact source-valid five-minute decision; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after both completed bars and causal ranks are available",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "same as confirmed cash-led excursion",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "history_decisions": 8640,
+    "minimum_history_decisions": 6048,
+    "excess_rank_min": 0.995,
+    "variation_bars": 288,
+    "variation_rank_min": 0.65,
+    "onset_required": true,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "rank_0_99",
+      "no_close_confirmation",
+      "one_bar_stale_sponsorship",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "perpetual": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m"
+    },
+    "spot": {
+      "table": "bars_binance_spot",
+      "symbol": "BTCUSDT",
+      "interval": "1m"
+    },
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "window": [
+      "2023-05-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration_commit": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "adjacent_spot_price_flow_and_perpetual_rejection_outcomes_known": true,
+    "repository_exact_cash_led_actual_market_excursion_sponsorship_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cash-led intrabar price-discovery sponsorship mechanism"
+  },
+  "stopping_rule": "terminal first failure; no market, bar, normalization, rank history, rank threshold, close confirmation, variation, onset, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "a0c72e0acf22f73acca93189c26379f7c9506e3ceb46af17fd9c06f1036df63b"
+}
