@@ -1,0 +1,161 @@
+{
+  "protocol_version": "high_volatility_leverage_to_cash_flow_handoff_relay_v1",
+  "policy_id": "HVLCFH-8",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "Within a completed volatile eight-hour BTC auction, same-direction aggressive demand that is led by perpetuals in the first four hours but led by spot cash in the second four hours identifies a leverage-to-cash transfer of price sponsorship. Follow the transferred cash-flow direction for eight hours.",
+    "side": "common strict sign of the four normalized aggressive-flow fractions",
+    "why_distinct": "HVCPMR moves spot quote-turnover participation and requires price confirmation. HVSFLR measures a static final-two-hour spot/perpetual flow-magnitude ratio. HVLCFH instead requires an ordered two-half reversal of cross-venue aggressive-flow dominance with one persistent flow sign and uses no price direction, funding, OI, premium, or volume-share migration.",
+    "why_suited_to_volatile_regimes": "completed perpetual path variation must rank in its causal upper 35 percent",
+    "why_low_gross9_overlap_is_plausible": "offset 03/11/19 UTC ordered cross-venue flow-handoff onsets are absent from Gross9"
+  },
+  "features": {
+    "decision_grid": "exact 03:00, 11:00, and 19:00 UTC boundaries D",
+    "block": "480 exact aligned coherent native one-minute BTCUSDT spot and perpetual rows [D-8h,D), split into two exact 240-minute halves",
+    "normalized_flow": "(2*sum(taker_buy_quote)-sum(quote_asset_volume))/sum(quote_asset_volume) separately by venue and half; positive finite denominator and strict nonzero flow required",
+    "persistent_sign": "all four half-by-venue normalized flows have one strict sign s",
+    "first_half_leverage_lead": "abs(perpetual first-half flow)>abs(spot first-half flow)",
+    "second_half_cash_lead": "abs(spot second-half flow)>abs(perpetual second-half flow)",
+    "handoff_strength": "minimum of the two strict absolute-flow dominance gaps",
+    "handoff_rank": "strict-prior midrank of handoff_strength over at most 270 source-valid positive handoffs, minimum 180, current excluded; rank>=0.70",
+    "variation": "sqrt(sum squared 480 perpetual log(close/open) minute returns)",
+    "variation_rank": "strict-prior midrank over at most 270 source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "onset": "full rule true now and false at immediately prior exact source-valid decision; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed offset eight-hour boundary",
+    "entry": "exact perpetual BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "side": "persistent flow sign s",
+    "reservation": "natural global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements after novelty"
+  },
+  "policy": {
+    "block_minutes": 480,
+    "half_minutes": 240,
+    "history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "handoff_rank_min": 0.7,
+    "variation_rank_min": 0.65,
+    "onset_required": true,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes all stages",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "no_handoff_tail": "ordered handoff plus variation and onset without strength rank",
+      "no_variation_gate": "handoff tail and onset only",
+      "no_onset": "all tail-qualified high-variation handoffs",
+      "one_block_stale_handoff": "prior block handoff with current variation",
+      "direction_flip": "negative primary side",
+      "same_clock_forced_long": "side +1 on primary clock"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "spot": {
+      "table": "bars_binance_spot",
+      "symbol": "BTCUSDT",
+      "interval": "1m"
+    },
+    "perpetual": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m"
+    },
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close",
+      "quote_asset_volume",
+      "taker_buy_quote"
+    ],
+    "window": [
+      "2023-03-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration_commit": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_spot_perpetual_flow_outcomes_known": true,
+    "repository_ordered_two_half_flow_dominance_handoff_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent ordered leverage-to-cash aggressive-flow sponsorship transfer"
+  },
+  "stopping_rule": "terminal first failure; no venue, flow normalization, block, half, dominance, rank, variation, onset, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "308621cd3e6cff09443db894b24b4a93be81b0861266067e55b5d8b76bb0f26e"
+}
