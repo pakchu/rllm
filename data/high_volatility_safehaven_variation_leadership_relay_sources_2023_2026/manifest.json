@@ -1,0 +1,28 @@
+{
+  "protocol_version": "hvsvl_8_safehaven_variation_source_v1",
+  "query": "SELECT date_trunc('day',ts) AS source_day,(array_agg(open ORDER BY ts))[1] AS session_open,max(high) AS session_high,min(low) AS session_low,(array_agg(close ORDER BY ts DESC))[1] AS session_close,sqrt(sum(CASE WHEN open>0 AND close>0 THEN power(ln(close/open),2) END)) AS realized_variation,bool_and(open>0 AND high>0 AND low>0 AND close>0) AS all_positive,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_polygon WHERE symbol=:symbol AND interval='1m' AND ts>=:start AND ts<:end AND extract(isodow from ts) BETWEEN 1 AND 5 AND extract(hour from ts)>=7 AND extract(hour from ts)<13 GROUP BY 1 ORDER BY 1",
+  "table": "bars_polygon",
+  "symbols": [
+    "USDJPY",
+    "USDCHF"
+  ],
+  "canonical_risk_multipliers": {
+    "USDJPY": -1.0,
+    "USDCHF": -1.0
+  },
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_safehaven_variation_leadership_relay_sources_2023_2026/safehaven_variation_sessions.csv.gz",
+    "sha256": "6dd8517d203788ddc3c1189affe1ffb3c1614a05fe551f2a5b5020cb66a052ad",
+    "rows": 927,
+    "valid_rows": 903
+  },
+  "manifest_hash": "16a7a565438a28cbacdb31be41842b3d17dad23b709ef94cba05cee69c13ab75"
+}
