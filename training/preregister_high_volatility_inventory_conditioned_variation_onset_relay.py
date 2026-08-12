@@ -44,7 +44,7 @@ def build() -> dict[str, Any]:
             "decision_grid": "exact 02:00, 10:00, and 18:00 UTC boundary D",
             "price_block": "96 exact coherent BTCUSDT five-minute bars aggregated from 480 unique one-minute rows in [D-8h,D)",
             "block_return": "log(last completed close/first completed open), finite strict nonzero",
-            "realized_variation": "sqrt(sum of 96 squared five-minute close-to-close log returns), finite strict positive",
+            "realized_variation": "sqrt(sum of 96 squared five-minute intrabar log(close/open) returns), finite strict positive",
             "oi_path": "97 exact positive BTCUSDT period=5m observations from D-8h through D; timestamp<=D; no imputation",
             "oi_change": "log(last/first OI), finite strict nonzero",
             "variation_rank": "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded",
