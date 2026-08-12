@@ -1,0 +1,170 @@
+{
+  "protocol_version": "high_volatility_cross_alt_passive_absorption_consensus_relay_v1",
+  "policy_id": "HVCAPAC-8",
+  "slug": "high_volatility_cross_alt_passive_absorption_consensus_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "When at least four of six liquid alt perpetuals finish in one common direction despite aggregate aggressive quote flow pushing in the opposite direction, and each contradiction is unusually strong versus its own history, passive liquidity has absorbed broad urgent inventory. During elevated BTC variation, propagate the resilient price direction into BTC for eight hours.",
+    "side": "strict common completed-return sign among at least four extreme per-alt absorption states",
+    "why_distinct": "BTC absorption candidates use one instrument and fixed halves or late windows. HVCARTOFA uses the cubic tail shape of alt flow without price contradiction. HVDCAFC uses raw daily flow direction. HVCAPAC separately measures each alt return-versus-aggressive-flow contradiction, ranks its multiplicative absorption strength by own history, and requires a common resilient price direction; it uses no BTC direction, funding, OI, premium, fitted outcome, prior event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed trailing twenty-four-hour BTC realized variation must rank in its causal upper 35 percent, selecting July-like volatile states",
+    "why_low_gross9_overlap_is_plausible": "offset cross-alt passive-absorption breadth onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 04:00, 12:00, and 20:00 UTC boundaries D",
+    "alt_block": "480 exact coherent bars_binance one-minute rows per alt over [D-8h,D)",
+    "alt_return": "log(last completed close/first completed open), finite strict nonzero",
+    "alt_flow": "sum(2*taker_buy_quote-quote_asset_volume)/sum(quote_asset_volume), finite strict nonzero with positive denominator",
+    "absorption": "strict sign(alt_return)=-strict sign(alt_flow)",
+    "absorption_strength": "abs(alt_return)*abs(alt_flow), finite strict positive",
+    "strength_rank": "per-symbol strict-prior midrank over at most 270 earlier jointly source-valid decisions, minimum 180, current excluded",
+    "tail_alt": "absorption and strength_rank>=0.75",
+    "consensus": "at least four tail alts have one common strict return sign; larger breadth wins and equal positive/negative breadth rejects",
+    "consensus_strength": "median strength_rank among selected-side tail alts",
+    "btc_realized_variation": "sqrt(sum squared exact BTCUSDT one-minute log(close/open) returns over [D-24h,D)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "eligible_state": "source-valid absorption consensus and variation gate",
+    "onset": "eligible now and immediately previous exact source-valid decision ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after all completed paths and flows are available",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact held-interval funding only after novelty"
+  },
+  "policy": {
+    "block_minutes": 480,
+    "history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "absorption_strength_rank_min": 0.75,
+    "minimum_consensus_breadth": 4,
+    "variation_hours": 24,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_absorption_tail",
+      "no_variation_gate",
+      "flow_confirmation_consensus",
+      "one_block_stale_absorption",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "DOGEUSDT",
+        "ADAUSDT"
+      ],
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "database_symbol_coverage_metadata_only_opened_before_preregistration": true,
+    "prior_btc_absorption_alt_flow_tail_and_daily_flow_outcomes_known": true,
+    "repository_cross_alt_per_symbol_flow_price_absorption_consensus_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent broad passive-liquidity absorption mechanism"
+  },
+  "stopping_rule": "terminal first failure; no universe, block, flow, strength, history, rank, breadth, variation, onset, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "37abda841db4437390722a89cf24bb83a8e4b6e61c7d3495526510f85a812fa8"
+}
