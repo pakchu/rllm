@@ -1,0 +1,233 @@
+"""Outcome-blind preregistration for HVRNAR-8."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+POLICY_ID = "HVRNAR-8"
+DEFAULT_OUTPUT = Path(
+    "results/high_volatility_round_number_acceptance_relay_preregistration_2026-08-12.json"
+)
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "high_volatility_round_number_acceptance_relay_v1",
+        "policy_id": POLICY_ID,
+        "as_of_date": "2026-08-12",
+        "singleton": True,
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "mechanism": {
+            "claim": (
+                "A psychological round-number price level can concentrate limit orders and attention. "
+                "During elevated BTC variation, a completed thirty-minute auction wholly on one side "
+                "of a crossed USD 1,000 boundary after the preceding thirty-minute auction was wholly "
+                "on the other side demonstrates acceptance rather than a transient touch; follow the "
+                "accepted side for eight elapsed hours."
+            ),
+            "side": "long after upward round-number acceptance and short after the exact mirror",
+            "why_distinct": (
+                "Donchian and range-retest candidates use rolling endogenous extrema; close-location, "
+                "VWAP and moving-average candidates use sample-derived anchors. HVRNAR uses only the "
+                "exogenous fixed USD 1,000 lattice and requires every completed five-minute close in "
+                "two disjoint thirty-minute auctions to lie strictly on opposite sides of one lattice "
+                "level. It uses no fitted outcome, volume, flow, OI, funding, premium, prior event set, "
+                "diagnostic control, or data-selected price level."
+            ),
+            "why_suited_to_volatile_regimes": (
+                "completed trailing twenty-four-hour realized variation must rank in its causal upper "
+                "35%, restricting barrier migration to July-like volatile markets"
+            ),
+            "why_low_gross9_overlap_is_plausible": (
+                "irregular causal crossings of an exogenous price lattice with an eight-hour reservation "
+                "are absent from Gross9 primitives"
+            ),
+        },
+        "features": {
+            "decision_grid": "every exact UTC five-minute boundary D",
+            "source_bars": (
+                "twelve exact coherent BTCUSDT five-minute aggregates from sixty unique one-minute "
+                "rows [D-60m,D), split into six prior and six current closes"
+            ),
+            "round_lattice": (
+                "all strictly positive integer multiples of USD 1,000; the increment is fixed before "
+                "source incidence and is never estimated from BTC prices"
+            ),
+            "upward_acceptance": (
+                "there exists exactly one lattice level K such that all six prior closes are strictly "
+                "below K and all six current closes are strictly above K"
+            ),
+            "downward_acceptance": (
+                "there exists exactly one lattice level K such that all six prior closes are strictly "
+                "above K and all six current closes are strictly below K"
+            ),
+            "ambiguity": (
+                "zero qualifying levels, more than one qualifying level, or any close exactly equal to "
+                "the level is ineligible"
+            ),
+            "realized_variation": (
+                "sqrt(sum squared exact five-minute open-to-close log returns) over 288 completed "
+                "five-minute bars [D-24h,D); finite strict positive"
+            ),
+            "variation_rank": (
+                "strict-prior midrank over at most 8640 earlier source-valid five-minute decisions, "
+                "minimum 6048, current excluded; rank>=0.65"
+            ),
+            "event": (
+                "the first source-valid boundary satisfying one acceptance direction; global reservation "
+                "suppresses later signals while held, so no separate threshold-onset repair is used"
+            ),
+            "no_imputation": True,
+        },
+        "clock": {
+            "decision": "D after every source close through D-5m is complete",
+            "entry": "exact BTCUSDT perpetual D+5m open",
+            "side": "+1 upward, -1 downward",
+            "hold": "8 elapsed hours",
+            "reservation": "global half-open; earliest event wins; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding": "not a signal input; exact held settlements only after novelty passes",
+            "rv20": "q90 audit only after the unchanged candidate passes every economic stage",
+        },
+        "policy": {
+            "round_increment_usd": 1000.0,
+            "auction_minutes": 30,
+            "five_minute_closes_per_auction": 6,
+            "variation_minutes": 1440,
+            "variation_history_decisions": 8640,
+            "variation_minimum_decisions": 6048,
+            "variation_rank_min": 0.65,
+            "entry_delay_minutes": 5,
+            "hold_hours": 8,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.20,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.10,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.10,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every "
+                "held five-minute bar favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged train/test/eval/final pass",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_variation_gate",
+                "single_close_cross_instead_of_acceptance",
+                "one_decision_stale_acceptance",
+                "direction_flip",
+                "forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "bars": {
+                "table": "bars_binance",
+                "symbol": "BTCUSDT",
+                "interval": "1m",
+                "columns": ["ts", "open", "high", "low", "close"],
+                "window": ["2023-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+                "read_after_preregistration": True,
+            },
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "repository_round_number_or_price_clustering_candidate_found": False,
+            "nearby_range_breakout_retest_and_level_occupation_outcomes_known": True,
+            "prior_event_sets_or_controls_reused": False,
+            "prior_outcomes_used_to_set_lattice_acceptance_variation_side_hold_or_clock": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": (
+                "independent psychological price-barrier acceptance mechanism on a fixed exogenous USD lattice"
+            ),
+        },
+        "stopping_rule": (
+            "terminal first-failure sequence: source support, Gross9 novelty, train/test/eval/final "
+            "strict economics, then RV20 q90 audit; no lattice increment, auction, variation, rank, "
+            "side, hold, clock, subset, threshold, source, or control repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(payload: dict[str, Any]) -> None:
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    if payload.get("manifest_hash") != canonical_hash(core) or payload != build():
+        raise RuntimeError("HVRNAR preregistration drift")
+    if payload["outcomes_opened"] or payload["source_incidence_opened"] or payload["gross9_rows_opened"]:
+        raise RuntimeError("HVRNAR evidence boundary opened")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    payload = build()
+    validate(payload)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+    )
+    print(args.output)
+
+
+if __name__ == "__main__":
+    main()
