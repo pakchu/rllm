@@ -1,0 +1,3 @@
+# HVCBFC-8 source terminal decision — 2026-08-13
+
+HVCBFC-8 is terminally rejected unchanged at source support. Train/test/eval/final contain 15/21/23/18 events, and every minimum-count and side-balance check passes. The final split has 10 of 18 events in its largest month, a 0.55556 share above the frozen 0.45 maximum; all earlier month-concentration checks pass. A second execution reproduced every source, clock, control and report artifact byte-identically. Gross9 rows, economic outcomes, funding and RV20 remain unopened; no feedback formula, rank, onset, side, clock, hold, subset, threshold or control repair is authorized.
