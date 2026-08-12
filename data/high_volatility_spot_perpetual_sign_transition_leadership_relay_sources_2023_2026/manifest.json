@@ -1,0 +1,27 @@
+{
+  "protocol_version": "hvspstl_8_btc_source_v1",
+  "queries": {
+    "perpetual": "\nSELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "spot": "\nSELECT ts,open,high,low,close\nFROM bars_binance_spot\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n"
+  },
+  "tables": [
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-03-01T01:00:00+00:00",
+    "2026-08-01T01:00:00+00:00"
+  ],
+  "exact_candidate_outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_spot_perpetual_sign_transition_leadership_relay_sources_2023_2026/eight_hour_sign_transition_panel.csv.gz",
+    "sha256": "d08f89926a0efcbd9d069e1d50d3309b0c2dbe4cefb6bdd8607693d4cf9aeb6b",
+    "rows": 3747,
+    "valid_rows": 682
+  },
+  "manifest_hash": "c540ffe380fffd9db16cd14e8a9d8f7c6e1082f9a483881379964ac9c3956b47"
+}
