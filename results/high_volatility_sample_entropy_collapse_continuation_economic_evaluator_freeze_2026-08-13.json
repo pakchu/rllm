@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvsenc_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVSENC-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_sample_entropy_collapse_continuation_economics.py",
+    "sha256": "c47c98d58f68e0a36de694e55cc34f4a4199177d2e5933757a7101f424ef7f0e"
+  },
+  "authorization": {
+    "path": "results/high_volatility_sample_entropy_collapse_continuation_gross9_novelty_2026-08-13.json",
+    "sha256": "58f9737e6b00f8eb778a2274258cb9219e66b844d849f57331a3e71150fa53bb"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "57c4b1f48d52d4758de2f7ec5efd23a94013a8103fa5663fdc9d9fc029b49841"
+}
