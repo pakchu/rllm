@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvkid_8_source_v1",
+  "query": "WITH source AS (\n SELECT ts,'upbit'::text AS venue,open,high,low,close,volume FROM bars_upbit WHERE symbol='KRW-BTC' AND interval='1m' AND ts>=:start AND ts<:end\n UNION ALL\n SELECT ts,'binance'::text AS venue,open,high,low,close,volume FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end)\nSELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,venue,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,sum(volume) AS base_volume,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND volume>=0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM source GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "aafda4a7420cc967110efd45143a9ac7511b907428ba14027a535b49f77b17d0",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 752408,
+  "builder": {
+    "path": "training/build_high_volatility_korean_impact_dominance_relay_support.py",
+    "sha256": "6dc1bab3ff76ae1daf1b3673eb9e3212559beedfd63541ff56091a59f5f55a2f"
+  },
+  "panel": {
+    "path": "data/high_volatility_korean_impact_dominance_relay_sources_2023_2026/scheduled_impact_states.csv.gz",
+    "sha256": "e54b69221e845bf4257d436ae6ad4d474679f674cedc1bfa2ec1fa630f2fb530",
+    "rows": 3924,
+    "valid_rows": 802
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "53583ca439efb6e15cc2e592924eae8c2560001c6f1f62f7edff24b8018ea267"
+}
