@@ -6,4 +6,4 @@ def test_empty_diagnostic_clock_is_valid(tmp_path):
  with gzip.open(p,'wt') as f:f.write('entry_time,exit_time,side\n')
  x=e.load_clock_allow_empty(p,'train',pd.Timestamp('2023-07-01T00:00:00Z'),pd.Timestamp('2024-01-01T00:00:00Z'));assert x.empty
 def test_frozen_contract():
- assert e.CONTROLS==('no_variation_gate','no_shock_tail','three_alt_consensus','absolute_return_shock','one_decision_stale_shock','direction_flip','forced_long');assert e.LEVERAGE==.5 and e.BASE_COST==.0006 and e.STRESS_COST==.001;assert 'load_clock_allow_empty' in open(e.__file__).read()
+ assert e.CONTROLS==('no_variation_gate','no_quarticity_tail','three_alt_consensus','variance_weighted_score','one_decision_stale_consensus','direction_flip','forced_long');assert e.LEVERAGE==.5 and e.BASE_COST==.0006 and e.STRESS_COST==.001;assert 'load_clock_allow_empty' in open(e.__file__).read()
