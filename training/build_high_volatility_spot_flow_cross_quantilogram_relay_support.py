@@ -17,6 +17,7 @@ from training.build_binance_aggtrade_microstructure import _write_gzip_csv
 
 ENV_FILE = "/home/pakchu/rllm/.env"
 PREREG_SHA = "dac611d36a71b6536c0d5d96a4e18c2bcc1106f6ee29db24ea252e931baee76f"
+POLICY_ID = "HVSFCQ-8"
 START = pd.Timestamp("2023-01-01T02:00:00Z")
 END = pd.Timestamp("2026-08-01T02:00:00Z")
 SOURCE_DIR = Path("data/high_volatility_spot_flow_cross_quantilogram_relay_sources_2023_2026")
@@ -225,7 +226,7 @@ def clock(frame: pd.DataFrame, control: str = "primary") -> pd.DataFrame:
         if split is None:
             continue
         rows.append({
-            "candidate": prereg.POLICY_ID, "control": control, "split": split,
+            "candidate": POLICY_ID, "control": control, "split": split,
             "decision_time": decision, "feature_available_time": decision, "entry_time": entry,
             "exit_time": exit_time, "side": int(side.at[index]),
             "lower_cross_quantilogram":float(frame.at[index,"lower_cross_quantilogram"]),"upper_cross_quantilogram":float(frame.at[index,"upper_cross_quantilogram"]),
@@ -264,7 +265,7 @@ def run() -> dict[str, Any]:
     passed = all(checks.values())
     registration = json.loads(prereg.DEFAULT_OUTPUT.read_text())
     core = {
-        "protocol_version": "hvsfcq_8_source_support_v1", "policy_id": prereg.POLICY_ID,
+        "protocol_version": "hvsfcq_8_source_support_v1", "policy_id": POLICY_ID,
         "preregistration": {"path": str(prereg.DEFAULT_OUTPUT), "sha256": PREREG_SHA, "manifest_hash": registration["manifest_hash"]},
         "source_manifest": {"path": str(SOURCE_MANIFEST), "sha256": sha(SOURCE_MANIFEST), "manifest_hash": source_manifest["manifest_hash"]},
         "completed_preentry_sources_opened": True, "postentry_return_pnl_execution_price_opened": False, "funding_values_opened":False, "gross9_rows_opened": False,

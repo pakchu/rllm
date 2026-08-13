@@ -23,5 +23,6 @@ def test_primary_onset_uses_active_tail_and_confirmation():
 
 
 def test_contract_is_frozen():
+    assert s.POLICY_ID=='HVSFCQ-8'
     assert s.PREREG_SHA=='dac611d36a71b6536c0d5d96a4e18c2bcc1106f6ee29db24ea252e931baee76f'
     assert s.CONTROLS==('no_cross_quantilogram_tail','no_variation_gate','same_minute_cross_quantilogram','one_decision_stale_dependence','direction_flip','forced_long')
