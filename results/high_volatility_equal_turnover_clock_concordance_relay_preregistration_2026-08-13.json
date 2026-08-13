@@ -1,0 +1,166 @@
+{
+  "protocol_version": "high_volatility_equal_turnover_clock_concordance_relay_v1",
+  "policy_id": "HVETCC-8",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In a completed volatile eight-hour BTC auction, one common direction across four sequential equal-quote-turnover intrinsic-time segments means price discovery persisted through every participation quartile rather than being produced by one physical-time burst; follow that direction for eight elapsed hours.",
+    "side": "common strict sign of all four equal-turnover-clock segment returns",
+    "why_distinct": "HVETCC partitions one fixed BTC block by cumulative quote-turnover quartiles and signs the within-minute returns assigned to those endogenous participation-time segments. Dynamic volume-bucket toxicity uses irregular buckets and taker-flow imbalance; volume-weighted median migration estimates an accepted-value center; equal-variance-clock concordance partitions by squared returns; temporal persistence uses fixed elapsed-time segments. HVETCC uses no taker split, funding, OI, premium, fitted outcome, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed eight-hour realized variation must occupy its causal upper thirty-five percent and directional persistence must survive all four participation-time quartiles",
+    "why_low_gross9_overlap_is_plausible": "offset fixed UTC clocks filtered by endogenous equal-turnover segment unanimity are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 02:00, 10:00, and 18:00 UTC boundaries",
+    "source_block": "480 exact coherent BTCUSDT perpetual one-minute rows over [D-8h,D), each with finite positive OHLC and finite strictly positive quote_asset_volume",
+    "minute_return": "log(close/open) within each completed minute, finite",
+    "quote_turnover": "quote_asset_volume for each completed minute; completed block total finite and strictly positive",
+    "turnover_clock_assignment": "minute i belongs to segment min(3,floor(4*cumulative_quote_turnover_before_i/total_quote_turnover)); minutes are indivisible and assignment is fixed before adding minute i turnover",
+    "segment_validity": "each of four ordered turnover-clock segments contains at least one minute",
+    "segment_return": "sum of one-minute log(close/open) returns assigned to each turnover-clock segment, each finite and strictly nonzero",
+    "concordance": "all four segment returns have one common strict sign",
+    "variation": "sqrt(sum squared one-minute log(close/open) returns over [D-8h,D)), finite and strictly positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "eligibility": "source-valid, four nonempty strict-nonzero segments, concordance, and variation-rank gate",
+    "onset": "eligible now and the immediately previous source-valid decision was ineligible; absence of a rank after insufficient history counts as ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "decision boundary after all 480 source minutes complete",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "common segment-return sign",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "bar_minutes": 1,
+    "path_minutes": 480,
+    "turnover_segments": 4,
+    "decision_hours": [
+      2,
+      10,
+      18
+    ],
+    "variation_history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "three_of_four_concordance",
+      "equal_physical_time",
+      "one_decision_stale_geometry",
+      "direction_flip",
+      "same_clock_forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "window": [
+        "2023-05-25T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "volume_clock_definition_read": true,
+    "repository_exact_equal_turnover_clock_concordance_candidate_found": false,
+    "adjacent_volume_bucket_value_anchor_equal_variance_and_temporal_persistence_candidates_known": true,
+    "adjacent_candidate_outcomes_used_to_set_formula_side_hold_clock_or_threshold": false,
+    "prior_event_sets_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "fixed four-segment quote-turnover intrinsic-clock concordance under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no source block, turnover clock, segment count, concordance, variation rank, onset, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "origin": "volume-clock and intrinsic-time transformation",
+    "fixed_definition": "use cumulative BTCUSDT perpetual one-minute quote turnover as the clock and split ordered indivisible minutes at 25%, 50%, and 75% of completed total turnover",
+    "selection_use": "the equal-turnover time change only; no directional return, incidence, or outcome claim is imported"
+  },
+  "manifest_hash": "c0bf85ad5ff673077fbae542c741c6fe91d16dc6075fa24c910156843753c9fa"
+}
