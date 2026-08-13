@@ -1,0 +1,256 @@
+"""Outcome-blind preregistration for HVEPUVBT-24."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+POLICY_ID = "HVEPUVBT-24"
+DEFAULT_OUTPUT = Path(
+    "results/high_volatility_epu_var_below_threshold_relay_preregistration_2026-08-13.json"
+)
+EPU_SOURCE = Path("data/us_daily_epu_1985_2026_aug.csv")
+EPU_SOURCE_SHA256 = "63c8f211299d9fda371317eb899180f422272408ee3410b5689809958849b793"
+MARKET = Path("data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz")
+MARKET_SHA256 = "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+EPU_URL = "https://www.policyuncertainty.com/media/All_Daily_Policy_Data.csv"
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "high_volatility_epu_var_below_threshold_relay_v1",
+        "policy_id": POLICY_ID,
+        "as_of_date": "2026-08-13",
+        "singleton": True,
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "mechanism": {
+            "claim": (
+                "A causal bivariate EPU/BTC VAR forecast can transfer slow-moving policy-uncertainty information "
+                "into the next Bitcoin day. During elevated completed BTC variation, follow the forecast sign when "
+                "its magnitude is no larger than its real-time historical dispersion; for an extreme forecast, "
+                "retain the paper's buy-and-hold long state."
+            ),
+            "side": (
+                "sign(one-day BTC forecast) when abs(forecast)<=strictly causal expanding forecast standard "
+                "deviation; otherwise +1; exact zero forecast rejects"
+            ),
+            "external_support": {
+                "paper": (
+                    "Arain and Snudden (2026), When Are Statistical Forecast Gains Economically Relevant? "
+                    "Evidence From Bitcoin Returns, Journal of Forecasting 45(3), 1245-1260"
+                ),
+                "doi": "10.1002/for.70077",
+                "paper_fixed_facts": [
+                    "daily bivariate VARs are re-estimated in real time with an expanding window",
+                    "the below-threshold rule trades forecast direction only when absolute forecast magnitude is no greater than its expanding real-time forecast standard deviation and otherwise holds BTC long",
+                    "the EPU below-threshold long-short portfolio reports 131.27 percent cumulative return and an excess-profitability p-value of 0.081 in the paper's October 2021 through February 2024 evaluation",
+                ],
+                "implementation_choices_not_claimed_as_replication": [
+                    "VAR(1) with intercept rather than daily AIC lag reselection because the paper does not disclose a reproducible maximum lag in the article text",
+                    "a deliberately conservative D+2 00:00 UTC EPU availability clock",
+                    "paired causal state z_T=[BTC return ending T, EPU level change for source day T-2]",
+                    "an expanding model beginning in 2020 with fixed minimum histories, a causal BTC variation gate, Binance execution, and a 24-hour hold",
+                ],
+            },
+            "why_distinct": (
+                "The terminal HVEPUH-24 candidate traded the sign of an extreme log EPU change and did not fit a "
+                "forecast model or apply the published forecast-dispersion state rule. Repository-wide scans found "
+                "no EPU/BTC VAR or below-threshold forecast candidate. This candidate reuses neither HVEPUH's "
+                "source-tail event set nor any diagnostic control."
+            ),
+            "why_suited_to_volatile_regimes": (
+                "The cited study is explicitly motivated by forecast stability during large Bitcoin swings, and "
+                "the frozen adaptation admits positions only when causal completed BTC daily variation ranks in "
+                "its upper thirty-five percent."
+            ),
+            "why_low_gross9_overlap_is_plausible": (
+                "A delayed official newspaper-uncertainty state filtered by an expanding forecast-dispersion rule "
+                "is absent from Gross9 primitives."
+            ),
+        },
+        "features": {
+            "daily_state": (
+                "At decision T 00:00 UTC, btc_return_T=log(BTC open_T/BTC open_T-1d) and "
+                "epu_change_T=EPU[T-2d]-EPU[T-3d]; both EPU days must be exact consecutive finite positive rows"
+            ),
+            "availability": (
+                "EPU source day D first becomes usable at D+2 00:00 UTC; BTC open at T and every component of "
+                "the trailing day are complete at T; no same-day or D+1 EPU use"
+            ),
+            "var": (
+                "For every T, OLS-estimate a bivariate VAR(1) with intercept on all eligible paired daily states "
+                "from 2020-01-04 through T-1. Dependent rows and one-row lags must be finite, with at least 730 "
+                "dependent rows. Forecast btc_return_T+1 from the current paired state z_T."
+            ),
+            "forecast_dispersion": (
+                "sample standard deviation (ddof=1) of all strictly prior finite one-step BTC forecasts, current "
+                "excluded, from the first available forecast, with at least 365 prior forecasts"
+            ),
+            "threshold_state": (
+                "abs(current forecast)<=forecast dispersion maps to strict forecast sign; abs(current forecast)>" 
+                "forecast dispersion maps +1; equality is below-threshold as in the paper; zero rejects"
+            ),
+            "btc_variation": (
+                "sqrt(sum squared log(close/open)) over 1,440 exact BTCUSDT 1m bars in [T-24h,T)"
+            ),
+            "btc_variation_rank": (
+                "strict-prior midrank against at most 270 previous valid daily variations, minimum 180, current "
+                "excluded; rank>=0.65"
+            ),
+            "missing": "missing, duplicate, nonpositive, nonconsecutive, rank-history, VAR-rank, or BTC-grid drift rejects; no imputation",
+        },
+        "clock": {
+            "decision": "daily 00:00 UTC after all frozen features are causally available",
+            "entry": "exact BTCUSDT five-minute open at decision+5m",
+            "hold": "24 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+        },
+        "policy": {
+            "var_lags": 1,
+            "var_expanding_start": "2020-01-04",
+            "var_minimum_dependent_rows": 730,
+            "forecast_dispersion_minimum": 365,
+            "variation_prior_days": 270,
+            "variation_prior_minimum": 180,
+            "variation_midrank_min": 0.65,
+            "publication_delay_days": 2,
+            "entry_delay_minutes": 5,
+            "hold_hours": 24,
+            "gross_exposure": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.20,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.10,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.10,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m "
+                "favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged candidate passes train, test, eval, and final",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+            "cannot_repair_or_promote": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_btc_variation_gate",
+                "always_forecast_sign",
+                "one_day_stale_forecast",
+                "direction_flip",
+                "btc_ar_only",
+                "same_clock_forced_long",
+            ],
+            "diagnostic_controls_cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "epu": {
+                "url": EPU_URL,
+                "path": str(EPU_SOURCE),
+                "sha256": EPU_SOURCE_SHA256,
+                "prior_snapshot_reused_after_preregistration_commit": True,
+            },
+            "btc_1m": {
+                "table": "bars_binance",
+                "symbol": "BTCUSDT",
+                "interval": "1m",
+                "columns": ["ts", "open", "close"],
+                "read_only": True,
+            },
+            "historical_market": {"path": str(MARKET), "sha256": MARKET_SHA256},
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "prior_epu_source_rows_opened_for_terminal_hvepuh": True,
+            "prior_direct_epu_candidate_outcomes_known": True,
+            "source_values_used_to_select_var_or_threshold_rule": False,
+            "exact_hvepuvbt_incidence_opened": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "paper_rule_fixed_before_candidate_incidence": True,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": "published EPU/BTC VAR below-threshold profitability plus explicit high-variation targeting",
+        },
+        "stopping_rule": (
+            "terminal first-failure sequence: source support, Gross9 novelty, train/test/eval/final strict economics, "
+            "then RV20 q90 audit; no source, predictor, lag, history, threshold, side, hold, clock, subset, model, "
+            "comparator, or control repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(value: dict[str, Any]) -> None:
+    core = {key: item for key, item in value.items() if key != "manifest_hash"}
+    if value.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("HVEPUVBT preregistration hash drift")
+    if value["outcomes_opened"] or value["source_incidence_opened"] or value["gross9_rows_opened"]:
+        raise RuntimeError("HVEPUVBT research boundary drift")
+    if hashlib.sha256(MARKET.read_bytes()).hexdigest() != MARKET_SHA256:
+        raise RuntimeError("HVEPUVBT market snapshot drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    validate(result)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(
+        json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+    )
+    print(args.output)
