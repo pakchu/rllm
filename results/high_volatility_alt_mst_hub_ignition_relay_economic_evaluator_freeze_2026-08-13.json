@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvamst_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVAMST-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_alt_mst_hub_ignition_relay_economics.py",
+    "sha256": "f1646f8d616a09e0498853b88c40866a4e7d5e95f406fea78eb67138462e86e4"
+  },
+  "authorization": {
+    "path": "results/high_volatility_alt_mst_hub_ignition_relay_gross9_novelty_2026-08-13.json",
+    "sha256": "ba686efd8f51b37c6bab1f174c4bdc7b71074d76bf63e58142b509361caf5e10"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "acbd24ee44d72c15599e2cc0866cdbcf9862ff04745dd568a59a3001e5e77488"
+}
