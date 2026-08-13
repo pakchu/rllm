@@ -1,0 +1,175 @@
+{
+  "protocol_version": "high_volatility_cross_alt_realized_quarticity_concentration_spillover_relay_v1",
+  "policy_id": "HVCARQ-6",
+  "slug": "high_volatility_cross_alt_realized_quarticity_concentration_spillover_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "At three fixed daily decisions, simultaneous upper-tail realized-quarticity concentration in at least four liquid alt perpetuals identifies a broad few-jump information wave rather than diffuse variance. During elevated BTC variation, BTC follows the quarticity-weighted common completed alt displacement for six hours.",
+    "side": "strict sign of the selected-alt realized-quarticity-weighted eight-hour displacement consensus",
+    "why_distinct": "Variance-shock propagation ranks one-hour quadratic variation, cojump propagation thresholds individual five-minute returns, return-tail asymmetry uses a cross-sectional cubic endpoint statistic, and BTC realized-quarticity concentration is single-asset. HVCARQ applies a scale-free fourth-moment concentration statistic separately to each alt's completed eight-hour path, selects own-history quarticity tails, and transfers only their broad signed consensus into BTC. It reuses no event set or control and uses no BTC return direction, volume, flow, funding, OI, premium, or fitted outcome.",
+    "why_suited_to_volatile_regimes": "BTC completed twenty-four-hour realized variation must rank in its causal upper 35 percent against strictly prior scheduled decisions, while the alt filter distinguishes concentrated jump-like volatility from diffuse noise.",
+    "why_low_gross9_overlap_is_plausible": "02:35, 10:35 and 18:35 UTC entries conditioned on cross-alt fourth-moment concentration are absent from Gross9 primitive clocks."
+  },
+  "features": {
+    "bars": "exact five-minute OHLC aggregated from five consecutive bars_binance one-minute rows; all seven symbols complete, finite, positive, coherent; no imputation",
+    "decision_times": "every calendar day at exact 02:30, 10:30 and 18:30 UTC",
+    "five_minute_return": "log(close/open)",
+    "alt_path": "96 completed five-minute returns ending at decision for each alt",
+    "realized_quarticity_concentration": "96*sum(return^4)/(sum(return^2)^2), finite with strictly positive denominator",
+    "alt_displacement": "sum of the same 96 returns, finite strict nonzero for a selected alt",
+    "quarticity_rank": "for each alt independently, strict-prior midrank of quarticity over at most 120 prior jointly valid scheduled decisions, minimum 60, current excluded; selected when rank>=0.75",
+    "score": "sum(quarticity*sign(displacement) over selected alts)/sum(quarticity over selected alts)",
+    "consensus_gate": "at least four selected alts, abs(score)>=0.60, and at least three selected displacement signs equal score sign",
+    "btc_realized_variation": "sqrt(sum squared exact BTC five-minute log(close/open) returns over [D-24h,D))",
+    "variation_rank": "strict-prior midrank over 20 prior jointly source-valid scheduled decisions, minimum 15, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact daily 02:30, 10:30 or 18:30 UTC",
+    "entry": "exact BTCUSDT perpetual decision+5m open",
+    "side": "score sign",
+    "hold": "6 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "path_bars": 96,
+    "quarticity_prior_decisions": 120,
+    "quarticity_minimum_decisions": 60,
+    "quarticity_rank_min": 0.75,
+    "minimum_selected_alts": 4,
+    "score_absolute_min": 0.6,
+    "minimum_agreeing_alts": 3,
+    "variation_bars": 288,
+    "variation_prior_decisions": 20,
+    "variation_minimum_decisions": 15,
+    "variation_rank_min": 0.65,
+    "decision_hours_utc": [
+      2,
+      10,
+      18
+    ],
+    "decision_minute": 30,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "no_quarticity_tail",
+      "three_alt_consensus",
+      "variance_weighted_score",
+      "one_decision_stale_consensus",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "market": {
+      "table": "bars_binance",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "ADAUSDT",
+        "DOGEUSDT"
+      ],
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ]
+    },
+    "read_after_preregistration_commit": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_cross_alt_and_single_asset_quarticity_outcomes_known": true,
+    "repository_exact_cross_alt_quarticity_consensus_event_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cross-alt fourth-moment concentration spillover mechanism selected by outcome-blind primitive-gap audit"
+  },
+  "stopping_rule": "terminal first failure; no universe, path, statistic, history, rank, consensus, variation gate, direction, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "565805505cfa7364cac55ae6d36d36df680d907ffc53cb4543ac437ec88ee30c"
+}
