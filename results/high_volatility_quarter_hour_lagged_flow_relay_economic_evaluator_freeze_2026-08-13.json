@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvqhlf_4_economic_evaluator_freeze_v1",
+  "policy_id": "HVQHLF-4",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "/tmp/rllm-alpha-orthogonal-20260718/training/evaluate_high_volatility_quarter_hour_lagged_flow_relay_economics.py",
+    "sha256": "354bb78eb45c4268be152a344a214db1b767856ce410ca6e1f8a9d29577acafa"
+  },
+  "authorization": {
+    "path": "results/high_volatility_quarter_hour_lagged_flow_relay_gross9_novelty_2026-08-13.json",
+    "sha256": "cc369a980f8c4d5fdc4f713bc235b93791ff8977996f8039d336119038099e2f"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "a0942d320af25883dcbfe26365986d9b5f7c64e2d7fa1fcf358d6fc2acfe2166"
+}
