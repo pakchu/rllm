@@ -11,6 +11,13 @@ back toward that center.  The proposed trade faded the excursion direction.
 This is not an independent mechanism: it is the already frozen PSR-30/6
 Premium Snapback Recenter object.
 
+It also collides directly with the later frozen HVPIWR candidate in
+`training/preregister_high_volatility_premium_index_wick_rejection_relay.py`.
+HVPIWR already defines daily premium-index upper/lower wicks relative to the
+daily body, requires a directionally consistent rejection, applies causal
+premium-magnitude and BTC-variation tails, and trades the rejection direction
+for twelve hours.
+
 ## Exact collision
 
 `training/preregister_premium_snapback_recenter.py` already:
@@ -25,7 +32,7 @@ The same implementation also freezes a `simple_level` control containing the
 one-sided excursion without the recenter/path requirements.  Consequently,
 using a candle close-location, wick ratio, range asymmetry, different path
 length, funding-boundary subset, or nearby threshold would only repair or
-reparameterize PSR rather than create a new source object.
+reparameterize PSR or HVPIWR rather than create a new source object.
 
 ## Boundary record
 
@@ -35,4 +42,3 @@ reparameterize PSR rather than create a new source object.
 - No formula, threshold, clock, side, hold, or universe was selected after
   seeing incidence or outcomes.
 - This axis is terminal and will not be repaired or inverted.
-
