@@ -1,0 +1,169 @@
+{
+  "protocol_version": "high_volatility_spot_execution_activity_leadership_relay_v1",
+  "policy_id": "HVSEAL-8",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated BTC variation, spot execution activity that predicts the next perpetual five-minute return more strongly than perpetual activity predicts the next spot return identifies cash-led price discovery. At a fresh upper-tail leadership onset, follow the common sign of the spot-to-perpetual response and completed perpetual displacement for eight elapsed hours.",
+    "side": "common strict sign of the spot-count-to-next-perpetual-return correlation and completed eight-hour perpetual return",
+    "why_distinct": "HVSFLR compares contemporaneous aggressive-flow imbalance strength, HVSPCLR compares return lead-lag, HVTLRR uses one-market quote turnover, HVECE normalizes endpoint displacement by total count, and spot trade-count sponsorship compares count levels. HVSEAL instead compares two directional cross-market predictive execution-count channels inside one completed block. It reuses no prior event set or control and uses no turnover, taker flow, ticket size, funding, OI, premium, fitted outcome, or post-entry data.",
+    "why_suited_to_volatile_regimes": "completed perpetual eight-hour realized variation must occupy its causal upper 35 percent while cross-market predictive activity leadership must occupy its causal upper quartile",
+    "why_low_gross9_overlap_is_plausible": "three fixed daily cross-market execution-activity leadership onsets are absent from Gross9 structural clocks"
+  },
+  "features": {
+    "decision_grid": "exact 00:00/08:00/16:00 UTC boundaries D",
+    "block": "96 exact aligned five-minute aggregates formed from 480 unique coherent BTCUSDT spot and perpetual one-minute rows in [D-8h,D)",
+    "five_minute_execution_count": "sum integer nonnegative number_of_trades over each exact five-minute group, separately for spot and perpetual; every block total strict positive",
+    "activity_coordinate": "log1p(five-minute execution count), separately for spot and perpetual",
+    "next_market_return": "log(next five-minute close/next five-minute open) in the destination market",
+    "spot_to_perpetual_response": "sample Pearson correlation of spot activity_coordinate[t] and perpetual next_market_return[t+1] across 95 ordered pairs; both sample standard deviations strict positive; correlation strict nonzero",
+    "perpetual_to_spot_response": "sample Pearson correlation of perpetual activity_coordinate[t] and spot next_market_return[t+1] across the same 95 ordered pairs; both sample standard deviations strict positive",
+    "leadership_margin": "abs(spot_to_perpetual_response)-abs(perpetual_to_spot_response), finite strict positive",
+    "leadership_rank": "strict-prior midrank of leadership_margin over at most 270 valid fixed blocks, minimum 180, current excluded; rank>=0.75",
+    "perpetual_realized_variation": "sqrt(sum squared perpetual five-minute log(close/open) returns), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 valid fixed blocks, minimum 180, current excluded; rank>=0.65",
+    "completed_perpetual_return": "log(last perpetual close/first perpetual open), finite strict nonzero and same sign as spot_to_perpetual_response",
+    "onset": "eligible now and immediately previous exact source-valid block ineligible; missing previous block cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed eight-hour boundary D",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "common sign of spot-to-perpetual response and completed perpetual return",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty"
+  },
+  "policy": {
+    "prior_blocks": 270,
+    "minimum_prior_blocks": 180,
+    "leadership_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval and final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "source_plan": {
+    "perpetual": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "number_of_trades"
+      ]
+    },
+    "spot": {
+      "table": "bars_binance_spot",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "number_of_trades"
+      ]
+    },
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration_commit": true,
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "no_leadership_tail",
+      "raw_spot_count_level",
+      "no_reverse_channel_comparator",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_spot_perpetual_flow_price_count_and_turnover_outcomes_known": true,
+    "repository_exact_bidirectional_execution_activity_predictive_leadership_event_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent bidirectional cross-market execution-activity price-discovery mechanism selected from schema and formula audit only"
+  },
+  "stopping_rule": "terminal first failure; no activity coordinate, lag, correlation, comparator, rank, onset, variation, confirmation, side, clock, hold, subset, threshold, or control repair",
+  "manifest_hash": "154021ecafe02332930e6a06fa6f4a52540b767af575b171eb54774e3549568c"
+}
