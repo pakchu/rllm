@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvppl_8_source_v1",
+  "query": "SELECT ts,'btc'::text AS venue,open,high,low,close FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end UNION ALL SELECT ts,'premium'::text AS venue,open,high,low,close FROM bars_binance_premium WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY ts,venue",
+  "query_sha256": "85e3e221f0d3a873c90312ed636e13e2b2fe8b976fcfb6cfba3497bba9a4d24d",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 3767024,
+  "builder": {
+    "path": "training/build_high_volatility_premium_price_phase_loop_relay_support.py",
+    "sha256": "7017730049ed987efd79280ac2f02aa445ca51034b0f7368fc037e7a94c183e1"
+  },
+  "panel": {
+    "path": "data/high_volatility_premium_price_phase_loop_relay_sources_2023_2026/scheduled_phase_loop_states.csv.gz",
+    "sha256": "62c132e0075b9831ddfcd834ea7145abe8b413ac8d62387ab2ba4b2fe9b7e431",
+    "rows": 3924,
+    "valid_rows": 3921
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "92d97ea8c7d9c7dcb12226039ecb788d6354fade678cde47f30e448bd607c527"
+}
