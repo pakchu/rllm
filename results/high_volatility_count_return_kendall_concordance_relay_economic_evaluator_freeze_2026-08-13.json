@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvcrkc_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVCRKC-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_count_return_kendall_concordance_relay_economics.py",
+    "sha256": "1571bc15d39a94ea490778ee5f40563100afa5ec0227d7e2ac6f7ad1e2b52d63"
+  },
+  "authorization": {
+    "path": "results/high_volatility_count_return_kendall_concordance_relay_gross9_novelty_2026-08-13.json",
+    "sha256": "695eed16ae1f0f7bd32ecf5cea1ae8ebb1b16279e6b99c9312407a4957079ed7"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "b6cefee0b7a56ce4f0440f12cceb02595c5e67548ec87b38db29d492dced4b69"
+}
