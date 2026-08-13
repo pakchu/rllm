@@ -64,6 +64,25 @@ economic artifact.  Its source result is itself terminal:
 The stress threshold, BTC-variation gate, publication proxy, split, clock, side,
 and hold may not be changed.  Gross9 and economic outcomes remain sealed.
 
+## HVVIXTE-24
+
+The date-latest VIX conditional-transition candidate also has a terminal source
+result despite lacking a prose rejection document:
+
+- preregistration commit: `9f23d0f8`;
+- terminal source commit: `72f8159f`;
+- artifact:
+  `results/high_volatility_vix_transfer_entropy_forecast_relay_support_2026-08-14.json`;
+- train events: 1 versus the frozen minimum of 8;
+- train and test minority-side share: 0%;
+- train maximum-month share: 100%;
+- `support_passed: false`; and
+- decision: `terminal_source_support_reject`.
+
+The conditional state encoding, history, cell support, probability, strength
+rank, variation gate, side, clock, and hold cannot be repaired. Gross9 and
+economic outcomes remain sealed.
+
 ## DeFi lending-rate axis
 
 The next source-blind screen also rejected Maker/Sky DSR or SSR as the next
