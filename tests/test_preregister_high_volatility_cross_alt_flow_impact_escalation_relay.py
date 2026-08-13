@@ -13,9 +13,10 @@ def test_blind_canonical_registration():
 def test_fixed_escalation_spillover_policy():
     payload = s.build()
     assert len(s.ALTS) == 6
-    assert payload["policy"]["path_bars"] == 96
-    assert payload["policy"]["escalation_rank_min"] == 0.70
-    assert payload["policy"]["minimum_selected_alts"] == 4
+    assert payload["policy"]["block_bars"] == 96
+    assert payload["policy"]["half_bars"] == 48
+    assert payload["policy"]["escalation_rank_min"] == 0.65
+    assert payload["policy"]["minimum_selected_alts"] == 3
     assert payload["policy"]["decision_hours_utc"] == [3, 11, 19]
     assert payload["clock"]["hold"] == "8 elapsed hours"
     assert not payload["research_boundary"]["repair_of_prior_candidate"]
