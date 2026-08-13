@@ -2,8 +2,9 @@
 
 ## Decision
 
-Do not resume either apparent unfinished candidate discovered by filename-level
-inventory. Both were already terminal under their frozen no-repair contracts.
+Do not resume any apparent unfinished candidate discovered by filename-level
+inventory. The candidates audited here were already terminal under their
+frozen no-repair contracts.
 
 This audit opened no new source values, candidate incidence, Gross9 rows,
 execution prices, funding rows, post-entry returns, PnL, CAGR, or MDD.
@@ -45,6 +46,23 @@ reproduction failed:
 Passing source-support statistics do not override failed source reproduction.
 Changing provider, adjustment history, symbols, or source binding would repair
 the frozen candidate and is forbidden.
+
+## HVOFSR-24
+
+`HVOFSR-24` appeared to have a source-support artifact but no Gross9 or
+economic artifact.  Its source result is itself terminal:
+
+- preregistration commit: `32aec70a`;
+- terminal source commit: `2e238ab8`;
+- artifact:
+  `results/high_volatility_ofr_financial_stress_relay_support_2026-08-12.json`;
+- train events: 7 versus the frozen minimum of 8;
+- train maximum-month share: 57.14% versus the frozen maximum of 45%;
+- `support_passed: false`; and
+- decision: `terminal_source_support_reject`.
+
+The stress threshold, BTC-variation gate, publication proxy, split, clock, side,
+and hold may not be changed.  Gross9 and economic outcomes remain sealed.
 
 ## DeFi lending-rate axis
 
