@@ -33,8 +33,7 @@ PREREG_SHA256 = "ccf31a13bd1007b0fdeac03b673dbdace89790ba9febaa4909e08c5eb39b4a7
 PREREG_MANIFEST_HASH = "e568bda870769cdd1e589031e500717f8174a26e28510358dd0a15e1f1f36d8d"
 ENDPOINT = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
 METRICS = ("PriceUSD", "AssetEODCompletionTime")
-STATUS_KEYS = frozenset({"PriceUSD-status", "PriceUSD-status-time"})
-RAW_ROW_KEYS = frozenset({"asset", "time", *METRICS, *STATUS_KEYS})
+RAW_ROW_KEYS = frozenset({"asset", "time", *METRICS})
 SOURCE_START = pd.Timestamp("2022-01-01T00:00:00Z")
 SOURCE_END = pd.Timestamp("2026-07-30T00:00:00Z")
 PAGE_SIZE = 10_000
@@ -196,9 +195,6 @@ def parse_source_row(raw: Any) -> dict[str, Any]:
         )
     if raw["asset"] != "usdt":
         raise ValueError("Coin Metrics row asset must be exactly 'usdt'")
-    if not isinstance(raw["PriceUSD-status"], str) or not raw["PriceUSD-status"].strip():
-        raise ValueError("PriceUSD-status must be a non-empty string")
-    _parse_utc(raw["PriceUSD-status-time"], "PriceUSD-status-time")
     observation = _parse_utc(raw["time"], "time")
     if observation != observation.floor("1d") or not SOURCE_START <= observation < SOURCE_END:
         raise ValueError("Coin Metrics observation is not a frozen-interval UTC day")
