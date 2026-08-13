@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvcasi_6_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,symbol,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "bc4a439d8c3bf2a17a584850e7ba26d3bb52f66fdff92eb8e3bb26ac34897bce",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 2636928,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_semivariance_imbalance_cascade_relay_support.py",
+    "sha256": "d0ba541cf5cb0ce9e7c54f4f6316c13f6cff3698cddaed7c3352272e9a13c37a"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_semivariance_imbalance_cascade_relay_sources_2023_2026/scheduled_semivariance_imbalance_states.csv.gz",
+    "sha256": "8e3064e569dc9106dbd19fef8dee2d1f48c0767a2db1bf593d3ea8141812bd83",
+    "rows": 3924,
+    "valid_rows": 3921
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "17e92ac7cdf2e00622e9e156cbb6eafa11dc2edf6b01b42ba9a81c53cb96b1dd"
+}
