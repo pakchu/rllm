@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvseal_8_source_v1",
+  "query": "WITH source AS (\n SELECT ts,'spot'::text AS venue,open,high,low,close,number_of_trades\n FROM bars_binance_spot\n WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\n UNION ALL\n SELECT ts,'perpetual'::text AS venue,open,high,low,close,number_of_trades\n FROM bars_binance\n WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\n)\nSELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,\n venue,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,\n (array_agg(close ORDER BY ts DESC))[1] AS close,sum(number_of_trades) AS execution_count,\n count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,\n bool_and(open>0 AND high>0 AND low>0 AND close>0 AND number_of_trades>=0\n          AND number_of_trades=floor(number_of_trades)\n          AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent\nFROM source GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "955b469fc0288fed173ae15fb3105916a3e247d46a4ad08130ae3ec831225a06",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 753392,
+  "builder": {
+    "path": "training/build_high_volatility_spot_execution_activity_leadership_relay_support.py",
+    "sha256": "13a618b74eb1a81e824c7384b25f370917150094c7e9a015d67fc1e936d09d37"
+  },
+  "panel": {
+    "path": "data/high_volatility_spot_execution_activity_leadership_relay_sources_2023_2026/scheduled_execution_activity_states.csv.gz",
+    "sha256": "86d53579f8265aaac6a9e378b93601be75930bbbdb09a0501eafcde5ba5f4c09",
+    "rows": 3923,
+    "valid_rows": 81
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "59a864f4d323724ab3e7a65e2cb06d6dda8f2cb7b00b7c80333758b4e5a299b4"
+}
