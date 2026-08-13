@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvcrkc_8_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,sum(number_of_trades) AS execution_count,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND number_of_trades>=0 AND number_of_trades=floor(number_of_trades) AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1",
+  "query_sha256": "597756066da6b3e67e95b75d50209052e93065fb2b6cac8a9dbe952849595ed4",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 376704,
+  "builder": {
+    "path": "training/build_high_volatility_count_return_kendall_concordance_relay_support.py",
+    "sha256": "c011bdc5d0b86dec78b706724c135716a56c63153c53f595237418b286897e52"
+  },
+  "panel": {
+    "path": "data/high_volatility_count_return_kendall_concordance_relay_sources_2023_2026/scheduled_concordance_states.csv.gz",
+    "sha256": "fdc1b46de844778ef9d49eeaa2f4a719431a7c0effb0797b2fb7d3aa2957fbde",
+    "rows": 3924,
+    "valid_rows": 3918
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "3bcd5491d6f27afc15e857a77de517eabb5c02cf5c7e25b6e04d81827a5b54b3"
+}
