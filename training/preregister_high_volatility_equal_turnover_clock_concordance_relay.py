@@ -101,7 +101,7 @@ def build() -> dict[str, Any]:
                 "symbol": "BTCUSDT",
                 "interval": "1m",
                 "columns": ["ts", "open", "high", "low", "close", "quote_asset_volume"],
-                "window": ["2023-05-25T00:00:00Z", "2026-08-01T00:00:00Z"],
+                "window": ["2022-12-31T18:00:00Z", "2026-08-01T00:00:00Z"],
                 "read_after_preregistration": True,
             },
             "execution_prices": "sealed until source support and Gross9 novelty pass",

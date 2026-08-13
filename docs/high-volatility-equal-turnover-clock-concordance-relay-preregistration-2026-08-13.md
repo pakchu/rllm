@@ -9,3 +9,5 @@ The candidate is eligible only when all four segments are nonempty, all four seg
 This is not dynamic volume-bucket toxicity, a volume-weighted value anchor, equal-variance time, or fixed-duration persistence. It uses the direction of returns accumulated in four endogenous equal-turnover segments and no taker split, funding, OI, premium, fitted outcome, reused event set, or promoted control.
 
 The source-support, Gross9 novelty, sequential economic, stress, split-half, and conditional RV20 gates are inherited unchanged from the frozen high-volatility protocol. Any first failure is terminal; no formula, clock, threshold, side, hold, subset, or control may be repaired or promoted.
+
+The source extraction begins at 2022-12-31 18:00 UTC so the first 2023-01-01 02:00 decision has its complete trailing block and the causal rank history is populated before the frozen train split.

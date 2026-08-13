@@ -28,6 +28,7 @@ def test_hash_formula_and_gates() -> None:
     assert value["policy"]["variation_history_decisions"] == 270
     assert value["policy"]["minimum_history_decisions"] == 180
     assert value["policy"]["variation_rank_min"] == 0.65
+    assert value["source_plan"]["bars"]["window"][0] == "2022-12-31T18:00:00Z"
     assert value["source_support_gates"]["minimum_events"] == {
         "train": 8,
         "test": 12,
