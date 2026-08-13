@@ -30,8 +30,10 @@ def test_source_row_schema_value_and_completion_window():
     parsed = s.parse_source_row(raw_row("2022-01-01", "1641081601.5"))
     assert parsed["CapMVRVCur"] == "2.5"
     assert parsed["feature_available_time"] == pd.Timestamp("2022-01-02T00:00:01.500000Z")
-    with pytest.raises(ValueError, match=r"after D\+1"):
-        s.parse_source_row(raw_row("2022-01-01", "1641081600"))
+    early = s.parse_source_row(raw_row("2022-01-01", "1641081600"))
+    late = s.parse_source_row(raw_row("2022-01-01", "1641124801"))
+    assert early["feature_available_time"] == pd.Timestamp("2022-01-02T00:00:00Z")
+    assert late["feature_available_time"] == pd.Timestamp("2022-01-02T12:00:01Z")
     with pytest.raises(ValueError, match="positive and finite"):
         s.parse_source_row(raw_row("2022-01-01", "1641081601", "0"))
 
@@ -61,6 +63,31 @@ def test_panel_uses_strict_prior_log_mvrv_and_open_close_variation(monkeypatch):
     assert panel.minute_count.iloc[30] == 1440
     assert panel.btc_variation.iloc[30] == pytest.approx(np.sqrt(1440 * 0.001**2))
     assert bool(panel.source_valid.iloc[30])
+
+
+def test_panel_rejects_early_and_late_completion_per_day_without_aborting(monkeypatch):
+    start = pd.Timestamp("2022-01-01T00:00:00Z")
+    end = start + pd.Timedelta(days=32)
+    monkeypatch.setattr(s, "SOURCE_START", start)
+    monkeypatch.setattr(s, "SOURCE_END", end)
+    observations = pd.date_range(start, end, freq="1d", inclusive="left")
+    completion = observations + pd.Timedelta(days=1, seconds=1)
+    completion = pd.Series(completion)
+    completion.iloc[30] = observations[30] + pd.Timedelta(days=1)
+    completion.iloc[31] = observations[31] + pd.Timedelta(days=1, hours=12, seconds=1)
+    source = pd.DataFrame({
+        "observation_time": observations,
+        "feature_available_time": completion,
+        "CapMVRVCur": np.exp(np.arange(32, dtype=float) / 100.0),
+    })
+    minutes = pd.date_range(
+        start + pd.Timedelta(hours=12), end + pd.Timedelta(hours=12),
+        freq="1min", inclusive="left",
+    )
+    bars = pd.DataFrame({"ts": minutes, "open": 100.0, "close": 100.1})
+    panel = s.build_panel(source, bars)
+    assert not bool(panel.source_valid.iloc[30])
+    assert not bool(panel.source_valid.iloc[31])
 
 
 def clock_panel() -> pd.DataFrame:

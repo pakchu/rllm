@@ -204,10 +204,6 @@ def parse_source_row(raw: Any) -> dict[str, Any]:
     if observation != observation.floor("1d") or not SOURCE_START <= observation < SOURCE_END:
         raise ValueError("Coin Metrics observation is not a frozen-interval UTC day")
     available = _completion_timestamp(raw["AssetEODCompletionTime"])
-    earliest = observation + pd.Timedelta(days=1)
-    decision = earliest + pd.Timedelta(hours=12)
-    if not earliest < available <= decision:
-        raise ValueError("AssetEODCompletionTime must be after D+1 00:00 and no later than D+1 12:00 UTC")
     mvrv = _positive_decimal(raw["CapMVRVCur"], "CapMVRVCur")
     return {
         "observation_time": observation,
