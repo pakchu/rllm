@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvcapo_8_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,symbol,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "bc4a439d8c3bf2a17a584850e7ba26d3bb52f66fdff92eb8e3bb26ac34897bce",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 2636928,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_path_ordered_excursion_dominance_relay_support.py",
+    "sha256": "5189ea8f03e729b75ce39ea9e8d6836f1d03c2466bf1db8066b961cc99b4ad98"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_path_ordered_excursion_dominance_relay_sources_2023_2026/scheduled_path_excursion_states.csv.gz",
+    "sha256": "eed6e0c98bafb0ad2ceeceab1e70ad1d1e65735263c3a80bc40b2ce8ddf3c451",
+    "rows": 3924,
+    "valid_rows": 3921
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "4e99e82cadbdce2ce16e9153fb08b5bda950c9571bec56c04583f9b1f7ddbb7c"
+}
