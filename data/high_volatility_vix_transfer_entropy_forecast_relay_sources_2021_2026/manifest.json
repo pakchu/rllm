@@ -1,0 +1,23 @@
+{
+  "protocol_version": "hvvixte_24_source_v1",
+  "vix": {
+    "path": "data/cboe_volatility_surface_2021_2026/cboe_volatility_surface_2021-01-01_2026-08-07.csv.gz",
+    "sha256": "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0"
+  },
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS ts,\n(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,\n(array_agg(close ORDER BY ts DESC))[1] AS close,count(*) AS source_rows\nFROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1",
+  "btc_table": "bars_binance",
+  "window": [
+    "2021-01-01T00:00:00+00:00",
+    "2026-08-11T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": true,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_vix_transfer_entropy_forecast_relay_sources_2021_2026/decision_features.csv.gz",
+    "sha256": "4d9eaedd0afecb7378541bd94f84ab0c1f662270b9ed1248b9b10ed6626cf306",
+    "rows": 1402,
+    "forecast_valid_rows": 866
+  },
+  "manifest_hash": "cfc3460de107c188368c3fbfd9cb04658c8e1d81863d19010c93e4ab9c19a987"
+}
