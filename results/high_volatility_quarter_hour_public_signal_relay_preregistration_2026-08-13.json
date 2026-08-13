@@ -21,7 +21,8 @@
     "momentum_5": "Wilder RSI(24); stochastic %K(24) and SMA6 %D; stochastic RSI from Wilder RSI(24), rolling 24 range, then two sequential SMA6 smoothings; CCI(24) of typical price with 0.015 mean absolute deviation",
     "trend_9": "close/SMA-1 for windows 4,6,12,20,32,48,96; normalized EMA8(close)-EMA32(close) divided by close; that MACD minus its EMA6",
     "volume_10": "volume/SMA-1 for windows 4,6,12,16,24,32,48; normalized EMA8(volume)-EMA32(volume) divided by volume; that MACD minus its EMA6; (EMA4(ADL)-EMA32(ADL))/SMA32(volume), where ADL cumulatively adds ((2C-H-L)/(H-L))*volume and zero-range bars add zero",
-    "volatility_4": "on 24 bars, lower=mean-2*population_std, middle=mean, upper=mean+2*population_std; (close-lower)/close, (close-middle)/close, (close-upper)/close, and (upper-lower)/middle",
+    "volatility_4": "on 24 bars, lower=mean-2*population_std, middle=mean, upper=mean+2*population_std; (close-lower)/lower, (close-middle)/middle, (close-upper)/upper, and (upper-lower)/middle; all four denominators strict positive",
+    "smoothing_conventions": "all SMA and population-dispersion windows require their full stated bars; recursive EMA uses alpha=2/(span+1), adjust=False, seeded by the first finite input; Wilder RSI uses alpha=1/24 after a 24-change arithmetic-mean seed; stochastic smoothers are full-window SMA6",
     "indicator_validity": "all 28 finite, all required denominators strict nonzero, uninterrupted exact source history, no imputation",
     "causal_rolling_ols": "intercept plus twelve lag-block columns plus all 28 indicators, fitted on at most 8,640 jointly valid quarter-hour samples strictly before T, minimum 5,760, current response excluded, full column rank required",
     "public_signal_component": "sum of the 28 fitted indicator coefficients times current TI28 values; intercept and twelve-lag fitted contribution excluded; finite strict nonzero",
@@ -182,5 +183,5 @@
     ],
     "independent_selection_timing": "the public-signal 12-hour result was documented before HVQHLF-4 economic outcomes were opened"
   },
-  "manifest_hash": "9508323d3c8bb35a53fafef2c61933b32428b0e9901f5acbc84740cc004d0e2b"
+  "manifest_hash": "bdf1e011e4f342582f5d5c94e5e0a79080c16d9582fc8e30aa1c78e984f85e6a"
 }

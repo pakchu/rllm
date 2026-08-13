@@ -10,6 +10,8 @@ def test_public_signal_contract_is_causal_singleton_and_novelty_first() -> None:
     assert value["policy"]["public_strength_rank_min"] == 0.95
     assert value["clock"]["hold"] == "12 elapsed hours"
     assert "[T-30m,T-15m)" in value["features"]["indicator_source"]
+    assert "(close-lower)/lower" in value["features"]["volatility_4"]
+    assert "adjust=False" in value["features"]["smoothing_conventions"]
     assert value["novelty_gates"]["must_pass_before_economics"] is True
     assert value["economic_gates"]["stop_on_first_failure"] is True
     assert value["diagnostic_controls"]["cannot_be_promoted"] is True
