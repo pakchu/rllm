@@ -1,0 +1,171 @@
+{
+  "protocol_version": "high_volatility_cash_volume_temporal_precedence_relay_v1",
+  "policy_id": "HVCVTP-8",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When the quote-turnover-weighted median minute of Binance BTC spot occurs materially before the simultaneous perpetual weighted median minute, cash participation has arrived earlier in the completed auction and leverage is still transmitting that discovery. During elevated BTC variation, follow the direction agreed by both markets and the final two hours for eight elapsed hours.",
+    "side": "common strict sign of completed eight-hour spot and perpetual returns and their final-two-hour returns",
+    "why_distinct": "Cash-participation migration compares spot share of combined turnover between fixed four-hour halves. Spot-flow leadership uses aggressive-flow direction, and single-venue turnover-variation lag compares turnover with variance. HVCVTP treats each venue's full 480-minute quote-turnover path as a temporal probability distribution and compares their weighted median arrival times; it uses no flow sign, aggregate participation share, variance centroid, funding, OI, premium, fitted outcome, reused event, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed perpetual variation and cash temporal precedence must occupy causal upper tails",
+    "why_low_gross9_overlap_is_plausible": "04:05/12:05/20:05 UTC cross-venue volume-arrival onsets are absent from Gross9 clocks"
+  },
+  "features": {
+    "decision_grid": "exact 04:00/12:00/20:00 UTC boundaries D",
+    "block": "480 exact aligned unique coherent BTCUSDT one-minute rows from bars_binance_spot and bars_binance over [D-8h,D)",
+    "quote_turnover": "finite nonnegative quote_asset_volume each minute with strict-positive eight-hour total separately by venue",
+    "weighted_median_minute": "lowest zero-based minute index whose cumulative quote turnover is at least half the venue total",
+    "cash_precedence": "perpetual weighted median minute minus spot weighted median minute, finite strict positive",
+    "precedence_rank": "strict-prior midrank of positive cash_precedence over at most 270 source-valid positive decisions, minimum 180, current excluded; rank>=0.75",
+    "direction_confirmation": "eight-hour and final-two-hour log returns for both spot and perpetual are all strict nonzero with one common sign",
+    "perpetual_variation": "sqrt(sum squared 480 perpetual minute log(close/open) returns), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 jointly source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "onset": "eligible now and immediately previous scheduled jointly source-valid decision ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed aligned eight-hour boundary D",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "common confirmed market-return sign",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty"
+  },
+  "policy": {
+    "prior_decisions": 270,
+    "minimum_prior_decisions": 180,
+    "precedence_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "decision_hours_utc": [
+      4,
+      12,
+      20
+    ],
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval and final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "source_plan": {
+    "spot": {
+      "table": "bars_binance_spot",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ]
+    },
+    "perpetual": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ]
+    },
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration_commit": true,
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_precedence_tail",
+      "no_variation_gate",
+      "mean_arrival_precedence",
+      "one_decision_stale_precedence",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_cash_participation_flow_and_single_venue_timing_outcomes_known": true,
+    "repository_exact_cross_venue_quote_volume_weighted_median_time_precedence_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "reversal_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cross-venue temporal-distribution object selected from formula absence and complete-source metadata only; no prior outcome selected its statistic, side, clock, rank, or hold"
+  },
+  "stopping_rule": "terminal first failure; no venue, volume field, temporal distribution, median, history, rank, variation, confirmation, onset, side, clock, hold, subset, source, or control repair",
+  "manifest_hash": "fecb4073231fff905dd0751ba4f317b1c70d30371fc7847b64f816e74ba55d64"
+}
