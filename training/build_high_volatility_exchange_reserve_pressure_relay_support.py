@@ -31,7 +31,8 @@ POLICY_ID = "HVEXRP-24"
 PREREG_SHA256 = "bb1ed431c3d1fe28235f16d7e53318382999ecb74dbf41ad5cac44561b2fb0d0"
 ENDPOINT = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
 METRICS = ("SplyExNtv", "AssetEODCompletionTime")
-RAW_ROW_KEYS = frozenset({"asset", "time", *METRICS})
+STATUS_KEYS = frozenset({"SplyExNtv-status", "SplyExNtv-status-time"})
+RAW_ROW_KEYS = frozenset({"asset", "time", *METRICS, *STATUS_KEYS})
 SOURCE_START = pd.Timestamp("2022-01-01T00:00:00Z")
 SOURCE_END = pd.Timestamp("2026-07-30T00:00:00Z")  # exclusive; July 29 included
 PAGE_SIZE = 10_000
@@ -197,6 +198,9 @@ def parse_source_row(raw: Any) -> dict[str, Any]:
         )
     if raw["asset"] != "btc":
         raise ValueError("Coin Metrics row asset must be exactly 'btc'")
+    if not isinstance(raw["SplyExNtv-status"], str) or not raw["SplyExNtv-status"].strip():
+        raise ValueError("SplyExNtv-status must be a non-empty string")
+    _parse_utc(raw["SplyExNtv-status-time"], "SplyExNtv-status-time")
     observation = _parse_utc(raw["time"], "time")
     if observation != observation.floor("1d") or not SOURCE_START <= observation < SOURCE_END:
         raise ValueError("Coin Metrics observation is not a frozen-interval UTC day")

@@ -18,6 +18,8 @@ def raw_row(day: str, completion: str, reserve: str = "2500000.5") -> dict[str, 
         "time": f"{day}T00:00:00.000000000Z",
         "SplyExNtv": reserve,
         "AssetEODCompletionTime": completion,
+        "SplyExNtv-status": "reviewed",
+        "SplyExNtv-status-time": f"{day}T00:00:00.000000000Z",
     }
 
 
@@ -49,6 +51,13 @@ def test_source_row_strict_schema_exact_value_and_completion_timestamp() -> None
     assert parsed["feature_available_time"] == pd.Timestamp("2022-01-02T00:00:01.500000Z")
     with pytest.raises(ValueError, match="schema drift"):
         support.parse_source_row({**raw_row("2022-01-01", "1641081601"), "extra": "x"})
+    with pytest.raises(ValueError, match="non-empty string"):
+        support.parse_source_row({**raw_row("2022-01-01", "1641081601"), "SplyExNtv-status": ""})
+    with pytest.raises(ValueError, match="exact ISO-8601"):
+        support.parse_source_row({
+            **raw_row("2022-01-01", "1641081601"),
+            "SplyExNtv-status-time": "not-a-time",
+        })
     with pytest.raises(ValueError, match="positive and finite"):
         support.parse_source_row(raw_row("2022-01-01", "1641081601", "0"))
     with pytest.raises(ValueError, match="sub-microsecond"):
