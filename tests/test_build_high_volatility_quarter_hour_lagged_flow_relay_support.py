@@ -74,6 +74,15 @@ def test_onset_uses_previous_model_valid_observation() -> None:
     assert side[active].tolist() == [1, -1, 1]
 
 
+def test_nonfinite_prediction_is_inactive_with_zero_safe_side() -> None:
+    frame = _features()
+    frame.loc[0, "lagged_flow_prediction"] = np.nan
+    frame.loc[0, "model_valid"] = False
+    active, side = support.active_and_side(frame)
+    assert not bool(active.iloc[0])
+    assert side.iloc[0] == 0
+
+
 def test_global_half_open_reservation_and_equal_exit_entry() -> None:
     frame = _features()
     frame.loc[:, "decision_time"] = pd.to_datetime(

@@ -197,24 +197,22 @@ def derive_features(
     shifted_volume = shifted["volume"].to_numpy(dtype=float)
     source_valid = opening_volume > 0
     shifted_valid = shifted_volume > 0
-    imbalance = pd.Series(
-        np.where(
-            source_valid,
-            (2 * opening["taker_buy_base"].to_numpy(dtype=float) - opening_volume)
-            / opening_volume,
-            np.nan,
-        ),
-        index=decisions,
+    imbalance_values = np.full(len(decisions), np.nan, dtype=float)
+    np.divide(
+        2 * opening["taker_buy_base"].to_numpy(dtype=float) - opening_volume,
+        opening_volume,
+        out=imbalance_values,
+        where=source_valid,
     )
-    shifted_imbalance = pd.Series(
-        np.where(
-            shifted_valid,
-            (2 * shifted["taker_buy_base"].to_numpy(dtype=float) - shifted_volume)
-            / shifted_volume,
-            np.nan,
-        ),
-        index=decisions,
+    shifted_imbalance_values = np.full(len(decisions), np.nan, dtype=float)
+    np.divide(
+        2 * shifted["taker_buy_base"].to_numpy(dtype=float) - shifted_volume,
+        shifted_volume,
+        out=shifted_imbalance_values,
+        where=shifted_valid,
     )
+    imbalance = pd.Series(imbalance_values, index=decisions)
+    shifted_imbalance = pd.Series(shifted_imbalance_values, index=decisions)
     prediction, intercept = causal_rolling_prediction(
         imbalance, lag_count=lag_count, lookback=lookback, minimum=minimum
     )
@@ -367,7 +365,11 @@ def active_and_side(frame: pd.DataFrame, control: str = "primary") -> tuple[pd.S
         & variation
     )
     active = onset_after_previous_valid(valid, eligible)
-    side = np.sign(prediction).astype(int)
+    side = pd.Series(
+        np.where(prediction.gt(0), 1, np.where(prediction.lt(0), -1, 0)),
+        index=frame.index,
+        dtype=int,
+    )
     if control == "direction_flip":
         side = -side
     elif control == "same_clock_forced_long":
