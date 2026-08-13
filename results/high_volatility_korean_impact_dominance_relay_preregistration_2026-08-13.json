@@ -1,0 +1,174 @@
+{
+  "protocol_version": "high_volatility_korean_impact_dominance_relay_v1",
+  "policy_id": "HVKID-8",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated BTC variation, unusually greater standardized absolute displacement per unit BTC base volume on Upbit than on Binance perpetual identifies Korean cash as the marginal price-discovery venue. At a fresh dominance-tail onset, follow the completed Upbit direction for eight elapsed hours.",
+    "side": "strict sign of completed eight-hour KRW-BTC return",
+    "why_distinct": "Korean cash lead-lag uses return timing, Korean variance leadership uses variation, kimchi candidates use cross-currency price premium, and participation candidates compare volume shares. HVKID compares venue-normalized Amihud-style absolute path displacement per common BTC base-volume unit after separate causal standardization. It reuses no event set or control and uses no spot execution count, funding, OI, premium, fitted outcome, or post-entry data.",
+    "why_suited_to_volatile_regimes": "completed Binance variation must occupy its causal upper 35 percent and cross-venue impact dominance its causal upper quintile",
+    "why_low_gross9_overlap_is_plausible": "04:05/12:05/20:05 UTC Korean impact-dominance onsets are absent from Gross9 clocks"
+  },
+  "features": {
+    "decision_grid": "exact 04:00/12:00/20:00 UTC boundaries D",
+    "aligned_block": "96 exact epoch-aligned five-minute aggregates from 480 unique coherent one-minute rows per venue in [D-8h,D)",
+    "venues": "bars_upbit KRW-BTC and bars_binance BTCUSDT perpetual",
+    "five_minute_return": "log(last constituent close/first constituent open), separately by venue",
+    "base_volume": "sum nonnegative BTC base volume over all 480 one-minute rows, separately by venue; strict positive",
+    "impact_coordinate": "log(sum over 96 abs(five-minute return)/sum BTC base volume), separately by venue; numerator strict positive",
+    "impact_zscore": "each venue coordinate minus mean divided by sample std of at most 270 strictly prior jointly source-valid decisions, minimum 180, current excluded; sample std strict positive",
+    "korean_impact_dominance": "Upbit impact zscore minus Binance impact zscore; strict positive",
+    "dominance_rank": "strict-prior midrank of abs(korean_impact_dominance) over at most 270 jointly valid decisions, minimum 180, current excluded; rank>=0.80",
+    "binance_realized_variation": "sqrt(sum squared Binance five-minute returns), finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank, current excluded; rank>=0.65",
+    "upbit_block_return": "log(last Upbit close/first Upbit open), finite strict nonzero",
+    "onset": "eligible now and immediately preceding scheduled jointly source-valid decision ineligible; missing or invalid prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed aligned eight-hour boundary D",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "sign of Upbit block return",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty"
+  },
+  "policy": {
+    "prior_decisions": 270,
+    "minimum_prior_decisions": 180,
+    "dominance_rank_min": 0.8,
+    "variation_rank_min": 0.65,
+    "decision_hours_utc": [
+      4,
+      12,
+      20
+    ],
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval and final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "source_plan": {
+    "upbit": {
+      "table": "bars_upbit",
+      "symbol": "KRW-BTC",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ]
+    },
+    "binance": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ]
+    },
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration_commit": true,
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_dominance_tail",
+      "no_variation_gate",
+      "raw_impact_difference",
+      "one_decision_stale_dominance",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_korean_premium_lead_variance_and_participation_outcomes_known": true,
+    "repository_upbit_binance_standardized_base_volume_impact_dominance_event_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "reversal_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cross-venue price-impact dominance mechanism selected from schema and formula-absence audit only"
+  },
+  "stopping_rule": "terminal first failure; no venue, aggregation, volume unit, impact coordinate, standardization, dominance sign, history, rank, threshold, variation, onset, clock, hold, side, subset, source, or control repair",
+  "manifest_hash": "9bf21ad56c00bd791ff9383652042524b76b1b02cd18e2db99fb9e6bf007e18f"
+}
