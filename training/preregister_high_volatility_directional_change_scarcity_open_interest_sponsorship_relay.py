@@ -41,8 +41,9 @@ def build() -> dict[str, Any]:
                 "HVDCS runs one threshold state machine on the completed log-close path and counts only "
                 "reversals that exceed one block-RMS return. The prior dual-intrinsic-clock search compared "
                 "price and flow event clocks; sign-run and Lempel-Ziv candidates discretize every minute; "
-                "HVAUD tracks running-extrema duration. HVDCS uses no flow, volume, funding, OI, cross-assets, "
-                "prior event rows, fitted outcomes, or prior controls."
+                "HVAUD tracks running-extrema duration. HVDCSOIS adds only exact decision-available "
+                "24-hour Binance OI expansion to the frozen HVDCS geometry and uses no volume, funding, "
+                "cross-assets, fitted outcomes, prior event rows, or promoted controls."
             ),
             "why_suited_to_volatile_regimes": (
                 "the causal variation tail selects volatile blocks, the low reversal-count tail requires coherent "
