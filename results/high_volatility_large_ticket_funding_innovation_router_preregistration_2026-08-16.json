@@ -1,0 +1,137 @@
+{
+  "protocol_version": "high_volatility_large_ticket_funding_innovation_router_v1",
+  "policy_id": "HVLTFIR-8",
+  "as_of_date": "2026-08-16",
+  "singleton": true,
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "candidate_family": [
+    "HVLTFIR-8"
+  ],
+  "candidate_family_size": 1,
+  "mechanism": {
+    "claim": "At a fresh volatile large-ticket clustering onset, the latest actual funding innovation distinguishes crowding from under-positioning. If the funding change has the completed price direction, fade the move because leverage is crowding into concentrated execution; if funding changes against price, continue because large-ticket demand is overcoming adverse carry.",
+    "side": "negative funding-change sign, equivalently price continuation under adverse innovation and reversal under aligned innovation",
+    "why_distinct": "HVLTFIR preserves the independently defined large-ticket onset but routes its side with the sign relation of two causally observed actual funding settlements. It uses no funding level/rank, OI, premium, spot, alt, fitted outcome, or promoted control.",
+    "why_suited_to_volatile_regimes": "large-ticket clustering rank>=0.80 and six-hour realized-variation rank>=0.65",
+    "why_low_gross9_overlap_is_plausible": "hourly large-ticket onsets with an actual funding-innovation side router are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact UTC hour D",
+    "large_ticket_state": "360 exact coherent BTCUSDT one-minute bars [D-6h,D)",
+    "large_ticket_clustering": "turnover-share HHI minus execution-count-share HHI, finite strict positive",
+    "ticket_ranks": "strict-prior hourly midranks over 2160/1440 source-valid windows; clustering>=0.80 and variation>=0.65",
+    "direction_confirmation": "six-hour and final-hour returns have one strict sign",
+    "ticket_onset": "ticket state eligible now and immediately prior exact source-valid hourly state ineligible",
+    "latest_funding": "latest unique actual BTCUSDT settlement S1<=D and its immediately preceding actual settlement S0",
+    "funding_freshness": "0<=D-S1<8h and 7h59m<=S1-S0<=8h1m; no timestamp snapping or imputation",
+    "funding_innovation": "funding_rate[S1]-funding_rate[S0], finite strict nonzero",
+    "routing": "aligned funding innovation reverses the confirmed price direction; opposite innovation continues it",
+    "side": "negative strict sign of funding innovation",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed exact hourly boundary D",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "signal settlements precede entry; exact held settlements included only after source and Gross9 pass"
+  },
+  "policy": {
+    "ticket_window_minutes": 360,
+    "ticket_history_hours": 2160,
+    "ticket_minimum_history_hours": 1440,
+    "clustering_rank_min": 0.8,
+    "variation_rank_min": 0.65,
+    "funding_max_age_hours": 8,
+    "funding_gap_min_minutes": 479,
+    "funding_gap_max_minutes": 481,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "bars": "Postgres bars_binance BTCUSDT exact coherent 1m OHLC, quote_asset_volume, and number_of_trades",
+    "funding": "Postgres funding_rates_binance BTCUSDT actual timestamps and rates",
+    "window": [
+      "2023-04-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source support and Gross9 pass"
+  },
+  "research_boundary": {
+    "prior_HVLTTC_source_novelty_and_train_failure_known": true,
+    "prior_funding_level_and_adverse_flow_source_failures_known": true,
+    "exact_large_ticket_funding_innovation_routing_incidence_or_outcomes_known": false,
+    "component_ticket_thresholds_copied_without_search": true,
+    "user_authorized_multi_condition_composition": true,
+    "prior_outcomes_informed_candidate_family": true,
+    "prior_outcomes_used_to_set_funding_gap_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "composition_is_exploratory_not_confirmatory": true,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence"
+  },
+  "stopping_rule": "terminal first failure; no source, ticket, funding chronology, gap, route, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "27ea810b54e2b98653638c21e256f678639d7e176b1d55e301db64b45f121849"
+}
