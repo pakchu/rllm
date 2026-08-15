@@ -361,6 +361,7 @@ def run() -> dict[str, Any]:
         },
         "completed_preentry_sources_opened": True,
         "postentry_return_pnl_execution_price_opened": False,
+        "held_interval_funding_values_opened": False,
         "gross9_rows_opened": False,
         "clock": {"path": str(CLOCK), "sha256": sha256(CLOCK), "rows": len(primary)},
         "controls": {
