@@ -1,0 +1,41 @@
+{
+  "protocol_version": "hvspoicc_8_sources_v1",
+  "queries": {
+    "open_interest": "SELECT ts AS decision_time,sum_open_interest FROM open_interest_binance WHERE symbol='BTCUSDT' AND period='5m' AND ts>=:start AND ts<:end AND extract(minute FROM ts)=0 AND extract(second FROM ts)=0 AND extract(hour FROM ts) IN (0,8,16) ORDER BY ts",
+    "bars": "SELECT date_bin('8 hours',p.ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,sum(ln(p.close/p.open)) AS perpetual_return,sum(ln(s.close/s.open)) AS spot_return,sum(power(ln(p.close/p.open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT p.ts) AS distinct_rows,min(p.ts) AS first_ts,max(p.ts) AS last_ts,bool_and(p.open>0 AND p.high>0 AND p.low>0 AND p.close>0 AND p.high>=greatest(p.open,p.close,p.low) AND p.low<=least(p.open,p.close,p.high) AND s.open>0 AND s.high>0 AND s.low>0 AND s.close>0 AND s.high>=greatest(s.open,s.close,s.low) AND s.low<=least(s.open,s.close,s.high)) AS coherent FROM bars_binance p JOIN bars_binance_spot s ON s.symbol=p.symbol AND s.interval=p.interval AND s.ts=p.ts WHERE p.symbol='BTCUSDT' AND p.interval='1m' AND p.ts>=:start AND p.ts<:end GROUP BY 1 ORDER BY 1"
+  },
+  "query_sha256": {
+    "open_interest": "e69284774dffb4c371fc1ac1137a5853396a3b3c1dd92befdc4957c7b707649e",
+    "bars": "b2145ce58ebb256b4d3d7a3d90f44f5fc35065c7b5a3baf0f8d2ee520ec1ca6b"
+  },
+  "tables": [
+    "open_interest_binance",
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "window": [
+    "2020-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "open_interest": 6234,
+    "bars": 7212
+  },
+  "builder": {
+    "path": "training/build_high_volatility_spot_lead_open_interest_contraction_continuation_support.py",
+    "sha256": "71800c1dd9ee648c7262362ca10b759ae7600cb64ae3a2513c7783c9a208e346"
+  },
+  "panel": {
+    "path": "data/high_volatility_spot_lead_open_interest_contraction_continuation_sources_2020_2026/settlement_states.csv.gz",
+    "sha256": "4383a58e133c621b8b194f05e67d9018eb82eda3d19a9c014a6bb23f349fb320",
+    "rows": 6234,
+    "valid_rows": 6044
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "held_interval_funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "01f3f84027263168ab1ce634b0c6d34c92f04092bcc39c14cbb13d356b94829e"
+}

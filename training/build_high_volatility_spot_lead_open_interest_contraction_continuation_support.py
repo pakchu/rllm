@@ -1,0 +1,233 @@
+"""Deterministic outcome-blind source support for HVSPOICC-8."""
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pandas as pd
+
+from training import build_high_volatility_quarter_hour_order_flow_relay_support as common
+from training import preregister_high_volatility_spot_lead_open_interest_contraction_continuation as prereg
+
+ENV_FILE = "/home/pakchu/rllm/.env"
+START = pd.Timestamp("2020-01-01T00:00:00Z")
+END = pd.Timestamp("2026-08-01T00:00:00Z")
+PREREG_SHA = "e2584ee04e1a3c868db3817c710da929ca3addd3c058931eb9ea315cad78ad3a"
+REGISTRATION = prereg.build()
+POLICY = REGISTRATION["policy"]
+STAGES = {key: tuple(map(pd.Timestamp, value)) for key, value in REGISTRATION["stages"].items()}
+GATES = REGISTRATION["source_support_gates"]
+
+OI_QUERY = """SELECT ts AS decision_time,sum_open_interest FROM open_interest_binance WHERE symbol='BTCUSDT' AND period='5m' AND ts>=:start AND ts<:end AND extract(minute FROM ts)=0 AND extract(second FROM ts)=0 AND extract(hour FROM ts) IN (0,8,16) ORDER BY ts"""
+BAR_QUERY = """SELECT date_bin('8 hours',p.ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,sum(ln(p.close/p.open)) AS perpetual_return,sum(ln(s.close/s.open)) AS spot_return,sum(power(ln(p.close/p.open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT p.ts) AS distinct_rows,min(p.ts) AS first_ts,max(p.ts) AS last_ts,bool_and(p.open>0 AND p.high>0 AND p.low>0 AND p.close>0 AND p.high>=greatest(p.open,p.close,p.low) AND p.low<=least(p.open,p.close,p.high) AND s.open>0 AND s.high>0 AND s.low>0 AND s.close>0 AND s.high>=greatest(s.open,s.close,s.low) AND s.low<=least(s.open,s.close,s.high)) AS coherent FROM bars_binance p JOIN bars_binance_spot s ON s.symbol=p.symbol AND s.interval=p.interval AND s.ts=p.ts WHERE p.symbol='BTCUSDT' AND p.interval='1m' AND p.ts>=:start AND p.ts<:end GROUP BY 1 ORDER BY 1"""
+
+ROOT = Path("data/high_volatility_spot_lead_open_interest_contraction_continuation_sources_2020_2026")
+PANEL = ROOT / "settlement_states.csv.gz"
+MANIFEST = ROOT / "manifest.json"
+CLOCK = Path("data/high_volatility_spot_lead_open_interest_contraction_continuation_clocks_2020_2026.csv.gz")
+SPLIT_DIR = Path("data/high_volatility_spot_lead_open_interest_contraction_continuation_split_clocks_2020_2026")
+RESULT = Path("results/high_volatility_spot_lead_open_interest_contraction_continuation_support_2026-08-16.json")
+BUILDER = Path(__file__).relative_to(Path.cwd())
+PANEL_COLUMNS = (
+    "decision_time", "feature_available_time", "source_valid", "sum_open_interest",
+    "previous_open_interest", "oi_change", "perpetual_return", "spot_return", "directional_overshoot",
+    "realized_variation", "variation_rank", "eligible",
+)
+CLOCK_COLUMNS = (
+    "candidate", "control", "split", "decision_time", "feature_available_time",
+    "entry_time", "exit_time", "side", "oi_change", "perpetual_return",
+    "spot_return", "directional_overshoot", "realized_variation", "variation_rank",
+)
+
+
+def sha256_file(path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def causal_midrank(series: pd.Series) -> pd.Series:
+    values = pd.to_numeric(series, errors="coerce").to_numpy(float)
+    output = np.full(len(values), np.nan)
+    history: list[float] = []
+    for index, value in enumerate(values):
+        prior = np.asarray(history[-POLICY["history_cycles"] :], dtype=float)
+        if math.isfinite(value) and len(prior) >= POLICY["minimum_history_cycles"]:
+            output[index] = float(
+                (np.sum(prior < value) + 0.5 * np.sum(prior == value)) / len(prior)
+            )
+        if math.isfinite(value):
+            history.append(float(value))
+    return pd.Series(output, index=series.index)
+
+
+def postgres_engine():
+    from sqlalchemy import create_engine
+    from preprocessing.live_db_features import load_env_file, postgres_url_from_env
+
+    load_env_file(ENV_FILE)
+    return create_engine(postgres_url_from_env(ENV_FILE), connect_args={"connect_timeout": 10})
+
+
+def load_source() -> tuple[pd.DataFrame, pd.DataFrame]:
+    from sqlalchemy import text
+
+    database = postgres_engine()
+    try:
+        with database.connect() as connection:
+            oi = pd.read_sql_query(
+                text(OI_QUERY), connection, params={"start": START, "end": END}
+            )
+            bars = pd.read_sql_query(
+                text(BAR_QUERY), connection, params={"start": START, "end": END}
+            )
+    finally:
+        database.dispose()
+    return oi, bars
+
+
+def prepare(raw: tuple[pd.DataFrame, pd.DataFrame]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    oi, bars = raw
+    if oi.columns.tolist() != ["decision_time", "sum_open_interest"]:
+        raise RuntimeError("HVSPOICC-8 OI schema drift")
+    expected = ["decision_time", "perpetual_return", "spot_return", "minute_squared_return", "source_rows", "distinct_rows", "first_ts", "last_ts", "coherent"]
+    if bars.columns.tolist() != expected:
+        raise RuntimeError("HVSPOICC-8 bar schema drift")
+    oi = oi.copy(); oi["decision_time"] = pd.to_datetime(oi["decision_time"], utc=True, errors="raise"); oi["sum_open_interest"] = pd.to_numeric(oi["sum_open_interest"], errors="raise")
+    if oi["decision_time"].duplicated().any() or not np.isfinite(oi["sum_open_interest"]).all() or not oi["sum_open_interest"].ge(0).all():
+        raise RuntimeError("HVSPOICC-8 invalid OI rows")
+    bars = bars.copy()
+    for column in ("decision_time", "first_ts", "last_ts"): bars[column] = pd.to_datetime(bars[column], utc=True, errors="raise")
+    numeric = ("perpetual_return", "spot_return", "minute_squared_return", "source_rows", "distinct_rows")
+    for column in numeric: bars[column] = pd.to_numeric(bars[column], errors="raise")
+    start = bars["decision_time"] - pd.Timedelta("8h")
+    bars["bar_valid"] = (np.isfinite(bars[list(numeric)]).all(axis=1) & bars["minute_squared_return"].gt(0) & bars["source_rows"].eq(480) & bars["distinct_rows"].eq(480) & bars["first_ts"].eq(start) & bars["last_ts"].eq(bars["decision_time"]-pd.Timedelta("1m")) & bars["coherent"].eq(True))
+    bars["realized_variation"] = np.sqrt(bars["minute_squared_return"])
+    return oi.sort_values("decision_time"), bars.set_index("decision_time").sort_index()
+
+
+def build_panel(raw: tuple[pd.DataFrame, pd.DataFrame]) -> pd.DataFrame:
+    oi, bars = prepare(raw); panel = oi.copy()
+    panel["previous_time"] = panel["decision_time"].shift(1); panel["previous_open_interest"] = panel["sum_open_interest"].shift(1)
+    positive = panel["sum_open_interest"].gt(0) & panel["previous_open_interest"].gt(0)
+    panel["oi_change"] = np.nan; panel.loc[positive,"oi_change"] = np.log(panel.loc[positive,"sum_open_interest"]/panel.loc[positive,"previous_open_interest"])
+    panel = panel.join(bars[["bar_valid","perpetual_return","spot_return","realized_variation"]],on="decision_time")
+    panel["directional_overshoot"] = np.sign(panel["spot_return"]) * (panel["spot_return"] - panel["perpetual_return"])
+    panel["source_valid"] = (panel["previous_time"].notna() & panel["decision_time"].sub(panel["previous_time"]).eq(pd.Timedelta("8h")) & panel["bar_valid"].eq(True) & np.isfinite(panel[["sum_open_interest","previous_open_interest","oi_change","perpetual_return","spot_return","directional_overshoot","realized_variation"]]).all(axis=1) & panel["sum_open_interest"].gt(0) & panel["previous_open_interest"].gt(0) & panel["perpetual_return"].ne(0) & panel["spot_return"].ne(0) & panel["realized_variation"].gt(0))
+    valid=panel["source_valid"].eq(True); panel["variation_rank"]=causal_midrank(panel["realized_variation"].where(valid))
+    panel["eligible"]=(valid & panel["oi_change"].lt(0) & np.sign(panel["perpetual_return"]).eq(np.sign(panel["spot_return"])) & panel["directional_overshoot"].gt(0) & panel["variation_rank"].ge(POLICY["variation_rank_min"]))
+    panel["feature_available_time"]=panel["decision_time"]; return panel.loc[:,PANEL_COLUMNS]
+
+
+def stage_for(entry: pd.Timestamp, exit_: pd.Timestamp) -> str | None:
+    return next(
+        (name for name, (start, end) in STAGES.items() if start <= entry and exit_ <= end),
+        None,
+    )
+
+
+def build_clock(panel: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    reserved_until: pd.Timestamp | None = None
+    for row in panel.loc[panel["eligible"]].itertuples(index=False):
+        decision = pd.Timestamp(row.decision_time)
+        entry = decision + pd.Timedelta(minutes=POLICY["entry_delay_minutes"])
+        exit_ = entry + pd.Timedelta(hours=POLICY["hold_hours"])
+        if reserved_until is not None and entry < reserved_until:
+            continue
+        split = stage_for(entry, exit_)
+        if split is None:
+            continue
+        side = int(np.sign(row.spot_return))
+        if side not in (-1, 1) or row.feature_available_time > entry:
+            raise RuntimeError("HVSPOICC-8 side or availability drift")
+        reserved_until = exit_
+        rows.append({
+            "candidate": prereg.POLICY_ID, "control": "primary", "split": split,
+            "decision_time": decision, "feature_available_time": row.feature_available_time,
+            "entry_time": entry, "exit_time": exit_, "side": side,
+            "oi_change": float(row.oi_change),
+            "perpetual_return": float(row.perpetual_return),
+            "spot_return": float(row.spot_return),
+            "directional_overshoot": float(row.directional_overshoot),
+            "realized_variation": float(row.realized_variation),
+            "variation_rank": float(row.variation_rank),
+        })
+    return pd.DataFrame(rows, columns=CLOCK_COLUMNS)
+
+
+def support_stats(clock: pd.DataFrame, split: str) -> dict[str, Any]:
+    subset = clock.loc[clock["split"].eq(split)]
+    if subset.empty:
+        return {"events": 0, "longs": 0, "shorts": 0, "minority_side_share": 0.0, "max_month_share": 0.0}
+    longs = int(subset["side"].eq(1).sum()); shorts = int(subset["side"].eq(-1).sum())
+    months = pd.to_datetime(subset["entry_time"], utc=True).dt.strftime("%Y-%m").value_counts()
+    return {"events": len(subset), "longs": longs, "shorts": shorts, "minority_side_share": min(longs, shorts) / len(subset), "max_month_share": int(months.max()) / len(subset)}
+
+
+def run() -> dict[str, Any]:
+    if sha256_file(prereg.DEFAULT_OUTPUT) != PREREG_SHA:
+        raise RuntimeError("HVSPOICC-8 preregistration hash drift")
+    registration = json.loads(prereg.DEFAULT_OUTPUT.read_text())
+    prereg.validate(registration)
+    raw = load_source()
+    panel = build_panel(raw)
+    clock = build_clock(panel)
+    split_clocks = {name: clock.loc[clock["split"].eq(name)].copy() for name in STAGES}
+    common.immutable(PANEL, common.csv_gz(panel))
+    common.immutable(CLOCK, common.csv_gz(clock))
+    for name, frame in split_clocks.items():
+        common.immutable(SPLIT_DIR / f"{name}.csv.gz", common.csv_gz(frame))
+    source_core = {
+        "protocol_version": "hvspoicc_8_sources_v1",
+        "queries": {"open_interest": OI_QUERY, "bars": BAR_QUERY},
+        "query_sha256": {"open_interest": hashlib.sha256(OI_QUERY.encode()).hexdigest(), "bars": hashlib.sha256(BAR_QUERY.encode()).hexdigest()},
+        "tables": ["open_interest_binance", "bars_binance", "bars_binance_spot"], "symbol": "BTCUSDT",
+        "window": [START.isoformat(), END.isoformat()],
+        "physical_rows": {"open_interest": len(raw[0]), "bars": len(raw[1])},
+        "builder": {"path": str(BUILDER), "sha256": sha256_file(BUILDER)},
+        "panel": {"path": str(PANEL), "sha256": sha256_file(PANEL), "rows": len(panel), "valid_rows": int(panel["source_valid"].sum())},
+        "outcomes_opened": False, "execution_prices_opened": False,
+        "held_interval_funding_opened": False, "gross9_rows_opened": False,
+        "no_imputation": True,
+    }
+    manifest = {**source_core, "manifest_hash": prereg.canonical_hash(source_core)}
+    common.immutable(MANIFEST, common.json_bytes(manifest))
+    support = {name: support_stats(clock, name) for name in STAGES}
+    checks = {
+        key: passed
+        for name, values in support.items()
+        for key, passed in (
+            (f"{name}_minimum_events", values["events"] >= GATES["minimum_events"][name]),
+            (f"{name}_side_balance", values["minority_side_share"] >= GATES["minority_side_share_min"]),
+            (f"{name}_month_concentration", values["max_month_share"] <= GATES["max_month_share"]),
+        )
+    }
+    passed = all(checks.values())
+    core = {
+        "protocol_version": "hvspoicc_8_source_support_v1", "policy_id": prereg.POLICY_ID,
+        "preregistration": {"path": str(prereg.DEFAULT_OUTPUT), "sha256": PREREG_SHA, "manifest_hash": registration["manifest_hash"]},
+        "source_manifest": {"path": str(MANIFEST), "sha256": sha256_file(MANIFEST), "manifest_hash": manifest["manifest_hash"]},
+        "completed_preentry_sources_opened": True, "candidate_incidence_opened": True,
+        "postentry_return_pnl_execution_price_opened": False,
+        "held_interval_funding_values_opened": False, "gross9_rows_opened": False,
+        "clock": {"path": str(CLOCK), "sha256": sha256_file(CLOCK), "rows": len(clock)},
+        "split_artifacts": {name: {"path": str(SPLIT_DIR / f"{name}.csv.gz"), "sha256": sha256_file(SPLIT_DIR / f"{name}.csv.gz"), "rows": len(frame)} for name, frame in split_clocks.items()},
+        "support": support, "support_checks": checks, "support_passed": passed,
+        "advance_to_gross9_novelty": passed, "advance_to_economic_outcomes": False,
+        "decision": "pass_to_gross9_novelty" if passed else "terminal_source_support_reject",
+    }
+    result = {**core, "manifest_hash": prereg.canonical_hash(core)}
+    common.immutable(RESULT, common.json_bytes(result))
+    return result
+
+
+if __name__ == "__main__":
+    report = run()
+    print(json.dumps({"passed": report["support_passed"], "support": report["support"]}, indent=2))
