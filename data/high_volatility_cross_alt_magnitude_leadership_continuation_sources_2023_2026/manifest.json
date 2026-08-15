@@ -1,0 +1,34 @@
+{
+  "protocol_version": "hvcamlc_8_sources_v1",
+  "query": "SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS block_start,symbol,sum(ln(close/open)) AS completed_return,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "035a9e58e15a91f87cb57924820ee24ece96ade1c40a3428f2bce85950c2289f",
+  "tables": [
+    "bars_binance"
+  ],
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "SOLUSDT",
+    "XRPUSDT",
+    "ADAUSDT",
+    "DOGEUSDT"
+  ],
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 25578,
+  "panel": {
+    "path": "data/high_volatility_cross_alt_magnitude_leadership_continuation_sources_2023_2026/states.csv.gz",
+    "sha256": "aff2884badfee34cb49931e093ec37418faa41a587c7be73d05bba366de4066f",
+    "rows": 3654,
+    "valid_rows": 3653
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "cb7593f39ae2c371c5584d4e8722baaaae7e525ea134c439d98860b6909661a4"
+}
