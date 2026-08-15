@@ -1,0 +1,154 @@
+{
+  "protocol_version": "high_volatility_hourly_directional_scarcity_ticket_regime_router_v1",
+  "policy_id": "HVHDSTR-8",
+  "as_of_date": "2026-08-16",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A high-variation eight-hour BTC path with unusually few intrinsic-time reversals is a coherent auction. When trade participation rises in the second half, rising average ticket size denotes informed sponsorship and routes with the confirmed path, while falling average ticket size denotes broad small-ticket chasing and routes against the confirmed path.",
+    "side": "require strict agreement of completed eight-hour and final-two-hour returns; follow their sign when trade-count acceleration and average-ticket acceleration are positive, but fade it when trade-count acceleration is positive and average-ticket acceleration is nonpositive",
+    "why_distinct": "The frozen HVDCS geometry is evaluated on an hourly rolling clock and combined with a deterministic two-regime ticket router. It is neither a fixed 00/08/16 gate nor a one-sided sponsorship subset.",
+    "why_suited_to_volatile_regimes": "variation selects volatile paths, directional-change scarcity selects coherent movement, and the ticket regime separates informed size expansion from high-participation small-ticket exhaustion",
+    "why_low_gross9_overlap_is_plausible": "hourly rolling onset times and ticket-regime polarity are absent from the fixed structural Gross9 clocks"
+  },
+  "features": {
+    "decision_grid": "every exact UTC hour",
+    "block": "480 exact coherent BTCUSDT bars_binance interval=1m rows [D-8h,D)",
+    "minute_returns": "r_i=log(close_i/close_(i-1)) for i=1..479",
+    "directional_change_threshold": "sqrt(mean(r_i squared)); fixed positive completed-block threshold",
+    "directional_change_count": "frozen HVDCS running-extrema state-machine reversal count",
+    "directional_change_rank": "strict-prior midrank over at most 2160 valid hourly blocks, minimum 1440, current excluded; rank<=0.25",
+    "realized_variation": "sqrt(sum squared one-minute close returns), strict positive",
+    "variation_rank": "strict-prior midrank over at most 2160 valid hourly blocks, minimum 1440, current excluded; rank>=0.65",
+    "direction_confirmation": "completed eight-hour return and final-two-hour return have one strict nonzero sign",
+    "half_average_tickets": "sum quote_asset_volume / sum number_of_trades separately over the first and second four-hour halves",
+    "average_ticket_acceleration": "log(second-half average ticket / first-half average ticket)",
+    "trade_count_acceleration": "log(second-half trades / first-half trades); must be strict positive",
+    "router": "average_ticket_acceleration>0 follows confirmed direction; otherwise fades it; zero belongs to fade",
+    "onset": "eligible now and immediately prior exact valid hourly opportunity ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed hourly rolling eight-hour boundary",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "close_observations": 480,
+    "return_observations": 479,
+    "history_blocks": 2160,
+    "minimum_history_blocks": 1440,
+    "variation_rank_min": 0.65,
+    "directional_change_rank_max": 0.25,
+    "trade_count_acceleration_min_exclusive": 0.0,
+    "ticket_router_boundary": 0.0,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 12,
+      "test": 24,
+      "eval": 24,
+      "final": 12
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "always_follow_confirmed_direction",
+      "always_fade_confirmed_direction",
+      "no_trade_participation_gate",
+      "no_directional_change_scarcity_tail",
+      "no_variation_gate",
+      "one_hour_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "number_of_trades"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_geometry_family_outcomes_known": true,
+    "base_hvdcs_train_pass_test_fail_known": true,
+    "prior_hvdcs_ticket_sponsorship_outcomes_known": true,
+    "exact_hourly_ticket_regime_router_incidence_or_outcomes_known": false,
+    "prior_event_sets_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "causal auction-coherence plus participation-conditioned ticket-size polarity"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no formula, rank, side, hold, clock, subset, or control repair.",
+  "manifest_hash": "08594baca8c16a2d751b2d9174813f3f794bbb242202cd770d973b8bc07b41a9"
+}
