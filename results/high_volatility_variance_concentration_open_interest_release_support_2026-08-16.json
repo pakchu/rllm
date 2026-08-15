@@ -1,0 +1,121 @@
+{
+  "protocol_version": "hvcvcoir_12_source_support_v1",
+  "policy_id": "HVCVCOIR-12",
+  "preregistration": {
+    "path": "results/high_volatility_variance_concentration_open_interest_release_preregistration_2026-08-16.json",
+    "sha256": "867fb4fd8b702477f9a492f2839e0d7c3d1f810aa70dda4b31ee07119e209cff",
+    "manifest_hash": "7be309d235944fed6254b00140c61ee225c58e37b927dbec4c8a694154bb55d6"
+  },
+  "source": {
+    "historical_rows": 674785,
+    "live_rows": 29999,
+    "combined_rows": 692460,
+    "first": "2019-12-31 15:00:00+00:00",
+    "last": "2026-07-31 23:55:00+00:00",
+    "mode": "hash_bound_historical_cache_plus_postgres_completed_bar_extension"
+  },
+  "calibration": {
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2023-07-01T00:00:00Z"
+    ],
+    "high_volatility_q60": 0.038017973599874466,
+    "concentration_onset_q90": 0.09380583575156613,
+    "concentration_release_q60": 0.028724092427345697,
+    "outcomes_opened": false
+  },
+  "source_snapshot": {
+    "path": "data/high_volatility_variance_concentration_open_interest_release_sources_2023_2026/variance_concentration.csv.gz",
+    "sha256": "8dc76b9e2b590b8aaa1024fbde9bf2795027394f1c2a37b8c1333e8a9ec99fc1",
+    "rows": 324576
+  },
+  "open_interest_snapshot": {
+    "path": "data/high_volatility_variance_concentration_open_interest_release_sources_2023_2026/open_interest_5m.csv.gz",
+    "sha256": "cc9e5e611414111faf0da4000ffda470832da3db79da3e0d668501310cb78e82",
+    "rows": 324730,
+    "query_sha256": "7cea2612681094cc3077f9c1ff109417fd8e5aa0af226cedf3ec9c5177a369d8"
+  },
+  "completed_preentry_sources_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "gross9_rows_opened": false,
+  "clock": {
+    "path": "data/high_volatility_variance_concentration_open_interest_release_clocks_2023_2026.csv.gz",
+    "sha256": "0951df1d4f5af2be52122b1cba429bc1659c93e8a91c1d278b757b64dc9ec1c8",
+    "rows": 251
+  },
+  "controls": {
+    "no_high_volatility_gate": {
+      "path": "data/high_volatility_variance_concentration_open_interest_release_controls_2023_2026/no_high_volatility_gate.csv.gz",
+      "sha256": "15de5f2286324248bab7838b3d139dba7d2fec756e098e4f5f3ac5bdad0c50b6",
+      "rows": 604,
+      "promotion_authorized": false
+    },
+    "no_release_requirement": {
+      "path": "data/high_volatility_variance_concentration_open_interest_release_controls_2023_2026/no_release_requirement.csv.gz",
+      "sha256": "016c79dbcbad8fb054011c7e96fca70d106531ef021cd67f93b68021eb181ddf",
+      "rows": 336,
+      "promotion_authorized": false
+    },
+    "one_bar_stale_variance": {
+      "path": "data/high_volatility_variance_concentration_open_interest_release_controls_2023_2026/one_bar_stale_variance.csv.gz",
+      "sha256": "87ab8eadfdf748872a30e1a46c43a307be533c334bb7ee26d7a1b0ec26798c97",
+      "rows": 252,
+      "promotion_authorized": false
+    },
+    "direction_flip": {
+      "path": "data/high_volatility_variance_concentration_open_interest_release_controls_2023_2026/direction_flip.csv.gz",
+      "sha256": "a1d8f92e2e213a1181fd5670a02d031aec50ecc57be8f3e2954f5619408effab",
+      "rows": 251,
+      "promotion_authorized": false
+    }
+  },
+  "support": {
+    "train": {
+      "events": 21,
+      "longs": 9,
+      "shorts": 12,
+      "minority_side_share": 0.42857142857142855,
+      "max_month_share": 0.42857142857142855
+    },
+    "test": {
+      "events": 103,
+      "longs": 43,
+      "shorts": 60,
+      "minority_side_share": 0.4174757281553398,
+      "max_month_share": 0.13592233009708737
+    },
+    "eval": {
+      "events": 80,
+      "longs": 33,
+      "shorts": 47,
+      "minority_side_share": 0.4125,
+      "max_month_share": 0.15
+    },
+    "final": {
+      "events": 47,
+      "longs": 23,
+      "shorts": 24,
+      "minority_side_share": 0.48936170212765956,
+      "max_month_share": 0.2553191489361702
+    }
+  },
+  "support_checks": {
+    "train_minimum_events": true,
+    "train_side_balance": true,
+    "train_month_concentration": true,
+    "test_minimum_events": true,
+    "test_side_balance": true,
+    "test_month_concentration": true,
+    "eval_minimum_events": true,
+    "eval_side_balance": true,
+    "eval_month_concentration": true,
+    "final_minimum_events": true,
+    "final_side_balance": true,
+    "final_month_concentration": true
+  },
+  "support_passed": true,
+  "advance_to_gross9_novelty": true,
+  "advance_to_economic_outcomes": false,
+  "decision": "pass_to_novelty",
+  "manifest_hash": "2eddc29da313fe87aa9a2348fd395ecc0de1aef991a23b058eb7302a79089b3a"
+}
