@@ -1,0 +1,142 @@
+{
+  "protocol_version": "high_volatility_oi_large_ticket_joint_sponsorship_v1",
+  "policy_id": "HVOILTJ-8",
+  "as_of_date": "2026-08-16",
+  "singleton": true,
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "candidate_family": [
+    "HVOILTJ-8"
+  ],
+  "candidate_family_size": 1,
+  "mechanism": {
+    "claim": "A volatile BTC move is more likely to persist when two independent sponsorship channels agree: five-minute absolute OI changes co-occur with absolute price changes and gross OI churn is elevated, while six-hour quote turnover is more temporally concentrated than execution counts, indicating unusually large tickets. At the fresh joint onset, follow the common three-hour, six-hour, and final-hour direction for eight hours.",
+    "side": "common strict sign of completed three-hour, six-hour, and final-hour BTC returns",
+    "why_distinct": "HVOILTJ requires simultaneous leverage coactivity and large-ticket temporal concentration. It uses neither OI direction/endpoints, funding, premium, spot, alts, FX, fitted outcomes, prior event clocks, nor promoted controls.",
+    "why_suited_to_volatile_regimes": "both independent three-hour and six-hour variation ranks must be at least 0.65",
+    "why_low_gross9_overlap_is_plausible": "fresh joint 3-hour OI-coactivity and 6-hour ticket-clustering onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact UTC boundaries divisible by three hours",
+    "oi_price_block": "36 exact coherent BTCUSDT five-minute bars and 37 exact positive 5m OI observations over [D-3h,D]",
+    "oi_price_coactivity": "Pearson correlation(abs(dlog OI),abs(five-minute return)), finite with nonzero vector variances",
+    "gross_oi_activity": "sum(abs(dlog OI)) over 36 changes, finite strict positive",
+    "oi_ranks": "strict-prior midranks over 720/504 earlier source-valid 3h blocks; coactivity>=0.75, gross activity>=0.60, variation>=0.65",
+    "ticket_block": "360 exact coherent BTCUSDT one-minute rows [D-6h,D) with positive execution counts and nonnegative quote turnover",
+    "large_ticket_clustering": "turnover-share HHI minus execution-count-share HHI, finite strict positive",
+    "ticket_ranks": "strict-prior hourly midranks over 2160/1440 earlier source-valid 6h windows; clustering>=0.80 and variation>=0.65",
+    "direction_confirmation": "three-hour, six-hour, and final-hour returns have one strict sign",
+    "joint_eligible": "all OI, ticket, variation, and direction gates pass at D",
+    "joint_onset": "joint eligible now and the immediately prior exact 3h source-valid opportunity was joint ineligible; missing prior cannot trigger",
+    "side": "strict sign of completed three-hour return",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed exact three-hour boundary D",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact held settlements only after source and Gross9 pass"
+  },
+  "policy": {
+    "oi_block_hours": 3,
+    "oi_history_blocks": 720,
+    "oi_minimum_history_blocks": 504,
+    "coactivity_rank_min": 0.75,
+    "gross_oi_activity_rank_min": 0.6,
+    "oi_variation_rank_min": 0.65,
+    "ticket_window_minutes": 360,
+    "ticket_history_hours": 2160,
+    "ticket_minimum_history_hours": 1440,
+    "clustering_rank_min": 0.8,
+    "ticket_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "bars": "Postgres bars_binance BTCUSDT exact coherent 1m OHLC, quote_asset_volume, and number_of_trades",
+    "open_interest": "Postgres open_interest_binance BTCUSDT period=5m source=open_interest_hist exact observations",
+    "window": [
+      "2023-04-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source support and Gross9 pass"
+  },
+  "research_boundary": {
+    "prior_HVOIPCSR_source_novelty_and_train_failure_known": true,
+    "prior_HVLTTC_source_novelty_and_train_failure_known": true,
+    "prior_component_event_rows_reused": false,
+    "exact_joint_state_incidence_or_outcomes_known": false,
+    "user_authorized_multi_condition_composition": true,
+    "prior_outcomes_informed_candidate_family": true,
+    "prior_outcomes_used_to_set_component_thresholds_side_hold_or_clock": false,
+    "component_thresholds_copied_without_search": true,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "composition_is_exploratory_not_confirmatory": true,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence"
+  },
+  "stopping_rule": "terminal first failure; no source, component, rank, onset, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "b321a08c8d32e59af9b67871b0f21fbeaab28eeceae46028fc0186b12d6f2129"
+}
