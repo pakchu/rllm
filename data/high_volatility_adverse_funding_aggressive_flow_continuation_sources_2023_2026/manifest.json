@@ -1,0 +1,40 @@
+{
+  "protocol_version": "hvafgf_8_sources_v1",
+  "queries": {
+    "funding": "SELECT funding_time AS decision_time,funding_rate FROM funding_rates_binance WHERE symbol='BTCUSDT' AND funding_time>=:start AND funding_time<:end ORDER BY funding_time",
+    "bars": "SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,sum(ln(close/open)) AS price_return,sum(2*taker_buy_quote-quote_asset_volume) AS flow_numerator,sum(quote_asset_volume) AS quote_turnover,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high) AND quote_asset_volume>0 AND taker_buy_quote>=0 AND taker_buy_quote<=quote_asset_volume) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1"
+  },
+  "query_sha256": {
+    "funding": "8ff541197b5faa133f379023cd94f4cff085bfa03e20663effd966e967489144",
+    "bars": "6ccb3921f4c64e40104b140b55d334d45e467e6fa069bb347ed38094301895d3"
+  },
+  "tables": [
+    "funding_rates_binance",
+    "bars_binance"
+  ],
+  "symbol": "BTCUSDT",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "funding": 4203,
+    "bars": 3924
+  },
+  "builder": {
+    "path": "training/build_high_volatility_adverse_funding_aggressive_flow_continuation_support.py",
+    "sha256": "11dfe0c98522de9f8fda4019d8d4a4d6df9c9bd6ce45d1ca62cd1828cd13b3d3"
+  },
+  "panel": {
+    "path": "data/high_volatility_adverse_funding_aggressive_flow_continuation_sources_2023_2026/settlement_states.csv.gz",
+    "sha256": "a3bed58b45c3c59c1b299726803bc7936eec31877f31b9956dfaf3be7c18f58a",
+    "rows": 4203,
+    "valid_rows": 2801
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "held_interval_funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "809ced206a88ac93310fbef832d5e849f9a3bf23969d95641f0f4793ed529bf0"
+}
