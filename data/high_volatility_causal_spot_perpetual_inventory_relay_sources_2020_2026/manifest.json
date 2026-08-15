@@ -1,0 +1,41 @@
+{
+  "protocol_version": "hvcspir_8_sources_v1",
+  "queries": {
+    "open_interest": "SELECT ts AS decision_time,sum_open_interest FROM open_interest_binance WHERE symbol='BTCUSDT' AND period='5m' AND ts>=:start AND ts<:end AND extract(minute FROM ts)=0 AND extract(second FROM ts)=0 AND extract(hour FROM ts) IN (0,8,16) ORDER BY ts",
+    "bars": "WITH paths AS (SELECT ts,open,high,low,close,'perpetual' AS market FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end UNION ALL SELECT ts,open,high,low,close,'spot' AS market FROM bars_binance_spot WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end) SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,market,sum(ln(close/open)) AS completed_return,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM paths GROUP BY 1,2 ORDER BY 1,2"
+  },
+  "query_sha256": {
+    "open_interest": "e69284774dffb4c371fc1ac1137a5853396a3b3c1dd92befdc4957c7b707649e",
+    "bars": "e3612aceaf181eb9a6be4fb2dfdfb304781e9edeaf7a67cd407dec4f921f3af6"
+  },
+  "tables": [
+    "open_interest_binance",
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "window": [
+    "2020-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "open_interest": 6234,
+    "bars": 14424
+  },
+  "builder": {
+    "path": "training/build_high_volatility_causal_spot_perpetual_inventory_relay_support.py",
+    "sha256": "e16197a744e8e99d4c6d791230bc50008c756b592663e98ac3d7e4a9ddd46059"
+  },
+  "panel": {
+    "path": "data/high_volatility_causal_spot_perpetual_inventory_relay_sources_2020_2026/settlement_states.csv.gz",
+    "sha256": "c6256ba1228a631488342ebf9c790c3cdd391035f0c9ea78ab89305651fb99d5",
+    "rows": 6234,
+    "valid_rows": 3046
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "held_interval_funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "d22f9274e5e74d78d6e1aefda2c320e22c5488d36113c9f4f0bedfcee6b8c0a9"
+}
