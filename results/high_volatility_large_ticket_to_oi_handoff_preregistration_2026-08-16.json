@@ -1,0 +1,139 @@
+{
+  "protocol_version": "high_volatility_large_ticket_to_oi_handoff_v1",
+  "policy_id": "HVLTOIH-8",
+  "as_of_date": "2026-08-16",
+  "singleton": true,
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "candidate_family": [
+    "HVLTOIH-8"
+  ],
+  "candidate_family_size": 1,
+  "mechanism": {
+    "claim": "In a volatile market, unusually large-ticket temporal clustering at D-3h can initiate price discovery before leverage participates. If the next completed three-hour block at D exhibits extreme absolute OI-price coactivity and gross OI churn in the same direction as the earlier six-hour and final-hour large-ticket move, follow the confirmed large-ticket-to-leverage handoff for eight hours.",
+    "side": "common strict sign of lagged six-hour/final-hour returns and current three-hour return",
+    "why_distinct": "HVLTOIH is an ordered two-stage handoff: lagged ticket concentration followed by current OI-price coactivity. It is neither the simultaneous HVOILTJ conjunction nor either component clock and uses no funding, premium, spot, alt, or fitted outcome.",
+    "why_suited_to_volatile_regimes": "lagged ticket and current OI-price variation ranks must each be at least 0.65",
+    "why_low_gross9_overlap_is_plausible": "an exact three-hour ordered ticket-to-leverage handoff is absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact UTC boundaries divisible by three hours",
+    "lagged_ticket_state": "at D-3h, a source-valid 6h large-ticket state with clustering rank>=0.80 and variation rank>=0.65",
+    "large_ticket_clustering": "turnover-share HHI minus execution-count-share HHI over 360 exact one-minute bars, finite strict positive",
+    "current_oi_state": "at D, a source-valid 3h OI-price state with coactivity rank>=0.75, gross OI activity rank>=0.60, and variation rank>=0.65",
+    "oi_price_coactivity": "Pearson correlation(abs(dlog OI),abs(five-minute return)) over 36 exact pairs",
+    "gross_oi_activity": "sum(abs(dlog OI)) over the current 36 changes",
+    "direction_confirmation": "lagged six-hour return, lagged final-hour return, and current three-hour return have one strict sign",
+    "ordered_handoff": "lagged ticket state and current OI state both pass with exact D-(D-3h) spacing and direction confirmation",
+    "handoff_onset": "ordered handoff now and immediately prior exact 3h source-valid opportunity was inactive; missing prior cannot trigger",
+    "side": "strict sign of current completed three-hour return",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed exact three-hour boundary D",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact held settlements only after source and Gross9 pass"
+  },
+  "policy": {
+    "handoff_lag_hours": 3,
+    "oi_history_blocks": 720,
+    "oi_minimum_history_blocks": 504,
+    "coactivity_rank_min": 0.75,
+    "gross_oi_activity_rank_min": 0.6,
+    "oi_variation_rank_min": 0.65,
+    "ticket_history_hours": 2160,
+    "ticket_minimum_history_hours": 1440,
+    "clustering_rank_min": 0.8,
+    "ticket_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "bars": "Postgres bars_binance BTCUSDT exact coherent 1m OHLC, quote_asset_volume, and number_of_trades",
+    "open_interest": "Postgres open_interest_binance BTCUSDT period=5m source=open_interest_hist exact observations",
+    "window": [
+      "2023-04-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source support and Gross9 pass"
+  },
+  "research_boundary": {
+    "prior_HVOIPCSR_and_HVLTTC_outcomes_known": true,
+    "prior_simultaneous_HVOILTJ_train_failure_known": true,
+    "same_mechanism_as_HVOILTJ": false,
+    "prior_component_event_rows_reused": false,
+    "exact_ordered_handoff_incidence_or_outcomes_known": false,
+    "user_authorized_multi_condition_composition": true,
+    "component_thresholds_copied_without_search": true,
+    "prior_outcomes_used_to_set_lag_thresholds_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "composition_is_exploratory_not_confirmatory": true,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence"
+  },
+  "stopping_rule": "terminal first failure; no source, component, lag, rank, onset, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "9b9ee43386327116140e972e8549fd6533a94d067b018a84603ec5396c8e3165"
+}
