@@ -1,0 +1,182 @@
+{
+  "protocol_version": "high_volatility_cross_domain_temporal_handoff_v1",
+  "policy_id": "HVTCH-8",
+  "as_of_date": "2026-08-16",
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "combined_incidence_opened": false,
+  "combined_outcomes_opened": false,
+  "memory_id": "HVTAMC-8",
+  "topology_id": "HVITR-8",
+  "veto_id": "HVRBRAR-8",
+  "component_ids": [
+    "HVTAMC-8",
+    "HVITR-8",
+    "HVRBRAR-8"
+  ],
+  "candidate_family": [
+    "HVTCH-8"
+  ],
+  "candidate_family_size": 1,
+  "single_candidate_only": true,
+  "familywise_multiplicity": "none; independent singleton family; no Bonferroni adjustment",
+  "component_artifacts": {
+    "HVTAMC-8": {
+      "preregistration": {
+        "path": "results/high_volatility_trade_arrival_memory_continuation_preregistration_2026-08-10.json",
+        "sha256": "1b4e121fed923d600aa27721fce289c960f76049aa839c0b908b5d6c4f4eaae7"
+      },
+      "support": {
+        "path": "results/high_volatility_trade_arrival_memory_continuation_support_2026-08-10.json",
+        "sha256": "2f588ed548f4083ac834193163acb60f9ee71f9ce74acadbb744f5d87ccf3c05"
+      },
+      "gross9": {
+        "path": "results/high_volatility_trade_arrival_memory_continuation_gross9_novelty_2026-08-10.json",
+        "sha256": "01c222d91f2f303b5f4b750a7ff3a63d115a11dc50c7af76c0c1aead84d1bbb5"
+      },
+      "clock": {
+        "path": "data/high_volatility_trade_arrival_memory_continuation_clocks_2023_2026.csv.gz",
+        "sha256": "c09ee3a0a38a5044c915e3a8fa304de724e9c8dcd8aa6961c32de21e7d519440"
+      }
+    },
+    "HVRBRAR-8": {
+      "preregistration": {
+        "path": "results/high_volatility_block_range_breakout_retest_acceptance_relay_preregistration_2026-08-10.json",
+        "sha256": "49f68b06fa9e5e3334f671fc8dd8862af6c888263773f575a1722ada567d2ce1"
+      },
+      "support": {
+        "path": "results/high_volatility_block_range_breakout_retest_acceptance_relay_support_2026-08-10.json",
+        "sha256": "64e7abc1b7283cbe3b7e4dad010594f028b021e711ff25ba65eba57a8c2fad67"
+      },
+      "gross9": {
+        "path": "results/high_volatility_block_range_breakout_retest_acceptance_relay_gross9_novelty_2026-08-10.json",
+        "sha256": "021614d0e8b1b72e872c18e7c51df3faa5cc70c5805d6d315464656ca5e39a96"
+      },
+      "clock": {
+        "path": "data/high_volatility_block_range_breakout_retest_acceptance_relay_clocks_2023_2026.csv.gz",
+        "sha256": "77b16b08f928883c67a408304f5fbb694ced3c378534986efe9020f90cc1fc98"
+      }
+    },
+    "HVITR-8": {
+      "preregistration": {
+        "path": "results/high_volatility_intrinsic_topology_ridge_relay_preregistration_2026-08-10.json",
+        "sha256": "a5f81522864782a8b88a286abf33039e35995f9776518c9379ae44fdda488c7c"
+      },
+      "support": {
+        "path": "results/high_volatility_intrinsic_topology_ridge_relay_support_2026-08-10.json",
+        "sha256": "677efab584ed159019e8c0cf2396cb6ae440aaa98d4be0ac62dd86b51eb9ce48"
+      },
+      "gross9": {
+        "path": "results/high_volatility_intrinsic_topology_ridge_relay_gross9_novelty_2026-08-10.json",
+        "sha256": "3001c955f196b158f6417fdeed88c8f1dbba3e5b6f50d095e839807e9ef4473e"
+      },
+      "clock": {
+        "path": "data/high_volatility_intrinsic_topology_ridge_relay_clocks_2023_2026.csv.gz",
+        "sha256": "f5c166f1b0c7826147fa004e4d36a5fe57d1fa3414e6a69d77dc21d371ba496e"
+      }
+    }
+  },
+  "component_gate_status": {
+    "HVTAMC-8": {
+      "source_support_passed": true,
+      "gross9_novelty_passed": true,
+      "primary_clock_immutable": true
+    },
+    "HVITR-8": {
+      "source_support_passed": true,
+      "gross9_novelty_passed": true,
+      "primary_clock_immutable": true
+    },
+    "HVRBRAR-8": {
+      "source_support_passed": true,
+      "gross9_novelty_passed": true,
+      "primary_clock_immutable": true
+    }
+  },
+  "construction": {
+    "operator": "high-volatility cross-domain temporal confirmation handoff",
+    "decision_join": "HVTAMC-8 at D-8h joined to HVITR-8 and optional HVRBRAR-8 at exact D on the common 00/08/16 UTC grid",
+    "timestamp_tolerance": "none",
+    "lagged_memory": "HVTAMC-8 must be active at exactly D-8 elapsed hours",
+    "current_receiver": "HVITR-8 must be active at D with the same side as lagged HVTAMC-8",
+    "current_veto": "cash only when HVRBRAR-8 is active at D opposite the receiver; inactive or same-side HVRBRAR-8 does not veto",
+    "emitted_side": "the frozen current HVITR-8 side",
+    "entry": "decision_time + 5 minutes",
+    "hold": "8 elapsed hours",
+    "weights": "none",
+    "priority": "none",
+    "alternatives": "none",
+    "additional_or_tuned_thresholds": "none",
+    "component_formula_threshold_clock_mutability": "immutable",
+    "independent_from_HVCAV_8": true,
+    "HVCAV_subset_or_quorum_repair": "none"
+  },
+  "clock": {
+    "decisions": "exact 00:00, 08:00 and 16:00 UTC",
+    "entry": "exact decision D+5m entry",
+    "hold": "8 elapsed hours",
+    "component_clocks": "untouched exact frozen primary clocks",
+    "timestamp_tolerance": "none",
+    "funding": "not a signal input; exact held settlements only after source and Gross9 pass"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "research_boundary": {
+    "all_three_component_prior_outcomes_known": true,
+    "prior_HVCAV_incidence_known": true,
+    "prior_HVCAV_outcomes_known": true,
+    "known_component_or_HVCAV_evidence_used_to_alter_components": false,
+    "known_HVCAV_evidence_used_for_subset_or_quorum_repair": false,
+    "combined_incidence_opened": false,
+    "combined_postentry_returns_or_pnl_opened": false,
+    "economics_artifacts_read_during_validation": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence"
+  },
+  "stopping_rule": "Evaluate the single frozen candidate through source support, Gross9 novelty, and train/test/eval/final economics; stop on first failure with no substitution, threshold, weight, priority, alternative, component, direction, entry, side, hold, clock, subset, quorum, veto, confirmation, or HVCAV repair.",
+  "manifest_hash": "60e6e8ae36f3c42f2d5547eedde904c0ca0cbab18498315d39749f7dada9b635"
+}
