@@ -1,0 +1,44 @@
+{
+  "protocol_version": "hvslaf_8_sources_v1",
+  "queries": {
+    "funding": "SELECT funding_time AS decision_time,funding_rate FROM funding_rates_binance WHERE symbol='BTCUSDT' AND funding_time>=:start AND funding_time<:end ORDER BY funding_time",
+    "perpetual": "SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,sum(ln(close/open)) AS perpetual_return,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1",
+    "spot": "SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,sum(ln(close/open)) AS spot_return,sum(2*taker_buy_quote-quote_asset_volume) AS flow_numerator,sum(quote_asset_volume) AS quote_turnover,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high) AND quote_asset_volume>0 AND taker_buy_quote>=0 AND taker_buy_quote<=quote_asset_volume) AS coherent FROM bars_binance_spot WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1"
+  },
+  "query_sha256": {
+    "funding": "8ff541197b5faa133f379023cd94f4cff085bfa03e20663effd966e967489144",
+    "perpetual": "d9b4e6588086ef5c8015381297139468c83f8f7cacd6bc9d57256c6fc4e09f19",
+    "spot": "2bf4cedfc12fdf8dd9c17295ec9835ee9644f25e4683f4e8e1dfc496de7b82cd"
+  },
+  "tables": [
+    "funding_rates_binance",
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "funding": 4203,
+    "perpetual": 3924,
+    "spot": 3924
+  },
+  "builder": {
+    "path": "training/build_high_volatility_spot_led_adverse_funding_continuation_support.py",
+    "sha256": "6878e863a2dd3b02237f3743a2ee2e34a9fe7a6e2f7ef7f40f3eb8e7d500b623"
+  },
+  "panel": {
+    "path": "data/high_volatility_spot_led_adverse_funding_continuation_sources_2023_2026/settlement_states.csv.gz",
+    "sha256": "5bc61501c3e97788cd61c4d75e3e074160d525d7cfc053b2d1fbdc73aa726b78",
+    "rows": 4203,
+    "valid_rows": 49
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "held_interval_funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "8cfff6e6b93597f23dc45e1ef7e9b086f05d3df5440d77ff470c04255f44bad6"
+}
