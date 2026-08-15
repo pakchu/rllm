@@ -1,0 +1,165 @@
+{
+  "protocol_version": "high_volatility_ehlers_imi_veto_v1",
+  "policy_id": "HVEIV-24",
+  "as_of_date": "2026-08-16",
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "combined_incidence_opened": false,
+  "combined_outcomes_opened": false,
+  "action_ids": [
+    "HVELRSI-24",
+    "HVIMI-24"
+  ],
+  "component_ids": [
+    "HVELRSI-24",
+    "HVIMI-24"
+  ],
+  "candidate_family": [
+    "HVEIV-24"
+  ],
+  "candidate_family_size": 1,
+  "single_candidate_only": true,
+  "familywise_multiplicity": "none; independent singleton family; no Bonferroni adjustment",
+  "component_artifacts": {
+    "HVELRSI-24": {
+      "preregistration": {
+        "path": "results/high_volatility_ehlers_laguerre_rsi_reentry_relay_preregistration_2026-08-11.json",
+        "sha256": "cc150b6e6bd11055e8792e80787b9631a36ffbbfb8fef916122191a2fc71100c"
+      },
+      "support": {
+        "path": "results/high_volatility_ehlers_laguerre_rsi_reentry_relay_support_2026-08-11.json",
+        "sha256": "3828aa9325b8c569fc351542975c99e8236d44addd926854557bb013efce4c48"
+      },
+      "gross9": {
+        "path": "results/high_volatility_ehlers_laguerre_rsi_reentry_relay_gross9_novelty_2026-08-11.json",
+        "sha256": "1e29e55bf572fa090fa1ee44501c6b4fc9a2557ac17671444d43923fc4eb8206"
+      },
+      "clock": {
+        "path": "data/high_volatility_ehlers_laguerre_rsi_reentry_relay_clocks_2023_2026.csv.gz",
+        "sha256": "e764671cefc9eb8724524533614e163dfc40e4b4767c933b4255420d70d5e5e7"
+      }
+    },
+    "HVIMI-24": {
+      "preregistration": {
+        "path": "results/high_volatility_intraday_momentum_index_reentry_relay_preregistration_2026-08-11.json",
+        "sha256": "f6446d3e6585fe56eaaab1ff6897e6e2659c3ba2c6bff255dd423cfee58fb1f7"
+      },
+      "support": {
+        "path": "results/high_volatility_intraday_momentum_index_reentry_relay_support_2026-08-11.json",
+        "sha256": "a96128d56f7c125dca5c0c8c865b7cd8b728423a9aa64e88d1434a5b2d85c47c"
+      },
+      "gross9": {
+        "path": "results/high_volatility_intraday_momentum_index_reentry_relay_gross9_novelty_2026-08-11.json",
+        "sha256": "791de02675ba9fc98c234cb65f6ffc5ee53e70d70adeaaa64665dcc419105883"
+      },
+      "clock": {
+        "path": "data/high_volatility_intraday_momentum_index_reentry_relay_clocks_2023_2026.csv.gz",
+        "sha256": "133f92a81a6f665a5a895eb1adbcd700b5a7a7736470edc8244b7ce750519cc2"
+      }
+    }
+  },
+  "component_gate_status": {
+    "HVELRSI-24": {
+      "source_support_passed": true,
+      "gross9_novelty_passed": true,
+      "primary_clock_immutable": true
+    },
+    "HVIMI-24": {
+      "source_support_passed": true,
+      "gross9_novelty_passed": true,
+      "primary_clock_immutable": true
+    }
+  },
+  "construction": {
+    "operator": "high-volatility oscillator-family exact-clock opposite-side veto",
+    "decision_join": "each HVELRSI-24 feature-available decision D joined to optional HVIMI-24 at exact D on the common four-hour boundary grid",
+    "timestamp_tolerance": "none",
+    "primary_action": "HVELRSI-24",
+    "veto_action": "HVIMI-24",
+    "routing_rule": "consider only active HVELRSI-24 decisions; emit its frozen side unless HVIMI-24 is active at exact D with the opposite frozen side",
+    "conflict_rule": "opposite HVIMI-24 vetoes to cash; same-side or inactive HVIMI-24 leaves HVELRSI-24 unchanged",
+    "emitted_side": "the frozen HVELRSI-24 side when not vetoed; otherwise cash",
+    "entry": "feature_available_time + 5 minutes",
+    "hold": "24 elapsed hours",
+    "weights": "none",
+    "priority": "none; HVELRSI-24 is the fixed primary and HVIMI-24 is only an opposite-side veto",
+    "alternatives": "none",
+    "additional_or_tuned_thresholds": "none",
+    "component_formula_threshold_clock_mutability": "immutable",
+    "independent_from_HVCAV_8": true,
+    "HVCAV_subset_or_quorum_repair": "none"
+  },
+  "clock": {
+    "decisions": "exact completed four-hour boundaries 00/04/08/12/16/20 UTC",
+    "entry": "exact feature-available D+5m entry",
+    "hold": "24 elapsed hours",
+    "component_clocks": "untouched exact frozen primary clocks",
+    "timestamp_tolerance": "none",
+    "funding": "not a signal input; exact held settlements only after source and Gross9 pass"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "research_boundary": {
+    "all_component_prior_outcomes_known": true,
+    "component_selection_used_prior_train_outcomes": true,
+    "component_selection_basis": "HVELRSI-24 and HVIMI-24 independently passed all frozen train economics gates; HVELRSI-24 is primary because its frozen train CAGR-to-MDD was higher, and the exact-clock opposite veto is fixed before combined incidence or outcomes",
+    "component_test_eval_final_outcomes_used": false,
+    "prior_HVCAV_incidence_known": true,
+    "prior_HVCAV_outcomes_known": true,
+    "archived_component_later_stage_artifacts_exist": true,
+    "archived_component_later_stage_outcomes_used_for_selection": false,
+    "known_component_or_HVCAV_evidence_used_to_alter_components": true,
+    "known_HVCAV_evidence_used_for_subset_or_quorum_repair": false,
+    "combined_incidence_opened": false,
+    "combined_postentry_returns_or_pnl_opened": false,
+    "economics_artifacts_read_during_validation": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence"
+  },
+  "stopping_rule": "Evaluate the single frozen candidate through source support, Gross9 novelty, and train/test/eval/final economics; stop on first failure with no substitution, threshold, weight, priority, alternative, component, direction, entry, side, hold, clock, subset, quorum, veto, confirmation, or HVCAV repair.",
+  "manifest_hash": "44d69211f18b8e88fe5a1cec238ef91e6f5334786731963aa078e719b5305ba0"
+}
