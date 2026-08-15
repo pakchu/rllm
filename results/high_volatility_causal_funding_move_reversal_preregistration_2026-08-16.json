@@ -1,0 +1,139 @@
+{
+  "protocol_version": "high_volatility_causal_funding_move_reversal_v1",
+  "policy_id": "HVCFMR-8",
+  "as_of_date": "2026-08-16",
+  "singleton": true,
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "candidate_family": [
+    "HVCFMR-8"
+  ],
+  "candidate_family_size": 1,
+  "mechanism": {
+    "claim": "An extreme absolute funding level marks leveraged crowding; when the completed settlement cycle also has high realized variation, its directional price displacement mean-reverts during the next cycle regardless of the funding sign.",
+    "side": "negative strict sign of log(last_close[S]/first_open[P]) over [P,S)",
+    "why_distinct": "Unlike HVFADR this policy does not use funding first differences or require price/funding divergence, and unlike HVCFLR it uses funding magnitude only as a crowding regime while direction comes exclusively from fading the completed price move.",
+    "why_suited_to_volatile_regimes": "the completed intervening eight-hour BTC realized variation must be in its causal upper 40 percent",
+    "why_low_gross9_overlap_is_plausible": "actual funding-settlement levels and causal funding-level ranks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision": "actual BTCUSDT funding settlement S",
+    "previous_settlement": "immediately prior actual settlement P with S-P exactly 8 elapsed hours",
+    "funding_level": "finite nonzero funding_rate[S], used only through absolute magnitude",
+    "absolute_level_rank": "strict-prior midrank of abs(funding_rate[S]) over at most 270 source-valid cycles; current excluded; minimum 180; rank>=0.70",
+    "completed_return": "finite nonzero log(last coherent BTCUSDT 1m close before S / first coherent BTCUSDT 1m open at P) over exactly [P,S)",
+    "realized_variation": "sqrt(sum squared one-minute log(close/open) returns over exactly 480 coherent BTCUSDT bars [P,S))",
+    "variation_rank": "strict-prior midrank over at most 270 source-valid cycles; current excluded; minimum 180; rank>=0.60",
+    "eligible": "the exact eight-hour gap, finite nonzero current funding level and completed return, and both ranks pass at S; no funding-sign relation, zero-cross, divergence, onset, first difference, OI, premium, alt, or post-settlement condition",
+    "no_imputation": true
+  },
+  "clock": {
+    "decisions": "actual settlements, normally 00/08/16 UTC",
+    "entry": "exact BTCUSDT S+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "signal settlement precedes entry; exact held settlements only after source and Gross9 pass"
+  },
+  "policy": {
+    "required_settlement_gap_hours": 8,
+    "history_cycles": 270,
+    "minimum_history_cycles": 180,
+    "absolute_level_rank_min": 0.7,
+    "variation_rank_min": 0.6,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "funding": "Postgres funding_rates_binance BTCUSDT actual timestamps/rates",
+    "bars": "Postgres bars_binance BTCUSDT exact coherent 1m OHLC",
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source support and Gross9 pass"
+  },
+  "research_boundary": {
+    "prior_HVFADR_source_incidence_and_failure_known": true,
+    "prior_HVFADR_outcomes_opened": false,
+    "same_mechanism_as_HVFADR": false,
+    "prior_HVCFDR_source_incidence_and_failure_known": true,
+    "prior_HVCFDR_outcomes_opened": false,
+    "same_mechanism_as_HVCFDR": false,
+    "prior_HVCFIR_source_incidence_and_failure_known": true,
+    "prior_HVCFIR_outcomes_opened": false,
+    "same_mechanism_as_HVCFIR": false,
+    "prior_HVCFZR_source_incidence_and_failure_known": true,
+    "prior_HVCFZR_outcomes_opened": false,
+    "same_mechanism_as_HVCFZR": false,
+    "prior_HVCFLR_source_incidence_and_failure_known": true,
+    "prior_HVCFLR_outcomes_opened": false,
+    "same_mechanism_as_HVCFLR": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence"
+  },
+  "stopping_rule": "terminal first failure; no settlement gap, completed-return, history, level-rank, side, variation, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "46e9d56b74123fb35fb49166d349878e73502195d6f70e3915946bf063000a09"
+}
