@@ -165,7 +165,7 @@ def build() -> dict[str, Any]:
         },
         "construction": {
             "operator": "high-volatility complementary-persistence exact pair concordance",
-            "decision_join": "exact same-D join of the two untouched action clocks on the common 00/08/16 UTC grid",
+            "decision_join": "exact same-D join of the two untouched action clocks on the common 01/09/17 UTC grid",
             "timestamp_tolerance": "none",
             "concordance_rule": "both actions must be active at exact D with identical +1/-1 sides",
             "inactive_or_disagreement": "cash",
@@ -181,7 +181,7 @@ def build() -> dict[str, Any]:
             "HVCAV_subset_or_quorum_repair": "none",
         },
         "clock": {
-            "decisions": "exact 00:00, 08:00 and 16:00 UTC",
+            "decisions": "exact 01:00, 09:00 and 17:00 UTC",
             "entry": "exact decision D+5m entry",
             "hold": "8 elapsed hours",
             "component_clocks": "untouched exact frozen primary clocks",

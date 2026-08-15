@@ -40,7 +40,7 @@ def test_exact_clock_and_no_tuning_or_hvcav_repair() -> None:
     value = p.build()
     construction = value["construction"]
     assert value["clock"] == {
-        "decisions": "exact 00:00, 08:00 and 16:00 UTC",
+        "decisions": "exact 01:00, 09:00 and 17:00 UTC",
         "entry": "exact decision D+5m entry",
         "hold": "8 elapsed hours",
         "component_clocks": "untouched exact frozen primary clocks",
