@@ -1,0 +1,42 @@
+{
+  "protocol_version": "hvcaspc_ois_8_sources_v1",
+  "query": "WITH five AS (SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS bar_start,symbol,ln((array_agg(close ORDER BY ts DESC))[1]/(array_agg(open ORDER BY ts))[1]) AS bar_return,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS minute_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2), tagged AS (SELECT *,date_bin('8 hours',bar_start,TIMESTAMPTZ '1970-01-01 03:00:00+00') AS block_start FROM five), lagged AS (SELECT *,lag(bar_return) OVER (PARTITION BY block_start,symbol ORDER BY bar_start) AS prior_return FROM tagged) SELECT block_start,symbol,sum(bar_return) AS displacement,corr(prior_return,bar_return) FILTER (WHERE prior_return IS NOT NULL) AS serial_persistence,sum(minute_squared_return) AS minute_squared_return,sum(minute_rows) AS source_rows,count(*) AS five_minute_bars,min(bar_start) AS first_bar,max(bar_start) AS last_bar,bool_and(minute_rows=5 AND distinct_rows=5 AND first_ts=bar_start AND last_ts=bar_start+INTERVAL '4 minutes' AND coherent) AS coherent FROM lagged GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "e675819854275ad8ee91e51741eb774cc4fdee4007e3ca56517cd06cd93421f0",
+  "oi_query": "SELECT ts,sum_open_interest FROM open_interest_binance WHERE symbol='BTCUSDT' AND period='5m' AND ts>=:start AND ts<=:end ORDER BY ts",
+  "oi_query_sha256": "bbca8a4ee1993fbcf43ec0af953e44f4f008a3b8384524814cd4f99751083422",
+  "tables": [
+    "bars_binance",
+    "open_interest_binance"
+  ],
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "bars_aggregates": 27475,
+    "open_interest": 376859
+  },
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_serial_persistence_open_interest_sponsorship_relay_support.py",
+    "sha256": "a72baead4b2bc0cd700b768ae71a70e1ab491f22941bda174ae3b19cd525d28c"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_serial_persistence_open_interest_sponsorship_relay_sources_2023_2026/block_states.csv.gz",
+    "sha256": "04aafeb927ff567be8881add099bfb772ec4cbc33251371969edd737b75899f6",
+    "rows": 3924,
+    "valid_rows": 3496
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "11a594ac8255aa9950d963a6841c7f42b0ecc78fa3b7734e2456c8672234fef6"
+}
