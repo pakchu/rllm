@@ -1,0 +1,13 @@
+[Unit]
+Description=Collect an immutable Deribit BTC option-surface snapshot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO@
+ExecStart=/usr/bin/flock -n %t/rllm-deribit-option-surface.lock /usr/bin/env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. @PYTHON@ -B training/collect_deribit_btc_option_surface_snapshot.py --output-dir data/forward_deribit_btc_option_surface --timeout-sec 30
+ExecStartPost=/usr/bin/env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. @PYTHON@ -B training/collect_deribit_btc_option_surface_snapshot.py --output-dir data/forward_deribit_btc_option_surface --verify-only
+
+[Install]
+WantedBy=default.target

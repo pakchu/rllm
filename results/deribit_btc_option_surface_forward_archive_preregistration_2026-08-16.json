@@ -1,0 +1,59 @@
+{
+  "protocol_version": "deribit_btc_option_surface_forward_archive_preregistration_v1",
+  "policy_id": "DERIBIT-BTC-OPTION-SURFACE-FORWARD-V1",
+  "as_of_date": "2026-08-16",
+  "purpose": "independent point-in-time source accumulation; no economic candidate is authorized",
+  "source": {
+    "provider": "Deribit",
+    "currency": "BTC",
+    "kind": "option",
+    "instruments_endpoint": "https://www.deribit.com/api/v2/public/get_instruments",
+    "summaries_endpoint": "https://www.deribit.com/api/v2/public/get_book_summary_by_currency",
+    "official_instruments_docs": "https://docs.deribit.com/api-reference/market-data/public-get_instruments",
+    "official_summaries_docs": "https://docs.deribit.com/api-reference/market-data/public-get_book_summary_by_currency"
+  },
+  "collector": {
+    "path": "training/collect_deribit_btc_option_surface_snapshot.py",
+    "sha256": "f9858a1c34e368d2ad8ed88fadd963275e20fed4b49776af883597f17f2cfb38",
+    "protocol_version": "deribit_btc_option_surface_forward_snapshot_v1"
+  },
+  "collection_contract": {
+    "eligible_start": "2026-08-16T08:02:00Z",
+    "cadence": "exact 00:02, 08:02, and 16:02 UTC every day",
+    "timer_expression": "*-*-* 00,08,16:02:00 UTC",
+    "feature_available_time": "later local UTC receipt time of active-instrument and book-summary responses",
+    "join": "exact instrument_name intersection",
+    "minimum_joined_share": 0.95,
+    "duplicate_or_nonincreasing_time": "hard failure with no snapshot",
+    "archive": "immutable gzip JSON snapshots chained by predecessor file SHA256 and manifest hash",
+    "historical_backfill": "forbidden",
+    "missed_run_imputation": "forbidden",
+    "provider_substitution": "forbidden",
+    "failed_or_partial_response": "no snapshot; wait for next scheduled observation"
+  },
+  "diagnostic_snapshots": [
+    {
+      "path": "data/forward_deribit_btc_option_surface/2026-08-16/20260816T004554_026968Z.json.gz",
+      "sha256": "6a21f94dd5c7a2db071cb570c3b0e7a1374ae93182754f26846043a51fbc7cbd",
+      "economic_or_candidate_eligibility": false
+    },
+    {
+      "path": "data/forward_deribit_btc_option_surface/2026-08-16/20260816T004843_310530Z.json.gz",
+      "sha256": "3a7bcedde834d4265864521f2d39342156c272c63826082e4d26c0cfdc5eb6b5",
+      "economic_or_candidate_eligibility": false
+    }
+  ],
+  "research_boundary": {
+    "diagnostic_snapshot_rows_opened": 1636,
+    "eligible_forward_snapshot_rows_opened": 0,
+    "option_surface_candidate_incidence_opened": false,
+    "post_snapshot_btc_returns_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "economic_candidate_authorized": false,
+    "2024_test_reusable_as_confirmatory_oos": false,
+    "future_candidate_requirement": "separate singleton preregistration before incidence or outcomes"
+  },
+  "unblock_rule": "accumulate sufficient eligible untouched forward history, then preregister exactly one physical option-surface state machine and new train/test/eval/final split before opening its incidence or outcomes",
+  "stopping_rule": "No alpha claim, source-support pass, Gross9 pass, or economic evaluation may be inferred from archive collection alone. Collector/schema/cadence changes terminate this exact source protocol.",
+  "manifest_hash": "0a059b48a2eda409afd849eb55c4246255b0b682e5a1ba2105d94ed2cb2972d4"
+}
