@@ -195,8 +195,89 @@ def write_snapshot(snapshot: Mapping[str, Any], output_dir: Path) -> Path:
     return destination
 
 
+def load_snapshot(path: Path) -> dict[str, Any]:
+    with gzip.open(path, "rt", encoding="utf-8") as handle:
+        snapshot = json.load(handle)
+    if not isinstance(snapshot, dict):
+        raise TypeError(f"snapshot is not an object: {path}")
+    core = {key: value for key, value in snapshot.items() if key != "manifest_hash"}
+    if snapshot.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError(f"snapshot manifest drift: {path}")
+    return snapshot
+
+
+def archive_paths(output_dir: Path) -> list[Path]:
+    return sorted(output_dir.glob("????-??-??/*.json.gz"))
+
+
+def seal_for_archive(snapshot: Mapping[str, Any], output_dir: Path) -> dict[str, Any]:
+    core = {key: value for key, value in snapshot.items() if key != "manifest_hash"}
+    if snapshot.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("unsealed snapshot manifest drift")
+    existing = archive_paths(output_dir)
+    predecessor = None
+    if existing:
+        previous_path = existing[-1]
+        previous = load_snapshot(previous_path)
+        if str(snapshot["feature_available_time"]) <= str(previous["feature_available_time"]):
+            raise RuntimeError("new snapshot is not later than archive predecessor")
+        predecessor = {
+            "path": str(previous_path),
+            "sha256": hashlib.sha256(previous_path.read_bytes()).hexdigest(),
+            "manifest_hash": previous["manifest_hash"],
+            "feature_available_time": previous["feature_available_time"],
+        }
+    sealed_core = {**core, "archive_predecessor": predecessor}
+    return {**sealed_core, "manifest_hash": canonical_hash(sealed_core)}
+
+
+def verify_archive(output_dir: Path) -> dict[str, Any]:
+    paths = archive_paths(output_dir)
+    if not paths:
+        raise RuntimeError(f"empty Deribit option surface archive: {output_dir}")
+    previous_path: Path | None = None
+    previous: dict[str, Any] | None = None
+    total_rows = 0
+    for path in paths:
+        snapshot = load_snapshot(path)
+        if snapshot.get("protocol_version") != "deribit_btc_option_surface_forward_snapshot_v1":
+            raise RuntimeError(f"snapshot protocol drift: {path}")
+        if snapshot.get("forward_only") is not True:
+            raise RuntimeError(f"snapshot forward-only boundary drift: {path}")
+        coverage = snapshot.get("coverage", {})
+        if coverage.get("joined_options") != len(snapshot.get("rows", [])):
+            raise RuntimeError(f"snapshot row-count drift: {path}")
+        predecessor = snapshot.get("archive_predecessor")
+        if previous is not None:
+            expected = {
+                "path": str(previous_path),
+                "sha256": hashlib.sha256(previous_path.read_bytes()).hexdigest(),
+                "manifest_hash": previous["manifest_hash"],
+                "feature_available_time": previous["feature_available_time"],
+            }
+            if predecessor != expected:
+                raise RuntimeError(f"snapshot predecessor drift: {path}")
+            if snapshot["feature_available_time"] <= previous["feature_available_time"]:
+                raise RuntimeError(f"snapshot chronology drift: {path}")
+        elif predecessor is not None:
+            raise RuntimeError(f"first snapshot unexpectedly has predecessor: {path}")
+        total_rows += len(snapshot["rows"])
+        previous_path, previous = path, snapshot
+    return {
+        "verified": True,
+        "snapshots": len(paths),
+        "total_option_rows": total_rows,
+        "first_feature_available_time": load_snapshot(paths[0])["feature_available_time"],
+        "last_feature_available_time": previous["feature_available_time"],
+        "tip_path": str(previous_path),
+        "tip_sha256": hashlib.sha256(previous_path.read_bytes()).hexdigest(),
+        "tip_manifest_hash": previous["manifest_hash"],
+    }
+
+
 def run(output_dir: Path, *, timeout_sec: float = 30.0) -> dict[str, Any]:
     snapshot = collect(fetch=lambda method, params: get_json(method, params, timeout_sec=timeout_sec))
+    snapshot = seal_for_archive(snapshot, output_dir)
     path = write_snapshot(snapshot, output_dir)
     return {
         "path": str(path),
@@ -211,8 +292,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--timeout-sec", type=float, default=30.0)
+    parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(run(args.output_dir, timeout_sec=args.timeout_sec), indent=2, ensure_ascii=False))
+    result = verify_archive(args.output_dir) if args.verify_only else run(args.output_dir, timeout_sec=args.timeout_sec)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

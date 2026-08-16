@@ -80,6 +80,42 @@ def test_write_snapshot_is_deterministic_and_refuses_overwrite(tmp_path):
         collector.write_snapshot(snapshot, tmp_path)
 
 
+def test_archive_predecessor_chain_and_verifier(tmp_path):
+    instruments, summaries = fixture_payloads()
+    start = datetime(2026, 8, 16, tzinfo=timezone.utc)
+
+    def make_snapshot(offset: int):
+        payloads = iter((instruments, summaries))
+        times = iter((start + timedelta(seconds=offset),) * 3)
+        return collector.collect(fetch=lambda *_: next(payloads), clock=lambda: next(times))
+
+    first = collector.seal_for_archive(make_snapshot(0), tmp_path)
+    first_path = collector.write_snapshot(first, tmp_path)
+    second = collector.seal_for_archive(make_snapshot(60), tmp_path)
+    collector.write_snapshot(second, tmp_path)
+    assert second["archive_predecessor"] == {
+        "path": str(first_path),
+        "sha256": __import__("hashlib").sha256(first_path.read_bytes()).hexdigest(),
+        "manifest_hash": first["manifest_hash"],
+        "feature_available_time": first["feature_available_time"],
+    }
+    report = collector.verify_archive(tmp_path)
+    assert report["verified"] is True
+    assert report["snapshots"] == 2
+    assert report["total_option_rows"] == 4
+
+
+def test_archive_rejects_nonincreasing_snapshot_time(tmp_path):
+    instruments, summaries = fixture_payloads()
+    payloads = iter((instruments, summaries))
+    now = datetime(2026, 8, 16, tzinfo=timezone.utc)
+    times = iter((now, now, now))
+    snapshot = collector.collect(fetch=lambda *_: next(payloads), clock=lambda: next(times))
+    collector.write_snapshot(collector.seal_for_archive(snapshot, tmp_path), tmp_path)
+    with pytest.raises(RuntimeError, match="not later"):
+        collector.seal_for_archive(snapshot, tmp_path)
+
+
 def test_rejects_incomplete_surface_coverage():
     instruments, summaries = fixture_payloads()
     summaries["result"] = summaries["result"][:1]
