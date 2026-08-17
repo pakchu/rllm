@@ -1,0 +1,24 @@
+"""Outcome-blind preregistration for HVSMRSR-8."""
+from __future__ import annotations
+import argparse,hashlib,json
+from pathlib import Path
+from typing import Any
+from training import preregister_high_volatility_cross_structure_action_vote as gates
+POLICY_ID="HVSMRSR-8";DEFAULT_OUTPUT=Path("results/high_volatility_spot_median_return_shift_relay_preregistration_2026-08-18.json")
+PERP=Path("data/high_volatility_median_return_shift_relay_sources_2023_2026/block_states.csv.gz");PERP_SHA="8aee66567e08eaf34e0e2cbb9f8036fa384aae022a55ddd06b32247aac0826c9";SPOT=Path("data/high_volatility_cross_venue_median_return_shift_consensus_spot_shifts_2023_2026.csv.gz");SPOT_SHA="8f8c3676e4bac2badab980f9031f8f8d750c01515d8aeafc6d0b6fb6da920adc"
+def sha256(p:str|Path)->str:return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+def canonical_hash(x:Any)->str:return hashlib.sha256(json.dumps(x,sort_keys=True,separators=(",",":"),ensure_ascii=False,allow_nan=False).encode()).hexdigest()
+def build()->dict[str,Any]:
+ g=gates.build();core={"protocol_version":"high_volatility_spot_median_return_shift_relay_v1","policy_id":POLICY_ID,"as_of_date":"2026-08-18","singleton":True,"candidate_family":[POLICY_ID],"candidate_family_size":1,"source_incidence_opened":False,"outcomes_opened":False,"gross9_rows_opened":False,
+ "mechanism":{"claim":"A large signed shift in the median one-minute return from the first half to the second half of a volatile completed BTC spot auction identifies broad unlevered cash repricing rather than a few extreme candles; follow the cash location-shift direction for eight hours.","side":"strict sign of spot median shift","why_distinct":"Prior spot/perpetual candidates use endpoint returns, basis, ranges, flow, volume timing, or filter perpetual events. HVSMRSR ranks the full-panel actual spot robust return-location transition and creates its own onset clock, with no reused event set, OI, funding, premium, options, fitted outcome, or promoted control.","why_low_gross9_overlap_is_plausible":"irregular actual-cash robust distribution-shift onsets are absent from Gross9"},
+ "features":{"perpetual_variation_source":{"path":str(PERP),"sha256":PERP_SHA},"spot_source":{"path":str(SPOT),"sha256":SPOT_SHA},"decision_grid":"exact 01:00,09:00,17:00 UTC jointly source-valid boundaries","spot_shift":"second-half minus first-half median of 480 exact completed one-minute spot log(close/open) returns, finite strict nonzero","shift_rank":"strict-prior midrank of abs(spot_shift) over at most 270 jointly valid decisions, minimum 180, current excluded; rank>=0.75","variation_gate":"frozen causal perpetual variation_rank>=0.65","onset":"eligible now and immediately prior exact eight-hour jointly valid decision ineligible; missing prior cannot trigger","no_imputation":True},
+ "policy":{"history_decisions":270,"minimum_history_decisions":180,"shift_rank_min":.75,"variation_rank_min":.65,"entry_delay_minutes":5,"hold_hours":8,"leverage":.5,"base_cost_per_notional_side":.0006,"stress_cost_per_notional_side":.001},
+ "clock":{"entry":"decision+5m exact BTCUSDT perpetual open","hold":"8 elapsed hours","reservation":"onsets are half-open nonoverlapping; exit first on equal entry","funding":"not signal input; exact settlements only after source and Gross9 pass"},
+ "stages":g["stages"],"source_support_gates":g["source_support_gates"],"gross9_novelty_gates":g["gross9_novelty_gates"],"economic_gates":g["economic_gates"],"diagnostic_controls":{"names":["no_shift_tail","no_variation_gate","level_not_onset","one_boundary_stale_shift","direction_flip","forced_long"],"cannot_be_promoted":True},
+ "research_boundary":{"prior_HVMRSR_and_cross_venue_subset_outcomes_known":True,"full_source_only_perpetual_and_spot_shift_values_available":True,"exact_spot_shift_onset_incidence_or_outcomes_known":False,"prior_event_sets_reused":False,"candidate_incidence_opened":False,"postentry_return_or_pnl_opened":False,"repair_of_prior_candidate":False,"promoted_prior_control":False,"classification":"exploratory discovery; not fresh confirmatory evidence","selection_basis":"independent full-panel spot robust-location transition"},
+ "stopping_rule":"source, Gross9, train/test/eval/final; terminal first failure; no venue, half partition, median, shift, history, rank, onset, variation, side, clock, hold, subset, comparator, or control repair"};return {**core,"manifest_hash":canonical_hash(core)}
+def validate(x:dict[str,Any])->None:
+ if x!=build():raise RuntimeError("HVSMRSR-8 prereg drift")
+ if sha256(PERP)!=PERP_SHA or sha256(SPOT)!=SPOT_SHA:raise RuntimeError("HVSMRSR-8 source drift")
+if __name__=="__main__":
+ p=argparse.ArgumentParser();p.add_argument("--output",type=Path,default=DEFAULT_OUTPUT);a=p.parse_args();x=build();validate(x);a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(x,indent=2,ensure_ascii=False,allow_nan=False)+"\n");print(a.output)

@@ -1,0 +1,124 @@
+{
+  "protocol_version": "high_volatility_spot_median_return_shift_relay_v1",
+  "policy_id": "HVSMRSR-8",
+  "as_of_date": "2026-08-18",
+  "singleton": true,
+  "candidate_family": [
+    "HVSMRSR-8"
+  ],
+  "candidate_family_size": 1,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A large signed shift in the median one-minute return from the first half to the second half of a volatile completed BTC spot auction identifies broad unlevered cash repricing rather than a few extreme candles; follow the cash location-shift direction for eight hours.",
+    "side": "strict sign of spot median shift",
+    "why_distinct": "Prior spot/perpetual candidates use endpoint returns, basis, ranges, flow, volume timing, or filter perpetual events. HVSMRSR ranks the full-panel actual spot robust return-location transition and creates its own onset clock, with no reused event set, OI, funding, premium, options, fitted outcome, or promoted control.",
+    "why_low_gross9_overlap_is_plausible": "irregular actual-cash robust distribution-shift onsets are absent from Gross9"
+  },
+  "features": {
+    "perpetual_variation_source": {
+      "path": "data/high_volatility_median_return_shift_relay_sources_2023_2026/block_states.csv.gz",
+      "sha256": "8aee66567e08eaf34e0e2cbb9f8036fa384aae022a55ddd06b32247aac0826c9"
+    },
+    "spot_source": {
+      "path": "data/high_volatility_cross_venue_median_return_shift_consensus_spot_shifts_2023_2026.csv.gz",
+      "sha256": "8f8c3676e4bac2badab980f9031f8f8d750c01515d8aeafc6d0b6fb6da920adc"
+    },
+    "decision_grid": "exact 01:00,09:00,17:00 UTC jointly source-valid boundaries",
+    "spot_shift": "second-half minus first-half median of 480 exact completed one-minute spot log(close/open) returns, finite strict nonzero",
+    "shift_rank": "strict-prior midrank of abs(spot_shift) over at most 270 jointly valid decisions, minimum 180, current excluded; rank>=0.75",
+    "variation_gate": "frozen causal perpetual variation_rank>=0.65",
+    "onset": "eligible now and immediately prior exact eight-hour jointly valid decision ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "policy": {
+    "history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "shift_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "clock": {
+    "entry": "decision+5m exact BTCUSDT perpetual open",
+    "hold": "8 elapsed hours",
+    "reservation": "onsets are half-open nonoverlapping; exit first on equal entry",
+    "funding": "not signal input; exact settlements only after source and Gross9 pass"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_shift_tail",
+      "no_variation_gate",
+      "level_not_onset",
+      "one_boundary_stale_shift",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_HVMRSR_and_cross_venue_subset_outcomes_known": true,
+    "full_source_only_perpetual_and_spot_shift_values_available": true,
+    "exact_spot_shift_onset_incidence_or_outcomes_known": false,
+    "prior_event_sets_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "selection_basis": "independent full-panel spot robust-location transition"
+  },
+  "stopping_rule": "source, Gross9, train/test/eval/final; terminal first failure; no venue, half partition, median, shift, history, rank, onset, variation, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "f5da0a6b0190889a9af8c96b180553bd8e720af8c3940916847878fca0311d8f"
+}
