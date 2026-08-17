@@ -1,0 +1,113 @@
+{
+  "protocol_version": "high_volatility_credit_transition_causal_adapter_v1",
+  "policy_id": "HVCQCA-24",
+  "as_of_date": "2026-08-18",
+  "singleton": true,
+  "candidate_family": [
+    "HVCQCA-24"
+  ],
+  "candidate_family_size": 1,
+  "source_incidence_opened": false,
+  "current_candidate_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "The BTC response sign to corporate-credit polarity transitions can change across regimes. Learn that sign only from fully matured prior HYG-minus-LQD transition labels, including pre-high-volatility history, then causally follow or invert the current high-variation transition.",
+    "side": "current credit-transition sign multiplied by strict sign of the arithmetic mean of the latest at most 12 matured transition directional labels",
+    "why_distinct": "HVCQTR fixes the transition side and failed test; HVCQVAR routes by contemporaneous variation change and failed train. HVCQCA uses no source-state threshold beyond the current frozen variation gate and learns only from prior fully exited transition responses, without stage resets, future labels, costs, funding, equity, PnL, OI, premium, options, or promoted controls.",
+    "why_low_gross9_overlap_is_plausible": "high-variation credit transition times remain sparse and already passed Gross9 while adapted signs alter exposure"
+  },
+  "features": {
+    "source": {
+      "path": "data/high_volatility_credit_risk_appetite_relay_sources_2022_2026/daily_credit_states.csv.gz",
+      "sha256": "88d227fff477484ce40e2da8578368cd3345b6fc62c4e6d99a4325b4aed67e59"
+    },
+    "transition": "strict polarity change in HYG-minus-LQD return versus immediately prior source-valid session",
+    "label_universe": "all source-valid credit transitions regardless of BTC variation rank",
+    "label": "transition side times log(BTC exit_open/entry_open) over 24 hours",
+    "maturity": "label exit_time<=current decision_time",
+    "memory": "latest at most 12 matured transition labels; minimum 8",
+    "score": "arithmetic mean gross log label, strict nonzero",
+    "current_gate": "current frozen BTC variation_rank>=0.65",
+    "routing": "positive score keeps transition side; negative score inverts; insufficient/nonfinite/zero score is cash",
+    "no_imputation": true
+  },
+  "policy": {
+    "memory_labels": 12,
+    "minimum_mature_labels": 8,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "clock": {
+    "decision": "frozen session 23:00 UTC",
+    "entry": "23:05 UTC exact BTCUSDT open",
+    "hold": "24 elapsed hours",
+    "reservation": "chronological half-open nonoverlap",
+    "funding": "not signal input; exact settlements after Gross9"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "research_boundary": {
+    "prior_HVCQTR_train_pass_test_failure_known": true,
+    "prior_HVCQVAR_train_failure_known": true,
+    "transition_definition_reused": true,
+    "transition_event_level_BTC_labels_opened": false,
+    "exact_adapter_incidence_or_outcomes_known": false,
+    "mature_counterfactual_labels_authorized": true,
+    "current_candidate_postentry_return_or_pnl_opened": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory causal online adaptation; not fresh confirmatory evidence",
+    "selection_basis": "prehistory-seeded causal response sign learning"
+  },
+  "stopping_rule": "source causality, Gross9, train/test/eval/final; terminal first failure; no transition, label universe, memory, minimum labels, maturity, score, gate, side, clock, hold, subset, threshold, or control repair",
+  "manifest_hash": "6c0fa9a79e491777c005e224ac2053f2871bb78995dcd35d61c73a90ed0d77b7"
+}
