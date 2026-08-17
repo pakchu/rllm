@@ -1,0 +1,119 @@
+{
+  "protocol_version": "high_volatility_variance_acceleration_oi_regime_router_v1",
+  "policy_id": "HVCVAROIR-8",
+  "as_of_date": "2026-08-18",
+  "singleton": true,
+  "candidate_family": [
+    "HVCVAROIR-8"
+  ],
+  "candidate_family_size": 1,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "component_artifacts": {
+    "expansion_continuation": {
+      "preregistration": {
+        "path": "results/high_volatility_causal_variance_acceleration_inventory_relay_preregistration_2026-08-16.json",
+        "sha256": "8cf94eac46378a61a737f3ef857e07b3e728cb150ce3a24b6ae10f0e9839ac64"
+      },
+      "support": {
+        "path": "results/high_volatility_causal_variance_acceleration_inventory_relay_support_2026-08-16.json",
+        "sha256": "b45760985d3c9094333c6d4c58400c24488cbe0d8a48fb235a8118306442f649"
+      },
+      "clock": {
+        "path": "data/high_volatility_causal_variance_acceleration_inventory_relay_clocks_2020_2026.csv.gz",
+        "sha256": "86f7e4f3b7624396b5a39be132b3c1630087648fbabf2d38a6604863e21b507c"
+      }
+    },
+    "contraction_reversal": {
+      "preregistration": {
+        "path": "results/high_volatility_causal_variance_acceleration_oi_contraction_reversal_preregistration_2026-08-16.json",
+        "sha256": "125f52d7d28a1185b19b088fea590345159a2aaa210874ce9721801d3401e955"
+      },
+      "support": {
+        "path": "results/high_volatility_causal_variance_acceleration_oi_contraction_reversal_support_2026-08-16.json",
+        "sha256": "9e1a0acd693940bbcbdd8165ea3544b0355a527682c6dd776294fd083116f439"
+      },
+      "clock": {
+        "path": "data/high_volatility_causal_variance_acceleration_oi_contraction_reversal_clocks_2020_2026.csv.gz",
+        "sha256": "9478c34a0edab6acd32b7cf2eac4ebb7fadc8a3b28c6f7e0fa79da9902363af4"
+      }
+    }
+  },
+  "mechanism": {
+    "claim": "Under the same frozen upper-tail variance-acceleration state, expanding OI represents fresh inventory that sponsors continuation while contracting OI represents liquidation exhaustion that sponsors reversal.",
+    "routing": "OI expansion emits the frozen expansion-continuation side; OI contraction emits the frozen contraction-reversal side; zero OI change is cash",
+    "why_volatile": "both branches already require variance-acceleration rank and realized-variation rank at least 0.60",
+    "why_distinct": "one mutually exclusive OI-sign router over two source-only frozen branches; no threshold, outcome fit, option data, funding signal, or control promotion"
+  },
+  "construction": {
+    "operator": "disjoint union by strict OI-change sign",
+    "expansion_branch": "immutable HVCVARIR-8 clock and side",
+    "contraction_branch": "immutable HVCVAROICR-8 clock and side",
+    "duplicate_decision": "hard failure",
+    "entry": "immutable D+5m",
+    "hold": "8 elapsed hours",
+    "additional_or_tuned_thresholds": "none",
+    "weights": "none",
+    "alternatives": "none"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "research_boundary": {
+    "expansion_incidence_and_train_failure_known": true,
+    "contraction_incidence_and_source_side_balance_failure_known": true,
+    "contraction_postentry_outcomes_known": false,
+    "combined_incidence_opened": false,
+    "combined_outcomes_opened": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "repair_of_component_candidate": false,
+    "selection_basis": "predefined inventory sign maps variance acceleration to continuation versus reversal"
+  },
+  "stopping_rule": "source, Gross9, train/test/eval/final; terminal first failure; no branch, OI sign, rank, side, entry, hold, subset, threshold, weight, or control repair",
+  "manifest_hash": "29e1813333c30a2671203c06f23c66de7bbdc1857e7f93b36f08771fdbc5b677"
+}
