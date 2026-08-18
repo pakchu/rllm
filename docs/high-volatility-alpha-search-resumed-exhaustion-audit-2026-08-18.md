@@ -96,3 +96,26 @@ than improve evidentiary quality.
 - All candidate-specific targeted tests passed before each terminal commit.
 - Worktree and upstream were clean at the start of this audit.
 - Latest terminal candidate commit before this audit: `1ef03dc4`.
+
+## Post-resumption new-mechanism audit
+
+After the user explicitly requested a completely new mechanism, the search was
+resumed as a fresh blocked audit. Three additional mechanism classes were
+preregistered and evaluated without option data:
+
+| New mechanism | Candidate | Terminal gate | Evidence |
+|---|---|---:|---|
+| SPY/TLT consensus polarity transition | `HVRPCTR-24` | source incidence | `d604d65a` |
+| credit transition × completed BTC variation phase | `HVCQVAR-24` | train | `68c38e0f` |
+| prehistory-seeded mature-label credit response adapter | `HVCQCA-24` | train | `1ef03dc4` |
+
+The latter two passed source support and every Gross9 sleeve. `HVCQCA-24`
+also passed train return, base CAGR/MDD, stress return, stress CAGR/MDD, mean
+gross move, and strict MDD, but failed the frozen first-calendar-half and
+weekly sign-flip gates. Altering memory, maturity, side, early-history
+treatment, or a calendar subset after this result would be an explicit repair.
+
+This post-resumption audit therefore satisfies the repeated-blocker threshold:
+the same absence of a remaining independent, outcome-uncontaminated local
+mechanism persisted for at least three fresh continuation turns after the user
+resumed the blocked goal.
