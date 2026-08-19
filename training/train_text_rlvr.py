@@ -23,6 +23,7 @@ LABEL_SCHEMAS: dict[str, tuple[str, ...]] = {
     "pair": ("A", "B"),
     "ordinal": ("Q0", "Q1", "Q2", "Q3", "Q4"),
     "pposm_state": ("SKIP", "TP4", "TP12"),
+    "pposm_action_utility": ("SKIP", "TP4", "TP12"),
 }
 
 
@@ -64,7 +65,7 @@ def allowed_labels(label_schema: str) -> tuple[str, ...]:
     if key not in LABEL_SCHEMAS:
         raise ValueError(
             "label_schema must be one of "
-            "{'gate','gate_utility','pair','ordinal','pposm_state'}"
+            "{'gate','gate_utility','pair','ordinal','pposm_state','pposm_action_utility'}"
         )
     return LABEL_SCHEMAS[key]
 
@@ -111,6 +112,17 @@ def load_jsonl(
                 if not math.isfinite(utility):
                     raise ValueError(f"line {line_number} of {source} has non-finite utility")
                 record["utility"] = utility
+            if str(label_schema).strip().lower() == "pposm_action_utility":
+                metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+                utilities = metadata.get("action_utilities")
+                if not isinstance(utilities, dict) or set(utilities) != labels:
+                    raise ValueError(
+                        f"line {line_number} of {source} action_utilities must match labels"
+                    )
+                parsed = {label: float(utilities[label]) for label in labels}
+                if not all(math.isfinite(value) for value in parsed.values()):
+                    raise ValueError(f"line {line_number} of {source} has non-finite action utility")
+                record["action_utilities"] = parsed
             rows.append(record)
             if max_samples > 0 and len(rows) >= int(max_samples):
                 break
@@ -197,6 +209,29 @@ def make_economic_utility_reward(utility_scale: float) -> Callable[..., list[flo
     return economic_utility_reward
 
 
+def make_action_utility_reward(utility_scale: float) -> Callable[..., list[float]]:
+    scale = float(utility_scale)
+    if not math.isfinite(scale) or scale <= 0.0:
+        raise ValueError("utility_scale must be positive and finite")
+
+    def action_utility_reward(
+        completions: Sequence[Any], action_utilities: Sequence[dict[str, float]], **_: Any
+    ) -> list[float]:
+        if len(completions) != len(action_utilities):
+            raise ValueError("completions and action_utilities must have equal lengths")
+        rewards: list[float] = []
+        for completion, utilities in zip(completions, action_utilities):
+            label = completion_text(completion)
+            if label not in utilities:
+                rewards.append(-1.0)
+                continue
+            rewards.append(float(max(-1.0, min(1.0, float(utilities[label]) / scale))))
+        return rewards
+
+    action_utility_reward.__name__ = "action_utility_reward"
+    return action_utility_reward
+
+
 def build_reward_functions(
     label_schema: str, *, utility_scale: float = 0.005
 ) -> list[Callable[..., list[float]]]:
@@ -204,6 +239,9 @@ def build_reward_functions(
     rewards: list[Callable[..., list[float]]] = [make_format_reward(schema)]
     if schema == "gate_utility":
         rewards.append(make_economic_utility_reward(utility_scale))
+        return rewards
+    if schema == "pposm_action_utility":
+        rewards.append(make_action_utility_reward(utility_scale))
         return rewards
     rewards.append(exact_target_reward)
     if schema == "ordinal":
@@ -271,7 +309,12 @@ def _reward_diagnostics(label_schema: str, *, utility_scale: float = 0.005) -> d
         for completion in labels:
             values: dict[str, float] = {}
             for reward in reward_funcs:
-                kwargs = {"utility": [0.01]} if reward.__name__ == "economic_utility_reward" else {"target": [target]}
+                if reward.__name__ == "economic_utility_reward":
+                    kwargs = {"utility": [0.01]}
+                elif reward.__name__ == "action_utility_reward":
+                    kwargs = {"action_utilities": [{label: (0.01 if label == target else 0.0) for label in labels}]}
+                else:
+                    kwargs = {"target": [target]}
                 values[reward.__name__] = reward([completion], **kwargs)[0]
             matrix[target][completion] = values
     return {
@@ -432,6 +475,7 @@ def train_text_rlvr(cfg: TextRLVRConfig, *, dry_run: bool = False) -> dict[str, 
                 "prompt": [{"role": "user", "content": row["prompt"]}],
                 "target": row["target"],
                 **({"utility": row["utility"]} if "utility" in row else {}),
+                **({"action_utilities": row["action_utilities"]} if "action_utilities" in row else {}),
             }
             for row in rows
         ]

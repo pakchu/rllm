@@ -9,6 +9,7 @@ from training.train_text_rlvr import (
     build_reward_functions,
     exact_target_reward,
     make_economic_utility_reward,
+    make_action_utility_reward,
     load_jsonl,
     ordinal_distance_reward,
     parse_args,
@@ -53,6 +54,14 @@ class TestTextRLVR(unittest.TestCase):
         self.assertEqual(
             reward(["TRADE", "NO_TRADE", "TRADE", "BAD"], utility=[0.01, 0.01, -0.005, 0.01]),
             [1.0, 0.0, -0.5, -1.0],
+        )
+
+    def test_action_utility_reward_scores_selected_route(self):
+        reward = make_action_utility_reward(0.01)
+        utilities = {"SKIP": 0.0, "TP4": 0.01, "TP12": -0.005}
+        self.assertEqual(
+            reward(["SKIP", "TP4", "TP12", "BAD"], action_utilities=[utilities] * 4),
+            [0.0, 1.0, -0.5, -1.0],
         )
 
     def test_gate_utility_loader_preserves_train_net_return(self):

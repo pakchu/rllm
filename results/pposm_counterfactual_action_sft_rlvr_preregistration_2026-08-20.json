@@ -1,0 +1,66 @@
+{
+  "protocol_version": "pposm_counterfactual_action_sft_rlvr_v1",
+  "status": "preregistered_before_sft",
+  "as_of": "2026-08-20",
+  "data": {
+    "train": {
+      "path": "data/pposm_counterfactual_action_train_pre2024_2026-08-20.jsonl",
+      "sha256": "43f1804ff627a6d40a6a49d206cc0be22c723b1c01ba8775a6913495af1c6048",
+      "rows": 462,
+      "targets": {
+        "SKIP": 161,
+        "TP4": 155,
+        "TP12": 146
+      }
+    },
+    "oos": {
+      "path": "data/pposm_counterfactual_action_oos_2024_2026_2026-08-20.jsonl",
+      "sha256": "7afe7bfa208ad7ae0363d4338f13c409c72b757d7b226a55a826b29dda1b60d5",
+      "rows": 157,
+      "training_forbidden": true
+    }
+  },
+  "sft": {
+    "steps": 128,
+    "balanced_oversample_samples": 1024,
+    "lr": 1e-05,
+    "seed": 20260831
+  },
+  "rlvr": {
+    "schema": "pposm_action_utility",
+    "sample_mode": "balanced_oversample",
+    "max_samples": 1024,
+    "steps": 64,
+    "lr": 5e-06,
+    "generations": 4,
+    "batch": 4,
+    "gradient_accumulation": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "seed": 20260901,
+    "scale_rewards": "none",
+    "utility_scale": 0.01,
+    "reward": "selected train action exact base-cost utility"
+  },
+  "evaluation": {
+    "oos_rows": 157,
+    "decoding": "candidate mean logprob",
+    "backtest": "sequential exact next-open TP/48h lifecycle"
+  },
+  "baseline": {
+    "return_pct": 47.133678626957256,
+    "cagr_mdd": 3.029691776281298,
+    "mdd_pct": 5.716886250792774,
+    "trades": 48
+  },
+  "go_gates": {
+    "actual_route_changes_min": 1,
+    "beat_baseline_return_or_ratio": true,
+    "each_window_base_stress_positive": true,
+    "combined_mdd_max": 15,
+    "weekly_p_max": 0.2
+  },
+  "stopping_rule": "No OOS model/threshold/decoding selection.",
+  "manifest_hash": "917e46ee568bf9d15534c7dcf5a0dbdb41c86d124357747dba6caf9cf9c92c65"
+}
