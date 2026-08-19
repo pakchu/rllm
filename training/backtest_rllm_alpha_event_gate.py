@@ -78,6 +78,33 @@ def select_clock(rows: list[dict[str, Any]], scores: dict[str, float], *, gated:
     return pd.DataFrame(selected, columns=("candidate","control","split","entry_time","exit_time","side","train_score","slug"))
 
 
+def veto_frozen_clock(clock: pd.DataFrame, rows: list[dict[str, Any]]) -> pd.DataFrame:
+    """Apply predictions to an already frozen schedule without replacement.
+
+    Filtering the candidate pool before overlap resolution changes which later
+    trades are admitted.  That measures a repacked portfolio, not the marginal
+    effect of a gate.  The primary comparison therefore freezes the ungated
+    schedule first and permits the model only to veto scheduled entries.
+    """
+    trade_keys = {
+        (
+            str(row["slug"]),
+            pd.Timestamp(row["entry_time"]),
+            pd.Timestamp(row["exit_time"]),
+            int(row["side"]),
+        )
+        for row in rows
+        if row.get("prediction") == "TRADE"
+    }
+    keep = [
+        (str(row.slug), pd.Timestamp(row.entry_time), pd.Timestamp(row.exit_time), int(row.side)) in trade_keys
+        for row in clock.itertuples(index=False)
+    ]
+    out = clock.loc[keep].copy().reset_index(drop=True)
+    out["control"] = "rllm_matched_veto"
+    return out
+
+
 def _metrics(clock: pd.DataFrame, market: pd.DataFrame, funding: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> dict[str, Any]:
     bare = clock[["entry_time", "exit_time", "side"]]
     return econ.evaluate_primary(bare, market, funding, start, end)
@@ -93,8 +120,9 @@ def run(data_dir: Path, results_dir: Path, output: Path, clock_dir: Path) -> dic
         events = _rows(data_dir / f"rllm_alpha_event_gate_{stage}_trainpassed_2026-08-19.jsonl")
         preds = _rows(results_dir / f"rllm_alpha_event_gate_{stage}_predictions_2026-08-19.jsonl")
         attached = attach_predictions(events, preds)
-        selected = select_clock(attached, scores, gated=True)
         baseline = select_clock(attached, scores, gated=False)
+        selected = veto_frozen_clock(baseline, attached)
+        repacked = select_clock(attached, scores, gated=True)
         market, funding, source = econ.load_sources(stage, start, end)
         selected_by_stage[stage], baseline_by_stage[stage] = selected, baseline
         markets.append(market); funds.append(funding)
@@ -105,6 +133,7 @@ def run(data_dir: Path, results_dir: Path, output: Path, clock_dir: Path) -> dic
             "selected_policy_counts": dict(Counter(selected["candidate"])),
             "selected": _metrics(selected, market, funding, start, end),
             "ungated": _metrics(baseline, market, funding, start, end),
+            "repacked_diagnostic": _metrics(repacked, market, funding, start, end),
         }
         clock_dir.mkdir(parents=True, exist_ok=True)
         _write_gzip_csv(selected, clock_dir / f"rllm_alpha_event_gate_{stage}_clock_2026-08-19.csv.gz")
@@ -116,7 +145,7 @@ def run(data_dir: Path, results_dir: Path, output: Path, clock_dir: Path) -> dic
     start, end = STAGES["test"][0], STAGES["final"][1]
     report = {
         "protocol_version": "rllm_alpha_event_gate_oos_backtest_v1",
-        "policy": "earliest available event; same-entry highest frozen 2023 train CAGR/MDD; 0.5 gross; skip overlaps",
+        "policy": "freeze ungated earliest-event schedule first; same-entry highest frozen 2023 train CAGR/MDD; RLLM may veto without replacement; 0.5 gross",
         "stages": stage_reports,
         "combined_oos": {
             "window": [str(start), str(end)],

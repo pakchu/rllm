@@ -1,0 +1,323 @@
+{
+  "protocol_version": "rllm_alpha_state_card_research_v1",
+  "as_of": "2026-08-19",
+  "objective": "causal volatile-regime BTC alpha ranking without options data",
+  "critic_corrections": {
+    "event_formula_adapter_2024_leakage": true,
+    "event_schedule_repacking_fixed": true,
+    "corrected_matched_veto_combined_oos": {
+      "base": {
+        "absolute_return_pct": -4.250325808231226,
+        "cagr_pct": -1.6682074845153383,
+        "strict_mdd_pct": 12.885047842243779,
+        "cagr_to_strict_mdd": -0.12946847422995983,
+        "final_equity": 0.9574967419176877,
+        "trades": 205,
+        "longs": 113,
+        "shorts": 92,
+        "mean_gross_underlying_bp": 8.856241780210386,
+        "mean_net_bp": -1.7106705583583441,
+        "win_rate": 0.4585365853658537
+      },
+      "stress": {
+        "absolute_return_pct": -11.802488755649797,
+        "cagr_pct": -4.748082504803075,
+        "strict_mdd_pct": 16.189958728516686,
+        "cagr_to_strict_mdd": -0.29327329268850405,
+        "final_equity": 0.881975112443502,
+        "trades": 205,
+        "longs": 113,
+        "shorts": 92,
+        "mean_gross_underlying_bp": 8.856241780210386,
+        "mean_net_bp": -5.716616478729507,
+        "win_rate": 0.43414634146341463
+      },
+      "cluster_signflip": {
+        "method": "one_sided_UTC_week_cluster_signflip_monte_carlo",
+        "clusters": 105,
+        "draws": 100000,
+        "seed": 20260808,
+        "observed_log_effect": -0.04343296063005682,
+        "pvalue": 0.6121938780612194
+      },
+      "calendar_halves": {
+        "first": {
+          "absolute_return_pct": -2.4959613739045428,
+          "cagr_pct": -1.9390035890205715,
+          "strict_mdd_pct": 9.27346465231621,
+          "cagr_to_strict_mdd": -0.2090916029465073,
+          "final_equity": 0.9750403862609546,
+          "trades": 104,
+          "longs": 58,
+          "shorts": 46,
+          "mean_gross_underlying_bp": 8.507624771765212,
+          "mean_net_bp": -1.9917898755146652,
+          "win_rate": 0.47115384615384615
+        },
+        "second": {
+          "absolute_return_pct": -1.799273608608165,
+          "cagr_pct": -1.3966635747366674,
+          "strict_mdd_pct": 12.885047842243791,
+          "cagr_to_strict_mdd": -0.1083941318524009,
+          "final_equity": 0.9820072639139183,
+          "trades": 101,
+          "longs": 55,
+          "shorts": 46,
+          "mean_gross_underlying_bp": 9.215213749302446,
+          "mean_net_bp": -1.4212011624744976,
+          "win_rate": 0.44554455445544555
+        }
+      }
+    },
+    "legacy_repacked_result_is_diagnostic_only": true,
+    "formula_gate_accuracy": 0.8303571428571429,
+    "formula_stage_only_train_derived_baseline_accuracy": 0.78125
+  },
+  "dataset": {
+    "config": {
+      "formula_max_chars": 2400,
+      "funding_csv": "data/rllm_state_card_funding_2023_2026.csv.gz",
+      "input_jsonls": "data/rllm_alpha_event_gate_train_2026-08-19.jsonl,data/rllm_alpha_event_gate_test_2026-08-19.jsonl,data/rllm_alpha_event_gate_eval_2026-08-19.jsonl,data/rllm_alpha_event_gate_final_2026-08-19.jsonl",
+      "market_csv": "data/rllm_state_card_market_2023_2026.csv.gz",
+      "min_utility_gap": 0.001,
+      "pairwise_output": "data/rllm_alpha_state_card_pairwise_2026-08-19.jsonl",
+      "pointwise_output": "data/rllm_alpha_state_card_pointwise_2026-08-19.jsonl",
+      "summary_output": "results/rllm_alpha_state_card_dataset_2026-08-19.json"
+    },
+    "eligible_input_rows": 3147,
+    "leakage_guard": {
+      "funding_settlements_strictly_before_entry": true,
+      "future_return_in_prompts": false,
+      "market_bars_strictly_before_entry": true,
+      "ordinal_thresholds_fit_on_train_only": true
+    },
+    "ordinal_thresholds_train_only": [
+      -0.002740305023775202,
+      -0.0003512776079909408,
+      0.002093684937684026,
+      0.00866999967576687
+    ],
+    "pairwise_targets": {
+      "A": 2314,
+      "B": 3753
+    },
+    "pointwise_targets": {
+      "Q0": 1203,
+      "Q1": 513,
+      "Q2": 416,
+      "Q3": 585,
+      "Q4": 430
+    },
+    "rows": {
+      "pairwise": 6067,
+      "pointwise": 3147
+    },
+    "sha256": {
+      "pairwise": "d8da48e0d20453a3720692219da71767744a84da03c006c3b02d0c2c5027be05",
+      "pointwise": "574720602352160389e1a45c0d744ce9dad32021e068988ae49c595a096b6b67"
+    },
+    "skipped": {
+      "utility_gap_not_above_threshold": 3409
+    }
+  },
+  "experiments": {
+    "deterministic_pairwise_linear_with_wait": {
+      "frozen_ranker_sha256": "e1036aa30ec753b78bd6a6359e7576f655e42a35d3bad0363b7b50592080dc71",
+      "combined_oos": {
+        "window": [
+          "2024-01-01T00:00:00+00:00",
+          "2026-08-01T00:00:00+00:00"
+        ],
+        "events": 1318,
+        "selected_trades": 414,
+        "base": {
+          "period": [
+            "2024-01-01T00:00:00+00:00",
+            "2026-08-01T00:00:00+00:00"
+          ],
+          "trades": 414,
+          "absolute_return_pct": -55.73311231801789,
+          "cagr_pct": -27.068256378895907,
+          "strict_mdd_pct": 57.370422051710925,
+          "cagr_to_strict_mdd": -0.47181553509398777,
+          "ending_equity": 0.44266887681982114,
+          "mean_gross_underlying_bp": -25.850003830474613,
+          "funding_cash": -0.00037011251709464767
+        },
+        "stress": {
+          "period": [
+            "2024-01-01T00:00:00+00:00",
+            "2026-08-01T00:00:00+00:00"
+          ],
+          "trades": 414,
+          "absolute_return_pct": -62.49989417213273,
+          "cagr_pct": -31.607103811648017,
+          "strict_mdd_pct": 63.76379585713647,
+          "cagr_to_strict_mdd": -0.49569043666195944,
+          "ending_equity": 0.37500105827867264,
+          "mean_gross_underlying_bp": -25.850003830474613,
+          "funding_cash": -0.0002531007922598763
+        },
+        "ranking": {
+          "labelled_events": 1318,
+          "coverage": 1.0,
+          "top1_accuracy_when_selected": 0.41198786039453716,
+          "mean_selected_utility_per_labelled_event": -0.001161762394307124,
+          "diagnostic_only": true
+        },
+        "signflip": {
+          "method": "deterministic_mc_weekly_cluster_signflip_one_sided",
+          "clusters": 125,
+          "pvalue": 0.99930003499825,
+          "draws": 20000,
+          "seed": 17
+        }
+      },
+      "promotion": "rejected"
+    },
+    "base_qwen_pairwise_lora": {
+      "training": {
+        "model_name": "/home/pakchu/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "train_jsonl": "/tmp/rllm-alpha-orthogonal-20260718/data/rllm_alpha_state_card_pairwise_train_2026-08-19.jsonl",
+        "output_dir": "checkpoints/rllm_alpha_state_card_pairwise_qwen25_1p5b_lora_s128_2026-08-19",
+        "rows": 1024,
+        "tasks": {
+          "alpha_state_card_pairwise_preference": 1024
+        },
+        "target_counts": {
+          "B": 512,
+          "A": 512
+        },
+        "prompt_chars": {
+          "min": 3733,
+          "max": 6880,
+          "mean": 4062.3408203125
+        },
+        "target_chars": {
+          "min": 1,
+          "max": 1,
+          "mean": 1.0
+        },
+        "config": {
+          "model_name": "/home/pakchu/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+          "train_jsonl": "data/rllm_alpha_state_card_pairwise_train_2026-08-19.jsonl",
+          "output_dir": "checkpoints/rllm_alpha_state_card_pairwise_qwen25_1p5b_lora_s128_2026-08-19",
+          "max_samples": 1024,
+          "max_seq_length": 4096,
+          "sample_mode": "balanced_oversample",
+          "max_steps": 128,
+          "num_train_epochs": 1.0,
+          "learning_rate": 1e-05,
+          "per_device_train_batch_size": 1,
+          "gradient_accumulation_steps": 8,
+          "lora_r": 16,
+          "lora_alpha": 32,
+          "lora_dropout": 0.05,
+          "lora_target_modules": "all-linear",
+          "completion_only_loss": true,
+          "load_in_4bit": false,
+          "seed": 42,
+          "base_adapter_dir": ""
+        }
+      },
+      "sample512": {
+        "num_samples": 512,
+        "accuracy": 0.376953125,
+        "confusion": {
+          "target=A|pred=A": 114,
+          "target=A|pred=B": 77,
+          "target=B|pred=A": 242,
+          "target=B|pred=B": 79
+        }
+      },
+      "adapter_sha256": "f5c0fd337bd0de56a389d689788ccd53f381548888d619b774b7664493730757",
+      "promotion": "rejected"
+    },
+    "base_qwen_ordinal_lora": {
+      "training": {
+        "model_name": "/home/pakchu/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+        "train_jsonl": "/tmp/rllm-alpha-orthogonal-20260718/data/rllm_alpha_state_card_pointwise_train_2026-08-19.jsonl",
+        "output_dir": "checkpoints/rllm_alpha_state_card_ordinal_qwen25_1p5b_lora_s128_2026-08-19",
+        "rows": 1024,
+        "tasks": {
+          "alpha_state_card_ordinal": 1024
+        },
+        "target_counts": {
+          "Q3": 205,
+          "Q4": 204,
+          "Q1": 205,
+          "Q2": 205,
+          "Q0": 205
+        },
+        "prompt_chars": {
+          "min": 3273,
+          "max": 3565,
+          "mean": 3393.904296875
+        },
+        "target_chars": {
+          "min": 2,
+          "max": 2,
+          "mean": 2.0
+        },
+        "config": {
+          "model_name": "/home/pakchu/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+          "train_jsonl": "data/rllm_alpha_state_card_pointwise_train_2026-08-19.jsonl",
+          "output_dir": "checkpoints/rllm_alpha_state_card_ordinal_qwen25_1p5b_lora_s128_2026-08-19",
+          "max_samples": 1024,
+          "max_seq_length": 4096,
+          "sample_mode": "balanced_oversample",
+          "max_steps": 128,
+          "num_train_epochs": 1.0,
+          "learning_rate": 1e-05,
+          "per_device_train_batch_size": 1,
+          "gradient_accumulation_steps": 8,
+          "lora_r": 16,
+          "lora_alpha": 32,
+          "lora_dropout": 0.05,
+          "lora_target_modules": "all-linear",
+          "completion_only_loss": true,
+          "load_in_4bit": false,
+          "seed": 42,
+          "base_adapter_dir": ""
+        }
+      },
+      "sample512": {
+        "num_samples": 512,
+        "accuracy": 0.236328125,
+        "confusion": {
+          "target=Q0|pred=Q0": 88,
+          "target=Q0|pred=Q1": 30,
+          "target=Q0|pred=Q2": 54,
+          "target=Q0|pred=Q3": 13,
+          "target=Q0|pred=Q4": 7,
+          "target=Q1|pred=Q0": 48,
+          "target=Q1|pred=Q1": 4,
+          "target=Q1|pred=Q2": 29,
+          "target=Q1|pred=Q3": 5,
+          "target=Q1|pred=Q4": 2,
+          "target=Q2|pred=Q0": 34,
+          "target=Q2|pred=Q1": 7,
+          "target=Q2|pred=Q2": 21,
+          "target=Q2|pred=Q3": 3,
+          "target=Q2|pred=Q4": 2,
+          "target=Q3|pred=Q0": 39,
+          "target=Q3|pred=Q1": 9,
+          "target=Q3|pred=Q2": 32,
+          "target=Q3|pred=Q3": 8,
+          "target=Q3|pred=Q4": 1,
+          "target=Q4|pred=Q0": 30,
+          "target=Q4|pred=Q1": 11,
+          "target=Q4|pred=Q2": 30,
+          "target=Q4|pred=Q3": 5
+        }
+      },
+      "adapter_sha256": "4ebad0d79c33d2be6f188004efc148817afbca76d82dec3fecbabc8ca717439c",
+      "promotion": "rejected"
+    }
+  },
+  "promotion": {
+    "status": "rejected",
+    "reason": "no state-card selector has positive strict OOS economics or beats class baselines; do not deploy"
+  },
+  "next_research_boundary": "move to a genuinely distinct train-only residual/substitution mechanism; do not retune these state-card labels on exposed 2024-2026 outcomes"
+}
