@@ -19,6 +19,7 @@ from typing import Any, Callable, Sequence
 
 LABEL_SCHEMAS: dict[str, tuple[str, ...]] = {
     "gate": ("NO_TRADE", "TRADE"),
+    "gate_utility": ("NO_TRADE", "TRADE"),
     "pair": ("A", "B"),
     "ordinal": ("Q0", "Q1", "Q2", "Q3", "Q4"),
 }
@@ -53,12 +54,13 @@ class TextRLVRConfig:
     local_files_only: bool = False
     trust_remote_code: bool = False
     bf16: bool = False
+    utility_scale: float = 0.005
 
 
 def allowed_labels(label_schema: str) -> tuple[str, ...]:
     key = str(label_schema).strip().lower()
     if key not in LABEL_SCHEMAS:
-        raise ValueError("label_schema must be one of {'gate','pair','ordinal'}")
+        raise ValueError("label_schema must be one of {'gate','gate_utility','pair','ordinal'}")
     return LABEL_SCHEMAS[key]
 
 
@@ -67,7 +69,7 @@ def load_jsonl(
     *,
     label_schema: str,
     max_samples: int = 0,
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     """Load and strictly validate prompt/target JSONL rows."""
     source = Path(path)
     labels = set(allowed_labels(label_schema))
@@ -91,7 +93,20 @@ def load_jsonl(
                 raise ValueError(
                     f"line {line_number} of {source} target must be exactly one of {sorted(labels)}"
                 )
-            rows.append({"prompt": prompt, "target": target})
+            record: dict[str, Any] = {"prompt": prompt, "target": target}
+            if str(label_schema).strip().lower() == "gate_utility":
+                metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+                utility = metadata.get("net_return", raw.get("utility"))
+                try:
+                    utility = float(utility)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(
+                        f"line {line_number} of {source} lacks finite metadata.net_return"
+                    ) from exc
+                if not math.isfinite(utility):
+                    raise ValueError(f"line {line_number} of {source} has non-finite utility")
+                record["utility"] = utility
+            rows.append(record)
             if max_samples > 0 and len(rows) >= int(max_samples):
                 break
     if not rows:
@@ -151,12 +166,41 @@ def ordinal_distance_reward(
     return rewards
 
 
-def build_reward_functions(label_schema: str) -> list[Callable[..., list[float]]]:
+def make_economic_utility_reward(utility_scale: float) -> Callable[..., list[float]]:
+    scale = float(utility_scale)
+    if not math.isfinite(scale) or scale <= 0.0:
+        raise ValueError("utility_scale must be positive and finite")
+
+    def economic_utility_reward(
+        completions: Sequence[Any], utility: Sequence[float], **_: Any
+    ) -> list[float]:
+        if len(completions) != len(utility):
+            raise ValueError("completions and utility must have equal lengths")
+        rewards: list[float] = []
+        for completion, raw_utility in zip(completions, utility):
+            label = completion_text(completion)
+            value = float(raw_utility)
+            if label == "TRADE":
+                rewards.append(float(max(-1.0, min(1.0, value / scale))))
+            elif label == "NO_TRADE":
+                rewards.append(0.0)
+            else:
+                rewards.append(-1.0)
+        return rewards
+
+    economic_utility_reward.__name__ = "economic_utility_reward"
+    return economic_utility_reward
+
+
+def build_reward_functions(
+    label_schema: str, *, utility_scale: float = 0.005
+) -> list[Callable[..., list[float]]]:
     schema = str(label_schema).strip().lower()
-    rewards: list[Callable[..., list[float]]] = [
-        make_format_reward(schema),
-        exact_target_reward,
-    ]
+    rewards: list[Callable[..., list[float]]] = [make_format_reward(schema)]
+    if schema == "gate_utility":
+        rewards.append(make_economic_utility_reward(utility_scale))
+        return rewards
+    rewards.append(exact_target_reward)
     if schema == "ordinal":
         rewards.append(ordinal_distance_reward)
     else:
@@ -186,17 +230,18 @@ def apply_reward_variance_guard(
     return generations, notes
 
 
-def _reward_diagnostics(label_schema: str) -> dict[str, Any]:
+def _reward_diagnostics(label_schema: str, *, utility_scale: float = 0.005) -> dict[str, Any]:
     labels = allowed_labels(label_schema)
     matrix: dict[str, dict[str, dict[str, float]]] = {}
-    reward_funcs = build_reward_functions(label_schema)
+    reward_funcs = build_reward_functions(label_schema, utility_scale=utility_scale)
     for target in labels:
         matrix[target] = {}
         for completion in labels:
-            matrix[target][completion] = {
-                reward.__name__: reward([completion], target=[target])[0]
-                for reward in reward_funcs
-            }
+            values: dict[str, float] = {}
+            for reward in reward_funcs:
+                kwargs = {"utility": [0.01]} if reward.__name__ == "economic_utility_reward" else {"target": [target]}
+                values[reward.__name__] = reward([completion], **kwargs)[0]
+            matrix[target][completion] = values
     return {
         "schema": str(label_schema).lower(),
         "allowed_labels": list(labels),
@@ -253,7 +298,7 @@ def train_text_rlvr(cfg: TextRLVRConfig, *, dry_run: bool = False) -> dict[str, 
         "dry_run": bool(dry_run),
         "config": asdict(cfg),
     }
-    reward_diagnostics = _reward_diagnostics(schema)
+    reward_diagnostics = _reward_diagnostics(schema, utility_scale=cfg.utility_scale)
     gradient_diagnostics: dict[str, Any] = {
         "observed_gradient_norms": [],
         "max_observed_gradient_norm": None,
@@ -351,6 +396,7 @@ def train_text_rlvr(cfg: TextRLVRConfig, *, dry_run: bool = False) -> dict[str, 
             {
                 "prompt": [{"role": "user", "content": row["prompt"]}],
                 "target": row["target"],
+                **({"utility": row["utility"]} if "utility" in row else {}),
             }
             for row in rows
         ]
@@ -358,7 +404,7 @@ def train_text_rlvr(cfg: TextRLVRConfig, *, dry_run: bool = False) -> dict[str, 
     trainer = GRPOTrainer(
         model=model,
         args=args,
-        reward_funcs=build_reward_functions(schema),
+        reward_funcs=build_reward_functions(schema, utility_scale=cfg.utility_scale),
         train_dataset=dataset,
         processing_class=tokenizer,
     )
@@ -429,6 +475,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--local-files-only", action="store_true")
     parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--bf16", action="store_true")
+    parser.add_argument("--utility-scale", type=float, default=0.005)
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args(argv)
 

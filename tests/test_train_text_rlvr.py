@@ -8,6 +8,7 @@ from training.train_text_rlvr import (
     apply_reward_variance_guard,
     build_reward_functions,
     exact_target_reward,
+    make_economic_utility_reward,
     load_jsonl,
     ordinal_distance_reward,
     parse_args,
@@ -36,6 +37,20 @@ class TestTextRLVR(unittest.TestCase):
             target_reward(completions, target=["TRADE", "TRADE", "NO_TRADE"]),
             [1.0, 0.0, 0.0],
         )
+
+    def test_economic_utility_reward_prefers_trade_only_for_positive_edge(self):
+        reward = make_economic_utility_reward(0.01)
+        self.assertEqual(
+            reward(["TRADE", "NO_TRADE", "TRADE", "BAD"], utility=[0.01, 0.01, -0.005, 0.01]),
+            [1.0, 0.0, -0.5, -1.0],
+        )
+
+    def test_gate_utility_loader_preserves_train_net_return(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "train.jsonl"
+            path.write_text(json.dumps({"prompt": "p", "target": "TRADE", "metadata": {"net_return": 0.012}}) + "\n")
+            rows = load_jsonl(path, label_schema="gate_utility")
+            self.assertEqual(rows[0]["utility"], 0.012)
 
     def test_ordinal_distance_reward_is_monotone_and_invalid_is_zero(self):
         rewards = ordinal_distance_reward(

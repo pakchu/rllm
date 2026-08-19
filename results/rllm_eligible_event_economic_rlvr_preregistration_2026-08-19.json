@@ -1,0 +1,46 @@
+{
+  "protocol_version": "rllm_eligible_event_economic_rlvr_v1",
+  "status": "preregistered_before_rlvr",
+  "as_of": "2026-08-19",
+  "sft_adapter": {
+    "path": "checkpoints/rllm_eligible_event_gate_sft_qwen25_1p5b_s128_2026-08-19",
+    "sha256": "c69591ec79dbc1218de39142abde0a255c8c3cf91bb2711a2bebc9827b13e33d"
+  },
+  "train": {
+    "path": "data/rllm_alpha_event_gate_trainpassed_train_2026-08-19.jsonl",
+    "sha256": "97287f749fc77e18e3b4531e2f8313eca91ed7afa329fd39dbbdcd5ff003bc6c",
+    "rows": 483,
+    "utility": "metadata.net_return after 6bp/side and exact funding"
+  },
+  "rlvr": {
+    "schema": "gate_utility",
+    "steps": 64,
+    "learning_rate": 5e-06,
+    "generations": 4,
+    "batch": 4,
+    "gradient_accumulation": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "seed": 20260822,
+    "scale_rewards": "none",
+    "utility_scale": 0.005,
+    "reward": "format + clip(TRADE*net_return/0.005,-1,1); NO_TRADE=0; invalid=-1"
+  },
+  "frozen_sample": {
+    "oos_path": "data/rllm_alpha_event_gate_trainpassed_oos_2026-08-19.jsonl",
+    "max_samples": 512,
+    "mode": "random",
+    "seed": 20260819,
+    "sft_accuracy": 0.5
+  },
+  "sample_go_gates": {
+    "predicted_trade_count_min": 50,
+    "predicted_trade_mean_net_positive": true,
+    "predicted_trade_compounded_utility_positive": true,
+    "beats_sft_selected_utility": true
+  },
+  "full_gate": "only after sample pass; matched no replacement strict exact-funding backtest; every stage base/stress positive, combined MDD<=20 ratio>=1.5 p<=0.20",
+  "stopping_rule": "No reward retuning on exposed OOS; fail moves to a different candidate mechanism.",
+  "manifest_hash": "d5ef8713a8ed407afe20d9a9b231962fec3c43faed639e0952c32e2f9289fd41"
+}
