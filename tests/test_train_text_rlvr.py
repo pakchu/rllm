@@ -38,6 +38,15 @@ class TestTextRLVR(unittest.TestCase):
             [1.0, 0.0, 0.0],
         )
 
+    def test_pposm_state_schema_is_exact_and_nonconstant(self):
+        format_reward, target_reward = build_reward_functions("pposm_state")
+        completions = ["SKIP", "TP4", "TP12"]
+        self.assertEqual(format_reward(completions), [0.2, 0.2, 0.2])
+        self.assertEqual(
+            target_reward(completions, target=["SKIP", "TP12", "TP12"]),
+            [1.0, 0.0, 1.0],
+        )
+
     def test_economic_utility_reward_prefers_trade_only_for_positive_edge(self):
         reward = make_economic_utility_reward(0.01)
         self.assertEqual(

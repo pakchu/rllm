@@ -22,6 +22,7 @@ LABEL_SCHEMAS: dict[str, tuple[str, ...]] = {
     "gate_utility": ("NO_TRADE", "TRADE"),
     "pair": ("A", "B"),
     "ordinal": ("Q0", "Q1", "Q2", "Q3", "Q4"),
+    "pposm_state": ("SKIP", "TP4", "TP12"),
 }
 
 
@@ -60,7 +61,10 @@ class TextRLVRConfig:
 def allowed_labels(label_schema: str) -> tuple[str, ...]:
     key = str(label_schema).strip().lower()
     if key not in LABEL_SCHEMAS:
-        raise ValueError("label_schema must be one of {'gate','gate_utility','pair','ordinal'}")
+        raise ValueError(
+            "label_schema must be one of "
+            "{'gate','gate_utility','pair','ordinal','pposm_state'}"
+        )
     return LABEL_SCHEMAS[key]
 
 
