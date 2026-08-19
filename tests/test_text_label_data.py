@@ -20,6 +20,7 @@ class TestTextLabelData(unittest.TestCase):
         self.assertEqual(parse_label("TRADE.", key="gate"), "TRADE")
         self.assertEqual(parse_label("Q4.", key="ordinal"), "Q4")
         self.assertEqual(parse_label("B", key="pair"), "B")
+        self.assertEqual(parse_label("TP12", key="pposm_state"), "TP12")
         with tempfile.TemporaryDirectory() as td:
             inp = Path(td) / "in.jsonl"
             out = Path(td) / "out.jsonl"

@@ -17,6 +17,7 @@ VALID_VALUES = {
     "decision": ("ABSTAIN", "TRADE"),
     "pair": ("A", "B"),
     "ordinal": ("Q0", "Q1", "Q2", "Q3", "Q4"),
+    "pposm_state": ("SKIP", "TP4", "TP12"),
 }
 
 
@@ -218,7 +219,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output", required=True)
     p.add_argument(
         "--key",
-        choices=["gate", "side", "decision", "pair", "ordinal"],
+        choices=["gate", "side", "decision", "pair", "ordinal", "pposm_state"],
         required=True,
     )
     p.add_argument("--model-name", default=RECOMMENDED_TEXT_CAUSAL_LM_MODEL)
