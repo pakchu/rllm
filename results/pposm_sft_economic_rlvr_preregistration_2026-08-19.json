@@ -1,0 +1,65 @@
+{
+  "protocol_version": "pposm_sft_economic_rlvr_v1",
+  "status": "preregistered_before_sft",
+  "as_of": "2026-08-19",
+  "mechanism": "frozen PPOSM no-replacement veto only",
+  "data": {
+    "train": {
+      "path": "data/pposm_sft_rlvr_train_pre2024_2026-08-19.jsonl",
+      "sha256": "84cb3bb275da411097790ed7f089db86320a3287b6a1f09a947b170d1bf66126",
+      "rows": 90
+    },
+    "oos": {
+      "path": "data/pposm_sft_rlvr_oos_2024_2026_2026-08-19.jsonl",
+      "sha256": "1b0322195700787ae835882a79ae4b60aec54490b506203d7b399b00df0bd163",
+      "rows": 48,
+      "training_forbidden": true
+    },
+    "summary_sha256": "8a9ef123008576dc6db4daf849330001f1a72cbcac227f57bcdc7eacfd55ec20"
+  },
+  "known_baseline": {
+    "pre2024_compounded_return_pct": 148.57911048226114,
+    "oos_compounded_return_pct": 47.133678626957256,
+    "contamination": "underlying PPOSM OOS known; new question is frozen RLLM no-replacement gating interaction"
+  },
+  "sft": {
+    "base": "Qwen2.5-1.5B local snapshot",
+    "base_adapter": null,
+    "steps": 64,
+    "balanced_oversample_samples": 512,
+    "lr": 1e-05,
+    "seed": 20260823
+  },
+  "rlvr": {
+    "schema": "gate_utility",
+    "steps": 64,
+    "lr": 5e-06,
+    "generations": 4,
+    "batch": 4,
+    "gradient_accumulation": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "seed": 20260824,
+    "scale_rewards": "none",
+    "utility_scale": 0.01,
+    "reward": "train exact net-return utility only"
+  },
+  "evaluation": {
+    "all_48_oos_rows": true,
+    "prediction_mode": "candidate_logprob mean",
+    "schedule_policy": "frozen schedule first; model veto without replacement"
+  },
+  "go_gates": {
+    "each_window_base_return_positive": true,
+    "combined_base_return_positive": true,
+    "combined_stress_return_positive": true,
+    "strict_mdd_max_pct": 15.0,
+    "cagr_mdd_min": 3.0,
+    "baseline_return_retention_min": 0.9,
+    "minimum_selected_trades": 30,
+    "weekly_p_max": 0.2
+  },
+  "stopping_rule": "No threshold tuning or replacement after OOS predictions; exact model passes or is rejected.",
+  "manifest_hash": "610ebb86934b754f7fc882327fb6ba08f55ff603c1a225a1b7c249c2fde87e37"
+}
