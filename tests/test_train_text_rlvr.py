@@ -12,6 +12,7 @@ from training.train_text_rlvr import (
     load_jsonl,
     ordinal_distance_reward,
     parse_args,
+    sample_rows,
     train_text_rlvr,
 )
 
@@ -145,6 +146,14 @@ class TestTextRLVR(unittest.TestCase):
     def test_exact_target_reward_rejects_length_mismatch(self):
         with self.assertRaisesRegex(ValueError, "equal lengths"):
             exact_target_reward(["A"], target=["A", "B"])
+
+    def test_balanced_oversample_is_deterministic_and_balanced(self):
+        rows = ([{"prompt": "a", "target": "A"}] * 1) + ([{"prompt": "b", "target": "B"}] * 5)
+        first = sample_rows(rows, mode="balanced_oversample", max_samples=12, seed=7)
+        second = sample_rows(rows, mode="balanced_oversample", max_samples=12, seed=7)
+        self.assertEqual(first, second)
+        self.assertEqual(sum(row["target"] == "A" for row in first), 6)
+        self.assertEqual(sum(row["target"] == "B" for row in first), 6)
 
     def test_conversational_completion_extracts_assistant_content(self):
         format_reward, target_reward = build_reward_functions("ordinal")[:2]

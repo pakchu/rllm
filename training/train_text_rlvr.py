@@ -34,6 +34,7 @@ class TextRLVRConfig:
     output_dir: str
     label_schema: str
     max_samples: int = 0
+    sample_mode: str = "sequential"
     max_steps: int = 50
     num_train_epochs: float = 1.0
     learning_rate: float = 1e-6
@@ -234,6 +235,33 @@ def apply_reward_variance_guard(
     return generations, notes
 
 
+def sample_rows(
+    rows: list[dict[str, Any]], *, mode: str, max_samples: int, seed: int
+) -> list[dict[str, Any]]:
+    key = str(mode).strip().lower()
+    if key == "sequential":
+        return rows[: int(max_samples)] if int(max_samples) > 0 else rows
+    if key != "balanced_oversample":
+        raise ValueError("sample_mode must be sequential or balanced_oversample")
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        groups.setdefault(str(row["target"]), []).append(row)
+    if len(groups) < 2:
+        raise ValueError("balanced_oversample requires at least two target classes")
+    total = int(max_samples) if int(max_samples) > 0 else max(len(v) for v in groups.values()) * len(groups)
+    rng = random.Random(int(seed))
+    labels = sorted(groups)
+    quotas = {label: total // len(labels) for label in labels}
+    for label in labels[: total % len(labels)]:
+        quotas[label] += 1
+    sampled: list[dict[str, Any]] = []
+    for label in labels:
+        source = groups[label]
+        sampled.extend(source[rng.randrange(len(source))] for _ in range(quotas[label]))
+    rng.shuffle(sampled)
+    return sampled
+
+
 def _reward_diagnostics(label_schema: str, *, utility_scale: float = 0.005) -> dict[str, Any]:
     labels = allowed_labels(label_schema)
     matrix: dict[str, dict[str, dict[str, float]]] = {}
@@ -280,7 +308,10 @@ def train_text_rlvr(cfg: TextRLVRConfig, *, dry_run: bool = False) -> dict[str, 
     """Train the existing SFT LoRA adapter with deterministic RLVR rewards."""
     schema = str(cfg.label_schema).strip().lower()
     labels = allowed_labels(schema)
-    rows = load_jsonl(cfg.train_jsonl, label_schema=schema, max_samples=cfg.max_samples)
+    rows = load_jsonl(cfg.train_jsonl, label_schema=schema, max_samples=0)
+    rows = sample_rows(
+        rows, mode=cfg.sample_mode, max_samples=cfg.max_samples, seed=cfg.seed
+    )
     effective_generations, guard_notes = apply_reward_variance_guard(
         num_generations=cfg.num_generations,
         dataset_size=len(rows),
@@ -458,6 +489,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--label-schema", required=True, choices=sorted(LABEL_SCHEMAS))
     parser.add_argument("--max-samples", type=int, default=0)
+    parser.add_argument(
+        "--sample-mode",
+        choices=["sequential", "balanced_oversample"],
+        default="sequential",
+    )
     parser.add_argument("--max-steps", type=int, default=50)
     parser.add_argument("--num-train-epochs", type=float, default=1.0)
     parser.add_argument("--learning-rate", type=float, default=1e-6)
