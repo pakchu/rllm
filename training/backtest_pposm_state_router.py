@@ -21,6 +21,7 @@ from training import build_pposm_state_router_data as builder
 from training.audit_confirmed_pullback_squeeze_live_parity import _execution_config
 from training.search_inventory_purge_reclaim_alpha import ExecutionEngine, Trade, equity_stats
 from training import search_pullback_premium_overheat_state_machine_alpha as pposm
+from training.evaluate_metaorder_fragmentation_impact_curvature import weekly_cluster_sign_flip
 
 DEFAULT_OOS_DATA = Path("data/pposm_state_router_oos_2024_2026.jsonl")
 DEFAULT_PREDICTIONS = Path("results/pposm_state_router_oos_predictions.jsonl")
@@ -37,6 +38,8 @@ class Config:
     oos_data: Path = DEFAULT_OOS_DATA
     predictions: Path = DEFAULT_PREDICTIONS
     output: Path = DEFAULT_OUTPUT
+    signflip_permutations: int = 100_000
+    signflip_seed: int = 20_260_819
 
 
 def _load_jsonl(path: str | Path) -> list[dict[str, Any]]:
@@ -152,17 +155,29 @@ def _scheduled_keys(
 
 
 def _economics(
-    trades: Sequence[Trade], *, start: str, end: str, strategy_cfg: Any
+    trades: Sequence[Trade], *, start: str, end: str, strategy_cfg: Any,
+    signflip_permutations: int, signflip_seed: int,
 ) -> dict[str, Any]:
-    return {
-        name: {
+    output = {}
+    for name, cost in COSTS.items():
+        one_side = 1.0 - float(strategy_cfg.leverage) * cost
+        returns = [
+            float(one_side * trade.price_factor * trade.funding_factor * one_side - 1.0)
+            for trade in trades
+        ]
+        output[name] = {
             "one_side_cost_rate": cost,
             "equity_stats": equity_stats(
                 trades, start=start, end=end, cfg=strategy_cfg, cost_rate=cost
             ),
+            "one_sided_utc_week_sign_flip": weekly_cluster_sign_flip(
+                returns,
+                [trade.entry_date for trade in trades],
+                permutations=signflip_permutations,
+                seed=signflip_seed,
+            ),
         }
-        for name, cost in COSTS.items()
-    }
+    return output
 
 
 def _agreement(predicted: Sequence[str], baseline: Sequence[str]) -> dict[str, Any]:
@@ -190,6 +205,8 @@ def _window_report(
     start: str,
     end: str,
     strategy_cfg: Any,
+    signflip_permutations: int,
+    signflip_seed: int,
 ) -> tuple[dict[str, Any], tuple[Trade, ...], tuple[Trade, ...]]:
     predicted = apply_routes(engine, signals, predictions, start=start, end=end)
     baseline = apply_routes(engine, signals, baseline_routes, start=start, end=end)
@@ -217,8 +234,8 @@ def _window_report(
             },
             "agreement": agreement,
             "economics": {
-                "baseline": _economics(baseline, start=start, end=end, strategy_cfg=strategy_cfg),
-                "predicted": _economics(predicted, start=start, end=end, strategy_cfg=strategy_cfg),
+                "baseline": _economics(baseline, start=start, end=end, strategy_cfg=strategy_cfg, signflip_permutations=signflip_permutations, signflip_seed=signflip_seed),
+                "predicted": _economics(predicted, start=start, end=end, strategy_cfg=strategy_cfg, signflip_permutations=signflip_permutations, signflip_seed=signflip_seed),
             },
         },
         baseline,
@@ -253,6 +270,8 @@ def backtest(cfg: Config) -> dict[str, Any]:
             start=start,
             end=end,
             strategy_cfg=engine_cfg,
+            signflip_permutations=cfg.signflip_permutations,
+            signflip_seed=cfg.signflip_seed,
         )
         reports[window] = report
         combined_baseline.extend(baseline_trades)
@@ -286,8 +305,8 @@ def backtest(cfg: Config) -> dict[str, Any]:
         },
         "agreement": combined_agreement,
         "economics": {
-            "baseline": _economics(combined_baseline, start=combined_start, end=combined_end, strategy_cfg=engine_cfg),
-            "predicted": _economics(combined_predicted, start=combined_start, end=combined_end, strategy_cfg=engine_cfg),
+            "baseline": _economics(combined_baseline, start=combined_start, end=combined_end, strategy_cfg=engine_cfg, signflip_permutations=cfg.signflip_permutations, signflip_seed=cfg.signflip_seed),
+            "predicted": _economics(combined_predicted, start=combined_start, end=combined_end, strategy_cfg=engine_cfg, signflip_permutations=cfg.signflip_permutations, signflip_seed=cfg.signflip_seed),
         },
     }
     output = {
@@ -317,6 +336,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--oos-data", type=Path, default=DEFAULT_OOS_DATA)
     parser.add_argument("--predictions", type=Path, default=DEFAULT_PREDICTIONS)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--signflip-permutations", type=int, default=100_000)
+    parser.add_argument("--signflip-seed", type=int, default=20_260_819)
     return parser.parse_args()
 
 
