@@ -1,0 +1,46 @@
+{
+  "protocol_version": "gross9_ajr_medium_frequency_preregistration_v1",
+  "status": "preregistered_before_portfolio_interaction_open",
+  "as_of": "2026-08-20",
+  "baseline": "authoritative Gross9 configured gross9.0",
+  "candidate": "frozen asymmetric_jump_rejection_alpha",
+  "contamination": "standalone candidate and Gross9 future known; exact same-gross interaction unmeasured",
+  "selection": {
+    "physical_window": "train through 2023 only",
+    "weight_grid": [
+      0.1,
+      0.25,
+      0.5
+    ],
+    "top1_only": true,
+    "requirements": [
+      "same-gross CAGR/MDD improvement >0",
+      "standalone base/stress positive",
+      "combined MDD<=40",
+      "candidate trades>=250"
+    ]
+  },
+  "eval": {
+    "windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ],
+    "future_can_rerank": false,
+    "future_can_repair": false,
+    "requirements": [
+      "combined base positive each",
+      "candidate-stress combined positive each",
+      "combined MDD<=20 each",
+      "completed trades/week>=3 each"
+    ]
+  },
+  "same_gross": "Gross9 weights scaled pro-rata to 9+candidate_weight",
+  "costs": {
+    "normal": 0.0006,
+    "candidate_stress": 0.001
+  },
+  "minimum_candidate_weight": 0.1,
+  "stopping_rule": "If train no passer reject without OOS; if eval fail reject top1 without rank2.",
+  "manifest_hash": "3bc1b0bd9c12892d695d5de470481213d23a2fc7743edd7169acaf5b81c643e8"
+}
