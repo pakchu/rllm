@@ -1,0 +1,68 @@
+{
+  "protocol_version": "rllm_state_card_ordinal_sft_rlvr_v1",
+  "as_of": "2026-08-19",
+  "status": "preregistered_before_rlvr_training",
+  "objective": "continue the frozen ordinal state-card SFT adapter with train-only GRPO/RLVR verified rewards; improve utility ranking without OOS reward leakage",
+  "inputs": {
+    "train_jsonl": {
+      "path": "data/rllm_alpha_state_card_pointwise_train_2026-08-19.jsonl",
+      "sha256": "d6de4c2e4b9653a9ddb762f889d5d2f2c82d9145dcc13cb82784e64784a8d99b",
+      "rows": 483
+    },
+    "sft_adapter": {
+      "path": "checkpoints/rllm_alpha_state_card_ordinal_qwen25_1p5b_lora_s128_2026-08-19",
+      "adapter_sha256": "4ebad0d79c33d2be6f188004efc148817afbca76d82dec3fecbabc8ca717439c"
+    }
+  },
+  "rlvr_config": {
+    "algorithm": "TRL GRPO / RLVR",
+    "max_steps": 64,
+    "learning_rate": 5e-06,
+    "num_generations": 4,
+    "generation_batch_size": 4,
+    "per_device_train_batch_size": 4,
+    "gradient_accumulation_steps": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "max_completion_length": 4,
+    "loss_type": "dapo",
+    "beta": 0.0,
+    "scale_rewards": "group",
+    "seed": 20260819
+  },
+  "verifier_reward": {
+    "allowed_labels": [
+      "Q0",
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4"
+    ],
+    "format_valid": 0.2,
+    "format_invalid": -0.5,
+    "ordinal": "1.0 - 0.5*abs(pred_index-target_index), clipped at -1.0",
+    "deterministic": true,
+    "market_or_oos_metrics_in_reward": false
+  },
+  "evaluation_freeze": {
+    "dataset": "data/rllm_alpha_state_card_pointwise_2026-08-19.jsonl",
+    "sample_mode": "random",
+    "max_samples": 512,
+    "seed": 20260819,
+    "prediction_mode": "candidate_logprob",
+    "normalization": "mean",
+    "sft_accuracy": 0.236328125,
+    "sample_majority_accuracy": 0.375
+  },
+  "go_gates": {
+    "reward_std_positive": true,
+    "gradient_norm_positive": true,
+    "sample512_accuracy_gt_sft": true,
+    "sample512_accuracy_gt_majority": true,
+    "full_oos_only_after_sample_go": true,
+    "economic_promotion": "positive base and stress return in every test/eval/final segment; combined strict MDD<=20%; CAGR/MDD>=1.5; weekly p<=0.20"
+  },
+  "stopping_rule": "If sample gates fail, reject exact RLVR adapter without changing reward or evaluation seed; next iteration must change the verifiable task or candidate mechanism, not tune on OOS.",
+  "manifest_hash": "4692685c769038f38407704fa675c535bff17eb33486fd97590d7cab5cf0309b"
+}
