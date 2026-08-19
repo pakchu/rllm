@@ -28,6 +28,15 @@ class TestTextRLVR(unittest.TestCase):
         self.assertEqual(format_reward(completions), [0.2, -0.5, -0.5, 0.2])
         self.assertEqual(target_reward(completions, target=targets), [1.0, 0.0, 0.0, 1.0])
 
+    def test_gate_schema_uses_exact_trade_tokens(self):
+        format_reward, target_reward = build_reward_functions("gate")
+        completions = ["TRADE", "NO_TRADE", "HOLD"]
+        self.assertEqual(format_reward(completions), [0.2, 0.2, -0.5])
+        self.assertEqual(
+            target_reward(completions, target=["TRADE", "TRADE", "NO_TRADE"]),
+            [1.0, 0.0, 0.0],
+        )
+
     def test_ordinal_distance_reward_is_monotone_and_invalid_is_zero(self):
         rewards = ordinal_distance_reward(
             ["Q2", "Q1", "Q0", "Q4", "Qx"],

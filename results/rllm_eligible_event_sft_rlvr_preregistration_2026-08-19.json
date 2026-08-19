@@ -1,0 +1,56 @@
+{
+  "protocol_version": "rllm_eligible_event_sft_rlvr_v1",
+  "status": "preregistered_before_sft",
+  "as_of": "2026-08-19",
+  "train": {
+    "path": "data/rllm_alpha_event_gate_trainpassed_train_2026-08-19.jsonl",
+    "sha256": "97287f749fc77e18e3b4531e2f8313eca91ed7afa329fd39dbbdcd5ff003bc6c",
+    "rows": 483,
+    "source_period": "2023H2 only"
+  },
+  "oos": {
+    "path": "data/rllm_alpha_event_gate_trainpassed_oos_2026-08-19.jsonl",
+    "sha256": "2b60208067b35a2a5b63653fc1d503e075c2a821b4110a7ff7aa1aa65b536907",
+    "rows": 2664,
+    "never_train_or_reward": true
+  },
+  "sft": {
+    "base": "Qwen/Qwen2.5-1.5B-Instruct local frozen snapshot",
+    "base_adapter": null,
+    "steps": 128,
+    "samples": 1024,
+    "sample_mode": "balanced_oversample",
+    "lr": 1e-05,
+    "seed": 42
+  },
+  "rlvr": {
+    "schema": "gate",
+    "steps": 64,
+    "lr": 5e-06,
+    "generations": 4,
+    "batch": 4,
+    "gradient_accumulation": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "seed": 20260821,
+    "reward": "format + exact TRADE/NO_TRADE target; train only"
+  },
+  "sample_evaluation": {
+    "source": "frozen combined OOS",
+    "max_samples": 512,
+    "sample_mode": "random",
+    "seed": 20260819,
+    "prediction": "candidate_logprob mean"
+  },
+  "go_gates": {
+    "rlvr_reward_std_positive": true,
+    "rlvr_gradient_positive": true,
+    "rlvr_accuracy_gt_sft": true,
+    "rlvr_accuracy_gt_sample_majority": true,
+    "full_predictions_only_after_sample_go": true
+  },
+  "economic_gate": "matched no-replacement schedule; base/stress positive every stage; combined MDD<=20, ratio>=1.5, p<=0.20",
+  "stopping_rule": "Reject at first failed gate; no OOS retuning.",
+  "manifest_hash": "174993c72824298b003dd3dbe723a5a1efb353fe62ed6045aaf4b192261c34b0"
+}

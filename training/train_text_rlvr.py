@@ -18,6 +18,7 @@ from typing import Any, Callable, Sequence
 
 
 LABEL_SCHEMAS: dict[str, tuple[str, ...]] = {
+    "gate": ("NO_TRADE", "TRADE"),
     "pair": ("A", "B"),
     "ordinal": ("Q0", "Q1", "Q2", "Q3", "Q4"),
 }
@@ -57,7 +58,7 @@ class TextRLVRConfig:
 def allowed_labels(label_schema: str) -> tuple[str, ...]:
     key = str(label_schema).strip().lower()
     if key not in LABEL_SCHEMAS:
-        raise ValueError("label_schema must be one of {'pair','ordinal'}")
+        raise ValueError("label_schema must be one of {'gate','pair','ordinal'}")
     return LABEL_SCHEMAS[key]
 
 
