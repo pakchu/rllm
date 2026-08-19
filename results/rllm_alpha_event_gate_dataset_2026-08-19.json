@@ -1,0 +1,83 @@
+{
+  "candidates": 349,
+  "stages": {
+    "train": {
+      "stage": "train",
+      "rows": 12344,
+      "targets": {
+        "NO_TRADE": 7022,
+        "TRADE": 5322
+      },
+      "research_train_pass_rows": 483,
+      "policies": 347,
+      "skipped": {},
+      "source": {
+        "mode": "hash_bound_gzip_physical_prefix",
+        "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+        "funding_marks_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+      },
+      "sha256": "ace4d070f75135e8cd39d59c7581dc66e0ee849c0a127298104a58f46a039959"
+    },
+    "test": {
+      "stage": "test",
+      "rows": 24749,
+      "targets": {
+        "NO_TRADE": 13830,
+        "TRADE": 10919
+      },
+      "research_train_pass_rows": 1139,
+      "policies": 347,
+      "skipped": {},
+      "source": {
+        "mode": "hash_bound_gzip_market_plus_postgres_exact_funding",
+        "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+        "funding_table": "funding_rates_binance",
+        "symbol": "BTCUSDT"
+      },
+      "sha256": "6d84a0da8871c7e63828060f141a3c6a27f3eb7eb42bc417b80645ec1c90b11a"
+    },
+    "eval": {
+      "stage": "eval",
+      "rows": 24204,
+      "targets": {
+        "TRADE": 10561,
+        "NO_TRADE": 13643
+      },
+      "research_train_pass_rows": 992,
+      "policies": 347,
+      "skipped": {},
+      "source": {
+        "mode": "hash_bound_gzip_market_plus_postgres_exact_funding",
+        "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+        "funding_table": "funding_rates_binance",
+        "symbol": "BTCUSDT"
+      },
+      "sha256": "2213179ac710eb78ea807e1a09b8a11969d94a71beb9f70a4a3b91fa3e6f4d7d"
+    },
+    "final": {
+      "stage": "final",
+      "rows": 12678,
+      "targets": {
+        "TRADE": 5629,
+        "NO_TRADE": 7049
+      },
+      "research_train_pass_rows": 533,
+      "policies": 347,
+      "skipped": {},
+      "source": {
+        "mode": "postgres_exact_1m_to_5m",
+        "tables": [
+          "bars_binance",
+          "funding_rates_binance"
+        ],
+        "symbol": "BTCUSDT"
+      },
+      "sha256": "2fe8ac3b0b2c91c03dc2a44c534f706ca35ef309e394749636c4e1ab0687d68f"
+    }
+  },
+  "leakage_guard": {
+    "prompts_contain_future_event_metadata": false,
+    "train_stage_only_for_sft": true,
+    "oos_stages_never_used_for_training": true
+  }
+}
