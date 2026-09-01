@@ -1,0 +1,150 @@
+{
+  "protocol_version": "pposm_lifecycle_two_specialist_sft_rlvr_v1",
+  "status": "preregistered_before_specialist_training_and_oos",
+  "as_of": "2026-09-02",
+  "research_boundary": {
+    "training_and_selection": "pre-2024 only",
+    "oos_opening_condition": "the two-specialist trained threshold pair must pass every frozen pre-2024 materiality and economic gate",
+    "oos_report_veto_only": [
+      "test_2024",
+      "eval_2025",
+      "holdout_2026h1"
+    ],
+    "oos_reranking_or_repair": false,
+    "known_contamination": "Historical PPOSM OOS windows were exposed by prior research. This experiment is research-only and cannot authorize deployment."
+  },
+  "source": {
+    "git_commit": "f3c7c5bf44983ff24778c3e371b040ced793b5f8",
+    "manifest_freeze_hash": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+    "lifecycle_train_identity_sha256": "d0d2578ee463b2282915933afdcbc168a4178efe584a98886dbabc7099cdf8c2",
+    "split_summary": {
+      "path": "results/pposm_lifecycle_specialist_split_summary_2026-09-02.json",
+      "sha256": "97f12ac1e69f6b41ceac102f763d48273a40de98da9430eff349c48565bfce81"
+    },
+    "specialists": {
+      "SKIP": {
+        "path": "data/pposm_lifecycle_residual_specialist_skip_train_pre2024_2026-09-02.jsonl",
+        "sha256": "2ee76192098ff30c25cd2e24af697e4bcd7ec527127bba9e808c6bb3e9a2496f",
+        "identity_sha256": "3f5c07b8394900b94ef8b95b1652ff6f6ab1e12dd39af6c70f8fd7a21e3e241b",
+        "rows": 102,
+        "targets": {
+          "KEEP": 77,
+          "SWITCH": 25
+        },
+        "utility_scale": 0.008159496513314112
+      },
+      "TP12": {
+        "path": "data/pposm_lifecycle_residual_specialist_tp12_train_pre2024_2026-09-02.jsonl",
+        "sha256": "731f41c5f580cab78a5d392b80d14a92ffd90996ac3ed78cee20a84054c490ab",
+        "identity_sha256": "f2782c9a833a317cca0065e5c60d9afb0e0026f87d7f9991e14c565c73c50764",
+        "rows": 102,
+        "targets": {
+          "KEEP": 74,
+          "SWITCH": 28
+        },
+        "utility_scale": 0.0030073762960413307
+      }
+    }
+  },
+  "architecture": {
+    "name": "two_action_specialist_lifecycle_residual_router",
+    "default_action": "TP4",
+    "reference_policy": "ALWAYS_TP4 shadow lifecycle",
+    "reference_anchor_only": true,
+    "experts": {
+      "SKIP": "independent Qwen LoRA SFT plus residual-utility RLVR trained only on SKIP-vs-TP4 lifecycle rows",
+      "TP12": "independent Qwen LoRA SFT plus residual-utility RLVR trained only on TP12-vs-TP4 lifecycle rows"
+    },
+    "non_anchor_action": "TP4",
+    "motivation": "the shared adapter failed pre-2024 separation for both action families; independent experts remove cross-action representation interference without using OOS evidence"
+  },
+  "base_model": {
+    "name": "Qwen/Qwen2.5-1.5B-Instruct",
+    "huggingface_revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306"
+  },
+  "per_specialist_sft": {
+    "sample_mode": "balanced_oversample",
+    "max_samples": 1024,
+    "steps": 128,
+    "learning_rate": 1e-05,
+    "batch": 1,
+    "gradient_accumulation": 8,
+    "max_sequence_length": 2048,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "lora_targets": "all-linear",
+    "seed": 20260902
+  },
+  "per_specialist_rlvr": {
+    "schema": "pposm_residual_utility",
+    "sample_mode": "balanced_oversample",
+    "max_samples": 1024,
+    "steps": 64,
+    "learning_rate": 5e-06,
+    "batch": 4,
+    "gradient_accumulation": 4,
+    "generations": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "scale_rewards": "none",
+    "utility_scale": "candidate-specific median nonzero absolute lifecycle switch utility frozen in source.specialists",
+    "seed": 20260903
+  },
+  "train_only_threshold_pair": {
+    "scores": "each specialist emits its own SWITCH-minus-KEEP mean label-logprob margin on its 102 pre-2024 rows",
+    "grid": "Cartesian product of each specialist's distinct margins plus nextafter sentinels",
+    "strict_switch": "candidate margin > its own frozen threshold",
+    "dual_switch_resolution": "choose larger normalized excess margin (margin minus its candidate threshold); exact tie SKIP",
+    "non_anchor_action": "TP4",
+    "materiality_gates": {
+      "difference_from_always_tp4_min": 0.1,
+      "used_non_default_count_min": 10,
+      "single_action_share_max": 0.9
+    },
+    "economic_gates": {
+      "base_return_not_lower_than_control": true,
+      "stress_return_strictly_higher_than_control": true,
+      "base_cagr_mdd_lift_min": 0.05,
+      "stress_mdd_worsening_pct_points_max": 0.01,
+      "base_strict_mdd_pct_max": 15.0,
+      "base_cagr_mdd_min": 3.0,
+      "trades_min": 40
+    },
+    "objective_order": [
+      "maximize min(base CAGR/MDD delta, stress CAGR/MDD delta)",
+      "maximize min(base log-equity delta, stress log-equity delta)",
+      "higher SKIP threshold",
+      "higher TP12 threshold",
+      "stable route stream"
+    ],
+    "no_feasible_pair": "record a train-stage failure and stop before generating or scoring OOS prompts"
+  },
+  "oos_protocol_if_train_passes": {
+    "prompt_rows": "always-TP4 shadow anchors only, no target/utility/future portfolio metrics",
+    "score_binding": "SKIP prompts only with SKIP specialist; TP12 prompts only with TP12 specialist",
+    "routing": "single frozen threshold pair and dual-switch rule; all nonanchors TP4",
+    "execution": "exact next 5-minute open, TP/stop/48-hour cap, funding, non-overlap",
+    "base_one_side_cost": 0.0006,
+    "stress_one_side_cost": 0.001,
+    "no_rerank_or_repair": true
+  },
+  "final_pass_gates": {
+    "oos_actions_used_min": 2,
+    "oos_difference_from_tp4_min": 0.1,
+    "used_non_default_count_min": 10,
+    "single_action_share_max": 0.9,
+    "each_window_base_and_stress_return_positive": true,
+    "combined_strict_mdd_pct_max": 15.0,
+    "combined_base_cagr_mdd_min": 3.0,
+    "combined_base_cagr_mdd_improvement_min": 0.05,
+    "combined_base_return_not_lower": true,
+    "combined_stress_return_strictly_higher": true,
+    "combined_stress_mdd_worsening_pct_points_max": 0.01,
+    "combined_trades_min": 40,
+    "weekly_signflip_p_max": 0.2,
+    "byte_identical_replay": true
+  },
+  "stopping_rule": "No OOS prompt generation/scoring unless the independent specialist threshold pair passes every pre-2024 gate; no model, threshold, or route repair after OOS."
+}
