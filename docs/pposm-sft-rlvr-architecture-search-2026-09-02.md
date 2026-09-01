@@ -67,6 +67,16 @@ strict prior-completed-5m join으로 다시 계산한 train-only expanding-year 
 
 따라서 SKIP에는 약한 신호가 있으나 TP12와 전체 materiality를 지지할 수준은 아니다. 즉 새 full SFT+RLVR run은 아직 보류한다. 정형 근거는 `results/pposm_true_ratio_source_continuation_2026-09-02.json`에 있다.
 
+표본을 462개 counterfactual signals로 늘린 추가 train-only 검사도 최종 gate를 넘지 못했다.
+
+- 최고 후보: ratio-only TP12.
+- pooled AUC `0.5867` (`0.5275–0.6409`), 요구 `>=0.60` 미달.
+- balanced accuracy `0.6156`.
+- 연도별 AUC `0.195 / 0.696 / 0.235`로 regime 방향이 반전.
+- train 내부 경제 proxy는 일부 통과했지만 classification gate 미통과 score를 후행 calibration한 값이므로 OOS 근거로 사용하지 않았다.
+
+근거: `results/pposm_ratio_counterfactual_diagnostic_2026-09-02.json`.
+
 Cache builder는 `training/build_oi_enriched_cache.py`에서 ratio 4종을 선택적으로 보존하도록 수정했다. 현재 행보다 정확히 한 개 완료된 5분 source row만 사용하고 ratio forward-fill/interpolation은 하지 않는다.
 
 Live/history 경로에는 여전히 별도 운영 위험이 있다.
@@ -88,3 +98,5 @@ Live/history 경로에는 여전히 별도 운영 위험이 있다.
 - 후보 source: 실제 Binance long-short ratio history, 실제 taker long-short ratio history, 또는 fresh forward/live-parity lifecycle labels.
 
 현재 상태는 **WATCH / verified negative / no deployment**다.
+
+로컬 feature/source 탐색은 `results/pposm_sft_rlvr_goal_blocker_2026-09-02.json`에서 종료 조건을 고정했다. 새 forward labels 또는 새 hash-bound source가 들어오기 전에는 같은 historical OOS를 이용한 threshold/model repair를 하지 않는다.
