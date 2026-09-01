@@ -25,6 +25,11 @@ def _score_row(signal: int, candidate: str, margin: float) -> dict[str, Any]:
         "signal_position": signal,
         "scores": {"KEEP": 0.0, "SWITCH": margin},
         "switch_margin": margin,
+        "model_name": "Qwen/Qwen2.5-1.5B-Instruct",
+        "adapter_sha256": "a" * 64,
+        "score_normalization": "mean",
+        "source_jsonl_sha256": "b" * 64,
+        "source_identity_sha256": "c" * 64,
     }
 
 
@@ -98,7 +103,10 @@ def test_validate_score_rows_requires_exact_204_train_anchor_identity_hash() -> 
     rows = _pair_scores({signal: (0.1, 0.2) for signal in range(102)})
     expected = hashlib.sha256("\n".join(row["identity"] for row in rows).encode()).hexdigest()
     validation = ev.validate_score_rows(rows, expected_identity_sha256=expected)
-    assert validation == {"rows": 204, "anchors": 102, "identity_sha256": expected}
+    assert validation["rows"] == 204
+    assert validation["anchors"] == 102
+    assert validation["identity_sha256"] == expected
+    assert validation["score_normalization"] == "mean"
 
     bad = list(rows)
     bad[0] = {**bad[0], "window": "test_2024"}
@@ -186,6 +194,17 @@ def test_run_writes_structured_failure_and_exits_nonzero(monkeypatch: pytest.Mon
     ]
     data_path.write_text("\n".join(json.dumps(row) for row in data_rows) + "\n")
     data_sha = hashlib.sha256(data_path.read_bytes()).hexdigest()
+    for row in rows:
+        row["source_jsonl_sha256"] = data_sha
+        row["source_identity_sha256"] = expected
+    output_dir = tmp_path / "rlvr"
+    output_dir.mkdir()
+    adapter_path = output_dir / "adapter_model.safetensors"
+    adapter_path.write_bytes(b"adapter")
+    adapter_sha = hashlib.sha256(adapter_path.read_bytes()).hexdigest()
+    for row in rows:
+        row["adapter_sha256"] = adapter_sha
+    score_path.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
     summary_path.write_text(
         json.dumps(
             {
@@ -195,6 +214,46 @@ def test_run_writes_structured_failure_and_exits_nonzero(monkeypatch: pytest.Mon
                 "reference_anchors": 102,
                 "reference_anchor_pairs": 204,
                 "manifest_freeze_hash": "freeze",
+            }
+        )
+    )
+    prereg_path = tmp_path / "prereg.json"
+    prereg_path.write_text(
+        json.dumps(
+            {
+                "protocol_version": "pposm_lifecycle_anchor_residual_sft_rlvr_v1",
+                "status": "preregistered_before_lifecycle_sft_and_oos",
+                "base_model": {"name": "Qwen/Qwen2.5-1.5B-Instruct"},
+                "architecture": {"name": "test"},
+                "source": {
+                    "manifest_freeze_hash": "freeze",
+                    "train_data": {
+                        "path": str(data_path),
+                        "sha256": data_sha,
+                        "identity_sha256": expected,
+                        "rows": 204,
+                        "anchors": 102,
+                    },
+                    "train_summary": {
+                        "path": str(summary_path),
+                        "sha256": hashlib.sha256(summary_path.read_bytes()).hexdigest(),
+                    },
+                },
+            }
+        )
+    )
+    rlvr_config_path = tmp_path / "rlvr_config.json"
+    rlvr_config_path.write_text(
+        json.dumps(
+            {
+                "dry_run": False,
+                "config": {
+                    "label_schema": "pposm_residual_utility",
+                    "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+                    "train_jsonl": str(data_path),
+                    "output_dir": str(output_dir),
+                    "sft_adapter_dir": str(tmp_path / "sft"),
+                },
             }
         )
     )
@@ -216,6 +275,8 @@ def test_run_writes_structured_failure_and_exits_nonzero(monkeypatch: pytest.Mon
                 train_scores=score_path,
                 threshold_output=tmp_path / "threshold.json",
                 failure_output=failure_path,
+                preregistration=prereg_path,
+                rlvr_config=rlvr_config_path,
                 expected_identity_sha256=expected,
             )
         )
@@ -233,3 +294,13 @@ def test_validate_data_summary_fails_closed_on_missing_bindings() -> None:
             expected_identity_sha256="a" * 64,
             train_data_sha256="b" * 64,
         )
+
+
+def test_validate_score_rows_rejects_non_hex_adapter_hash() -> None:
+    rows = _pair_scores({signal: (0.1, 0.2) for signal in range(102)})
+    rows[0]["adapter_sha256"] = "x" * 64
+    expected = hashlib.sha256(
+        "\n".join(row["identity"] for row in rows).encode()
+    ).hexdigest()
+    with pytest.raises(ValueError, match="adapter_sha256"):
+        ev.validate_score_rows(rows, expected_identity_sha256=expected)

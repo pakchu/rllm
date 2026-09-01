@@ -34,6 +34,12 @@ DEFAULT_DATA_SUMMARY = lifecycle.DEFAULT_SUMMARY_OUTPUT
 DEFAULT_TRAIN_SCORES = Path("results/pposm_lifecycle_residual_train_scores_2026-09-02.jsonl")
 DEFAULT_THRESHOLD_OUTPUT = Path("results/pposm_lifecycle_residual_train_threshold_2026-09-02.json")
 DEFAULT_FAILURE_OUTPUT = Path("results/pposm_lifecycle_residual_train_threshold_failure_2026-09-02.json")
+DEFAULT_PREREGISTRATION = Path(
+    "results/pposm_lifecycle_residual_sft_rlvr_preregistration_2026-09-02.json"
+)
+DEFAULT_RLVR_CONFIG = Path(
+    "checkpoints/pposm_lifecycle_residual_sft_rlvr_2026-09-02/config_diagnostics.json"
+)
 DEFAULT_EXPECTED_IDENTITY_SHA256 = "d0d2578ee463b2282915933afdcbc168a4178efe584a98886dbabc7099cdf8c2"
 TRAIN_WINDOW = lifecycle.TRAIN_WINDOW
 DEFAULT_ACTION = lifecycle.DEFAULT_ACTION
@@ -50,6 +56,8 @@ class Config:
     train_scores: Path = DEFAULT_TRAIN_SCORES
     threshold_output: Path = DEFAULT_THRESHOLD_OUTPUT
     failure_output: Path = DEFAULT_FAILURE_OUTPUT
+    preregistration: Path = DEFAULT_PREREGISTRATION
+    rlvr_config: Path = DEFAULT_RLVR_CONFIG
     expected_identity_sha256: str = DEFAULT_EXPECTED_IDENTITY_SHA256
 
 
@@ -80,6 +88,127 @@ def _load_jsonl(path: str | Path) -> list[dict[str, Any]]:
     if not rows:
         raise ValueError(f"no rows in {path}")
     return rows
+
+
+def validate_preregistration(
+    preregistration: dict[str, Any],
+    *,
+    train_data: Path,
+    data_summary: Path,
+    expected_identity_sha256: str = DEFAULT_EXPECTED_IDENTITY_SHA256,
+) -> dict[str, Any]:
+    allowed = {
+        "pposm_lifecycle_anchor_residual_sft_rlvr_v1": "preregistered_before_lifecycle_sft_and_oos",
+        "pposm_lifecycle_dual_verifier_sft_rlvr_v1": "preregistered_before_dual_verifier_rlvr_and_oos",
+    }
+    protocol = str(preregistration.get("protocol_version", ""))
+    if protocol not in allowed or preregistration.get("status") != allowed[protocol]:
+        raise ValueError("lifecycle preregistration protocol/status changed")
+    source = preregistration.get("source")
+    if not isinstance(source, dict):
+        raise ValueError("lifecycle preregistration lacks source bindings")
+    train_binding = source.get("train_data")
+    if not isinstance(train_binding, dict):
+        raise ValueError("lifecycle preregistration lacks train_data binding")
+    if (
+        Path(str(train_binding.get("path"))) != train_data
+        or train_binding.get("sha256") != _sha256_bytes(train_data.read_bytes())
+        or train_binding.get("identity_sha256") != expected_identity_sha256
+        or train_binding.get("rows") != 204
+        or train_binding.get("anchors") != 102
+    ):
+        raise ValueError("lifecycle preregistration train_data binding changed")
+    summary_binding = source.get("data_summary") or source.get("train_summary")
+    if not isinstance(summary_binding, dict):
+        raise ValueError("lifecycle preregistration lacks data summary binding")
+    if (
+        Path(str(summary_binding.get("path"))) != data_summary
+        or summary_binding.get("sha256") != _sha256_bytes(data_summary.read_bytes())
+    ):
+        raise ValueError("lifecycle preregistration data summary binding changed")
+    base_model = preregistration.get("base_model", {}).get("name")
+    frozen_sft_sha256 = None
+    if protocol == "pposm_lifecycle_dual_verifier_sft_rlvr_v1":
+        frozen_sft = source.get("frozen_sft_adapter")
+        if not isinstance(frozen_sft, dict):
+            raise ValueError("dual-verifier preregistration lacks frozen SFT binding")
+        sft_path = Path(str(frozen_sft.get("path", "")))
+        summary_path = Path(str(frozen_sft.get("summary_path", "")))
+        if (
+            not sft_path.is_file()
+            or _sha256_bytes(sft_path.read_bytes()) != frozen_sft.get("sha256")
+            or not summary_path.is_file()
+            or _sha256_bytes(summary_path.read_bytes())
+            != frozen_sft.get("summary_sha256")
+        ):
+            raise ValueError("dual-verifier frozen SFT artifact binding changed")
+        base_model = _load_json(summary_path).get("model_name")
+        frozen_sft_sha256 = frozen_sft.get("sha256")
+    if base_model != "Qwen/Qwen2.5-1.5B-Instruct":
+        raise ValueError("lifecycle preregistration base model changed")
+    return {
+        "protocol_version": protocol,
+        "status": allowed[protocol],
+        "manifest_freeze_hash": source.get("manifest_freeze_hash"),
+        "base_model": base_model,
+        "architecture": preregistration.get("architecture", {}).get("name"),
+        "expected_rlvr_schema": (
+            "pposm_residual_target_utility"
+            if protocol == "pposm_lifecycle_dual_verifier_sft_rlvr_v1"
+            else "pposm_residual_utility"
+        ),
+        "frozen_sft_sha256": frozen_sft_sha256,
+    }
+
+
+def validate_rlvr_provenance(
+    rlvr_config_path: Path,
+    *,
+    preregistration_validation: dict[str, Any],
+    score_validation: dict[str, Any],
+    train_data: Path,
+) -> dict[str, Any]:
+    diagnostics = _load_json(rlvr_config_path)
+    config = diagnostics.get("config")
+    if not isinstance(config, dict) or diagnostics.get("dry_run") is not False:
+        raise ValueError("RLVR config diagnostics are not from a completed run")
+    expected = {
+        "schema": preregistration_validation["expected_rlvr_schema"],
+        "base_model": preregistration_validation["base_model"],
+        "train_jsonl": str(train_data),
+    }
+    observed = {
+        "schema": config.get("label_schema"),
+        "base_model": config.get("base_model"),
+        "train_jsonl": config.get("train_jsonl"),
+    }
+    if observed != expected:
+        raise ValueError(
+            f"RLVR config does not match selected preregistration family: {observed}"
+        )
+    adapter_path = Path(str(config.get("output_dir", ""))) / "adapter_model.safetensors"
+    if (
+        not adapter_path.is_file()
+        or _sha256_bytes(adapter_path.read_bytes())
+        != score_validation["adapter_sha256"]
+    ):
+        raise ValueError("scored adapter hash differs from completed RLVR run")
+    frozen_sft_sha256 = preregistration_validation.get("frozen_sft_sha256")
+    if frozen_sft_sha256:
+        sft_path = Path(str(config.get("sft_adapter_dir", ""))) / "adapter_model.safetensors"
+        if (
+            not sft_path.is_file()
+            or _sha256_bytes(sft_path.read_bytes()) != frozen_sft_sha256
+        ):
+            raise ValueError("dual-verifier RLVR did not start from frozen SFT adapter")
+    return {
+        "path": str(rlvr_config_path),
+        "sha256": _sha256_bytes(rlvr_config_path.read_bytes()),
+        "schema": observed["schema"],
+        "base_model": observed["base_model"],
+        "adapter_path": str(adapter_path),
+        "adapter_sha256": score_validation["adapter_sha256"],
+    }
 
 
 def _identity_sha256(rows: Sequence[dict[str, Any]]) -> str:
@@ -124,6 +253,10 @@ def validate_score_rows(
             f"anchor pair identity hash mismatch: expected {expected_identity_sha256}, observed {identity_hash}"
         )
     by_base: dict[str, list[str]] = defaultdict(list)
+    adapter_hashes: set[str] = set()
+    source_hashes: set[str] = set()
+    source_identity_hashes: set[str] = set()
+    model_names: set[str] = set()
     for row in rows:
         if row.get("split") != "train" or row.get("window") != TRAIN_WINDOW[0]:
             raise ValueError("score rows must be train/pre_2024 only")
@@ -142,11 +275,39 @@ def validate_score_rows(
         if candidate not in CANDIDATE_ACTIONS:
             raise ValueError("candidate_action must be SKIP or TP12")
         _score_margin(row)
+        if row.get("score_normalization") != "mean":
+            raise ValueError("lifecycle score rows must use mean label-logprob normalization")
+        adapter_sha256 = str(row.get("adapter_sha256", ""))
+        if len(adapter_sha256) != 64 or any(
+            character not in "0123456789abcdef"
+            for character in adapter_sha256.lower()
+        ):
+            raise ValueError("lifecycle score row lacks adapter_sha256")
+        adapter_hashes.add(adapter_sha256)
+        source_hashes.add(str(row.get("source_jsonl_sha256", "")))
+        source_identity_hashes.add(str(row.get("source_identity_sha256", "")))
+        model_names.add(str(row.get("model_name", "")))
         by_base[base_identity].append(candidate)
     for base, candidates in by_base.items():
         if tuple(sorted(candidates)) != tuple(sorted(CANDIDATE_ACTIONS)):
             raise ValueError(f"base identity {base} lacks exactly one SKIP and TP12 row")
-    return {"rows": len(rows), "anchors": len(by_base), "identity_sha256": identity_hash}
+    if (
+        len(adapter_hashes) != 1
+        or len(source_hashes) != 1
+        or len(source_identity_hashes) != 1
+        or model_names != {"Qwen/Qwen2.5-1.5B-Instruct"}
+    ):
+        raise ValueError("lifecycle score rows mix adapter/model/source provenance")
+    return {
+        "rows": len(rows),
+        "anchors": len(by_base),
+        "identity_sha256": identity_hash,
+        "adapter_sha256": next(iter(adapter_hashes)),
+        "source_jsonl_sha256": next(iter(source_hashes)),
+        "source_identity_sha256": next(iter(source_identity_hashes)),
+        "model_name": next(iter(model_names)),
+        "score_normalization": "mean",
+    }
 
 
 def validate_train_data_identity(
@@ -441,11 +602,31 @@ def evaluate_thresholds(
 
 
 def run(cfg: Config) -> dict[str, Any]:
+    preregistration = _load_json(cfg.preregistration)
+    preregistration_validation = validate_preregistration(
+        preregistration,
+        train_data=cfg.train_data,
+        data_summary=cfg.data_summary,
+        expected_identity_sha256=cfg.expected_identity_sha256,
+    )
     score_rows = _load_jsonl(cfg.train_scores)
     score_validation = validate_score_rows(score_rows, expected_identity_sha256=cfg.expected_identity_sha256)
+    rlvr_validation = validate_rlvr_provenance(
+        cfg.rlvr_config,
+        preregistration_validation=preregistration_validation,
+        score_validation=score_validation,
+        train_data=cfg.train_data,
+    )
     train_rows = _load_jsonl(cfg.train_data)
     data_validation = validate_train_data_identity(train_rows, score_rows, cfg.expected_identity_sha256)
     data_validation["train_data_sha256"] = _sha256_bytes(cfg.train_data.read_bytes())
+    if (
+        score_validation["source_jsonl_sha256"]
+        != data_validation["train_data_sha256"]
+        or score_validation["source_identity_sha256"]
+        != cfg.expected_identity_sha256
+    ):
+        raise ValueError("lifecycle score source binding differs from frozen train data")
     score_sha = _sha256_bytes(cfg.train_scores.read_bytes())
     summary = _load_json(cfg.data_summary)
     summary_validation = validate_data_summary(
@@ -454,7 +635,11 @@ def run(cfg: Config) -> dict[str, Any]:
         train_data_sha256=data_validation["train_data_sha256"],
     )
     manifest, strategy_cfg = lifecycle.frozen.load_frozen_manifest(cfg.manifest)
-    if summary.get("manifest_freeze_hash") != manifest.get("freeze_hash"):
+    if (
+        summary.get("manifest_freeze_hash") != manifest.get("freeze_hash")
+        or preregistration_validation["manifest_freeze_hash"]
+        != manifest.get("freeze_hash")
+    ):
         raise ValueError("lifecycle data summary manifest hash does not match")
     market, _, _state, active, engine = lifecycle.load_train_context(manifest, strategy_cfg)
     engine_cfg = _execution_config(strategy_cfg, strategy_cfg.leverage)
@@ -476,7 +661,13 @@ def run(cfg: Config) -> dict[str, Any]:
         "selection_boundary": "pre_2024_train_only_no_oos_inputs",
         "manifest_freeze_hash": manifest.get("freeze_hash"),
         "inputs": {
+            "preregistration": {
+                "path": str(cfg.preregistration),
+                "sha256": _sha256_bytes(cfg.preregistration.read_bytes()),
+                **preregistration_validation,
+            },
             "train_scores": {"path": str(cfg.train_scores), "sha256": score_sha, **score_validation},
+            "rlvr_run": rlvr_validation,
             "train_data": {"path": str(cfg.train_data), **data_validation},
             "data_summary": {
                 "path": str(cfg.data_summary),
@@ -552,6 +743,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train-scores", type=Path, default=DEFAULT_TRAIN_SCORES)
     parser.add_argument("--threshold-output", type=Path, default=DEFAULT_THRESHOLD_OUTPUT)
     parser.add_argument("--failure-output", type=Path, default=DEFAULT_FAILURE_OUTPUT)
+    parser.add_argument("--preregistration", type=Path, default=DEFAULT_PREREGISTRATION)
+    parser.add_argument("--rlvr-config", type=Path, default=DEFAULT_RLVR_CONFIG)
     parser.add_argument("--expected-identity-sha256", default=DEFAULT_EXPECTED_IDENTITY_SHA256)
     return parser.parse_args()
 
