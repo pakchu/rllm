@@ -1,0 +1,176 @@
+{
+  "as_of": "2026-09-02",
+  "attempts": [
+    {
+      "always_tp4": {
+        "cagr_mdd": 3.3682420237580883,
+        "return_pct": 53.070469596099,
+        "stress_mdd_pct": 5.942984737185009,
+        "stress_return_pct": 50.038270419240675
+      },
+      "artifacts": {
+        "critic": {
+          "path": "results/pposm_conditional_residual_sft_rlvr_critic_2026-09-02.json",
+          "sha256": "b9297ee406e0e88d2fc499c3fc384a363607b0f855b13ae9cc1687065ebcbb80"
+        },
+        "verdict": {
+          "path": "results/pposm_conditional_residual_sft_rlvr_verdict_2026-09-02.json",
+          "sha256": "0b598c2e75ec10fd1100441a3b659ff3923f4a3be5baad0bdfb70d8e987945e6"
+        }
+      },
+      "failed_gates": [
+        "base_ratio_lift_ge_0_05",
+        "stress_mdd_worsening_le_0_01pp"
+      ],
+      "model": {
+        "cagr_mdd": 3.331170976849798,
+        "return_pct": 54.37608841155313,
+        "stress_mdd_pct": 6.094576330329337,
+        "stress_return_pct": 51.56042567801749
+      },
+      "name": "pairwise_independent_trade_residual",
+      "routes": {
+        "SKIP": 14,
+        "TP12": 44,
+        "TP4": 99
+      },
+      "stage": "OOS report/veto",
+      "status": "fail"
+    },
+    {
+      "artifacts": {
+        "failure": {
+          "path": "results/pposm_lifecycle_residual_train_threshold_failure_2026-09-02.json",
+          "sha256": "4c20a8af15efdcb38908e3f65c26da10421e517c8b0412eb5bceb28b96f72eac"
+        },
+        "verdict": {
+          "path": "results/pposm_lifecycle_residual_sft_rlvr_train_verdict_2026-09-02.json",
+          "sha256": "1a9f8a318c805d04c0f18b9a654a635504509c108a195f855ebdeb3512c81400"
+        }
+      },
+      "failed_gates": [
+        "materiality",
+        "stress_mdd_worsening_le_0_01pp",
+        "base_ratio_ge_3"
+      ],
+      "grid": 37,
+      "name": "shadow_tp4_lifecycle_anchor_residual",
+      "stage": "pre-2024 threshold",
+      "status": "fail_before_oos"
+    },
+    {
+      "artifacts": {
+        "failure": {
+          "path": "results/pposm_lifecycle_specialist_train_pair_threshold_failure_2026-09-02.json",
+          "sha256": "d690f50aaea88425765127a0c8d8f0a8be4780b654eafe4e600f874510d07115"
+        },
+        "verdict": {
+          "path": "results/pposm_lifecycle_specialist_sft_rlvr_train_verdict_2026-09-02.json",
+          "sha256": "914b8034215a58a15ebaedd1c27bc9787ddbe479480db4bf6368a7a8860a5d7f"
+        }
+      },
+      "failed_gates": [
+        "materiality",
+        "stress_mdd_worsening_le_0_01pp",
+        "base_ratio_ge_3"
+      ],
+      "grid": 550,
+      "name": "two_action_lifecycle_specialists",
+      "stage": "pre-2024 threshold pair",
+      "status": "fail_before_oos"
+    },
+    {
+      "artifacts": {
+        "failure": {
+          "path": "results/pposm_lifecycle_dual_verifier_train_threshold_failure_2026-09-02.json",
+          "sha256": "31603975ec94ee78eb6bd09ed7e3535940df779c81051404753b80195adb6ed2"
+        },
+        "verdict": {
+          "path": "results/pposm_lifecycle_dual_verifier_sft_rlvr_train_verdict_2026-09-02.json",
+          "sha256": "b8fff496afcd86ee10d5957c388cb4aeb9f12b922a63c210ac4714b3015b814a"
+        }
+      },
+      "failed_gates": [
+        "materiality",
+        "stress_mdd_worsening_le_0_01pp",
+        "base_ratio_ge_3"
+      ],
+      "grid": 23,
+      "name": "shared_lifecycle_dual_verifier",
+      "reward": [
+        "format",
+        "exact_target",
+        "lifecycle_utility"
+      ],
+      "stage": "pre-2024 threshold",
+      "status": "fail_before_oos"
+    }
+  ],
+  "branch": "codex/gross9-structural-clock-bundle-20260731",
+  "closest_result": "The first conditional residual router was non-constant and raised base/stress terminal return, but failed both preregistered risk-adjusted comparison gates.",
+  "deployment_authorized": false,
+  "head": "443b5af7",
+  "next_evidence_required": {
+    "auc_lower_bound_above": 0.5,
+    "balanced_accuracy_min": 0.55,
+    "pooled_auc_min": 0.6,
+    "recommended_sources": [
+      "true Binance long-short ratio history",
+      "true taker long-short ratio history",
+      "fresh forward/live-parity lifecycle labels"
+    ],
+    "year_consistency": true
+  },
+  "objective": "Find a profitable non-replaceable PPOSM conditional router using text SFT plus RLVR.",
+  "protocol": "pposm_sft_rlvr_architecture_search_negative_result_v1",
+  "result_hash": "80693050ba710995412649b333a1d9dcc3802d5f11244dba5148dbeacb6f13e3",
+  "root_cause": "The current causal inputs do not contain stable forward-fold information for ex-post lifecycle marginal labels. Models learn SWITCH propensity or train-specific ranks, not the sparse risk-adjusted interventions needed to lift always-TP4 CAGR/MDD without worsening stress MDD.",
+  "source_integrity": {
+    "cache_verdict": "cached file was not the model-search failure; current OI features also lacked stable train signal",
+    "oi_archive": "usable only with last-completed 5m shift and explicit gap handling",
+    "oi_live_table": "live runner writes open_interest_binance_live snapshots, while historical 5m table needs explicit import/backfill",
+    "period_risk": "configured live period can default to 1m while historical archive is 5m"
+  },
+  "status": "verified_negative_no_professor_critic_pass_research_only",
+  "stop_condition": "Do not open more historical OOS or weaken gates. Resume only after a new hash-bound causal source or materially larger fresh-forward anchor set clears a preregistered expanding-fold signal gate.",
+  "train_only_diagnostics": {
+    "oi_compact_cv": {
+      "anchors": 102,
+      "features": 15,
+      "oi_anchor_coverage": 100,
+      "skip_auc": 0.542,
+      "skip_auc_ci": [
+        0.374,
+        0.7
+      ],
+      "skip_balanced_accuracy": 0.625,
+      "source_sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192",
+      "tp12_auc": 0.502,
+      "tp12_auc_ci": [
+        0.357,
+        0.642
+      ],
+      "tp12_balanced_accuracy": 0.51
+    },
+    "rank_budget": {
+      "quota_pairs_each": 10609,
+      "shared_dual_feasible": 0,
+      "skip_auc_shared": 0.418,
+      "skip_auc_specialist": 0.536,
+      "specialist_feasible": 0,
+      "tp12_auc_shared": 0.501,
+      "tp12_auc_specialist": 0.526
+    },
+    "richer_temporal_shadow_cv": {
+      "anchors": 102,
+      "skip_best_balanced_accuracy": 0.5381,
+      "skip_best_pooled_auc": 0.5355,
+      "tp12_auc_approx_95pct": [
+        0.42,
+        0.705
+      ],
+      "tp12_temporal_balanced_accuracy": 0.5561,
+      "tp12_temporal_pooled_auc": 0.5625
+    }
+  }
+}
