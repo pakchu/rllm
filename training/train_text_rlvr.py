@@ -412,6 +412,19 @@ def _metric_values(log_history: Sequence[dict[str, Any]], fragment: str) -> list
     return values
 
 
+def _prompt_token_length(tokenizer: Any, prompt: str) -> int:
+    messages = [{"role": "user", "content": str(prompt)}]
+    if getattr(tokenizer, "chat_template", None):
+        tokens = tokenizer.apply_chat_template(
+            messages, tokenize=True, add_generation_prompt=True
+        )
+    else:
+        tokens = tokenizer(
+            f"<|user|>\n{prompt}\n<|assistant|>\n", add_special_tokens=True
+        )["input_ids"]
+    return len(tokens)
+
+
 def train_text_rlvr(cfg: TextRLVRConfig, *, dry_run: bool = False) -> dict[str, Any]:
     """Train the existing SFT LoRA adapter with deterministic RLVR rewards."""
     schema = str(cfg.label_schema).strip().lower()
@@ -483,6 +496,18 @@ def train_text_rlvr(cfg: TextRLVRConfig, *, dry_run: bool = False) -> dict[str, 
     )
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
+    prompt_lengths = [_prompt_token_length(tokenizer, row["prompt"]) for row in rows]
+    max_prompt_tokens = max(prompt_lengths)
+    if max_prompt_tokens > int(cfg.max_prompt_length):
+        raise ValueError(
+            "training prompt exceeds max_prompt_length: "
+            f"observed {max_prompt_tokens}, limit {cfg.max_prompt_length}"
+        )
+    config_diagnostics["observed_prompt_tokens"] = {
+        "min": min(prompt_lengths),
+        "max": max_prompt_tokens,
+    }
+    _write_json(config_path, config_diagnostics)
     dtype = torch.bfloat16 if cfg.bf16 else None
     model = AutoModelForCausalLM.from_pretrained(
         cfg.base_model,
@@ -515,7 +540,6 @@ def train_text_rlvr(cfg: TextRLVRConfig, *, dry_run: bool = False) -> dict[str, 
         gradient_accumulation_steps=int(cfg.gradient_accumulation_steps),
         num_generations=effective_generations,
         generation_batch_size=generation_batch_size,
-        max_prompt_length=int(cfg.max_prompt_length),
         max_completion_length=int(cfg.max_completion_length),
         temperature=float(cfg.temperature),
         top_p=float(cfg.top_p),

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from training.train_text_rlvr import (
     TextRLVRConfig,
+    _prompt_token_length,
     apply_reward_variance_guard,
     build_reward_functions,
     exact_target_reward,
@@ -24,6 +25,19 @@ class TestTextRLVR(unittest.TestCase):
         path = Path(directory) / "train.jsonl"
         path.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
         return path
+
+    def test_prompt_token_length_uses_chat_generation_template(self):
+        class Tokenizer:
+            chat_template = "template"
+
+            @staticmethod
+            def apply_chat_template(messages, *, tokenize, add_generation_prompt):
+                assert messages == [{"role": "user", "content": "prompt"}]
+                assert tokenize is True
+                assert add_generation_prompt is True
+                return [1, 2, 3]
+
+        self.assertEqual(_prompt_token_length(Tokenizer(), "prompt"), 3)
 
     def test_pair_rewards_require_bare_allowed_label_and_exact_target(self):
         format_reward, target_reward = build_reward_functions("pair")
