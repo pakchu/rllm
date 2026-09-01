@@ -24,7 +24,9 @@ LABEL_SCHEMAS: dict[str, tuple[str, ...]] = {
     "ordinal": ("Q0", "Q1", "Q2", "Q3", "Q4"),
     "pposm_state": ("SKIP", "TP4", "TP12"),
     "pposm_action_utility": ("SKIP", "TP4", "TP12"),
+    "pposm_residual_utility": ("KEEP", "SWITCH"),
 }
+RESIDUAL_TIE_SWITCH_PENALTY = 0.01
 
 
 @dataclass(frozen=True)
@@ -65,7 +67,7 @@ def allowed_labels(label_schema: str) -> tuple[str, ...]:
     if key not in LABEL_SCHEMAS:
         raise ValueError(
             "label_schema must be one of "
-            "{'gate','gate_utility','pair','ordinal','pposm_state','pposm_action_utility'}"
+            f"{sorted(LABEL_SCHEMAS)}"
         )
     return LABEL_SCHEMAS[key]
 
@@ -79,7 +81,7 @@ def load_jsonl(
     """Load and strictly validate prompt/target JSONL rows."""
     source = Path(path)
     labels = set(allowed_labels(label_schema))
-    rows: list[dict[str, str]] = []
+    rows: list[dict[str, Any]] = []
     with source.open(encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, 1):
             if not line.strip():
@@ -123,6 +125,19 @@ def load_jsonl(
                 if not all(math.isfinite(value) for value in parsed.values()):
                     raise ValueError(f"line {line_number} of {source} has non-finite action utility")
                 record["action_utilities"] = parsed
+            if str(label_schema).strip().lower() == "pposm_residual_utility":
+                metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+                utilities = metadata.get("residual_utilities", raw.get("residual_utilities"))
+                if not isinstance(utilities, dict) or set(utilities) != labels:
+                    raise ValueError(
+                        f"line {line_number} of {source} residual_utilities must match labels"
+                    )
+                parsed = {label: float(utilities[label]) for label in labels}
+                if not all(math.isfinite(value) for value in parsed.values()):
+                    raise ValueError(f"line {line_number} of {source} has non-finite residual utility")
+                if parsed["KEEP"] != 0.0:
+                    raise ValueError(f"line {line_number} of {source} residual_utilities.KEEP must be 0")
+                record["residual_utilities"] = parsed
             rows.append(record)
             if max_samples > 0 and len(rows) >= int(max_samples):
                 break
@@ -232,6 +247,43 @@ def make_action_utility_reward(utility_scale: float) -> Callable[..., list[float
     return action_utility_reward
 
 
+def make_residual_utility_reward(utility_scale: float) -> Callable[..., list[float]]:
+    scale = float(utility_scale)
+    if not math.isfinite(scale) or scale <= 0.0:
+        raise ValueError("utility_scale must be positive and finite")
+
+    def residual_utility_reward(
+        completions: Sequence[Any],
+        residual_utilities: Sequence[dict[str, float]],
+        target: Sequence[str],
+        **_: Any,
+    ) -> list[float]:
+        if len(completions) != len(residual_utilities) or len(completions) != len(target):
+            raise ValueError(
+                "completions, residual_utilities, and target must have equal lengths"
+            )
+        rewards: list[float] = []
+        for completion, utilities, expected in zip(
+            completions, residual_utilities, target, strict=True
+        ):
+            label = completion_text(completion)
+            if label == "KEEP":
+                rewards.append(0.0)
+                continue
+            if label == "SWITCH" and label in utilities:
+                value = float(utilities[label])
+                if value == 0.0 and expected == "KEEP":
+                    rewards.append(-RESIDUAL_TIE_SWITCH_PENALTY)
+                else:
+                    rewards.append(float(max(-1.0, min(1.0, value / scale))))
+                continue
+            rewards.append(-1.0)
+        return rewards
+
+    residual_utility_reward.__name__ = "residual_utility_reward"
+    return residual_utility_reward
+
+
 def build_reward_functions(
     label_schema: str, *, utility_scale: float = 0.005
 ) -> list[Callable[..., list[float]]]:
@@ -242,6 +294,9 @@ def build_reward_functions(
         return rewards
     if schema == "pposm_action_utility":
         rewards.append(make_action_utility_reward(utility_scale))
+        return rewards
+    if schema == "pposm_residual_utility":
+        rewards.append(make_residual_utility_reward(utility_scale))
         return rewards
     rewards.append(exact_target_reward)
     if schema == "ordinal":
@@ -313,6 +368,11 @@ def _reward_diagnostics(label_schema: str, *, utility_scale: float = 0.005) -> d
                     kwargs = {"utility": [0.01]}
                 elif reward.__name__ == "action_utility_reward":
                     kwargs = {"action_utilities": [{label: (0.01 if label == target else 0.0) for label in labels}]}
+                elif reward.__name__ == "residual_utility_reward":
+                    kwargs = {
+                        "residual_utilities": [{"KEEP": 0.0, "SWITCH": 0.01}],
+                        "target": [target],
+                    }
                 else:
                     kwargs = {"target": [target]}
                 values[reward.__name__] = reward([completion], **kwargs)[0]
@@ -321,6 +381,11 @@ def _reward_diagnostics(label_schema: str, *, utility_scale: float = 0.005) -> d
         "schema": str(label_schema).lower(),
         "allowed_labels": list(labels),
         "reward_functions": [reward.__name__ for reward in reward_funcs],
+        "residual_tie_switch_penalty": (
+            RESIDUAL_TIE_SWITCH_PENALTY
+            if str(label_schema).lower() == "pposm_residual_utility"
+            else None
+        ),
         "deterministic_reward_matrix": matrix,
         "observed_reward_std": [],
         "max_observed_reward_std": None,
@@ -450,6 +515,7 @@ def train_text_rlvr(cfg: TextRLVRConfig, *, dry_run: bool = False) -> dict[str, 
         gradient_accumulation_steps=int(cfg.gradient_accumulation_steps),
         num_generations=effective_generations,
         generation_batch_size=generation_batch_size,
+        max_prompt_length=int(cfg.max_prompt_length),
         max_completion_length=int(cfg.max_completion_length),
         temperature=float(cfg.temperature),
         top_p=float(cfg.top_p),
@@ -476,6 +542,7 @@ def train_text_rlvr(cfg: TextRLVRConfig, *, dry_run: bool = False) -> dict[str, 
                 "target": row["target"],
                 **({"utility": row["utility"]} if "utility" in row else {}),
                 **({"action_utilities": row["action_utilities"]} if "action_utilities" in row else {}),
+                **({"residual_utilities": row["residual_utilities"]} if "residual_utilities" in row else {}),
             }
             for row in rows
         ]

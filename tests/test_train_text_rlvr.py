@@ -10,6 +10,7 @@ from training.train_text_rlvr import (
     exact_target_reward,
     make_economic_utility_reward,
     make_action_utility_reward,
+    make_residual_utility_reward,
     load_jsonl,
     ordinal_distance_reward,
     parse_args,
@@ -19,7 +20,7 @@ from training.train_text_rlvr import (
 
 
 class TestTextRLVR(unittest.TestCase):
-    def _jsonl(self, directory: str, rows: list[dict[str, str]]) -> Path:
+    def _jsonl(self, directory: str, rows: list[dict[str, object]]) -> Path:
         path = Path(directory) / "train.jsonl"
         path.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
         return path
@@ -63,6 +64,71 @@ class TestTextRLVR(unittest.TestCase):
             reward(["SKIP", "TP4", "TP12", "BAD"], action_utilities=[utilities] * 4),
             [0.0, 1.0, -0.5, -1.0],
         )
+
+    def test_residual_utility_reward_scores_switch_relative_to_keep(self):
+        reward = make_residual_utility_reward(0.01)
+        positive = {"KEEP": 0.0, "SWITCH": 0.006}
+        negative = {"KEEP": 0.0, "SWITCH": -0.004}
+        self.assertEqual(
+            reward(
+                ["KEEP", "SWITCH", "SWITCH", "BAD"],
+                residual_utilities=[positive, positive, negative, positive],
+                target=["SWITCH", "SWITCH", "KEEP", "SWITCH"],
+            ),
+            [0.0, 0.6, -0.4, -1.0],
+        )
+
+    def test_residual_utility_reward_breaks_exact_ties_toward_keep(self):
+        reward = make_residual_utility_reward(0.01)
+        tied = {"KEEP": 0.0, "SWITCH": 0.0}
+        self.assertEqual(
+            reward(
+                ["KEEP", "SWITCH"],
+                residual_utilities=[tied, tied],
+                target=["KEEP", "KEEP"],
+            ),
+            [0.0, -0.01],
+        )
+
+    def test_residual_utility_loader_preserves_pairwise_metadata(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = self._jsonl(
+                td,
+                [
+                    {
+                        "prompt": "candidate SKIP vs default TP4",
+                        "target": "SWITCH",
+                        "metadata": {"residual_utilities": {"KEEP": 0.0, "SWITCH": 0.012}},
+                    }
+                ],
+            )
+            rows = load_jsonl(path, label_schema="pposm_residual_utility")
+            self.assertEqual(
+                rows[0]["residual_utilities"],
+                {"KEEP": 0.0, "SWITCH": 0.012},
+            )
+
+    def test_residual_utility_loader_rejects_malformed_metadata(self):
+        cases = [
+            ({"SWITCH": 0.01}, "residual_utilities must match labels"),
+            ({"KEEP": 0.0, "SWITCH": "nan"}, "non-finite residual utility"),
+            ({"KEEP": 0.001, "SWITCH": 0.01}, "residual_utilities.KEEP must be 0"),
+        ]
+        for utilities, message in cases:
+            with self.subTest(utilities=utilities):
+                with tempfile.TemporaryDirectory() as td:
+                    path = self._jsonl(
+                        td,
+                        [
+                            {
+                                "prompt": "candidate TP12 vs default TP4",
+                                "target": "KEEP",
+                                "metadata": {"residual_utilities": utilities},
+                            }
+                        ],
+                    )
+                    with self.assertRaisesRegex(ValueError, message):
+                        load_jsonl(path, label_schema="pposm_residual_utility")
 
     def test_gate_utility_loader_preserves_train_net_return(self):
         with tempfile.TemporaryDirectory() as td:
@@ -131,6 +197,56 @@ class TestTextRLVR(unittest.TestCase):
                 self.assertTrue((output / name).exists(), name)
             reward = json.loads((output / "reward_diagnostics.json").read_text())
             self.assertEqual(reward["reward_functions"], ["format_reward", "exact_target_reward", "ordinal_distance_reward"])
+
+    def test_residual_utility_dry_run_writes_schema_diagnostics(self):
+        with tempfile.TemporaryDirectory() as td:
+            train = self._jsonl(
+                td,
+                [
+                    {
+                        "prompt": "candidate SKIP vs default TP4",
+                        "target": "KEEP",
+                        "metadata": {"residual_utilities": {"KEEP": 0.0, "SWITCH": -0.003}},
+                    },
+                    {
+                        "prompt": "candidate TP12 vs default TP4",
+                        "target": "SWITCH",
+                        "metadata": {"residual_utilities": {"KEEP": 0.0, "SWITCH": 0.006}},
+                    },
+                ],
+            )
+            output = Path(td) / "out"
+            result = train_text_rlvr(
+                TextRLVRConfig(
+                    base_model="/models/local-base",
+                    sft_adapter_dir="/models/local-adapter",
+                    train_jsonl=str(train),
+                    output_dir=str(output),
+                    label_schema="pposm_residual_utility",
+                    local_files_only=True,
+                    seed=17,
+                ),
+                dry_run=True,
+            )
+            self.assertEqual(result["allowed_labels"], ["KEEP", "SWITCH"])
+            reward = json.loads((output / "reward_diagnostics.json").read_text())
+            self.assertEqual(
+                reward["reward_functions"],
+                ["format_reward", "residual_utility_reward"],
+            )
+            self.assertEqual(reward["residual_tie_switch_penalty"], 0.01)
+            self.assertEqual(
+                reward["deterministic_reward_matrix"]["KEEP"]["KEEP"][
+                    "residual_utility_reward"
+                ],
+                0.0,
+            )
+            self.assertEqual(
+                reward["deterministic_reward_matrix"]["KEEP"]["SWITCH"][
+                    "residual_utility_reward"
+                ],
+                1.0,
+            )
 
     def test_cli_has_train_only_and_verification_options(self):
         args = parse_args(
