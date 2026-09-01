@@ -422,6 +422,8 @@ def _prompt_token_length(tokenizer: Any, prompt: str) -> int:
         tokens = tokenizer(
             f"<|user|>\n{prompt}\n<|assistant|>\n", add_special_tokens=True
         )["input_ids"]
+    if hasattr(tokens, "get") and tokens.get("input_ids") is not None:
+        tokens = tokens["input_ids"]
     return len(tokens)
 
 

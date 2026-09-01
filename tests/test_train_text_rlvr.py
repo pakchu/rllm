@@ -39,6 +39,16 @@ class TestTextRLVR(unittest.TestCase):
 
         self.assertEqual(_prompt_token_length(Tokenizer(), "prompt"), 3)
 
+    def test_prompt_token_length_accepts_batch_encoding_shape(self):
+        class Tokenizer:
+            chat_template = "template"
+
+            @staticmethod
+            def apply_chat_template(*_args, **_kwargs):
+                return {"input_ids": [1, 2, 3, 4], "attention_mask": [1, 1, 1, 1]}
+
+        self.assertEqual(_prompt_token_length(Tokenizer(), "prompt"), 4)
+
     def test_pair_rewards_require_bare_allowed_label_and_exact_target(self):
         format_reward, target_reward = build_reward_functions("pair")
         completions = ["A", " B", "C", [{"role": "assistant", "content": "B"}]]
