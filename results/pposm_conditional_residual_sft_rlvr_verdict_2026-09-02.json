@@ -1,0 +1,101 @@
+{
+  "artifacts": {
+    "backtest": {
+      "path": "results/pposm_conditional_residual_backtest_2026-09-02.json",
+      "sha256": "57c5e27f2311fec84476a47810010c6b64b624d755d7eca1861173dde626ae89"
+    },
+    "critic": {
+      "path": "results/pposm_conditional_residual_sft_rlvr_critic_2026-09-02.json",
+      "sha256": "b9297ee406e0e88d2fc499c3fc384a363607b0f855b13ae9cc1687065ebcbb80"
+    },
+    "result": {
+      "path": "results/pposm_conditional_residual_sft_rlvr_result_2026-09-02.json",
+      "sha256": "518848229be85fdf4fa143993a04f89ee0bbb3432693cd2b30d25a67b9fa5e0a"
+    },
+    "router_report": {
+      "path": "results/pposm_conditional_residual_router_report_2026-09-02.json",
+      "sha256": "fb2a581a3fb5b974ef85ff140cfc565d27d405496b9089e72285e05572f87a97"
+    }
+  },
+  "as_of": "2026-09-02",
+  "checks": {
+    "byte_replay_identical": true,
+    "nonreplaceable_policy": true,
+    "oos_rerank_or_repair": false,
+    "professor_critic_passed": false,
+    "return_improved": true,
+    "stress_return_improved": true
+  },
+  "combined": {
+    "always_tp4_base": {
+      "absolute_return_pct": 53.070469596099,
+      "cagr_pct": 19.255856514965043,
+      "cagr_to_strict_mdd": 3.3682420237580883,
+      "longs": 50,
+      "mean_gross_bps": 186.81737664399824,
+      "mean_net_bps": 86.259628841197,
+      "shorts": 0,
+      "strict_mdd_pct": 5.716886250792774,
+      "trades": 50,
+      "win_rate": 0.76
+    },
+    "always_tp4_stress": {
+      "absolute_return_pct": 50.038270419240675,
+      "cagr_pct": 18.27293902575706,
+      "cagr_to_strict_mdd": 3.0747073791766684,
+      "longs": 50,
+      "mean_gross_bps": 186.81737664399824,
+      "mean_net_bps": 82.22431796785519,
+      "shorts": 0,
+      "strict_mdd_pct": 5.942984737185009,
+      "trades": 50,
+      "win_rate": 0.74
+    },
+    "cagr_mdd_delta": -0.03707104690829022,
+    "model_base": {
+      "absolute_return_pct": 54.37608841155313,
+      "cagr_pct": 19.67556884109889,
+      "cagr_to_strict_mdd": 3.331170976849798,
+      "longs": 46,
+      "mean_gross_bps": 206.51729893787098,
+      "mean_net_bps": 95.85013976620458,
+      "shorts": 0,
+      "strict_mdd_pct": 5.90650224135465,
+      "trades": 46,
+      "win_rate": 0.7391304347826086
+    },
+    "model_stress": {
+      "absolute_return_pct": 51.56042567801749,
+      "cagr_pct": 18.76780212044935,
+      "cagr_to_strict_mdd": 3.0794268712416275,
+      "longs": 46,
+      "mean_gross_bps": 206.51729893787098,
+      "mean_net_bps": 91.81099192113672,
+      "shorts": 0,
+      "strict_mdd_pct": 6.094576330329337,
+      "trades": 46,
+      "win_rate": 0.717391304347826
+    },
+    "return_delta_pct_points": 1.3056188154541246,
+    "stress_mdd_delta_pct_points": 0.15159159314432813,
+    "stress_return_delta_pct_points": 1.522155258776813
+  },
+  "critic": {
+    "decision": "FAIL",
+    "failed_checks": [
+      "base_ratio_lift_ge_0_05",
+      "stress_mdd_worsening_le_0_01pp"
+    ]
+  },
+  "model_structure": "pairwise TP4-default residual KEEP/SWITCH router with Qwen2.5-1.5B SFT128 plus residual-utility RLVR64",
+  "negative_result": "The learned policy is conditional and profitable in absolute terms, but it does not beat always-TP4 on the preregistered risk-adjusted gates.",
+  "next_materially_different_architecture": "Preregister a lifecycle-aware risk-constrained residual utility using only pre-2024 sequential always-TP4 counterfactual portfolio marginals; do not repair or reuse this OOS threshold.",
+  "protocol": "pposm_conditional_residual_sft_rlvr_verdict_v1",
+  "route_counts": {
+    "SKIP": 14,
+    "TP12": 44,
+    "TP4": 99
+  },
+  "status": "fail_economic_risk_gates_contaminated_research_not_deployment",
+  "verdict_hash": "70cd13768d79c74e59e24a4f8053f9fd2bd92191c277b85de07d70e7ebe05884"
+}

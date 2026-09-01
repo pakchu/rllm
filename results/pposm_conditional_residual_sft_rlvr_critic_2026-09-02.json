@@ -1,0 +1,262 @@
+{
+  "checks": [
+    {
+      "name": "required_artifacts_present",
+      "observed": [],
+      "passed": true,
+      "required": "all required artifacts"
+    },
+    {
+      "name": "artifact_hashes_exact",
+      "observed": {},
+      "passed": true,
+      "required": "all recorded hashes match files"
+    },
+    {
+      "name": "result_hash_exact",
+      "observed": "aa73b10ec59d78dfeed2f1450876916e05feb750f4835e78003eb7522e74f038",
+      "passed": true,
+      "required": "aa73b10ec59d78dfeed2f1450876916e05feb750f4835e78003eb7522e74f038"
+    },
+    {
+      "name": "split_contamination_no_repair_boundary",
+      "observed": {
+        "contamination": "historical PPOSM OOS windows were exposed previously; research only",
+        "future_can_rank_repair_or_reselect": false,
+        "oos": "2024 test, 2025 eval, and 2026H1 holdout are report/veto only",
+        "selection": "adapter, decoding, and threshold frozen without OOS rerank or repair",
+        "train": "pre-2024 only"
+      },
+      "passed": true,
+      "required": "pre-2024 train; 2024/2025/2026 report-veto; contamination; no repair"
+    },
+    {
+      "name": "exact_execution_contract",
+      "observed": {
+        "all_active_oos_decisions_consumed_positionally": true,
+        "baseline": "ALWAYS_TP4",
+        "entry_rule": "exact_next_5m_open",
+        "funding_applied": true,
+        "future_return_used_for_route": false,
+        "lifecycle": "TP_or_48h_cap",
+        "non_overlapping": true
+      },
+      "passed": true,
+      "required": "always-TP4, exact next-open, TP/48h, funding, non-overlap, causal route"
+    },
+    {
+      "name": "threshold_frozen_from_train_only",
+      "observed": {
+        "candidate_actions": [
+          "SKIP",
+          "TP12"
+        ],
+        "candidate_thresholds": 27,
+        "default_action": "TP4",
+        "future_can_rank_repair_or_reselect": false,
+        "optimization": "maximize_train_selected_residual_utility_subject_to_materiality; ties higher_threshold_then_serialized_route_stream; no_feasible_above_max_tp4",
+        "protocol": "pposm_residual_train_only_threshold_v2",
+        "selected_train_evaluation": {
+          "materiality": {
+            "difference_rate_vs_always_tp4": 0.5043290043290043,
+            "max_action_share": 0.49567099567099565,
+            "non_default_count": 233,
+            "non_default_counts": {
+              "SKIP": 99,
+              "TP12": 134
+            },
+            "num_signals": 462,
+            "passes": true,
+            "route_counts": {
+              "SKIP": 99,
+              "TP12": 134,
+              "TP4": 229
+            }
+          },
+          "selected_residual_utility_sum": -0.07897426395867302,
+          "threshold": 0.958740234375
+        },
+        "selection_inputs": {
+          "train_scores": {
+            "path": "results/pposm_conditional_residual_train_scores_2026-09-02.jsonl",
+            "sha256": "b52fa854db4ffb6d3103b13afb0935c189b153e227f396590e896585494f2b0b"
+          }
+        },
+        "selection_rule": "strict margin>threshold; dual switch selects larger raw margin; exact tie SKIP before TP12",
+        "status": "feasible_train_materiality",
+        "threshold": 0.958740234375,
+        "threshold_source": "all_distinct_pre2024_margins_plus_below_min_above_max_sentinels",
+        "train_base_signals": 462,
+        "train_pair_identity_sha256": "0c9eb9430d1e4c854915ddedd4f6ebae7fab5d0f8b0d648b322d84d8e11c4f4f",
+        "train_rows": 924
+      },
+      "passed": true,
+      "required": "threshold selection input is only the exact pre-2024 score artifact"
+    },
+    {
+      "name": "frozen_source_hash_bound_end_to_end",
+      "observed": {
+        "backtest": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+        "data": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+        "preregistration": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f"
+      },
+      "passed": true,
+      "required": "one manifest freeze hash across preregistration, data, and backtest"
+    },
+    {
+      "name": "preregistered_sft_plus_rlvr_residual_model",
+      "observed": {
+        "prereg_status": "preregistered_before_model_scoring",
+        "rlvr_schema": "pposm_residual_utility"
+      },
+      "passed": true,
+      "required": "frozen preregistration plus SFT and residual-utility RLVR"
+    },
+    {
+      "name": "required_windows_present",
+      "observed": [
+        "combined_2024_2026_06_02",
+        "eval_2025",
+        "holdout_2026",
+        "test_2024"
+      ],
+      "passed": true,
+      "required": "2024, 2025, 2026H1, combined"
+    },
+    {
+      "name": "exact_base_and_stress_costs",
+      "observed": {
+        "base_6bp": 0.0006,
+        "stress_10bp": 0.001
+      },
+      "passed": true,
+      "required": "6bp/side base and 10bp/side stress in every report"
+    },
+    {
+      "name": "at_least_two_routes",
+      "observed": {
+        "SKIP": 14,
+        "TP12": 44,
+        "TP4": 99
+      },
+      "passed": true,
+      "required": ">=2 actions OOS"
+    },
+    {
+      "name": "difference_rate_ge_10pct",
+      "observed": 0.3694267515923567,
+      "passed": true,
+      "required": ">=0.10"
+    },
+    {
+      "name": "used_non_default_count_ge_10",
+      "observed": {
+        "SKIP": 14,
+        "TP12": 44
+      },
+      "passed": true,
+      "required": "every used non-default route >=10"
+    },
+    {
+      "name": "single_action_share_le_90pct",
+      "observed": 0.6305732484076433,
+      "passed": true,
+      "required": "<=0.90"
+    },
+    {
+      "name": "all_windows_positive_base_stress",
+      "observed": {
+        "eval_2025": {
+          "base_6bp": 5.410437094885379,
+          "stress_10bp": 4.989469454840845
+        },
+        "holdout_2026": {
+          "base_6bp": 13.199606617715332,
+          "stress_10bp": 12.387172746861076
+        },
+        "test_2024": {
+          "base_6bp": 29.375338991826204,
+          "stress_10bp": 28.446811847688892
+        }
+      },
+      "passed": true,
+      "required": "every OOS window positive at 6bp and 10bp per side"
+    },
+    {
+      "name": "base_return_not_lower",
+      "observed": {
+        "always_tp4": 53.070469596099,
+        "model": 54.37608841155313
+      },
+      "passed": true,
+      "required": "model >= control"
+    },
+    {
+      "name": "base_ratio_lift_ge_0_05",
+      "observed": {
+        "always_tp4": 3.3682420237580883,
+        "model": 3.331170976849798
+      },
+      "passed": false,
+      "required": ">=+0.05"
+    },
+    {
+      "name": "stress_return_strictly_higher",
+      "observed": {
+        "always_tp4": 50.038270419240675,
+        "model": 51.56042567801749
+      },
+      "passed": true,
+      "required": "model > control"
+    },
+    {
+      "name": "stress_mdd_worsening_le_0_01pp",
+      "observed": {
+        "always_tp4": 5.942984737185009,
+        "model": 6.094576330329337
+      },
+      "passed": false,
+      "required": "<=+0.01pp"
+    },
+    {
+      "name": "combined_mdd_le_15",
+      "observed": 5.90650224135465,
+      "passed": true,
+      "required": "<=15%"
+    },
+    {
+      "name": "combined_ratio_ge_3",
+      "observed": 3.331170976849798,
+      "passed": true,
+      "required": ">=3.0"
+    },
+    {
+      "name": "combined_trades_ge_40",
+      "observed": 46.0,
+      "passed": true,
+      "required": ">=40"
+    },
+    {
+      "name": "weekly_signflip_p_le_0_20",
+      "observed": 0.00015999840001599985,
+      "passed": true,
+      "required": "<=0.20"
+    },
+    {
+      "name": "byte_replay_identical",
+      "observed": {
+        "backtest": "57c5e27f2311fec84476a47810010c6b64b624d755d7eca1861173dde626ae89",
+        "replay": "57c5e27f2311fec84476a47810010c6b64b624d755d7eca1861173dde626ae89"
+      },
+      "passed": true,
+      "required": "exact bytes equal across two backtest runs"
+    }
+  ],
+  "decision": "FAIL",
+  "failed_checks": [
+    "base_ratio_lift_ge_0_05",
+    "stress_mdd_worsening_le_0_01pp"
+  ],
+  "passed": false,
+  "protocol": "pposm_conditional_residual_professor_critic_v1"
+}

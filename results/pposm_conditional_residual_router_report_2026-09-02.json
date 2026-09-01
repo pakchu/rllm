@@ -1,0 +1,62 @@
+{
+  "config": {
+    "oos_scores": "results/pposm_conditional_residual_oos_scores_2026-09-02.jsonl",
+    "predictions_output": "results/pposm_conditional_residual_oos_predictions_2026-09-02.jsonl",
+    "report_output": "results/pposm_conditional_residual_router_report_2026-09-02.json",
+    "threshold": "results/pposm_conditional_residual_train_threshold_2026-09-02.json"
+  },
+  "difference_rate_vs_always_tp4": 0.36942675159235666,
+  "max_action_share": 0.6305732484076433,
+  "non_default_count": 58,
+  "num_signals": 157,
+  "protocol": "pposm_residual_router_report_v1",
+  "route_counts": {
+    "SKIP": 14,
+    "TP12": 44,
+    "TP4": 99
+  },
+  "threshold_spec": {
+    "candidate_actions": [
+      "SKIP",
+      "TP12"
+    ],
+    "candidate_thresholds": 27,
+    "default_action": "TP4",
+    "future_can_rank_repair_or_reselect": false,
+    "optimization": "maximize_train_selected_residual_utility_subject_to_materiality; ties higher_threshold_then_serialized_route_stream; no_feasible_above_max_tp4",
+    "protocol": "pposm_residual_train_only_threshold_v2",
+    "selected_train_evaluation": {
+      "materiality": {
+        "difference_rate_vs_always_tp4": 0.5043290043290043,
+        "max_action_share": 0.49567099567099565,
+        "non_default_count": 233,
+        "non_default_counts": {
+          "SKIP": 99,
+          "TP12": 134
+        },
+        "num_signals": 462,
+        "passes": true,
+        "route_counts": {
+          "SKIP": 99,
+          "TP12": 134,
+          "TP4": 229
+        }
+      },
+      "selected_residual_utility_sum": -0.07897426395867302,
+      "threshold": 0.958740234375
+    },
+    "selection_inputs": {
+      "train_scores": {
+        "path": "results/pposm_conditional_residual_train_scores_2026-09-02.jsonl",
+        "sha256": "b52fa854db4ffb6d3103b13afb0935c189b153e227f396590e896585494f2b0b"
+      }
+    },
+    "selection_rule": "strict margin>threshold; dual switch selects larger raw margin; exact tie SKIP before TP12",
+    "status": "feasible_train_materiality",
+    "threshold": 0.958740234375,
+    "threshold_source": "all_distinct_pre2024_margins_plus_below_min_above_max_sentinels",
+    "train_base_signals": 462,
+    "train_pair_identity_sha256": "0c9eb9430d1e4c854915ddedd4f6ebae7fab5d0f8b0d648b322d84d8e11c4f4f",
+    "train_rows": 924
+  }
+}
