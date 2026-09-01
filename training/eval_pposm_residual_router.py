@@ -79,7 +79,14 @@ def _load_json(path: str | Path) -> dict[str, Any]:
     return value
 
 
-def validate_score_rows(rows: Sequence[dict[str, Any]]) -> None:
+def validate_score_rows(
+    rows: Sequence[dict[str, Any]],
+    *,
+    candidate_actions: Sequence[str] = CANDIDATE_ACTIONS,
+) -> None:
+    required_candidates = tuple(candidate_actions)
+    if not required_candidates or not set(required_candidates) <= set(CANDIDATE_ACTIONS):
+        raise ValueError("candidate_actions must be a non-empty SKIP/TP12 subset")
     identities = [row.get("identity") for row in rows]
     if not all(isinstance(identity, str) and identity for identity in identities):
         raise ValueError("score row must include a non-empty residual identity")
@@ -89,15 +96,17 @@ def validate_score_rows(rows: Sequence[dict[str, Any]]) -> None:
     for row in rows:
         base = row.get("base_identity")
         candidate = row.get("candidate_action")
-        if not isinstance(base, str) or candidate not in CANDIDATE_ACTIONS:
+        if not isinstance(base, str) or candidate not in required_candidates:
             raise ValueError("score row must include base_identity and candidate_action")
         margin = float(row.get("switch_margin"))
         if not math.isfinite(margin):
             raise ValueError("switch_margin must be finite")
         by_base[base].append(str(candidate))
     for base, candidates in by_base.items():
-        if tuple(sorted(candidates)) != tuple(sorted(CANDIDATE_ACTIONS)):
-            raise ValueError(f"base identity {base} does not have exactly two candidate score rows")
+        if tuple(sorted(candidates)) != tuple(sorted(required_candidates)):
+            raise ValueError(
+                f"base identity {base} does not have exactly the required candidate rows"
+            )
 
 
 def _threshold_candidates(margins: Sequence[float]) -> list[float]:
@@ -301,6 +310,7 @@ def score_rows_with_adapter(
     adapter_dir: str,
     score_normalization: str = "mean",
     load_in_4bit: bool = False,
+    candidate_actions: Sequence[str] = CANDIDATE_ACTIONS,
 ) -> list[dict[str, Any]]:
     import torch
     from peft import PeftModel
@@ -377,7 +387,7 @@ def score_rows_with_adapter(
             "switch_margin": float(scores["SWITCH"] - scores["KEEP"]),
             "residual_advantage": metadata.get("residual_advantage"),
         })
-    validate_score_rows(scored)
+    validate_score_rows(scored, candidate_actions=candidate_actions)
     return scored
 
 
@@ -466,6 +476,7 @@ def parse_args() -> argparse.Namespace:
     score.add_argument("--adapter-dir", required=True)
     score.add_argument("--score-normalization", choices=["sum", "mean", "first_token"], default="mean")
     score.add_argument("--load-in-4bit", action="store_true")
+    score.add_argument("--candidate-action", choices=list(CANDIDATE_ACTIONS), default=None)
     freeze = sub.add_parser("freeze")
     freeze.add_argument("--train-scores", type=Path, default=DEFAULT_TRAIN_SCORES)
     freeze.add_argument("--threshold-output", type=Path, default=DEFAULT_THRESHOLD)
@@ -493,6 +504,7 @@ def main() -> None:
             adapter_dir=args.adapter_dir,
             score_normalization=args.score_normalization,
             load_in_4bit=args.load_in_4bit,
+            candidate_actions=(args.candidate_action,) if args.candidate_action else CANDIDATE_ACTIONS,
         )
         _write_jsonl(args.scores_output, scored)
         print(json.dumps({"scores_output": args.scores_output, "rows": len(scored)}, indent=2))

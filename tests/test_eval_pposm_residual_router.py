@@ -67,8 +67,13 @@ def test_dual_switch_chooses_larger_margin_and_ties_skip_first():
 
 
 def test_validate_score_rows_rejects_missing_pair():
-    with pytest.raises(ValueError, match="exactly two"):
+    with pytest.raises(ValueError, match="required candidate"):
         router.validate_score_rows([_score("a", "SKIP", 0.1)])
+
+
+def test_validate_score_rows_accepts_one_candidate_specialist():
+    row = _score("a", "SKIP", 0.1)
+    router.validate_score_rows([row], candidate_actions=("SKIP",))
 
 
 def test_freeze_threshold_rejects_non_train_or_post_2024_rows():
