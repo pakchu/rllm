@@ -52,12 +52,29 @@
 
 ## OI 및 cache 확인
 
-OI archive 자체가 이번 모델 실패의 원인은 아니다. 다만 live/history 경로에는 별도 운영 위험이 있다.
+후속 검사에서 중요한 정정이 있었다. OI-enriched cache에는 OI/OI-value만 있었지만, 원본 Binance UM metrics archive에는 실제 positioning ratio 4종이 보존되어 있었다.
+
+- `count_toptrader_long_short_ratio`
+- `sum_toptrader_long_short_ratio`
+- `count_long_short_ratio`
+- `sum_taker_long_short_vol_ratio`
+
+strict prior-completed-5m join으로 다시 계산한 train-only expanding-year CV:
+
+- SKIP AUC `0.6344`, 95% 구간 `0.5086–0.7521`, balanced accuracy `0.5549`.
+- TP12 AUC `0.5305`, 95% 구간 `0.3778–0.6772`, balanced accuracy `0.5455`.
+- global account ratio null `2.94%`, top-trader ratios null `35.29%`, taker ratio null `15.69%`.
+
+따라서 SKIP에는 약한 신호가 있으나 TP12와 전체 materiality를 지지할 수준은 아니다. 즉 새 full SFT+RLVR run은 아직 보류한다. 정형 근거는 `results/pposm_true_ratio_source_continuation_2026-09-02.json`에 있다.
+
+Cache builder는 `training/build_oi_enriched_cache.py`에서 ratio 4종을 선택적으로 보존하도록 수정했다. 현재 행보다 정확히 한 개 완료된 5분 source row만 사용하고 ratio forward-fill/interpolation은 하지 않는다.
+
+Live/history 경로에는 여전히 별도 운영 위험이 있다.
 
 - live runner는 `open_interest_binance_live` snapshot을 적재한다.
 - historical 5m `open_interest_binance`는 명시적 import/backfill이 필요하다.
 - live config는 `1m` default가 될 수 있지만 archive는 `5m`이므로 consumer period mismatch 시 OI availability가 비어 장기간 gate가 닫힐 수 있다.
-- historical OI feature는 최소 한 개 완결 5m bar shift와 gap/availability 처리가 필요하다.
+- historical OI/ratio feature는 최소 한 개 완결 5m bar shift와 gap/availability 처리가 필요하다.
 
 관련 코드: `/home/pakchu/upbit-usdt/app/services/ingest.py`, `/home/pakchu/upbit-usdt/app/storage/bars.py`.
 

@@ -1,0 +1,68 @@
+{
+  "as_of": "2026-09-02",
+  "cache_fix": {
+    "behavior": "optional hash-reported ratio enrichment, exact prior 5m join, no ratio ffill/interpolation, explicit missing/gap/off-grid/zero handling",
+    "builder": "training/build_oi_enriched_cache.py",
+    "commit": "164c9c4f",
+    "tests": "tests/test_build_oi_enriched_cache.py"
+  },
+  "decision": "Do not start another full SFT+RLVR run yet. SKIP has a weak/stable train hint, TP12 and full required action materiality do not. First require a restricted, coverage-safe source-support gate or fresh-forward labels.",
+  "deployment_authorized": false,
+  "diagnostic": {
+    "SKIP": {
+      "auc": 0.6344322344322344,
+      "auc_ci95": [
+        0.5086032807771939,
+        0.7521334879266266
+      ],
+      "balanced_accuracy": 0.554945054945055,
+      "year_auc": [
+        0.5595238095238095,
+        0.6933333333333334,
+        0.5952380952380952
+      ]
+    },
+    "TP12": {
+      "auc": 0.5305397727272727,
+      "auc_ci95": [
+        0.3778271207958708,
+        0.67716045421521
+      ],
+      "balanced_accuracy": 0.5454545454545454,
+      "year_auc": [
+        0.5297619047619048,
+        0.6363636363636362,
+        0.4523809523809524
+      ]
+    },
+    "anchors": 102,
+    "artifact": {
+      "path": "results/pposm_true_ratio_lifecycle_diagnostic_2026-09-02.json",
+      "sha256": "f2a787dff619d20048f6ba1bee33fb00ec334cfb2065fec6021508eaee6b943e"
+    },
+    "coverage": {
+      "count_long_short_ratio_null_rate": 0.029411764705882353,
+      "taker_ratio_null_rate": 0.1568627450980392,
+      "top_trader_ratio_null_rate": 0.35294117647058826
+    },
+    "oos_accessed": false
+  },
+  "live_parity_gap": "upbit-usdt DB ingest schemas do not persist historical ratio series; archive-backed research is not yet identical to live feature availability. Aggregate OI also has 1m config vs 5m history mismatch risk.",
+  "protocol": "pposm_true_ratio_source_continuation_v1",
+  "result_hash": "6606491cb24f2298cb606db6d2eb5e9b503947825bc95ac28d7a1a3acc8819d2",
+  "source": {
+    "causal_rule": "use exactly the prior completed 5m source row; never current-row/exact timestamp",
+    "columns": [
+      "count_toptrader_long_short_ratio",
+      "sum_toptrader_long_short_ratio",
+      "count_long_short_ratio",
+      "sum_taker_long_short_vol_ratio"
+    ],
+    "official_daily_prefix": "https://data.binance.vision/?prefix=data/futures/um/daily/metrics/",
+    "path": "data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz",
+    "pre2024_prefix_sha256": "dbe4b6ead4b922d5bf7cc7f357aed38eaab88f3a5ce63932a33ab5ce1f6bbcba",
+    "sha256": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106"
+  },
+  "status": "source_recovered_prompt_gate_not_yet_passed",
+  "supersedes_assumption": "The local OI-enriched cache lacked ratio columns, but the original Binance UM metrics archive retains all four true positioning ratios."
+}
