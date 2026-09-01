@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Sequence
@@ -70,6 +70,13 @@ def _write_jsonl(path: str | Path, rows: Sequence[dict[str, Any]]) -> None:
         + "\n",
         encoding="utf-8",
     )
+
+
+def _load_json(path: str | Path) -> dict[str, Any]:
+    value = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{path} is not a JSON object")
+    return value
 
 
 def validate_score_rows(rows: Sequence[dict[str, Any]]) -> None:
@@ -374,18 +381,20 @@ def score_rows_with_adapter(
     return scored
 
 
-def run(cfg: Config) -> dict[str, Any]:
-    train_scores = _load_jsonl(cfg.train_scores)
+def write_train_threshold(
+    train_scores_path: Path, threshold_output: Path
+) -> dict[str, Any]:
+    train_scores = _load_jsonl(train_scores_path)
     threshold_spec = freeze_threshold(train_scores)
     threshold_spec["selection_inputs"] = {
         "train_scores": {
-            "path": str(cfg.train_scores),
-            "sha256": hashlib.sha256(cfg.train_scores.read_bytes()).hexdigest(),
+            "path": str(train_scores_path),
+            "sha256": hashlib.sha256(train_scores_path.read_bytes()).hexdigest(),
         }
     }
     threshold_spec["future_can_rank_repair_or_reselect"] = False
-    cfg.threshold_output.parent.mkdir(parents=True, exist_ok=True)
-    cfg.threshold_output.write_text(
+    threshold_output.parent.mkdir(parents=True, exist_ok=True)
+    threshold_output.write_text(
         json.dumps(
             threshold_spec,
             indent=2,
@@ -396,18 +405,34 @@ def run(cfg: Config) -> dict[str, Any]:
         + "\n",
         encoding="utf-8",
     )
+    return threshold_spec
 
-    # Open report/veto scores only after the train-only threshold is frozen.
-    oos_scores = _load_jsonl(cfg.oos_scores)
+
+def route_oos_scores(
+    *,
+    oos_scores_path: Path,
+    threshold_path: Path,
+    predictions_output: Path,
+    report_output: Path,
+) -> dict[str, Any]:
+    threshold_spec = _load_json(threshold_path)
+    if "train_only" not in str(threshold_spec.get("protocol", "")):
+        raise ValueError("threshold artifact is not train-only")
+    oos_scores = _load_jsonl(oos_scores_path)
     predictions, route_report = assemble_routes(oos_scores, threshold_spec)
-    _write_jsonl(cfg.predictions_output, predictions)
+    _write_jsonl(predictions_output, predictions)
     report = {
         "protocol": "pposm_residual_router_report_v1",
-        "config": {key: str(value) for key, value in asdict(cfg).items()},
+        "config": {
+            "oos_scores": str(oos_scores_path),
+            "threshold": str(threshold_path),
+            "predictions_output": str(predictions_output),
+            "report_output": str(report_output),
+        },
         **route_report,
     }
-    cfg.report_output.parent.mkdir(parents=True, exist_ok=True)
-    cfg.report_output.write_text(
+    report_output.parent.mkdir(parents=True, exist_ok=True)
+    report_output.write_text(
         json.dumps(
             report,
             indent=2,
@@ -421,6 +446,16 @@ def run(cfg: Config) -> dict[str, Any]:
     return report
 
 
+def run(cfg: Config) -> dict[str, Any]:
+    write_train_threshold(cfg.train_scores, cfg.threshold_output)
+    return route_oos_scores(
+        oos_scores_path=cfg.oos_scores,
+        threshold_path=cfg.threshold_output,
+        predictions_output=cfg.predictions_output,
+        report_output=cfg.report_output,
+    )
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
@@ -431,6 +466,14 @@ def parse_args() -> argparse.Namespace:
     score.add_argument("--adapter-dir", required=True)
     score.add_argument("--score-normalization", choices=["sum", "mean", "first_token"], default="mean")
     score.add_argument("--load-in-4bit", action="store_true")
+    freeze = sub.add_parser("freeze")
+    freeze.add_argument("--train-scores", type=Path, default=DEFAULT_TRAIN_SCORES)
+    freeze.add_argument("--threshold-output", type=Path, default=DEFAULT_THRESHOLD)
+    route = sub.add_parser("route")
+    route.add_argument("--oos-scores", type=Path, default=DEFAULT_OOS_SCORES)
+    route.add_argument("--threshold", type=Path, default=DEFAULT_THRESHOLD)
+    route.add_argument("--predictions-output", type=Path, default=DEFAULT_PREDICTIONS)
+    route.add_argument("--report-output", type=Path, default=DEFAULT_REPORT)
     assemble = sub.add_parser("assemble")
     assemble.add_argument("--train-scores", type=Path, default=DEFAULT_TRAIN_SCORES)
     assemble.add_argument("--oos-scores", type=Path, default=DEFAULT_OOS_SCORES)
@@ -453,6 +496,29 @@ def main() -> None:
         )
         _write_jsonl(args.scores_output, scored)
         print(json.dumps({"scores_output": args.scores_output, "rows": len(scored)}, indent=2))
+        return
+    if args.command == "freeze":
+        print(
+            json.dumps(
+                write_train_threshold(args.train_scores, args.threshold_output),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return
+    if args.command == "route":
+        print(
+            json.dumps(
+                route_oos_scores(
+                    oos_scores_path=args.oos_scores,
+                    threshold_path=args.threshold,
+                    predictions_output=args.predictions_output,
+                    report_output=args.report_output,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return
     print(json.dumps(run(Config(**{k: v for k, v in vars(args).items() if k != "command"})), indent=2, sort_keys=True))
 

@@ -1,4 +1,5 @@
 import pytest
+import json
 
 from training import eval_pposm_residual_router as router
 
@@ -79,3 +80,31 @@ def test_freeze_threshold_rejects_non_train_or_post_2024_rows():
         row.update(split="oos", window="test_2024", signal_time="2024-01-01")
     with pytest.raises(ValueError, match="pre-2024"):
         router.freeze_threshold(scores)
+
+
+def test_freeze_and_route_are_separate_artifact_steps(tmp_path):
+    train_scores = tmp_path / "train.jsonl"
+    rows = [
+        _score("a", "SKIP", 0.1),
+        _score("a", "TP12", 0.2),
+    ]
+    train_scores.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8"
+    )
+    threshold = tmp_path / "threshold.json"
+    router.write_train_threshold(train_scores, threshold)
+    assert threshold.exists()
+
+    oos_scores = tmp_path / "oos.jsonl"
+    oos_scores.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8"
+    )
+    predictions = tmp_path / "predictions.jsonl"
+    report = tmp_path / "report.json"
+    router.route_oos_scores(
+        oos_scores_path=oos_scores,
+        threshold_path=threshold,
+        predictions_output=predictions,
+        report_output=report,
+    )
+    assert predictions.exists() and report.exists()
