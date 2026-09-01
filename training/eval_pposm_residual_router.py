@@ -311,6 +311,8 @@ def score_rows_with_adapter(
     score_normalization: str = "mean",
     load_in_4bit: bool = False,
     candidate_actions: Sequence[str] = CANDIDATE_ACTIONS,
+    source_jsonl_sha256: str = "",
+    source_identity_sha256: str = "",
 ) -> list[dict[str, Any]]:
     import torch
     from peft import PeftModel
@@ -318,6 +320,10 @@ def score_rows_with_adapter(
     from utils import disable_transformers_allocator_warmup
 
     resolved = _assert_adapter_matches_model(model_name, adapter_dir)
+    adapter_file = Path(adapter_dir) / "adapter_model.safetensors"
+    if not adapter_file.is_file():
+        raise FileNotFoundError(f"missing adapter weights: {adapter_file}")
+    adapter_sha256 = hashlib.sha256(adapter_file.read_bytes()).hexdigest()
     disable_transformers_allocator_warmup()
     tokenizer = AutoTokenizer.from_pretrained(resolved, trust_remote_code=True)
     if tokenizer.pad_token is None:
@@ -377,6 +383,12 @@ def score_rows_with_adapter(
             "identity": metadata.get("identity"),
             "base_identity": metadata.get("base_identity"),
             "candidate_action": metadata.get("candidate_action"),
+            "model_name": resolved,
+            "adapter_dir": str(adapter_dir),
+            "adapter_sha256": adapter_sha256,
+            "score_normalization": normalize,
+            "source_jsonl_sha256": source_jsonl_sha256,
+            "source_identity_sha256": source_identity_sha256,
             "split": row.get("split"),
             "window": metadata.get("window"),
             "target": row.get("target"),
@@ -497,7 +509,15 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     if args.command == "score":
-        rows = _load_jsonl(args.input_jsonl)
+        input_path = Path(args.input_jsonl)
+        rows = _load_jsonl(input_path)
+        source_identities = []
+        for row in rows:
+            metadata = row.get("metadata")
+            identity = metadata.get("identity") if isinstance(metadata, dict) else None
+            if not isinstance(identity, str) or not identity:
+                raise ValueError("score input row lacks metadata.identity")
+            source_identities.append(identity)
         scored = score_rows_with_adapter(
             rows,
             model_name=args.model_name,
@@ -505,6 +525,10 @@ def main() -> None:
             score_normalization=args.score_normalization,
             load_in_4bit=args.load_in_4bit,
             candidate_actions=(args.candidate_action,) if args.candidate_action else CANDIDATE_ACTIONS,
+            source_jsonl_sha256=hashlib.sha256(input_path.read_bytes()).hexdigest(),
+            source_identity_sha256=hashlib.sha256(
+                "\n".join(source_identities).encode("utf-8")
+            ).hexdigest(),
         )
         _write_jsonl(args.scores_output, scored)
         print(json.dumps({"scores_output": args.scores_output, "rows": len(scored)}, indent=2))
