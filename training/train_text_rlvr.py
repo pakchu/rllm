@@ -25,6 +25,7 @@ LABEL_SCHEMAS: dict[str, tuple[str, ...]] = {
     "pposm_state": ("SKIP", "TP4", "TP12"),
     "pposm_action_utility": ("SKIP", "TP4", "TP12"),
     "pposm_residual_utility": ("KEEP", "SWITCH"),
+    "pposm_residual_target_utility": ("KEEP", "SWITCH"),
 }
 RESIDUAL_TIE_SWITCH_PENALTY = 0.01
 
@@ -125,7 +126,10 @@ def load_jsonl(
                 if not all(math.isfinite(value) for value in parsed.values()):
                     raise ValueError(f"line {line_number} of {source} has non-finite action utility")
                 record["action_utilities"] = parsed
-            if str(label_schema).strip().lower() == "pposm_residual_utility":
+            if str(label_schema).strip().lower() in {
+                "pposm_residual_utility",
+                "pposm_residual_target_utility",
+            }:
                 metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
                 utilities = metadata.get("residual_utilities", raw.get("residual_utilities"))
                 if not isinstance(utilities, dict) or set(utilities) != labels:
@@ -298,6 +302,11 @@ def build_reward_functions(
     if schema == "pposm_residual_utility":
         rewards.append(make_residual_utility_reward(utility_scale))
         return rewards
+    if schema == "pposm_residual_target_utility":
+        rewards.extend(
+            (exact_target_reward, make_residual_utility_reward(utility_scale))
+        )
+        return rewards
     rewards.append(exact_target_reward)
     if schema == "ordinal":
         rewards.append(ordinal_distance_reward)
@@ -383,7 +392,8 @@ def _reward_diagnostics(label_schema: str, *, utility_scale: float = 0.005) -> d
         "reward_functions": [reward.__name__ for reward in reward_funcs],
         "residual_tie_switch_penalty": (
             RESIDUAL_TIE_SWITCH_PENALTY
-            if str(label_schema).lower() == "pposm_residual_utility"
+            if str(label_schema).lower()
+            in {"pposm_residual_utility", "pposm_residual_target_utility"}
             else None
         ),
         "deterministic_reward_matrix": matrix,

@@ -114,6 +114,44 @@ class TestTextRLVR(unittest.TestCase):
             [0.0, -0.01],
         )
 
+    def test_residual_target_utility_schema_combines_both_verifiers(self):
+        rewards = build_reward_functions(
+            "pposm_residual_target_utility", utility_scale=0.01
+        )
+        self.assertEqual(
+            [reward.__name__ for reward in rewards],
+            ["format_reward", "exact_target_reward", "residual_utility_reward"],
+        )
+        utilities = [{"KEEP": 0.0, "SWITCH": 0.006}]
+        self.assertEqual(rewards[1](["SWITCH"], target=["SWITCH"]), [1.0])
+        self.assertEqual(
+            rewards[2](
+                ["SWITCH"], residual_utilities=utilities, target=["SWITCH"]
+            ),
+            [0.6],
+        )
+
+    def test_residual_target_utility_loader_preserves_metadata(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = self._jsonl(
+                td,
+                [
+                    {
+                        "prompt": "candidate SKIP vs TP4",
+                        "target": "KEEP",
+                        "metadata": {
+                            "residual_utilities": {"KEEP": 0.0, "SWITCH": -0.2}
+                        },
+                    }
+                ],
+            )
+            rows = load_jsonl(
+                path, label_schema="pposm_residual_target_utility"
+            )
+            self.assertEqual(
+                rows[0]["residual_utilities"], {"KEEP": 0.0, "SWITCH": -0.2}
+            )
+
     def test_residual_utility_loader_preserves_pairwise_metadata(self):
         with tempfile.TemporaryDirectory() as td:
             path = self._jsonl(
