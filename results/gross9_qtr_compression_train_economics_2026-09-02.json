@@ -1,0 +1,213 @@
+{
+  "protocol_version": "gross9_qtr_compression_fixed_quantity_portfolio_economics_v1",
+  "policy_id": "G9QTR-COMPRESS-8",
+  "source_policy_id": "G9QTR-DISTILL-8",
+  "stage": "train",
+  "window": [
+    "2023-07-01T00:00:00Z",
+    "2024-01-01T00:00:00Z"
+  ],
+  "predecessor": null,
+  "frozen_authorization": {
+    "compression_preregistration": {
+      "path": "results/gross9_qtr_compression_shadow_preregistration_2026-09-02.json",
+      "sha256": "5f39997e01883b80ddb54241eb089582aeee90c93e8b02d912b579ccc05e9085",
+      "manifest_hash": "89975c10a6c3e02174850ccfdca2f5ba65eff483cd587090a5b78b133d3ced2f"
+    },
+    "source_clock_package": {
+      "path": "results/gross9_qtr_distill_split_clock_source_support_2026-09-02.json",
+      "sha256": "5b9ea50790d37f6daa2ccb7eaa351022b40088c503be8c0d8f39111c740270c7",
+      "manifest_hash": "734be40990a92c03e6bd0f70e0f0e2fbf177545bf936bb2eb6b56820f0045e70",
+      "source_policy_id": "G9QTR-DISTILL-8"
+    },
+    "terminal_additive_novelty": {
+      "path": "results/gross9_qtr_distill_train_gross9_novelty_2026-09-02.json",
+      "sha256": "e8781c156c3dfff29478f59ac7eb5d825387e256c7878ac53208eb7bee5ce5b4",
+      "manifest_hash": "f66dc7ea1af3b1dd16dedacd084b96785d598a0962a1bd5e8e0d3bd322a307c4",
+      "decision": "terminal_gross9_novelty_reject"
+    },
+    "overlap_disclosure": {
+      "terminal_additive_decision": "terminal_gross9_novelty_reject",
+      "terminal_additive_gross9_pass": false,
+      "required_pass_checks_for_replacement": [
+        "exact_entry_jaccard",
+        "occupied_5m_bar_jaccard",
+        "absolute_signed_exposure_pearson"
+      ],
+      "near_6h_overlap_is_disclosure_not_authorization_gate": true,
+      "near_6h_failures": {
+        "cand_rex_veto_7": 0.4444444444444444,
+        "markov_transition_long": 0.4166666666666667
+      },
+      "all_exact_entry_occupied_and_abs_pearson_passed": true
+    },
+    "preliminary_train_receipt_support": {
+      "commit": "cbb5f8bc",
+      "event": "preliminary_train_artifact_before_later_prereg_source_commit",
+      "later_commit": "be957b81",
+      "oos_outcomes_opened": false,
+      "preliminary_evaluator": {
+        "path": "training/evaluate_gross9_qtr_distill_economics.py",
+        "sha256": "d9b2f346e300d9cf2ca52085a9ea81a3412f048b7b6ed6f689ab62fe565a298d"
+      },
+      "prereg_and_source_status_at_preliminary_train": "untracked_then_committed_later_at_be957b81",
+      "train_artifact": {
+        "path": "results/gross9_qtr_distill_train_economics_2026-09-02.json",
+        "sha256": "2a09706548198f5756325b1d672f8a3d4d6664e6e2a83d077a385231f690cae7"
+      },
+      "train_values_used_to_change_formula_weights_or_gates": false
+    }
+  },
+  "source": {
+    "mode": "hash_bound_gzip_physical_prefix",
+    "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "funding_marks_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+  },
+  "accounting": {
+    "ledger": "cash plus fixed sleeve quantities; aggregate q delta netted for execution cost",
+    "entry_quantity": "q=side*weight*pre_transition_portfolio_equity/open for simultaneous entries",
+    "transition_order": "mark at open, remove exits, add simultaneous entries from same pre-transition equity, charge abs(net_delta_q)*open*cost",
+    "funding": "post-transition aggregate q receives funding cash=-aggregate_q*settlement_mark*rate for entry<=funding<exit",
+    "strict_mdd": "global HWM; every held 5m favorable then adverse OHLC on aggregate net q with virtual adverse liquidation cost",
+    "final_exit": "mandatory liquidation at stage end open"
+  },
+  "costs": {
+    "base_each_notional_side_bp": 6,
+    "stress_each_notional_side_bp": 10
+  },
+  "fixed_sleeves": [
+    {
+      "name": "G9QTR-DISTILL-8__HVDEMWMV-24__QTR_OPPOSITE_VETO_6H",
+      "weight": 0.16666666666666666,
+      "clock_path": "data/gross9_qtr_distill_sleeve_clocks_2026-09-02/G9QTR-DISTILL-8__HVDEMWMV-24__QTR_OPPOSITE_VETO_6H.csv.gz",
+      "clock_sha256": "689ce464a6f4d787f18104f510424b77e87a7f67748f4113ff14439a485b4889"
+    },
+    {
+      "name": "G9QTR-DISTILL-8__HVCPF17-8__QTR_OPPOSITE_VETO_6H",
+      "weight": 0.16666666666666666,
+      "clock_path": "data/gross9_qtr_distill_sleeve_clocks_2026-09-02/G9QTR-DISTILL-8__HVCPF17-8__QTR_OPPOSITE_VETO_6H.csv.gz",
+      "clock_sha256": "2a685ed5cd2dc294a4d8955e19addf7490f4d6fb06705ae853ac61c77d71621a"
+    },
+    {
+      "name": "G9QTR-DISTILL-8__HVDIMIO-8__QTR_OPPOSITE_VETO_6H",
+      "weight": 0.08333333333333333,
+      "clock_path": "data/gross9_qtr_distill_sleeve_clocks_2026-09-02/G9QTR-DISTILL-8__HVDIMIO-8__QTR_OPPOSITE_VETO_6H.csv.gz",
+      "clock_sha256": "b7d19fccd76594eaf9ff78fc51c07b05f59472ff3e4ca5d30993ddc60e7a8270"
+    },
+    {
+      "name": "G9QTR-DISTILL-8__HVLVR-8__QTR_OPPOSITE_VETO_6H",
+      "weight": 0.08333333333333333,
+      "clock_path": "data/gross9_qtr_distill_sleeve_clocks_2026-09-02/G9QTR-DISTILL-8__HVLVR-8__QTR_OPPOSITE_VETO_6H.csv.gz",
+      "clock_sha256": "eca4dbb53907ae32c945a0c0fc3cfce754a9e6792de09667bd7ff65969787d75"
+    }
+  ],
+  "clock_package_source_signed_episodes": {
+    "train": 96,
+    "test": 204,
+    "eval": 192,
+    "final": 98
+  },
+  "physical_rows_opened": {
+    "market": 52993,
+    "funding": 552,
+    "portfolio_clock": 150
+  },
+  "later_stage_outcomes_opened": false,
+  "primary": {
+    "base": {
+      "initial_equity": 100000.0,
+      "final_equity": 109754.78865700605,
+      "absolute_return_pct": 9.754788657006053,
+      "cagr_pct": 20.293677079178664,
+      "strict_mdd_pct": 1.9308384459892247,
+      "cagr_to_strict_mdd": 10.510292625119977,
+      "transitions": 230,
+      "intervals": 150,
+      "long_intervals": 62,
+      "short_intervals": 88,
+      "total_fees": 2411.3454614629195,
+      "total_funding": 25.40051844428211,
+      "mean_gross_underlying_bp": 59.9882811167882,
+      "mean_exposure_weighted_gross_edge_bp": 59.17592092336987
+    },
+    "stress": {
+      "initial_equity": 100000.0,
+      "final_equity": 108085.19222026227,
+      "absolute_return_pct": 8.085192220262272,
+      "cagr_pct": 16.688414959055887,
+      "strict_mdd_pct": 1.937704529498241,
+      "cagr_to_strict_mdd": 8.612466299687739,
+      "transitions": 230,
+      "intervals": 150,
+      "long_intervals": 62,
+      "short_intervals": 88,
+      "total_fees": 3988.146019878752,
+      "total_funding": 25.265836051222536,
+      "mean_gross_underlying_bp": 59.9882811167882,
+      "mean_exposure_weighted_gross_edge_bp": 59.17592092336987
+    },
+    "cluster_signflip": {
+      "method": "one_sided_UTC_week_cluster_signflip_monte_carlo",
+      "clusters": 24,
+      "draws": 100000,
+      "seed": 20260902,
+      "observed_log_effect": 0.09307849742540908,
+      "pvalue": 0.003299967000329997
+    },
+    "calendar_halves": {
+      "first": {
+        "initial_equity": 100000.0,
+        "final_equity": 103195.19944800762,
+        "absolute_return_pct": 3.195199448007635,
+        "cagr_pct": 13.299939746958955,
+        "strict_mdd_pct": 1.7863408130950442,
+        "cagr_to_strict_mdd": 7.4453540161327085,
+        "transitions": 83,
+        "intervals": 58,
+        "long_intervals": 23,
+        "short_intervals": 35,
+        "total_fees": 854.9189198728571,
+        "total_funding": 11.011169404658936,
+        "mean_gross_underlying_bp": 61.654684075386655,
+        "mean_exposure_weighted_gross_edge_bp": 55.65502933177199
+      },
+      "second": {
+        "initial_equity": 100000.0,
+        "final_equity": 106356.4867785381,
+        "absolute_return_pct": 6.356486778538106,
+        "cagr_pct": 27.71912127709868,
+        "strict_mdd_pct": 1.9308384459892247,
+        "cagr_to_strict_mdd": 14.356002354664824,
+        "transitions": 147,
+        "intervals": 92,
+        "long_intervals": 39,
+        "short_intervals": 53,
+        "total_fees": 1508.2354120302216,
+        "total_funding": 13.943816298230931,
+        "mean_gross_underlying_bp": 58.9377227298457,
+        "mean_exposure_weighted_gross_edge_bp": 61.19456543588599
+      }
+    }
+  },
+  "checks": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min_3": true,
+    "strict_mdd_max_15": true,
+    "mean_exposure_weighted_gross_edge_min_20bp": true,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min_2_5": true,
+    "each_calendar_half_positive": true
+  },
+  "train_legacy_cluster_diagnostic": {
+    "reported_not_pass_authorizing": true,
+    "legacy_p_max_0_1_over_72": 0.001388888888888889,
+    "observed_pvalue": 0.003299967000329997,
+    "would_pass_legacy_gate": false
+  },
+  "passed": true,
+  "status": "post_selection_train_shape_shadow",
+  "formal_legacy_train_pass": false,
+  "advance_to_next_stage": true,
+  "decision": "post_selection_train_shape_shadow",
+  "manifest_hash": "0af602432c5dcc61619629e42ccfbf769af944a344bf48b7e1d5bafad6e744ad"
+}
