@@ -4,6 +4,7 @@ import gzip
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -43,20 +44,33 @@ def test_weighted_segment_exposure_uses_target_exposure_values() -> None:
     assert exposure[:4].tolist() == pytest.approx([1 / 6, 1 / 6, -1 / 3, 0.0])
 
 
-def test_signed_episode_entry_matching_requires_same_side() -> None:
+def test_entry_matching_uses_timestamps_regardless_of_side() -> None:
     t = pd.Timestamp("2023-07-01T12:00:00Z")
-    candidate = ((t, 1), (t + pd.Timedelta(hours=8), -1))
-    comparator = ((t, -1), (t + pd.Timedelta(hours=8), -1))
-    assert n.exact_signed_entry_jaccard(candidate, comparator) == pytest.approx(1 / 3)
-    matches, _ = n.optimal_signed_near_matches(candidate, comparator)
-    assert matches == (((t + pd.Timedelta(hours=8), -1), (t + pd.Timedelta(hours=8), -1)),)
+    episodes = pd.DataFrame([{"start_time": t, "side": 1}, {"start_time": t + pd.Timedelta(hours=8), "side": -1}])
+    candidate = n.episode_start_timestamps(episodes)
+    comparator = (t, t + pd.Timedelta(hours=8))
+    assert n.pair_novelty.metric.exact_entry_jaccard(candidate, comparator) == pytest.approx(1.0)
+    matches, _ = n.pair_novelty.metric.optimal_near_matches(candidate, comparator)
+    assert matches == ((t, t), (t + pd.Timedelta(hours=8), t + pd.Timedelta(hours=8)))
 
 
-def test_undefined_correlation_is_recorded_as_nan_and_passes_correlation_gate() -> None:
+def test_undefined_correlation_is_recorded_as_nan_and_fails_correlation_gate() -> None:
     value = n.pearson_or_nan(pd.Series([0.0, 0.0]).to_numpy(), pd.Series([1.0, 2.0]).to_numpy())
     assert pd.isna(value)
-    assert n._corr_check(value) is True
+    assert n._corr_check(value) is False
 
+
+
+def test_nan_pearson_makes_candidate_fail(monkeypatch: pytest.MonkeyPatch) -> None:
+    start = n.TRAIN_START
+    candidate_events = (start,)
+    candidate_exposure = np.zeros(int((n.TRAIN_END - n.TRAIN_START) / n.BAR))
+    gross9_clock = pd.DataFrame([{"split": "train", "entry_time": start + pd.Timedelta(hours=10), "exit_time": start + pd.Timedelta(hours=10, minutes=5), "side": 1}])
+    monkeypatch.setitem(gross9.EXPECTED_WEIGHTS, "unit_test_sleeve", 1.0)
+    result = n.evaluate_against_gross9(candidate_events, candidate_exposure, gross9_clock, "unit_test_sleeve")
+    assert result["metrics"]["absolute_signed_exposure_pearson"] is None
+    assert result["checks"]["absolute_signed_exposure_pearson"] is False
+    assert result["passed"] is False
 
 def test_load_train_schedules_filters_train_and_rejects_oos_leakage(tmp_path: Path) -> None:
     episode_path = tmp_path / "episodes.csv.gz"

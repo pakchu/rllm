@@ -5,9 +5,9 @@ materialized clock-source package, portfolio schedules, and frozen Gross9
 structural clocks. It does not open market prices, funding, returns, PnL, or any
 out-of-sample economic outcome.
 
-Candidate event semantics are portfolio-level: exact-entry and near-6h matching
-use signed portfolio episode starts, represented as ``(start_time, side)`` from
-the materialized train ``signed_episodes`` schedule. Occupied-bar Jaccard and
+Candidate event semantics preserve the inherited Gross9 novelty metric: exact-entry
+and near-6h matching use timestamps only, ignoring side, from portfolio signed
+episode start times versus comparator entry times. Occupied-bar Jaccard and
 signed-exposure Pearson use the train 5m weighted net exposure array
 reconstructed from ``segments.target_exposure``. Each Gross9 comparator is
 reconstructed as a weighted signed exposure array using that sleeve's frozen
@@ -115,7 +115,7 @@ def load_validated_controls() -> tuple[dict[str, Any], dict[str, Any], dict[str,
     prereg_sha = sha256_file(PREREGISTRATION)
     if registration.get("implementation", {}).get("preregister", {}).get("sha256") != sha256_file(prereg.__file__):
         raise RuntimeError(f"{POLICY_ID} preregistration implementation hash drift")
-    gates = dict(registration.get("oos_gate_rule", {}).get("gross9_novelty_gates", {}))
+    gates = dict(registration.get("gross9_novelty_scope", {}).get("gates", {}))
     comparator = gates.pop("comparator", {})
     if gates != _expected_gross9_gate_payload():
         raise RuntimeError(f"{POLICY_ID} preregistered Gross9 novelty gate drift")
@@ -231,51 +231,8 @@ def validate_train_transitions(source: Mapping[str, Any]) -> int:
     return int(len(train))
 
 
-def signed_episode_starts(episodes: pd.DataFrame) -> tuple[tuple[pd.Timestamp, int], ...]:
-    return tuple((pd.Timestamp(row.start_time), int(row.side)) for row in episodes.itertuples(index=False))
-
-
-def exact_signed_entry_jaccard(candidate: Sequence[tuple[pd.Timestamp, int]], comparator: Sequence[tuple[pd.Timestamp, int]]) -> float:
-    left, right = set(candidate), set(comparator)
-    union = left | right
-    return len(left & right) / len(union) if union else 0.0
-
-
-def optimal_signed_near_matches(candidate: Sequence[tuple[pd.Timestamp, int]], comparator: Sequence[tuple[pd.Timestamp, int]]) -> tuple[tuple[tuple[tuple[pd.Timestamp, int], tuple[pd.Timestamp, int]], ...], int]:
-    left = tuple(sorted(set(candidate), key=lambda item: (item[0], item[1])))
-    right = tuple(sorted(set(comparator), key=lambda item: (item[0], item[1])))
-    rows, columns = len(left), len(right)
-    cardinality = np.zeros((rows + 1, columns + 1), dtype=np.int32)
-    lag = np.zeros((rows + 1, columns + 1), dtype=np.int64)
-    choice = np.full((rows, columns), 1, dtype=np.int8)
-    limit_seconds = int(NEAR_LIMIT.total_seconds())
-
-    def rank(item: tuple[int, int, int]) -> tuple[int, int, int]:
-        count, total_lag, priority = item
-        return (-count, total_lag, priority)
-
-    for i in range(rows - 1, -1, -1):
-        for j in range(columns - 1, -1, -1):
-            options = [(int(cardinality[i + 1, j]), int(lag[i + 1, j]), 1), (int(cardinality[i, j + 1]), int(lag[i, j + 1]), 2)]
-            seconds = int(abs((left[i][0] - right[j][0]).total_seconds()))
-            if left[i][1] == right[j][1] and seconds <= limit_seconds:
-                options.append((1 + int(cardinality[i + 1, j + 1]), seconds + int(lag[i + 1, j + 1]), 0))
-            best = min(options, key=rank)
-            cardinality[i, j], lag[i, j], choice[i, j] = best
-
-    matches: list[tuple[tuple[pd.Timestamp, int], tuple[pd.Timestamp, int]]] = []
-    i = j = 0
-    while i < rows and j < columns:
-        selected = int(choice[i, j])
-        if selected == 0:
-            matches.append((left[i], right[j]))
-            i += 1
-            j += 1
-        elif selected == 1:
-            i += 1
-        else:
-            j += 1
-    return tuple(matches), int(lag[0, 0])
+def episode_start_timestamps(episodes: pd.DataFrame) -> tuple[pd.Timestamp, ...]:
+    return tuple(pd.Timestamp(row.start_time) for row in episodes.itertuples(index=False))
 
 
 def _bar_count() -> int:
@@ -333,23 +290,23 @@ def pearson_or_nan(left: np.ndarray, right: np.ndarray) -> float:
 
 
 def _corr_check(value: float) -> bool:
-    return True if math.isnan(value) else abs(value) <= LIMITS["absolute_signed_exposure_pearson"]
+    return math.isfinite(value) and abs(value) <= LIMITS["absolute_signed_exposure_pearson"]
 
 
-def evaluate_against_gross9(candidate_events: Sequence[tuple[pd.Timestamp, int]], candidate_exposure: np.ndarray, gross9_clock: pd.DataFrame, sleeve: str) -> dict[str, Any]:
+def evaluate_against_gross9(candidate_events: Sequence[pd.Timestamp], candidate_exposure: np.ndarray, gross9_clock: pd.DataFrame, sleeve: str) -> dict[str, Any]:
     comp_train = pair_novelty.train_contained(gross9_clock)
-    comparator_events = tuple((pd.Timestamp(row.entry_time), int(row.side)) for row in comp_train.itertuples(index=False))
-    matches, total_lag_seconds = optimal_signed_near_matches(candidate_events, comparator_events)
+    comparator_events = tuple(pd.Timestamp(row.entry_time) for row in comp_train.itertuples(index=False))
+    matches, total_lag_seconds = pair_novelty.metric.optimal_near_matches(candidate_events, comparator_events)
     denominator = min(len(set(candidate_events)), len(set(comparator_events)))
     matched_share = len(matches) / denominator if denominator else 0.0
     comparator_exposure = weighted_gross9_exposure_train(comp_train, sleeve)
     correlation = pearson_or_nan(candidate_exposure, comparator_exposure)
     metrics = {
-        "exact_entry_jaccard": exact_signed_entry_jaccard(candidate_events, comparator_events),
+        "exact_entry_jaccard": pair_novelty.metric.exact_entry_jaccard(candidate_events, comparator_events),
         "one_to_one_6h_max_matched_share": matched_share,
         "occupied_5m_bar_jaccard": occupied_jaccard(candidate_exposure, comparator_exposure),
         "signed_exposure_pearson": correlation,
-        "absolute_signed_exposure_pearson": None if math.isnan(correlation) else abs(correlation),
+        "absolute_signed_exposure_pearson": None if not math.isfinite(correlation) else abs(correlation),
     }
     checks = {
         "exact_entry_jaccard": metrics["exact_entry_jaccard"] <= LIMITS["exact_entry_jaccard"],
@@ -358,16 +315,16 @@ def evaluate_against_gross9(candidate_events: Sequence[tuple[pd.Timestamp, int]]
         "absolute_signed_exposure_pearson": _corr_check(correlation),
     }
     match_rows = [
-        {"candidate_entry": _iso_z(left[0]), "candidate_side": int(left[1]), "comparator_entry": _iso_z(right[0]), "comparator_side": int(right[1]), "absolute_lag_seconds": int(abs((left[0] - right[0]).total_seconds()))}
+        {"candidate_entry": _iso_z(left), "comparator_entry": _iso_z(right), "absolute_lag_seconds": int(abs((left - right).total_seconds()))}
         for left, right in matches
     ]
     return {
         "common_window": [_iso_z(TRAIN_START), _iso_z(TRAIN_END)],
-        "entry_event_semantics": "signed portfolio episode starts: (signed_episodes.start_time, signed_episodes.side)",
+        "entry_event_semantics": "portfolio signed episode start timestamps only; side ignored for inherited Gross9 entry metrics",
         "exposure_semantics": "5m weighted net exposure from candidate segments.target_exposure; Gross9 sleeve side * frozen sleeve weight",
-        "candidate_signed_episode_starts": int(len(candidate_events)),
-        "comparator_signed_entry_starts": int(len(comparator_events)),
-        "matching": {"objective": "same-side maximum cardinality, then minimum total absolute lag, deterministic non-crossing UTC order", "maximum_cardinality": int(len(matches)), "minimum_total_absolute_lag_seconds": int(total_lag_seconds), "matched_pairs_sha256": canonical_hash(match_rows)},
+        "candidate_episode_start_timestamps": int(len(candidate_events)),
+        "comparator_entry_timestamps": int(len(comparator_events)),
+        "matching": {"objective": "maximum cardinality, then minimum total absolute lag, deterministic non-crossing UTC order; timestamp-only inherited Gross9 semantics", "maximum_cardinality": int(len(matches)), "minimum_total_absolute_lag_seconds": int(total_lag_seconds), "matched_pairs_sha256": canonical_hash(match_rows)},
         "metrics": metrics,
         "checks": checks,
         "passed": all(checks.values()),
@@ -379,7 +336,7 @@ def run(output: str | Path = OUTPUT) -> dict[str, Any]:
     train_transition_rows = validate_train_transitions(source)
     train_episodes = load_train_episodes(source)
     train_segments = load_train_segments(source)
-    candidate_events = signed_episode_starts(train_episodes)
+    candidate_events = episode_start_timestamps(train_episodes)
     candidate_exposure = weighted_segment_exposure_train(train_segments)
 
     gross9_clocks: dict[str, pd.DataFrame] = {}
@@ -409,7 +366,7 @@ def run(output: str | Path = OUTPUT) -> dict[str, Any]:
         "gross9_novelty_status": "passed" if all_passed else "failed",
         "advance_to_economic_outcomes": all_passed,
         "decision": "pass_g9qtr_distill_to_economic_outcomes" if all_passed else "terminal_gross9_novelty_reject",
-        "evidence_boundary": {"portfolio_transition_rows_opened_train_only_for_leakage_check": train_transition_rows, "portfolio_signed_episode_rows_opened_train_only": int(len(train_episodes)), "portfolio_segment_rows_opened_train_only": int(len(train_segments)), "entry_event_semantics": "signed portfolio episode starts", "weighted_net_exposure_source": "segments.target_exposure", "gross9_structural_clock_rows_opened_full_files_for_count_hash_split_verification": sum(item["full_file_rows_verified"] for item in gross9_counts.values()), "gross9_structural_clock_rows_evaluated_after_train_filter": sum(item["train_common_window_rows_evaluated"] for item in gross9_counts.values()), "market_rows_opened": 0, "entry_exit_prices_opened": 0, "funding_rows_opened": 0, "returns_or_pnl_rows_opened": 0, "economic_outcome_rows_opened": 0, "oos_schedule_rows_opened": 0, "oos_outcomes_opened": False, "portfolio_return_or_pnl_metrics_computed": False},
+        "evidence_boundary": {"portfolio_transition_rows_opened_train_only_for_leakage_check": train_transition_rows, "portfolio_signed_episode_rows_opened_train_only": int(len(train_episodes)), "portfolio_segment_rows_opened_train_only": int(len(train_segments)), "entry_event_semantics": "portfolio signed episode start timestamps; side ignored for entry matching", "weighted_net_exposure_source": "segments.target_exposure", "gross9_structural_clock_rows_opened_full_files_for_count_hash_split_verification": sum(item["full_file_rows_verified"] for item in gross9_counts.values()), "gross9_structural_clock_rows_evaluated_after_train_filter": sum(item["train_common_window_rows_evaluated"] for item in gross9_counts.values()), "market_rows_opened": 0, "entry_exit_prices_opened": 0, "funding_rows_opened": 0, "returns_or_pnl_rows_opened": 0, "economic_outcome_rows_opened": 0, "oos_schedule_rows_opened": 0, "oos_outcomes_opened": False, "portfolio_return_or_pnl_metrics_computed": False},
     }
     result = {**core, "manifest_hash": canonical_hash(core)}
     destination = Path(output)

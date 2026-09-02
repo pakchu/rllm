@@ -103,19 +103,36 @@ DISTILLED_TRAIN_DIAGNOSTICS = {
 }
 
 
-PLACEHOLDER_IMPLEMENTATION_BINDINGS = {
+IMPLEMENTATION_BINDINGS = {
     "portfolio_builder": {
         "path": "training/build_gross9_qtr_distill_clocks.py",
         "sha256": "48fa4427c07a81843645a1a1ad0216f4cf35cd0d4cf0c5b5f4d174f2871032a8",
     },
     "gross9_novelty_evaluator": {
         "path": "training/evaluate_gross9_qtr_distill_novelty.py",
-        "sha256": "44f0db39c5584fe96776d852b41d0a9109da358e85e3939f42d7acbefd7fd9a0",
+        "sha256": "aa16dc39b3ec03546d4fd9b071718ea78f7098089ae2a3f03d777ece3e2c22c5",
     },
     "economics_evaluator": {
         "path": "training/evaluate_gross9_qtr_distill_economics.py",
-        "sha256": "ea8f062c931526c82fae9d939cb599feac70248a6caf2f9f37baa494eff3c516",
+        "sha256": "8bd5aa7b2d62ab353d307705131694ce3f365b7590aed2a8be24e4958c3d69cf",
     },
+}
+
+PRELIMINARY_SEQUENCING_RECEIPT = {
+    "commit": "cbb5f8bc",
+    "event": "preliminary_train_artifact_before_later_prereg_source_commit",
+    "train_artifact": {
+        "path": "results/gross9_qtr_distill_train_economics_2026-09-02.json",
+        "sha256": "2a09706548198f5756325b1d672f8a3d4d6664e6e2a83d077a385231f690cae7",
+    },
+    "preliminary_evaluator": {
+        "path": "training/evaluate_gross9_qtr_distill_economics.py",
+        "sha256": "d9b2f346e300d9cf2ca52085a9ea81a3412f048b7b6ed6f689ab62fe565a298d",
+    },
+    "prereg_and_source_status_at_preliminary_train": "untracked_then_committed_later_at_be957b81",
+    "later_commit": "be957b81",
+    "train_values_used_to_change_formula_weights_or_gates": False,
+    "oos_outcomes_opened": False,
 }
 
 
@@ -196,8 +213,10 @@ def build() -> dict[str, Any]:
         "as_of_date": AS_OF_DATE,
         "objective": "distill the best train-only Gross9 active-veto shadow evidence into one fixed low-gross portfolio candidate for sequential OOS validation",
         "research_status": "adaptive_exploratory_shadow_until_all_oos_stages_pass",
+        "train_classification": "post_selection_train_shape_shadow",
         "fresh_confirmatory_evidence": False,
         "llm_path_paused": True,
+        "preliminary_sequencing_receipt": copy.deepcopy(PRELIMINARY_SEQUENCING_RECEIPT),
         "active_veto_terminal_artifacts": copy.deepcopy(ACTIVE_VETO_TERMINAL_ARTIFACTS),
         "component_order": list(active_veto.COMPONENT_ORDER),
         "gross9_pre2025_clock_manifest": copy.deepcopy(active_veto.GROSS9_PRE2025_CLOCK_MANIFEST),
@@ -220,7 +239,19 @@ def build() -> dict[str, Any]:
             "familywise_alpha": LEGACY_ACTIVE_VETO_FAMILYWISE_ALPHA,
             "legacy_raw_weekly_p_threshold": LEGACY_BONFERRONI_P_MAX,
             "all_selected_sleeves_failed_legacy_familywise_weekly_p": True,
+            "legacy_p_non_authorizing": True,
             "not_relabelled_train_pass": True,
+        },
+        "gross9_novelty_scope": {
+            "classification": "train_only_structural_prerequisite_persists_for_oos",
+            "discovery_input_active_veto_artifact": copy.deepcopy(
+                ACTIVE_VETO_TERMINAL_ARTIFACTS["gross9_novelty"]
+            ),
+            "gates": copy.deepcopy(active_veto.build()["gross9_novelty_gates"]),
+            "required_pass_before_any_economics": True,
+            "pre2025_comparator_unavailable_for_eval_final_retest": True,
+            "oos_novelty_retest_required": False,
+            "oos_economic_gates_do_not_include_gross9_novelty": True,
         },
         "portfolio_construction": {
             "candidate_id": POLICY_ID,
@@ -259,7 +290,8 @@ def build() -> dict[str, Any]:
             "each_calendar_half_positive": True,
             "minimum_nonzero_signed_episodes": {"test2024": 12, "eval2025": 12, "final2026": 8},
             "source_min_nonzero_signed_episodes": {"test2024": 12, "eval2025": 12, "final2026": 8},
-            "gross9_novelty_gates": copy.deepcopy(active_veto.build()["gross9_novelty_gates"]),
+            "gross9_train_structural_prerequisite_persists": True,
+            "gross9_novelty_retest_in_oos": False,
             "stop_on_first_failure": True,
             "repair_authorized_after_failure": False,
         },
@@ -268,7 +300,7 @@ def build() -> dict[str, Any]:
                 "path": "training/preregister_gross9_qtr_distill.py",
                 "sha256": sha256_file(__file__),
             },
-            **copy.deepcopy(PLACEHOLDER_IMPLEMENTATION_BINDINGS),
+            **copy.deepcopy(IMPLEMENTATION_BINDINGS),
         },
         "evidence_boundary": {
             "oos_outcomes_opened_by_this_preregistration": False,
@@ -303,8 +335,23 @@ def validate(value: Mapping[str, Any]) -> None:
         raise RuntimeError("G9QTR-DISTILL-8 portfolio normalization drift")
     if "opposite direction nets" not in construction.get("accounting", ""):
         raise RuntimeError("G9QTR-DISTILL-8 netting semantics drift")
-    if value.get("legacy_multiplicity_disclosure", {}).get("not_relabelled_train_pass") is not True:
+    if value.get("train_classification") != "post_selection_train_shape_shadow":
+        raise RuntimeError("G9QTR-DISTILL-8 train classification drift")
+    legacy = value.get("legacy_multiplicity_disclosure", {})
+    if legacy.get("not_relabelled_train_pass") is not True or legacy.get("legacy_p_non_authorizing") is not True:
         raise RuntimeError("G9QTR-DISTILL-8 legacy p disclosure drift")
+    if value.get("preliminary_sequencing_receipt") != PRELIMINARY_SEQUENCING_RECEIPT:
+        raise RuntimeError("G9QTR-DISTILL-8 preliminary sequencing receipt drift")
+    novelty_scope = value.get("gross9_novelty_scope", {})
+    if (
+        novelty_scope.get("classification") != "train_only_structural_prerequisite_persists_for_oos"
+        or novelty_scope.get("gates") != active_veto.build()["gross9_novelty_gates"]
+        or novelty_scope.get("required_pass_before_any_economics") is not True
+        or novelty_scope.get("pre2025_comparator_unavailable_for_eval_final_retest") is not True
+        or novelty_scope.get("oos_novelty_retest_required") is not False
+        or novelty_scope.get("oos_economic_gates_do_not_include_gross9_novelty") is not True
+    ):
+        raise RuntimeError("G9QTR-DISTILL-8 Gross9 novelty scope drift")
     gates = value.get("oos_gate_rule", {})
     if gates.get("sequence") != ["test2024", "eval2025", "final2026"]:
         raise RuntimeError("G9QTR-DISTILL-8 OOS sequence drift")
@@ -314,10 +361,21 @@ def validate(value: Mapping[str, Any]) -> None:
         raise RuntimeError("G9QTR-DISTILL-8 no-repair drift")
     if gates.get("source_min_nonzero_signed_episodes") != {"test2024": 12, "eval2025": 12, "final2026": 8}:
         raise RuntimeError("G9QTR-DISTILL-8 source episode gate drift")
+    if "gross9_novelty_gates" in gates or gates.get("gross9_novelty_retest_in_oos") is not False:
+        raise RuntimeError("G9QTR-DISTILL-8 OOS novelty scope drift")
     if value.get("active_veto_terminal_artifacts") != ACTIVE_VETO_TERMINAL_ARTIFACTS:
         raise RuntimeError("G9QTR-DISTILL-8 terminal artifact binding drift")
-    if value.get("implementation", {}).get("portfolio_builder") != PLACEHOLDER_IMPLEMENTATION_BINDINGS["portfolio_builder"]:
-        raise RuntimeError("G9QTR-DISTILL-8 builder binding drift")
+    implementation = value.get("implementation", {})
+    for name, binding in IMPLEMENTATION_BINDINGS.items():
+        observed = implementation.get(name)
+        if observed != binding:
+            raise RuntimeError(f"G9QTR-DISTILL-8 {name} binding drift")
+        sha = observed.get("sha256") if isinstance(observed, Mapping) else None
+        path = observed.get("path") if isinstance(observed, Mapping) else None
+        if not isinstance(sha, str) or len(sha) != 64 or any(ch not in "0123456789abcdef" for ch in sha):
+            raise RuntimeError(f"G9QTR-DISTILL-8 {name} binding is not a real sha256")
+        if not isinstance(path, str) or sha256_file(path) != sha:
+            raise RuntimeError(f"G9QTR-DISTILL-8 {name} current file hash mismatch")
     boundary = value.get("evidence_boundary", {})
     if boundary.get("oos_outcomes_opened_by_this_preregistration") is not False:
         raise RuntimeError("G9QTR-DISTILL-8 OOS boundary drift")

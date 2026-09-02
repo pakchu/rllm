@@ -9,7 +9,10 @@ funding ownership, strict aggregate OHLC drawdown, and mandatory final exit.
 from __future__ import annotations
 
 import argparse
+import csv
+import gzip
 import hashlib
+import importlib
 import json
 import math
 import sys
@@ -49,7 +52,9 @@ OUTPUTS = {
     for stage in STAGES
 }
 
+PREREGISTRATION = Path("results/gross9_qtr_distill_shadow_preregistration_2026-09-02.json")
 CLOCK_PACKAGE = Path("results/gross9_qtr_distill_split_clock_source_support_2026-09-02.json")
+TRAIN_NOVELTY = Path("results/gross9_qtr_distill_train_gross9_novelty_2026-09-02.json")
 MIN_NONZERO_SIGNED_EPISODES = {"test": 12, "eval": 12, "final": 8}
 
 
@@ -82,6 +87,16 @@ class SleeveSpec:
     clock_sha256: str | None = None
 
 
+@dataclass(frozen=True)
+class FrozenAuthorization:
+    preregistration: dict[str, Any]
+    clock_package: dict[str, Any]
+    novelty: dict[str, Any]
+    sleeves: list[SleeveSpec]
+    source_signed_episodes_by_split: dict[str, int]
+    preliminary_train_receipt_support: Any = None
+
+
 def default_sleeves(clock_package: Path = CLOCK_PACKAGE) -> list[SleeveSpec]:
     if not clock_package.is_file():
         raise RuntimeError(f"{POLICY_ID} missing clock package: {clock_package}")
@@ -108,6 +123,121 @@ def default_sleeves(clock_package: Path = CLOCK_PACKAGE) -> list[SleeveSpec]:
             )
         )
     return sleeves
+
+
+def _load_json_object(path: str | Path) -> dict[str, Any]:
+    value = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise RuntimeError(f"{POLICY_ID} JSON artifact must be an object: {path}")
+    return value
+
+
+def _verify_manifest(value: Mapping[str, Any], label: str) -> None:
+    core = {key: item for key, item in value.items() if key != "manifest_hash"}
+    if value.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError(f"{POLICY_ID} {label} manifest hash drift")
+
+
+def _count_gzip_csv_rows(path: Path) -> int:
+    with gzip.open(path, "rt", encoding="utf-8", newline="") as handle:
+        return sum(1 for _ in csv.DictReader(handle))
+
+
+def _assert_hash_bound_file(record: Mapping[str, Any], label: str, count_rows: bool = True) -> None:
+    path = Path(str(record.get("path", "")))
+    if not path.is_file():
+        raise RuntimeError(f"{POLICY_ID} missing {label}: {path}")
+    observed = sha256_file(path)
+    if observed != record.get("sha256"):
+        raise RuntimeError(f"{POLICY_ID} {label} hash drift: {path}")
+    if count_rows and "rows" in record and _count_gzip_csv_rows(path) != int(record["rows"]):
+        raise RuntimeError(f"{POLICY_ID} {label} row-count drift: {path}")
+
+
+def _load_preregistration(preregistration_path: Path = PREREGISTRATION) -> dict[str, Any]:
+    report = _load_json_object(preregistration_path)
+    _verify_manifest(report, "preregistration")
+    module = importlib.import_module("training.preregister_gross9_qtr_distill")
+    built = module.build()
+    if report != built:
+        raise RuntimeError(f"{POLICY_ID} preregistration artifact does not match build()")
+    if hasattr(module, "validate"):
+        module.validate(report)
+    return report
+
+
+def load_frozen_authorization(preregistration_path: Path = PREREGISTRATION, clock_package_path: Path = CLOCK_PACKAGE) -> FrozenAuthorization:
+    """Validate frozen prereg/source/novelty bindings before economics opens."""
+    prereg_report = _load_preregistration(preregistration_path)
+
+    clock_package = _load_json_object(clock_package_path)
+    _verify_manifest(clock_package, "clock package")
+    if clock_package.get("policy_id") != POLICY_ID or clock_package.get("decision") != "materialized_shadow_distilled_clock_package":
+        raise RuntimeError(f"{POLICY_ID} clock package identity drift")
+    expected_prereg = {
+        "path": str(preregistration_path),
+        "sha256": sha256_file(preregistration_path),
+        "manifest_hash": prereg_report["manifest_hash"],
+        "status": "validated_against_committed_preregistration",
+    }
+    if clock_package.get("preregistration") != expected_prereg:
+        raise RuntimeError(f"{POLICY_ID} clock package preregistration binding drift")
+    builder = clock_package.get("implementation", {}).get("builder", {})
+    _assert_hash_bound_file(builder, "clock package builder", count_rows=False)
+
+    sleeves: list[SleeveSpec] = []
+    for base in clock_package.get("components", {}).get("base_order", []):
+        record = clock_package.get("sleeves", {}).get(base)
+        if not isinstance(record, Mapping):
+            raise RuntimeError(f"{POLICY_ID} missing sleeve package record: {base}")
+        clock = record.get("clock", {})
+        if not isinstance(clock, Mapping):
+            raise RuntimeError(f"{POLICY_ID} missing sleeve clock record: {base}")
+        _assert_hash_bound_file(clock, f"sleeve clock {base}")
+        sleeves.append(SleeveSpec(name=str(record["sleeve_id"]), weight=float(record["weight"]), clock_path=Path(str(clock["path"])), clock_sha256=str(clock["sha256"])))
+    validate_sleeves(sleeves)
+    for name, record in clock_package.get("portfolio_schedules", {}).items():
+        if not isinstance(record, Mapping):
+            raise RuntimeError(f"{POLICY_ID} portfolio schedule record drift: {name}")
+        _assert_hash_bound_file(record, f"portfolio schedule {name}")
+
+    novelty = _load_json_object(TRAIN_NOVELTY)
+    _verify_manifest(novelty, "G9QTR train novelty")
+    expected_prereg_novelty = {
+        "path": str(preregistration_path),
+        "sha256": sha256_file(preregistration_path),
+        "manifest_hash": prereg_report["manifest_hash"],
+    }
+    expected_source_novelty = {
+        "path": str(clock_package_path),
+        "sha256": sha256_file(clock_package_path),
+        "manifest_hash": clock_package["manifest_hash"],
+        "predecessor_mutated": False,
+    }
+    if (
+        novelty.get("policy_id") != POLICY_ID
+        or novelty.get("preregistration") != expected_prereg_novelty
+        or novelty.get("source_package") != expected_source_novelty
+    ):
+        raise RuntimeError(f"{POLICY_ID} G9QTR train novelty prereg/source binding drift")
+    if (
+        novelty.get("decision") != "pass_g9qtr_distill_to_economic_outcomes"
+        or novelty.get("advance_to_economic_outcomes") is not True
+        or novelty.get("gross9_pass") is not True
+    ):
+        raise RuntimeError(f"{POLICY_ID} G9QTR train novelty did not authorize economics")
+
+    stats = clock_package.get("portfolio_source_stats", {}).get("splits", {})
+    source_signed_episodes_by_split = {split: int(row.get("signed_episodes", 0)) for split, row in stats.items() if isinstance(row, Mapping)}
+    preliminary = prereg_report.get("preliminary_train_receipt_support") or prereg_report.get("implementation", {}).get("preliminary_train_receipt_support")
+    return FrozenAuthorization(
+        preregistration=prereg_report,
+        clock_package=clock_package,
+        novelty=novelty,
+        sleeves=sleeves,
+        source_signed_episodes_by_split=source_signed_episodes_by_split,
+        preliminary_train_receipt_support=preliminary,
+    )
 
 
 def validate_sleeves(sleeves: Sequence[SleeveSpec]) -> None:
@@ -470,7 +600,7 @@ def evaluate_primary(clock: pd.DataFrame, market: pd.DataFrame, funding: pd.Data
     }
 
 
-def stage_checks(stage: str, primary: Mapping[str, Any]) -> dict[str, bool]:
+def stage_checks(stage: str, primary: Mapping[str, Any], source_signed_episodes: int | None = None) -> dict[str, bool]:
     base = primary["base"]; stress = primary["stress"]
     checks = {
         "absolute_return_positive": float(base["absolute_return_pct"]) > 0.0,
@@ -483,8 +613,9 @@ def stage_checks(stage: str, primary: Mapping[str, Any]) -> dict[str, bool]:
     }
     if stage != "train":
         checks["oos_cluster_signflip_p_max_0_1"] = float(primary["cluster_signflip"]["pvalue"]) <= OOS_CLUSTER_P_MAX
-        nonzero_signed_episodes = int(base.get("intervals", primary.get("nonzero_signed_episodes", 0)))
-        checks["source_min_nonzero_signed_episodes"] = nonzero_signed_episodes >= MIN_NONZERO_SIGNED_EPISODES[stage]
+        if source_signed_episodes is None:
+            raise RuntimeError(f"{POLICY_ID} missing clock-package signed episode count for {stage}")
+        checks["source_min_nonzero_signed_episodes"] = int(source_signed_episodes) >= MIN_NONZERO_SIGNED_EPISODES[stage]
     return checks
 
 
@@ -533,22 +664,35 @@ def load_sources(stage: str, start: pd.Timestamp, end: pd.Timestamp) -> tuple[pd
 def run(stage: str, output: str | Path | None = None, sleeves: Sequence[SleeveSpec] | None = None, outputs: Mapping[str, Path] = OUTPUTS) -> dict[str, Any]:
     if stage not in STAGES:
         raise RuntimeError(f"{POLICY_ID} unknown stage: {stage}")
+    authorization = load_frozen_authorization()
+    resolved_sleeves = list(sleeves) if sleeves is not None else list(authorization.sleeves)
     predecessor = verify_predecessor(stage, outputs)
     split, start_s, end_s = STAGES[stage]
     start = _utc(start_s); end = _utc(end_s)
-    portfolio_clock = load_portfolio_clock(sleeves or default_sleeves(), split, start, end)
+    portfolio_clock = load_portfolio_clock(resolved_sleeves, split, start, end)
     market, funding, source = load_sources(stage, start, end)
     validate_market(market, start, end)
     validate_funding(funding, start, end)
     primary = evaluate_primary(portfolio_clock, market, funding, start, end)
-    checks = stage_checks(stage, primary)
-    passed = all(checks.values())
+    checks = stage_checks(stage, primary, authorization.source_signed_episodes_by_split.get(split))
+    shape_passed = all(checks.values())
+    passed = shape_passed
     core = {
         "protocol_version": PROTOCOL_VERSION,
         "policy_id": POLICY_ID,
         "stage": stage,
         "window": [_iso_z(start), _iso_z(end)],
         "predecessor": predecessor,
+        "frozen_authorization": {
+            "preregistration": {"path": str(PREREGISTRATION), "sha256": sha256_file(PREREGISTRATION), "manifest_hash": authorization.preregistration["manifest_hash"]},
+            "clock_package": {"path": str(CLOCK_PACKAGE), "sha256": sha256_file(CLOCK_PACKAGE), "manifest_hash": authorization.clock_package["manifest_hash"]},
+            "train_novelty": {
+                "path": str(TRAIN_NOVELTY),
+                "sha256": sha256_file(TRAIN_NOVELTY),
+                "manifest_hash": authorization.novelty["manifest_hash"],
+            },
+            "preliminary_train_receipt_support": authorization.preliminary_train_receipt_support,
+        },
         "source": source,
         "accounting": {
             "ledger": "cash plus fixed sleeve quantities; aggregate q delta netted for execution cost",
@@ -559,7 +703,8 @@ def run(stage: str, output: str | Path | None = None, sleeves: Sequence[SleeveSp
             "final_exit": "mandatory liquidation at stage end open",
         },
         "costs": {"base_each_notional_side_bp": 6, "stress_each_notional_side_bp": 10},
-        "fixed_sleeves": [{"name": s.name, "weight": s.weight, "clock_path": str(s.clock_path) if s.clock_path else None, "clock_sha256": s.clock_sha256} for s in (sleeves or default_sleeves())],
+        "fixed_sleeves": [{"name": s.name, "weight": s.weight, "clock_path": str(s.clock_path) if s.clock_path else None, "clock_sha256": s.clock_sha256} for s in resolved_sleeves],
+        "clock_package_source_signed_episodes": authorization.source_signed_episodes_by_split,
         "physical_rows_opened": {"market": len(market), "funding": len(funding), "portfolio_clock": len(portfolio_clock)},
         "later_stage_outcomes_opened": False,
         "primary": primary,
@@ -571,8 +716,10 @@ def run(stage: str, output: str | Path | None = None, sleeves: Sequence[SleeveSp
             "would_pass_legacy_gate": primary["cluster_signflip"]["pvalue"] <= TRAIN_LEGACY_BONFERRONI_P_MAX,
         } if stage == "train" else None,
         "passed": passed,
+        "status": "post_selection_train_shape_shadow" if stage == "train" and passed else ("oos_pass" if passed else "terminal_reject_no_repair"),
+        "formal_legacy_train_pass": False if stage == "train" else None,
         "advance_to_next_stage": passed and stage != "final",
-        "decision": "pass" if passed else "terminal_reject_no_repair",
+        "decision": "post_selection_train_shape_shadow" if stage == "train" and passed else ("pass" if passed else "terminal_reject_no_repair"),
     }
     result = {**core, "manifest_hash": canonical_hash(core)}
     destination = Path(output) if output is not None else Path(outputs[stage])
@@ -588,6 +735,7 @@ def main() -> None:
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
     if args.verify_only:
+        load_frozen_authorization()
         predecessor = verify_predecessor(args.stage)
         print(json.dumps({"stage": args.stage, "verified": True, "predecessor": predecessor, "outcomes_opened": False}, ensure_ascii=False))
         return
