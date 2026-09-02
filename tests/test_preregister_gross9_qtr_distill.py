@@ -42,7 +42,7 @@ def test_binds_terminal_active_veto_artifacts_and_placeholders_for_future_code()
         assert p.sha256_file(receipt["path"]) == receipt["sha256"]
     assert p.sha256_file(value["implementation"]["preregister"]["path"]) == value["implementation"]["preregister"]["sha256"]
     assert p.sha256_file(value["implementation"]["portfolio_builder"]["path"]) == value["implementation"]["portfolio_builder"]["sha256"]
-    assert value["implementation"]["gross9_novelty_evaluator"]["sha256"] == "PENDING_G9QTR_DISTILL_NOVELTY_EVALUATOR_BINDING"
+    assert value["implementation"]["gross9_novelty_evaluator"]["sha256"] == p.sha256_file("training/evaluate_gross9_qtr_distill_novelty.py")
     assert value["implementation"]["economics_evaluator"]["sha256"] == p.sha256_file("training/evaluate_gross9_qtr_distill_economics.py")
 
 

@@ -110,7 +110,7 @@ PLACEHOLDER_IMPLEMENTATION_BINDINGS = {
     },
     "gross9_novelty_evaluator": {
         "path": "training/evaluate_gross9_qtr_distill_novelty.py",
-        "sha256": "PENDING_G9QTR_DISTILL_NOVELTY_EVALUATOR_BINDING",
+        "sha256": "44f0db39c5584fe96776d852b41d0a9109da358e85e3939f42d7acbefd7fd9a0",
     },
     "economics_evaluator": {
         "path": "training/evaluate_gross9_qtr_distill_economics.py",
