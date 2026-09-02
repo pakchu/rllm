@@ -176,7 +176,10 @@ def build() -> dict[str, Any]:
         },
         "outputs": copy.deepcopy(OUTPUTS),
         "implementation": {
-            "preregister": {"path": Path(__file__).as_posix(), "sha256": sha256_file(__file__)},
+            "preregister": {
+                "path": "training/preregister_gross9_qtr_compression.py",
+                "sha256": sha256_file(__file__),
+            },
             "economics_evaluator": {
                 "path": "training/evaluate_gross9_qtr_compression_economics.py",
                 "sha256": sha256_file("training/evaluate_gross9_qtr_compression_economics.py"),
