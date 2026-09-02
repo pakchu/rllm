@@ -3,12 +3,12 @@ from __future__ import annotations
 import gzip
 import json
 from pathlib import Path
-from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
 from training import build_gross9_async_active_veto_train_clocks as builder
+from training import preregister_gross9_async_active_veto_search as prereg
 
 
 def _clock(component: str, rows: list[tuple[str, int]]) -> pd.DataFrame:
@@ -28,6 +28,19 @@ def _clock(component: str, rows: list[tuple[str, int]]) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(values, columns=builder.COMMON_CLOCK_FIELDS)
+
+
+def _write_actual_prereg_to_temp(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, builder_sha: str | None = None) -> dict[str, object]:
+    if builder_sha is None:
+        builder_sha = builder.sha256_file(builder.__file__)
+    monkeypatch.setattr(prereg, "BUILDER_SHA256", builder_sha)
+    payload = prereg.build()
+    prereg.validate(payload)
+    prereg_path = tmp_path / "prereg.json"
+    prereg_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    monkeypatch.setattr(prereg, "DEFAULT_OUTPUT", prereg_path)
+    monkeypatch.setattr(builder.importlib, "import_module", lambda name: prereg)
+    return payload
 
 
 def test_active_veto_window_is_strict_lower_inclusive_upper_and_latest_supersedes() -> None:
@@ -120,16 +133,76 @@ def test_candidate_family_is_72_ordered_pairs() -> None:
     assert family[1] == builder.candidate_id(builder.COMPONENT_ORDER[0], builder.COMPONENT_ORDER[2])
 
 
-def test_dynamic_preregistration_validation_when_module_available(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    payload = {"policy_id": builder.POLICY_ID, "component_order": list(builder.COMPONENT_ORDER), "candidate_family": list(builder.candidate_family()), "candidate_family_size": 72}
-    payload["manifest_hash"] = builder.canonical_hash(payload)
-    prereg_path = tmp_path / "prereg.json"
-    prereg_path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
-    fake = SimpleNamespace(DEFAULT_OUTPUT=prereg_path, build=lambda: payload, validate=lambda value: None)
-    monkeypatch.setattr(builder.importlib, "import_module", lambda name: fake)
+def test_preregistration_hard_fails_when_module_or_artifact_missing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def missing_module(name: str) -> object:
+        raise ModuleNotFoundError(name)
+
+    monkeypatch.setattr(builder.importlib, "import_module", missing_module)
+    with pytest.raises(RuntimeError, match="missing preregistration module"):
+        builder.load_validated_preregistration()
+
+    monkeypatch.setattr(prereg, "DEFAULT_OUTPUT", tmp_path / "missing.json")
+    monkeypatch.setattr(builder.importlib, "import_module", lambda name: prereg)
+    with pytest.raises(RuntimeError, match="missing committed preregistration artifact"):
+        builder.load_validated_preregistration()
+
+
+def test_dynamic_preregistration_validation_uses_actual_prereg_build_validate_and_transparency(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _write_actual_prereg_to_temp(monkeypatch, tmp_path)
     result = builder.load_validated_preregistration()
     assert result["available"] is True
-    assert result["status"] == "validated_against_dynamic_preregistration"
+    assert result["status"] == "validated_against_committed_preregistration"
+    assert result["prior_source_support_artifacts_cross_checked"] is True
+    assert result["research_boundary_disclosure_cross_checked"] is True
+
+
+def test_preregistration_rejects_placeholder_or_mismatched_builder_hash(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _write_actual_prereg_to_temp(monkeypatch, tmp_path, builder_sha="PENDING_G9ASYNCACTIVEVETO_BUILDER_FOLLOWUP")
+    with pytest.raises(RuntimeError, match="builder hash is missing or placeholder"):
+        builder.load_validated_preregistration()
+
+    _write_actual_prereg_to_temp(monkeypatch, tmp_path, builder_sha="0" * 64)
+    with pytest.raises(RuntimeError, match="builder hash mismatch"):
+        builder.load_validated_preregistration()
+
+
+def test_preregistration_rejects_prior_binding_or_research_boundary_drift(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(prereg, "BUILDER_SHA256", builder.sha256_file(builder.__file__))
+    monkeypatch.setattr(prereg, "PRIOR_SOURCE_SUPPORT_ARTIFACTS", [])
+    payload = prereg.build()
+    prereg_path = tmp_path / "prior_drift.json"
+    prereg_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    monkeypatch.setattr(prereg, "DEFAULT_OUTPUT", prereg_path)
+    monkeypatch.setattr(builder.importlib, "import_module", lambda name: prereg)
+    with pytest.raises(RuntimeError, match="prior source-support binding drift"):
+        builder.load_validated_preregistration()
+
+    monkeypatch.undo()
+    _write_actual_prereg_to_temp(monkeypatch, tmp_path)
+    payload = prereg.build()
+    payload["research_boundary"]["family_operator_gate_threshold_or_order_changed_after_preliminary_source_materialization"] = True
+    payload["manifest_hash"] = prereg.canonical_hash({k: v for k, v in payload.items() if k != "manifest_hash"})
+    prereg_path = tmp_path / "boundary_drift.json"
+    prereg_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    monkeypatch.setattr(prereg, "DEFAULT_OUTPUT", prereg_path)
+    monkeypatch.setattr(prereg, "build", lambda: payload)
+    monkeypatch.setattr(builder.importlib, "import_module", lambda name: prereg)
+    with pytest.raises(RuntimeError, match="retune boundary drift"):
+        builder.load_validated_preregistration()
+
+
+def test_preregistration_rejects_preliminary_receipt_hash_drift(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _write_actual_prereg_to_temp(monkeypatch, tmp_path)
+    payload = prereg.build()
+    payload["preliminary_source_materialization_receipt"]["sha256"] = "0" * 64
+    payload["manifest_hash"] = prereg.canonical_hash({k: v for k, v in payload.items() if k != "manifest_hash"})
+    prereg_path = tmp_path / "receipt_drift.json"
+    prereg_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    monkeypatch.setattr(prereg, "DEFAULT_OUTPUT", prereg_path)
+    monkeypatch.setattr(prereg, "build", lambda: payload)
+    monkeypatch.setattr(builder.importlib, "import_module", lambda name: prereg)
+    with pytest.raises(RuntimeError, match="preliminary source materialization binding drift"):
+        builder.load_validated_preregistration()
 
 
 def test_run_writes_all_72_without_leakage_and_authenticates_prior(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -138,7 +211,7 @@ def test_run_writes_all_72_without_leakage_and_authenticates_prior(monkeypatch: 
     monkeypatch.setattr(builder, "COMPONENT_ORDER", component_order)
     monkeypatch.setattr(builder, "verify_bound_component_artifacts", lambda: {component: {"verified": True} for component in component_order})
     monkeypatch.setattr(builder, "load_train_prefix_clock", lambda component: clocks[component])
-    monkeypatch.setattr(builder, "load_validated_preregistration", lambda: {"available": False, "status": "test"})
+    monkeypatch.setattr(builder, "load_validated_preregistration", lambda: {"available": True, "status": "validated_against_committed_preregistration"})
     auth_called = {"value": False}
 
     def fake_prior_artifacts() -> dict[str, object]:
@@ -158,6 +231,14 @@ def test_run_writes_all_72_without_leakage_and_authenticates_prior(monkeypatch: 
     assert boundary["funding_opened"] is False
     assert boundary["returns_or_pnl_opened"] is False
     assert boundary["economic_outcomes_opened"] is False
+    assert boundary["preliminary_source_materialization_commit"] == "1bfddd3c"
+    assert boundary["source_incidence_and_support_counts_opened_before_committed_preregistration"] is True
+    assert boundary["family_operator_gate_threshold_or_order_changed_after_preliminary_source_materialization"] is False
+    assert boundary["preliminary_14_source_passes_used_to_retune"] is False
+    research = result["research_boundary"]
+    assert research["source_incidence_and_support_counts_opened_before_committed_preregistration"] is True
+    assert research["preliminary_14_source_passes_used_to_retune"] is False
+    assert result["preliminary_source_materialization_receipt"]["commit"] == "1bfddd3c"
     assert (tmp_path / "result.json").is_file()
     with gzip.open(next((tmp_path / "clocks").glob("*.csv.gz")), "rt", encoding="utf-8") as handle:
         assert "pnl" not in handle.readline().lower()

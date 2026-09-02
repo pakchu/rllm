@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from itertools import permutations
@@ -82,6 +83,7 @@ PRIOR_SOURCE_SUPPORT_ARTIFACTS = {
         "family_size": 36,
         "members_key": "pairs",
         "expected_family": same_side.candidate_family,
+        "schedule_scope": "same-side36 source-support artifact and schedules bound for exact-duplicate gates and overlap disclosure",
     },
     "handoff": {
         "policy_id": handoff.POLICY_ID,
@@ -91,6 +93,7 @@ PRIOR_SOURCE_SUPPORT_ARTIFACTS = {
         "family_size": 36,
         "members_key": "pairs",
         "expected_family": handoff.candidate_family,
+        "schedule_scope": "handoff36 source-support artifact and schedules bound for exact-duplicate gates and overlap disclosure",
     },
     "three_way": {
         "policy_id": three_way.POLICY_ID,
@@ -100,7 +103,23 @@ PRIOR_SOURCE_SUPPORT_ARTIFACTS = {
         "family_size": 84,
         "members_key": "triples",
         "expected_family": three_way.candidate_family,
+        "schedule_scope": "triple84 source-support artifact and schedules bound for exact-duplicate gates and overlap disclosure",
     },
+}
+
+PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT = {
+    "commit": "1bfddd3c",
+    "path": "results/gross9_async_active_veto_train_clock_source_support_2026-09-02.json",
+    "sha256": "ce95d6373655ded0daba9d6f5635908106337827fbf1a98c978cf41d8231e6e3",
+    "manifest_hash": "88ce540e6ce329e0d9f763c128b2f431949c191772d207b6a1b6b65ee4fb3e6d",
+    "builder": {
+        "path": "training/build_gross9_async_active_veto_train_clocks.py",
+        "sha256": "bf8bfaf41d0ca761a2bc0f2db53de5ad05103fe596b880eb0fd8acbbbc6c90df",
+    },
+    "placeholder_preregistration_sha256": "b70dbeea6a6d1bde63ea60c854fcfa09688060bf56c0f5a08f3f21073a5f4cba",
+    "placeholder_preregistration_manifest_hash": "8cc95042fe2e76c5193f3679f6d1f073e2e97bd0a69b658c57599b9fba06ba28",
+    "placeholder_builder_value": "PENDING_G9ASYNCACTIVEVETO_BUILDER_FOLLOWUP",
+    "passed_candidates": 14,
 }
 
 
@@ -141,30 +160,20 @@ def _validate_manifest_hash(value: Mapping[str, Any], *, label: str) -> None:
         raise RuntimeError(f"{POLICY_ID} {label} manifest hash drift")
 
 
-def load_validated_preregistration() -> dict[str, Any]:
-    """Validate a dynamically available preregistration, or record absence.
-
-    The preregistration for this family may be produced concurrently by another
-    lane.  If it is importable, this builder validates build()/validate(), exact
-    ordered family, and gates.  If not importable, construction still remains
-    bound by this file's immutable local constants and records the absence.
-    """
-    try:
-        prereg = importlib.import_module(PREREG_MODULE)
-    except ModuleNotFoundError:
-        return {"available": False, "module": PREREG_MODULE, "status": "not_importable_at_build_time"}
-    default_output = Path(getattr(prereg, "DEFAULT_OUTPUT"))
-    if not default_output.is_file():
-        return {
-            "available": False,
-            "module": PREREG_MODULE,
-            "path": str(default_output),
-            "status": "module_importable_default_output_not_materialized_at_build_time",
+def _expected_prior_source_support_bindings() -> list[dict[str, str]]:
+    return [
+        {
+            "policy_id": str(spec["policy_id"]),
+            "path": str(spec["path"]),
+            "sha256": str(spec["sha256"]),
+            "manifest_hash": str(spec["manifest_hash"]),
+            "schedule_scope": str(spec["schedule_scope"]),
         }
-    registration = _read_json_object(default_output)
-    prereg.validate(registration)
-    if registration != prereg.build():
-        raise RuntimeError(f"{POLICY_ID} preregistration artifact differs from code")
+        for spec in PRIOR_SOURCE_SUPPORT_ARTIFACTS.values()
+    ]
+
+
+def _validate_preregistration_contract(registration: Mapping[str, Any]) -> None:
     if registration.get("policy_id") != POLICY_ID:
         raise RuntimeError(f"{POLICY_ID} preregistration policy drift")
     if tuple(registration.get("component_order", ())) != COMPONENT_ORDER:
@@ -173,13 +182,96 @@ def load_validated_preregistration() -> dict[str, Any]:
         raise RuntimeError(f"{POLICY_ID} candidate family drift")
     if registration.get("candidate_family_size") != 72:
         raise RuntimeError(f"{POLICY_ID} family size drift")
+
+    gates = registration.get("source_support_gates", {})
+    if (
+        gates.get("minimum_events", {}).get("train") != SOURCE_GATES["minimum_events"]
+        or gates.get("minority_side_share_min") != SOURCE_GATES["minority_side_share_min"]
+        or gates.get("max_month_share") != SOURCE_GATES["max_month_share"]
+        or gates.get("distinct_iso_weeks_min") != SOURCE_GATES["distinct_iso_weeks_min"]
+        or gates.get("each_calendar_half_min_events") != SOURCE_GATES["minimum_events_each_train_half"]
+        or gates.get("opposite_suppressions_min") != SOURCE_GATES["minimum_opposite_suppressions"]
+    ):
+        raise RuntimeError(f"{POLICY_ID} preregistration source gate drift")
+
+    implementation = registration.get("implementation", {}).get("train_clock_builder", {})
+    bound_sha = implementation.get("sha256")
+    if not isinstance(bound_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", bound_sha):
+        raise RuntimeError(f"{POLICY_ID} preregistration builder hash is missing or placeholder")
+    if implementation.get("status") is not None:
+        raise RuntimeError(f"{POLICY_ID} preregistration builder status placeholder must be removed")
+    observed_builder_sha = sha256_file(__file__)
+    if bound_sha != observed_builder_sha:
+        raise RuntimeError(f"{POLICY_ID} preregistration builder hash mismatch")
+
+    if registration.get("prior_source_support_artifacts") != _expected_prior_source_support_bindings():
+        raise RuntimeError(f"{POLICY_ID} preregistration prior source-support binding drift")
+
+    receipt = registration.get("preliminary_source_materialization_receipt", {})
+    if not isinstance(receipt, Mapping):
+        raise RuntimeError(f"{POLICY_ID} preregistration preliminary materialization receipt missing")
+    expected_receipt_scalars = {
+        "commit": PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT["commit"],
+        "path": PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT["path"],
+        "sha256": PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT["sha256"],
+        "manifest_hash": PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT["manifest_hash"],
+        "placeholder_builder_value": PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT["placeholder_builder_value"],
+    }
+    for key, expected in expected_receipt_scalars.items():
+        if receipt.get(key) != expected:
+            raise RuntimeError(f"{POLICY_ID} preregistration preliminary materialization receipt drift: {key}")
+    if receipt.get("builder") != PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT["builder"]:
+        raise RuntimeError(f"{POLICY_ID} preregistration preliminary builder receipt drift")
+    placeholder = receipt.get("preregistration_artifact_with_placeholder_builder_binding", {})
+    if not isinstance(placeholder, Mapping):
+        raise RuntimeError(f"{POLICY_ID} preregistration placeholder artifact receipt missing")
+    if (
+        placeholder.get("sha256") != PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT["placeholder_preregistration_sha256"]
+        or placeholder.get("manifest_hash") != PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT["placeholder_preregistration_manifest_hash"]
+    ):
+        raise RuntimeError(f"{POLICY_ID} preregistration placeholder artifact hash receipt drift")
+    support = receipt.get("support_count_disclosure", {})
+    if not isinstance(support, Mapping) or support.get("passed_candidates") != PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT["passed_candidates"] or support.get("used_to_retune_family_operator_gates_thresholds_or_order") is not False:
+        raise RuntimeError(f"{POLICY_ID} preregistration preliminary support-count disclosure drift")
+
+    boundary = registration.get("research_boundary", {})
+    required = {
+        "design_family_operator_and_gates_fixed_before_preliminary_source_materialization": True,
+        "source_incidence_and_support_counts_opened_before_committed_preregistration": True,
+        "family_operator_gate_threshold_or_order_changed_after_preliminary_source_materialization": False,
+        "preliminary_14_source_passes_used_to_retune": False,
+        "gross9_market_funding_or_pnl_opened_by_preregistration": False,
+        "active_veto_combination_outcomes_opened_by_preregistration": False,
+        "market_or_funding_rows_opened_by_preregistration": False,
+    }
+    for key, expected in required.items():
+        if boundary.get(key) is not expected:
+            raise RuntimeError(f"{POLICY_ID} preregistration research-boundary disclosure drift: {key}")
+
+
+def load_validated_preregistration() -> dict[str, Any]:
+    """Hard-validate the committed preregistration before source materialization."""
+    try:
+        prereg = importlib.import_module(PREREG_MODULE)
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(f"{POLICY_ID} missing preregistration module: {PREREG_MODULE}") from exc
+    default_output = Path(getattr(prereg, "DEFAULT_OUTPUT"))
+    if not default_output.is_file():
+        raise RuntimeError(f"{POLICY_ID} missing committed preregistration artifact: {default_output}")
+    registration = _read_json_object(default_output)
+    prereg.validate(registration)
+    if registration != prereg.build():
+        raise RuntimeError(f"{POLICY_ID} preregistration artifact differs from code")
+    _validate_preregistration_contract(registration)
     return {
         "available": True,
         "module": PREREG_MODULE,
         "path": str(default_output),
         "sha256": sha256_file(default_output),
         "manifest_hash": registration["manifest_hash"],
-        "status": "validated_against_dynamic_preregistration",
+        "status": "validated_against_committed_preregistration",
+        "prior_source_support_artifacts_cross_checked": True,
+        "research_boundary_disclosure_cross_checked": True,
     }
 
 
@@ -609,7 +701,19 @@ def run(clock_dir: Path = CLOCK_DIR, result_path: Path = RESULT, base_control_di
         "passed_candidates": passed,
         "empty_source_failures": empty_source_fails,
         "support_passed_any_candidate": bool(passed),
-        "evidence_boundary": {"component_clock_fields_opened": list(COMMON_CLOCK_FIELDS), "component_clock_rows_materialized_train_prefix_only": True, "prior_clock_schedule_fields_opened": ["entry_time", "exit_time", "side"], "prior_clock_schedules_opened_for_authentication_duplicate_gates_and_disclosure_only": True, "gross9_rows_opened": False, "market_rows_opened": False, "entry_exit_prices_opened": False, "funding_opened": False, "returns_or_pnl_opened": False, "economic_outcomes_opened": False, "base_control_economic_outcomes_opened": False, "oos_component_rows_materialized": 0},
+        "preliminary_source_materialization_receipt": PRELIMINARY_SOURCE_MATERIALIZATION_RECEIPT,
+        "research_boundary": {
+            "design_family_operator_and_gates_fixed_before_preliminary_source_materialization": True,
+            "source_incidence_and_support_counts_opened_before_committed_preregistration": True,
+            "family_operator_gate_threshold_or_order_changed_after_preliminary_source_materialization": False,
+            "preliminary_14_source_passes_used_to_retune": False,
+            "gross9_market_funding_or_pnl_opened_by_preregistration": False,
+            "active_veto_combination_outcomes_opened_by_preregistration": False,
+            "market_or_funding_rows_opened_by_preregistration": False,
+            "returns_or_pnl_opened": False,
+            "economic_outcomes_opened": False,
+        },
+        "evidence_boundary": {"component_clock_fields_opened": list(COMMON_CLOCK_FIELDS), "component_clock_rows_materialized_train_prefix_only": True, "prior_clock_schedule_fields_opened": ["entry_time", "exit_time", "side"], "prior_clock_schedules_opened_for_authentication_duplicate_gates_and_disclosure_only": True, "preliminary_source_materialization_commit": "1bfddd3c", "source_incidence_and_support_counts_opened_before_committed_preregistration": True, "family_operator_gate_threshold_or_order_changed_after_preliminary_source_materialization": False, "preliminary_14_source_passes_used_to_retune": False, "gross9_rows_opened": False, "market_rows_opened": False, "entry_exit_prices_opened": False, "funding_opened": False, "returns_or_pnl_opened": False, "economic_outcomes_opened": False, "base_control_economic_outcomes_opened": False, "oos_component_rows_materialized": 0},
         "decision": "pass_supported_active_veto_candidates_to_gross9_novelty" if passed else "terminal_no_source_supported_active_veto_candidates",
     }
     result = {**core, "manifest_hash": canonical_hash(core)}
