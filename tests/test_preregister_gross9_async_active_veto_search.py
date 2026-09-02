@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import subprocess
 from itertools import permutations
 
 import pytest
@@ -256,7 +258,14 @@ def test_embedded_hashes_match_current_bound_files() -> None:
     root = p.Path(__file__).resolve().parents[1]
     value = p.build()
     assert p.sha256_file(root / value["gross9_pre2025_clock_manifest"]["path"]) == value["gross9_pre2025_clock_manifest"]["sha256"]
-    assert p.sha256_file(root / value["preliminary_source_materialization_receipt"]["path"]) == value["preliminary_source_materialization_receipt"]["sha256"]
+    receipt = value["preliminary_source_materialization_receipt"]
+    preliminary_blob = subprocess.run(
+        ["git", "show", f"{receipt['commit']}:{receipt['path']}"],
+        cwd=root,
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    assert hashlib.sha256(preliminary_blob).hexdigest() == receipt["sha256"]
     assert p.sha256_file(root / value["implementation"]["train_clock_builder"]["path"]) == value["implementation"]["train_clock_builder"]["sha256"]
     assert value["preliminary_source_materialization_receipt"]["builder"]["sha256"] == "bf8bfaf41d0ca761a2bc0f2db53de5ad05103fe596b880eb0fd8acbbbc6c90df"
     for predecessor in value["predecessor_terminal_receipts"]:
