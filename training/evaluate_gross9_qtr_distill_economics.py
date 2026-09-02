@@ -476,7 +476,7 @@ def stage_checks(stage: str, primary: Mapping[str, Any]) -> dict[str, bool]:
         "absolute_return_positive": float(base["absolute_return_pct"]) > 0.0,
         "cagr_to_strict_mdd_min_3": float(base["cagr_to_strict_mdd"]) >= 3.0,
         "strict_mdd_max_15": float(base["strict_mdd_pct"]) <= 15.0,
-        "mean_gross_underlying_min_20bp": float(base["mean_gross_underlying_bp"]) >= 20.0,
+        "mean_exposure_weighted_gross_edge_min_20bp": float(base.get("mean_exposure_weighted_gross_edge_bp", base.get("mean_gross_underlying_bp", 0.0))) >= 20.0,
         "stress_absolute_return_positive": float(stress["absolute_return_pct"]) > 0.0,
         "stress_cagr_to_strict_mdd_min_2_5": float(stress["cagr_to_strict_mdd"]) >= 2.5,
         "each_calendar_half_positive": all(float(item["absolute_return_pct"]) > 0.0 for item in primary["calendar_halves"].values()),
@@ -509,14 +509,24 @@ def verify_predecessor(stage: str, outputs: Mapping[str, Path] = OUTPUTS) -> dic
 
 
 def load_sources(stage: str, start: pd.Timestamp, end: pd.Timestamp) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
-    if stage == "train":
+    if stage in {"train", "test", "eval"}:
         market = train_sources.load_market_hash_bound(start, end)
-        funding = train_sources.load_train_funding_hash_bound(start, end)
-        return market, funding, {
-            "mode": "hash_bound_gzip_physical_prefix",
-            "market_sha256": staged_sources.v1.MARKET_SHA,
-            "funding_marks_sha256": staged_sources.TRAIN_FUNDING_SHA,
-        }
+        if stage == "train":
+            funding = train_sources.load_train_funding_hash_bound(start, end)
+            source = {
+                "mode": "hash_bound_gzip_physical_prefix",
+                "market_sha256": staged_sources.v1.MARKET_SHA,
+                "funding_marks_sha256": staged_sources.TRAIN_FUNDING_SHA,
+            }
+        else:
+            funding = staged_sources.load_postgres_funding(start, end)
+            source = {
+                "mode": "hash_bound_gzip_market_plus_postgres_exact_funding",
+                "market_sha256": staged_sources.v1.MARKET_SHA,
+                "funding_table": "funding_rates_binance",
+                "symbol": "BTCUSDT",
+            }
+        return market, funding, source
     return staged_sources.load_sources(stage, start, end)
 
 

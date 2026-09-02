@@ -1,0 +1,500 @@
+{
+  "protocol_version": "gross9_qtr_distill_split_clocks_v1",
+  "policy_id": "G9QTR-DISTILL-8",
+  "as_of_date": "2026-09-02",
+  "status": "shadow_only_train_distillation_not_formal_alpha",
+  "preregistration": {
+    "path": "results/gross9_qtr_distill_shadow_preregistration_2026-09-02.json",
+    "sha256": "bab8a9058f402398d7b61d8a65d7cd90318a9969c28646f985bae615573c5b06",
+    "manifest_hash": "7590b92feee12f2aeb362ea8ce5427c7d1fbad0f06404f6e27b18de6231d556c",
+    "status": "validated_against_committed_preregistration"
+  },
+  "implementation": {
+    "builder": {
+      "path": "training/build_gross9_qtr_distill_clocks.py",
+      "sha256": "48fa4427c07a81843645a1a1ad0216f4cf35cd0d4cf0c5b5f4d174f2871032a8"
+    }
+  },
+  "components": {
+    "base_order": [
+      "HVDEMWMV-24",
+      "HVCPF17-8",
+      "HVDIMIO-8",
+      "HVLVR-8"
+    ],
+    "veto_component": "HVCQTR-24",
+    "base_weights": {
+      "HVDEMWMV-24": 0.16666666666666666,
+      "HVCPF17-8": 0.16666666666666666,
+      "HVDIMIO-8": 0.08333333333333333,
+      "HVLVR-8": 0.08333333333333333
+    },
+    "max_gross": 0.49999999999999994
+  },
+  "verified_component_artifacts": {
+    "HVDEMWMV-24": {
+      "clock": {
+        "path": "data/high_volatility_demarker_weekly_momentum_active_veto_clocks_2023_2026.csv.gz",
+        "sha256": "fd0ae6e974f5d0f3026d62fed76eed07fdb19af5e3e242458fdbcac59729a12a",
+        "rows": 110
+      },
+      "full_file_authenticated": true
+    },
+    "HVCPF17-8": {
+      "clock": {
+        "path": "data/high_volatility_complementary_persistence_17utc_fallback_clocks_2023_2026.csv.gz",
+        "sha256": "7fa5242540c2789bbbf4d753a7db076d37d71929e6ca490333cc2546412362bb",
+        "rows": 435
+      },
+      "full_file_authenticated": true
+    },
+    "HVDIMIO-8": {
+      "clock": {
+        "path": "data/high_volatility_dcs_imi_active_override_clocks_2023_2026.csv.gz",
+        "sha256": "1d00f42635f911020a79147a592f60d7b54773e0426778d3d2a027817216be3d",
+        "rows": 235
+      },
+      "full_file_authenticated": true
+    },
+    "HVLVR-8": {
+      "clock": {
+        "path": "data/high_volatility_lagged_veto_reverse_clocks_2023_2026.csv.gz",
+        "sha256": "57d75a299da3b4892f30583c090d18e9746c67b31338cedcba53b0d427d098fd",
+        "rows": 226
+      },
+      "full_file_authenticated": true
+    },
+    "HVCQTR-24": {
+      "clock": {
+        "path": "data/high_volatility_credit_quality_transition_relay_clocks_2023_2026.csv.gz",
+        "sha256": "7026c3e650f9587964b43ff51114c35bf032cf1667b877263ba4842a5aed663e",
+        "rows": 199
+      },
+      "full_file_authenticated": true
+    }
+  },
+  "construction": {
+    "split_isolation": "each split is processed independently; veto lookback never crosses split labels",
+    "operator": "for each base event t,s, latest same-split HVCQTR event with t-6h < veto.entry <= t; opposite suppresses, same/none keeps, no reverse",
+    "reservation": "8h sleeve-local half-open reservation after veto materialization",
+    "portfolio_netting": "target exposure transitions apply exits before entries at same timestamp; same direction sums; opposite direction nets; no priority",
+    "grid": "5m timestamp grid"
+  },
+  "sleeves": {
+    "HVDEMWMV-24": {
+      "sleeve_id": "G9QTR-DISTILL-8__HVDEMWMV-24__QTR_OPPOSITE_VETO_6H",
+      "base_component_id": "HVDEMWMV-24",
+      "veto_component_id": "HVCQTR-24",
+      "weight": 0.16666666666666666,
+      "clock": {
+        "path": "data/gross9_qtr_distill_sleeve_clocks_2026-09-02/G9QTR-DISTILL-8__HVDEMWMV-24__QTR_OPPOSITE_VETO_6H.csv.gz",
+        "sha256": "689ce464a6f4d787f18104f510424b77e87a7f67748f4113ff14439a485b4889",
+        "rows": 101
+      },
+      "construction_diagnostics": {
+        "base_events_seen": 110,
+        "no_veto_window_keeps": 93,
+        "same_side_latest_veto_keeps": 8,
+        "opposite_latest_veto_suppressions": 9,
+        "pre_reservation_rows": 101,
+        "post_reservation_rows": 101,
+        "reservation_dropped_rows": 0,
+        "by_split": {
+          "eval": {
+            "base_events_seen": 37,
+            "kept": 35,
+            "suppressed": 2
+          },
+          "final": {
+            "base_events_seen": 15,
+            "kept": 12,
+            "suppressed": 3
+          },
+          "test": {
+            "base_events_seen": 38,
+            "kept": 35,
+            "suppressed": 3
+          },
+          "train": {
+            "base_events_seen": 20,
+            "kept": 19,
+            "suppressed": 1
+          }
+        }
+      },
+      "source_stats": {
+        "events": 101,
+        "longs": 52,
+        "shorts": 49,
+        "signed_episodes": 101,
+        "months": 36,
+        "iso_weeks": 75,
+        "halves": 7,
+        "splits": {
+          "train": {
+            "events": 19,
+            "longs": 8,
+            "shorts": 11,
+            "signed_episodes": 19,
+            "months": 6,
+            "iso_weeks": 14,
+            "halves": 1
+          },
+          "test": {
+            "events": 35,
+            "longs": 20,
+            "shorts": 15,
+            "signed_episodes": 35,
+            "months": 12,
+            "iso_weeks": 26,
+            "halves": 2
+          },
+          "eval": {
+            "events": 35,
+            "longs": 17,
+            "shorts": 18,
+            "signed_episodes": 35,
+            "months": 11,
+            "iso_weeks": 24,
+            "halves": 2
+          },
+          "final": {
+            "events": 12,
+            "longs": 7,
+            "shorts": 5,
+            "signed_episodes": 12,
+            "months": 7,
+            "iso_weeks": 11,
+            "halves": 2
+          }
+        }
+      }
+    },
+    "HVCPF17-8": {
+      "sleeve_id": "G9QTR-DISTILL-8__HVCPF17-8__QTR_OPPOSITE_VETO_6H",
+      "base_component_id": "HVCPF17-8",
+      "veto_component_id": "HVCQTR-24",
+      "weight": 0.16666666666666666,
+      "clock": {
+        "path": "data/gross9_qtr_distill_sleeve_clocks_2026-09-02/G9QTR-DISTILL-8__HVCPF17-8__QTR_OPPOSITE_VETO_6H.csv.gz",
+        "sha256": "2a685ed5cd2dc294a4d8955e19addf7490f4d6fb06705ae853ac61c77d71621a",
+        "rows": 410
+      },
+      "construction_diagnostics": {
+        "base_events_seen": 435,
+        "no_veto_window_keeps": 390,
+        "same_side_latest_veto_keeps": 20,
+        "opposite_latest_veto_suppressions": 25,
+        "pre_reservation_rows": 410,
+        "post_reservation_rows": 410,
+        "reservation_dropped_rows": 0,
+        "by_split": {
+          "eval": {
+            "base_events_seen": 138,
+            "kept": 130,
+            "suppressed": 8
+          },
+          "final": {
+            "base_events_seen": 68,
+            "kept": 64,
+            "suppressed": 4
+          },
+          "test": {
+            "base_events_seen": 158,
+            "kept": 149,
+            "suppressed": 9
+          },
+          "train": {
+            "base_events_seen": 71,
+            "kept": 67,
+            "suppressed": 4
+          }
+        }
+      },
+      "source_stats": {
+        "events": 410,
+        "longs": 191,
+        "shorts": 219,
+        "signed_episodes": 410,
+        "months": 36,
+        "iso_weeks": 134,
+        "halves": 7,
+        "splits": {
+          "train": {
+            "events": 67,
+            "longs": 23,
+            "shorts": 44,
+            "signed_episodes": 67,
+            "months": 6,
+            "iso_weeks": 22,
+            "halves": 1
+          },
+          "test": {
+            "events": 149,
+            "longs": 74,
+            "shorts": 75,
+            "signed_episodes": 149,
+            "months": 12,
+            "iso_weeks": 47,
+            "halves": 2
+          },
+          "eval": {
+            "events": 130,
+            "longs": 61,
+            "shorts": 69,
+            "signed_episodes": 130,
+            "months": 12,
+            "iso_weeks": 44,
+            "halves": 2
+          },
+          "final": {
+            "events": 64,
+            "longs": 33,
+            "shorts": 31,
+            "signed_episodes": 64,
+            "months": 6,
+            "iso_weeks": 21,
+            "halves": 2
+          }
+        }
+      }
+    },
+    "HVDIMIO-8": {
+      "sleeve_id": "G9QTR-DISTILL-8__HVDIMIO-8__QTR_OPPOSITE_VETO_6H",
+      "base_component_id": "HVDIMIO-8",
+      "veto_component_id": "HVCQTR-24",
+      "weight": 0.08333333333333333,
+      "clock": {
+        "path": "data/gross9_qtr_distill_sleeve_clocks_2026-09-02/G9QTR-DISTILL-8__HVDIMIO-8__QTR_OPPOSITE_VETO_6H.csv.gz",
+        "sha256": "b7d19fccd76594eaf9ff78fc51c07b05f59472ff3e4ca5d30993ddc60e7a8270",
+        "rows": 228
+      },
+      "construction_diagnostics": {
+        "base_events_seen": 235,
+        "no_veto_window_keeps": 219,
+        "same_side_latest_veto_keeps": 9,
+        "opposite_latest_veto_suppressions": 7,
+        "pre_reservation_rows": 228,
+        "post_reservation_rows": 228,
+        "reservation_dropped_rows": 0,
+        "by_split": {
+          "eval": {
+            "base_events_seen": 75,
+            "kept": 74,
+            "suppressed": 1
+          },
+          "final": {
+            "base_events_seen": 40,
+            "kept": 38,
+            "suppressed": 2
+          },
+          "test": {
+            "base_events_seen": 87,
+            "kept": 84,
+            "suppressed": 3
+          },
+          "train": {
+            "base_events_seen": 33,
+            "kept": 32,
+            "suppressed": 1
+          }
+        }
+      },
+      "source_stats": {
+        "events": 228,
+        "longs": 118,
+        "shorts": 110,
+        "signed_episodes": 228,
+        "months": 37,
+        "iso_weeks": 119,
+        "halves": 7,
+        "splits": {
+          "train": {
+            "events": 32,
+            "longs": 16,
+            "shorts": 16,
+            "signed_episodes": 32,
+            "months": 6,
+            "iso_weeks": 19,
+            "halves": 1
+          },
+          "test": {
+            "events": 84,
+            "longs": 41,
+            "shorts": 43,
+            "signed_episodes": 84,
+            "months": 12,
+            "iso_weeks": 39,
+            "halves": 2
+          },
+          "eval": {
+            "events": 74,
+            "longs": 37,
+            "shorts": 37,
+            "signed_episodes": 74,
+            "months": 12,
+            "iso_weeks": 40,
+            "halves": 2
+          },
+          "final": {
+            "events": 38,
+            "longs": 24,
+            "shorts": 14,
+            "signed_episodes": 38,
+            "months": 7,
+            "iso_weeks": 21,
+            "halves": 2
+          }
+        }
+      }
+    },
+    "HVLVR-8": {
+      "sleeve_id": "G9QTR-DISTILL-8__HVLVR-8__QTR_OPPOSITE_VETO_6H",
+      "base_component_id": "HVLVR-8",
+      "veto_component_id": "HVCQTR-24",
+      "weight": 0.08333333333333333,
+      "clock": {
+        "path": "data/gross9_qtr_distill_sleeve_clocks_2026-09-02/G9QTR-DISTILL-8__HVLVR-8__QTR_OPPOSITE_VETO_6H.csv.gz",
+        "sha256": "eca4dbb53907ae32c945a0c0fc3cfce754a9e6792de09667bd7ff65969787d75",
+        "rows": 218
+      },
+      "construction_diagnostics": {
+        "base_events_seen": 226,
+        "no_veto_window_keeps": 210,
+        "same_side_latest_veto_keeps": 8,
+        "opposite_latest_veto_suppressions": 8,
+        "pre_reservation_rows": 218,
+        "post_reservation_rows": 218,
+        "reservation_dropped_rows": 0,
+        "by_split": {
+          "eval": {
+            "base_events_seen": 71,
+            "kept": 70,
+            "suppressed": 1
+          },
+          "final": {
+            "base_events_seen": 38,
+            "kept": 36,
+            "suppressed": 2
+          },
+          "test": {
+            "base_events_seen": 84,
+            "kept": 80,
+            "suppressed": 4
+          },
+          "train": {
+            "base_events_seen": 33,
+            "kept": 32,
+            "suppressed": 1
+          }
+        }
+      },
+      "source_stats": {
+        "events": 218,
+        "longs": 107,
+        "shorts": 111,
+        "signed_episodes": 218,
+        "months": 37,
+        "iso_weeks": 117,
+        "halves": 7,
+        "splits": {
+          "train": {
+            "events": 32,
+            "longs": 15,
+            "shorts": 17,
+            "signed_episodes": 32,
+            "months": 6,
+            "iso_weeks": 19,
+            "halves": 1
+          },
+          "test": {
+            "events": 80,
+            "longs": 36,
+            "shorts": 44,
+            "signed_episodes": 80,
+            "months": 12,
+            "iso_weeks": 39,
+            "halves": 2
+          },
+          "eval": {
+            "events": 70,
+            "longs": 35,
+            "shorts": 35,
+            "signed_episodes": 70,
+            "months": 12,
+            "iso_weeks": 39,
+            "halves": 2
+          },
+          "final": {
+            "events": 36,
+            "longs": 21,
+            "shorts": 15,
+            "signed_episodes": 36,
+            "months": 7,
+            "iso_weeks": 20,
+            "halves": 2
+          }
+        }
+      }
+    }
+  },
+  "portfolio_schedules": {
+    "transitions": {
+      "path": "data/gross9_qtr_distill_portfolio_schedules_2026-09-02/G9QTR-DISTILL-8__transitions.csv.gz",
+      "sha256": "df0ba89920cb575e6d49495fbaed93852b2c3b1d5ce5138c7d5e4229178e01a7",
+      "rows": 1418
+    },
+    "segments": {
+      "path": "data/gross9_qtr_distill_portfolio_schedules_2026-09-02/G9QTR-DISTILL-8__segments.csv.gz",
+      "sha256": "13aeec4a3cbfafbdd53a590f790181fe12c57099ad65353740f0e7346a5391cb",
+      "rows": 829
+    },
+    "signed_episodes": {
+      "path": "data/gross9_qtr_distill_portfolio_schedules_2026-09-02/G9QTR-DISTILL-8__signed_episodes.csv.gz",
+      "sha256": "0c73e9671d278aa2553a295212876a4425059d6f2045af63b4b3ffee00ce81d9",
+      "rows": 590
+    }
+  },
+  "portfolio_source_stats": {
+    "signed_episodes": 590,
+    "segments": 829,
+    "max_abs_target_exposure": 0.5,
+    "max_gross_exposure": 0.5,
+    "splits": {
+      "train": {
+        "signed_episodes": 96
+      },
+      "test": {
+        "signed_episodes": 204
+      },
+      "eval": {
+        "signed_episodes": 192
+      },
+      "final": {
+        "signed_episodes": 98
+      }
+    }
+  },
+  "evidence_boundary": {
+    "component_clock_fields_opened": [
+      "candidate",
+      "control",
+      "split",
+      "decision_time",
+      "feature_available_time",
+      "entry_time",
+      "exit_time",
+      "side"
+    ],
+    "component_clock_files_authenticated_full_sha_and_row_count": true,
+    "split_schedules_opened": true,
+    "market_rows_opened": false,
+    "entry_exit_prices_opened": false,
+    "funding_opened": false,
+    "returns_or_pnl_opened": false,
+    "economic_outcomes_opened": false,
+    "oos_outcomes_opened": false
+  },
+  "decision": "materialized_shadow_distilled_clock_package",
+  "manifest_hash": "7c9eede1b28e11017cc30c2cb80429bdbb6cb448532ec907e60b79d3daa8d97c"
+}
