@@ -30,9 +30,9 @@ from training import evaluate_gross9_qtr_distill_economics as fixed_ledger
 from training import preregister_gross9_frequency_waived_revalidation as freeze_mod
 
 POLICY_ID = freeze_mod.POLICY_ID
-PROTOCOL_VERSION = "gross9_frequency_waived_revalidation_evaluator_v1"
+PROTOCOL_VERSION = "gross9_frequency_waived_revalidation_evaluator_v2"
 FREEZE = freeze_mod.DEFAULT_OUTPUT
-DEFAULT_OUTPUT = Path("results/gross9_frequency_waived_revalidation_test_eval_2026-09-04.json")
+DEFAULT_OUTPUT = Path("results/gross9_frequency_waived_revalidation_test_eval_v2_2026-09-04.json")
 BASE_COST = fixed_ledger.BASE_COST
 STRESS_COST = fixed_ledger.STRESS_COST
 MIN_INTERVALS = 8

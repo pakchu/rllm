@@ -95,6 +95,10 @@ def test_build_candidate_family_freezes_64_plus_14_without_weight_changes() -> N
         if row["kind"] == "constituent_standalone_weight_0_25"
     )
     assert all(list(row["weights"].values()) == [0.25] for row in family if row["kind"] == "constituent_standalone_weight_0_25")
+    assert all(
+        row["weight_sum"] == round(sum(row["weights"].values()), 12)
+        for row in family
+    )
 
 
 def test_freeze_validate_rejects_rehashed_final_stage_or_override_drift() -> None:

@@ -24,7 +24,7 @@ from training import preregister_gross9_overlap_net_position_validation as origi
 
 POLICY_ID = "G9-OVERLAP-NET-PORT-1-FREQ-WAIVED-REVALIDATION"
 SOURCE_POLICY_ID = net_config.POLICY_ID
-PROTOCOL_VERSION = "gross9_frequency_waived_revalidation_freeze_v1"
+PROTOCOL_VERSION = "gross9_frequency_waived_revalidation_freeze_v2"
 AS_OF_DATE = "2026-09-04"
 SELECTION = Path("results/gross9_overlap_portfolio_train_selection_2026-09-03.json")
 CONFIG = net_config.CONFIG_OUTPUT
@@ -37,7 +37,11 @@ CURRENT_RANK1_EVAL2025 = Path(
 )
 EVALUATOR = Path("training/evaluate_gross9_frequency_waived_revalidation.py")
 FREEZER = Path("training/preregister_gross9_frequency_waived_revalidation.py")
-DEFAULT_OUTPUT = Path("results/gross9_frequency_waived_revalidation_freeze_2026-09-04.json")
+DEFAULT_OUTPUT = Path("results/gross9_frequency_waived_revalidation_freeze_v2_2026-09-04.json")
+V1_FREEZE = Path("results/gross9_frequency_waived_revalidation_freeze_2026-09-04.json")
+V1_PREFLIGHT_FAILURE = Path(
+    "results/gross9_frequency_waived_revalidation_preflight_failure_2026-09-04.json"
+)
 STAGES: dict[str, tuple[str, str, str]] = {
     "test2024": ("test", "2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"),
     "eval2025": ("eval", "2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"),
@@ -124,7 +128,7 @@ def build_candidate_family(selection: Mapping[str, Any]) -> list[dict[str, Any]]
                 "kind": "frozen_exact_finalist",
                 "source_exact_finalist_proxy_rank": int(row.get("proxy_rank", index)),
                 "weights": normalized,
-                "weight_sum": float(sum(abs(v) for v in normalized.values())),
+                "weight_sum": round(sum(abs(v) for v in normalized.values()), 12),
                 "preexisting_frozen_candidate": True,
                 "derived_constituent_candidate": False,
                 "weights_changed": False,
@@ -201,6 +205,17 @@ def build() -> dict[str, Any]:
     current_rank1_eval_freeze = normalized_eval_source.load_freeze(
         normalized_eval_source.FREEZE
     )
+    v1_freeze = load_hashed_json(V1_FREEZE)
+    v1_preflight_failure = load_hashed_json(V1_PREFLIGHT_FAILURE)
+    if (
+        v1_preflight_failure.get("attempt_freeze") != receipt(V1_FREEZE, v1_freeze)
+        or v1_preflight_failure.get("market_or_funding_rows_opened") != 0
+        or v1_preflight_failure.get("candidate_economic_metrics_computed") != 0
+        or v1_preflight_failure.get("candidate_weight_vectors_changed") is not False
+        or v1_preflight_failure.get("disposition")
+        != "pre_outcome_infrastructure_failure_successor_allowed"
+    ):
+        raise RuntimeError(f"{POLICY_ID} V1 preflight failure receipt drift")
     if selection.get("policy_id") != optimizer.POLICY_ID or config.get("policy_id") != SOURCE_POLICY_ID:
         raise RuntimeError(f"{POLICY_ID} source policy identity drift")
     if config.get("sleeve_weights") != selection.get("authoritative_rank1", {}).get("sleeve_weights"):
@@ -292,6 +307,13 @@ def build() -> dict[str, Any]:
             "classification": "retrospective diagnostic revalidation, not clean model selection",
             "prospective_fwer_claim": False,
             "final2026_remains_unopened_for_every_candidate": True,
+        },
+        "v1_preflight_failure": {
+            "freeze": receipt(V1_FREEZE, v1_freeze),
+            "failure": receipt(V1_PREFLIGHT_FAILURE, v1_preflight_failure),
+            "market_or_funding_rows_opened": 0,
+            "candidate_economic_metrics_computed": 0,
+            "repair": "derived weight_sum rounded to 12 decimal places",
         },
         "candidate_family": family,
         "candidate_counts": {
