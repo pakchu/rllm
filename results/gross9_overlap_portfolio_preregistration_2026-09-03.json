@@ -16,11 +16,11 @@
   "implementation": {
     "optimizer": {
       "path": "training/optimize_gross9_overlap_portfolio.py",
-      "sha256": "c73844486cdfe8fb7edfa82f9472a628934b843b54b6dfc78124d237fe52ee11"
+      "sha256": "9a0bb885de4dc8ca97da319774c7463a1af9ee22f05a19ae8d64772a5a941903"
     },
     "preregister": {
       "path": "training/preregister_gross9_overlap_portfolio.py",
-      "sha256": "d075ff7c8934e7efb1d511846b841d106bfd761803e178927dd5afcc35f59859"
+      "sha256": "c2152917f2223ce146a9601c0f5cc84172e1cb350ff3906a1190ae9d209e4a38"
     }
   },
   "internal_holdout": {
@@ -31,7 +31,7 @@
     "opened_only_after_rank1_freeze": true,
     "strict_mdd_max_pct": 8.0
   },
-  "manifest_hash": "126160ca706067df4e1a6fcfed92fde073648374721be061b9a64f7aebf25dc3",
+  "manifest_hash": "8c29e116228c9bf8b3acfdce71028d1af0166a2e041c45948da661bf975606ab",
   "objective": "find the best shadow portfolio inside a frozen deterministic grammar while allowing inter-sleeve position overlap",
   "oos_sequence": {
     "economic_gates_same_as_existing": true,
@@ -62,6 +62,23 @@
   "preliminary_execution_receipt": {
     "attempted_after_initial_preregistration": true,
     "december_holdout_opened": false,
+    "first_persistable_reporting_attempt": {
+      "failed_gates": [
+        "turnover_cap",
+        "sleeve_turnover_share_cap"
+      ],
+      "raw_rank1_cagr_to_strict_mdd": 9.944970428302364,
+      "raw_rank1_return_pct": 11.063262930450101,
+      "raw_rank1_weights": {
+        "HVBLIC-6": 0.2,
+        "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8": 0.25,
+        "HVRDBR-6": 0.15,
+        "HVUI-12": 0.1
+      },
+      "result_committed": false,
+      "search_grammar_weights_and_thresholds_changed": false,
+      "turnover_bug": "turnover_cap was applied to hypothetical pre-net sleeve turnover instead of aggregate-net executed turnover"
+    },
     "oos_opened": false,
     "reporting_only_repair": "persist the deterministic raw rank1 and its failed gates instead of raising before the result artifact is written",
     "result_artifact_written": false,
