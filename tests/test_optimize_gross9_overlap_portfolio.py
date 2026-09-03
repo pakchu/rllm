@@ -83,6 +83,8 @@ def test_overlap_config_freezes_allowed_overlap_and_holdout_boundary() -> None:
     assert cfg["evidence_boundary"]["december_holdout_opened_by_selection"] is False
     core = {k: v for k, v in cfg.items() if k != "protocol_hash"}
     assert cfg["protocol_hash"] == opt.canonical_hash(core)
+    rejected = opt.build_overlap_allowed_config({"sleeve_weights": {"a": 0.25}, "passed": False})
+    assert rejected["status"] == "terminal_train_reject_diagnostic_config_not_live"
 
 
 def test_beam_search_is_deterministic_and_respects_grid_constraints() -> None:

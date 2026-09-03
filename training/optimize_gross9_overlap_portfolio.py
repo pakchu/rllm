@@ -635,7 +635,13 @@ def build_overlap_allowed_config(selection: Mapping[str, Any] | None = None, cfg
     core: dict[str, Any] = {
         "name": "gross9_overlap_allowed_portfolio_2026_09_03",
         "policy_id": POLICY_ID,
-        "status": "train_selected_shadow_only_not_live" if selection else "optimizer_protocol_shadow_only_not_live",
+        "status": (
+            "train_selected_shadow_only_not_live"
+            if selection and selection.get("passed") is True
+            else "terminal_train_reject_diagnostic_config_not_live"
+            if selection
+            else "optimizer_protocol_shadow_only_not_live"
+        ),
         "as_of": AS_OF_DATE,
         "shadow_only": True,
         "live_capital_authorized": False,
@@ -728,7 +734,16 @@ def optimize_from_manifest(
     effects = {s.sleeve_id: sleeve_proxy_series(s, market_opens) for s in unique_sleeves}
     proxy_ranked = beam_search_portfolios(effects, cfg)
     evaluated = evaluate_exact_finalists(proxy_ranked, sleeve_map, market, funding, start, end, cfg)
-    winner = select_authoritative_rank1(evaluated)
+    selection_error: str | None = None
+    try:
+        winner = select_authoritative_rank1(evaluated)
+    except RuntimeError as exc:
+        selection_error = str(exc)
+        if not evaluated:
+            raise
+        winner = dict(evaluated[0])
+        winner["authoritative_rank"] = 1
+        winner["selection_status"] = "terminal_raw_rank1_failed_exact_gates_no_substitution"
     config = build_overlap_allowed_config(winner, cfg)
     core = {
         "protocol_version": PROTOCOL_VERSION,
@@ -746,6 +761,9 @@ def optimize_from_manifest(
         "proxy_portfolios_evaluated": len(proxy_ranked),
         "exact_finalists_evaluated": len(evaluated),
         "authoritative_rank1": winner,
+        "train_selection_passed": selection_error is None,
+        "selection_error": selection_error,
+        "decision": "freeze_train_rank1_before_december_holdout" if selection_error is None else "terminal_train_reject_no_substitution",
         "shadow_config": config,
     }
     result = {**core, "manifest_hash": canonical_hash(core)}

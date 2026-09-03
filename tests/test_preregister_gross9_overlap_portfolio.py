@@ -13,6 +13,7 @@ def test_prereg_freezes_universe_overlap_and_search():
  assert x['overlap_policy']['gross_risk_nets_opposite_positions'] is False
  assert x['search_grammar']['proxy_candidate_cap']==12000
  assert x['selection_windows']['holdout_opened_by_preregistration'] is False
+ assert x['preliminary_execution_receipt']['search_grammar_or_gates_changed_after_attempt'] is False
 
 def test_prereg_rejects_universe_and_boundary_drift():
  x=p.build();x['immutable_universe']['sha256']='0'*64

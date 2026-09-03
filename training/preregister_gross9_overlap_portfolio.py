@@ -41,6 +41,15 @@ def build() -> dict[str, Any]:
         "as_of_date": AS_OF_DATE,
         "objective": "find the best shadow portfolio inside a frozen deterministic grammar while allowing inter-sleeve position overlap",
         "research_status": "adaptive_train_search_shadow_only_not_live",
+        "preliminary_execution_receipt": {
+            "attempted_after_initial_preregistration": True,
+            "result_artifact_written": False,
+            "terminal_exception": "G9-OVERLAP-PORT-1 no exact finalist passed gates; terminal train reject",
+            "search_grammar_or_gates_changed_after_attempt": False,
+            "reporting_only_repair": "persist the deterministic raw rank1 and its failed gates instead of raising before the result artifact is written",
+            "december_holdout_opened": False,
+            "oos_opened": False,
+        },
         "immutable_universe": {"path": str(UNIVERSE), "sha256": UNIVERSE_SHA256, "manifest_hash": UNIVERSE_MANIFEST_HASH, "canonical_sleeves": universe["canonical_sleeve_count"]},
         "overlap_policy": {
             "inter_sleeve_positions_allowed": True,
@@ -123,6 +132,9 @@ def validate(value: Mapping[str, Any]) -> None:
     if overlap.get("inter_sleeve_positions_allowed") is not True or overlap.get("gross_risk_nets_opposite_positions") is not False: raise RuntimeError(f"{POLICY_ID} overlap policy drift")
     if value.get("selection_windows", {}).get("holdout_opened_by_preregistration") is not False: raise RuntimeError(f"{POLICY_ID} holdout boundary drift")
     if value.get("oos_sequence", {}).get("rerank_or_repair_authorized") is not False: raise RuntimeError(f"{POLICY_ID} no-repair drift")
+    receipt = value.get("preliminary_execution_receipt", {})
+    if receipt.get("search_grammar_or_gates_changed_after_attempt") is not False or receipt.get("result_artifact_written") is not False:
+        raise RuntimeError(f"{POLICY_ID} preliminary execution receipt drift")
     for record in value.get("implementation", {}).values():
         if sha256_file(record["path"]) != record["sha256"]: raise RuntimeError(f"{POLICY_ID} implementation binding drift")
 
