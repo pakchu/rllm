@@ -129,6 +129,7 @@ def test_exact_finalist_selection_uses_authoritative_raw_score_and_gates(monkeyp
         }
 
     monkeypatch.setattr(opt.fixed_ledger, "evaluate_primary", fake_primary)
+    monkeypatch.setattr(opt.fixed_ledger, "simulate_portfolio", lambda *args, **kwargs: {"transition_rows": []})
     monkeypatch.setattr(opt, "evaluate_monthly_stability", lambda *args: [{"base_return_pct": 1.0, "stress_return_pct": 1.0}] * 5)
     cfg = opt.OptimizerConfig(min_trade_count=1, min_active_weeks=0, exact_finalist_count=3, max_turnover_weight_per_day=999, max_month_share=1.0, max_sleeve_turnover_share=1.0)
     evaluated = opt.evaluate_exact_finalists(specs, sleeves, pd.DataFrame(), pd.DataFrame(), opt._utc("2023-07-01"), opt._utc("2023-07-02"), cfg)

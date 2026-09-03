@@ -49,6 +49,20 @@ def build() -> dict[str, Any]:
             "reporting_only_repair": "persist the deterministic raw rank1 and its failed gates instead of raising before the result artifact is written",
             "december_holdout_opened": False,
             "oos_opened": False,
+            "first_persistable_reporting_attempt": {
+                "result_committed": False,
+                "raw_rank1_weights": {
+                    "HVBLIC-6": 0.2,
+                    "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8": 0.25,
+                    "HVRDBR-6": 0.15,
+                    "HVUI-12": 0.1,
+                },
+                "raw_rank1_return_pct": 11.063262930450101,
+                "raw_rank1_cagr_to_strict_mdd": 9.944970428302364,
+                "failed_gates": ["turnover_cap", "sleeve_turnover_share_cap"],
+                "turnover_bug": "turnover_cap was applied to hypothetical pre-net sleeve turnover instead of aggregate-net executed turnover",
+                "search_grammar_weights_and_thresholds_changed": False,
+            },
         },
         "immutable_universe": {"path": str(UNIVERSE), "sha256": UNIVERSE_SHA256, "manifest_hash": UNIVERSE_MANIFEST_HASH, "canonical_sleeves": universe["canonical_sleeve_count"]},
         "overlap_policy": {

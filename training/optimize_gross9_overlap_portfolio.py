@@ -501,7 +501,7 @@ def exact_score(primary: Mapping[str, Any], risk: Mapping[str, Any], spec: Portf
         + float(base["absolute_return_pct"])
         + 0.2 * float(stress["cagr_to_strict_mdd"])
         - 0.2 * float(base["strict_mdd_pct"])
-        - 0.05 * float(risk["turnover_weight_per_day"])
+        - 0.05 * float(risk.get("actual_net_turnover_weight_per_day", risk["turnover_weight_per_day"]))
         - 0.01 * len(spec.weights)
     )
 
@@ -530,7 +530,7 @@ def exact_gates(
         "worst_stress_month_min_minus_2_5": min((float(row["stress_return_pct"]) for row in monthly), default=-100.0) >= -2.5,
         "mean_gross_exposure_cap": float(risk["mean_gross_exposure"]) <= cfg.max_mean_gross_exposure,
         "max_gross_exposure_cap": float(risk["max_gross_exposure"]) <= cfg.max_gross + 1e-9,
-        "turnover_cap": float(risk["turnover_weight_per_day"]) <= cfg.max_turnover_weight_per_day,
+        "turnover_cap": float(risk["actual_net_turnover_weight_per_day"]) <= cfg.max_turnover_weight_per_day,
         "sleeve_turnover_share_cap": float(risk["max_sleeve_turnover_share"]) <= cfg.max_sleeve_turnover_share,
     }
 
@@ -576,6 +576,28 @@ def evaluate_exact_finalists(
         clock = build_portfolio_clock(spec, sleeve_clocks)
         primary = fixed_ledger.evaluate_primary(clock, market, funding, _utc(start), _utc(end))
         risk = exposure_and_turnover(clock, _utc(start), _utc(end))
+        base_raw = fixed_ledger.simulate_portfolio(
+            clock,
+            market,
+            funding,
+            _utc(start),
+            _utc(end),
+            BASE_COST_BP / 10_000.0,
+        )
+        actual_net_turnover = sum(
+            abs(float(row["delta_q"])) * float(row["open"]) / max(float(row["equity_pre"]), 1e-12)
+            for row in base_raw["transition_rows"]
+            if abs(float(row["delta_q"])) > 1e-12
+        )
+        days = max((_utc(end) - _utc(start)).total_seconds() / 86400.0, 1e-12)
+        risk["actual_net_turnover_weight"] = float(actual_net_turnover)
+        risk["actual_net_turnover_weight_per_day"] = float(actual_net_turnover / days)
+        risk["nonzero_net_execution_events"] = int(
+            sum(abs(float(row["delta_q"])) > 1e-12 for row in base_raw["transition_rows"])
+        )
+        risk["netting_savings_share"] = float(
+            1.0 - actual_net_turnover / risk["turnover_weight"]
+        ) if risk["turnover_weight"] else 0.0
         monthly = evaluate_monthly_stability(clock, market, funding, _utc(start), _utc(end))
         gates = exact_gates(primary, risk, monthly, cfg)
         score = exact_score(primary, risk, spec)
@@ -678,7 +700,8 @@ def build_overlap_allowed_config(selection: Mapping[str, Any] | None = None, cfg
         "risk_caps": {
             "gross_exposure_cap": cfg.max_gross,
             "mean_gross_exposure_cap": cfg.max_mean_gross_exposure,
-            "max_turnover_weight_per_day": cfg.max_turnover_weight_per_day,
+            "max_aggregate_net_turnover_weight_per_day": cfg.max_turnover_weight_per_day,
+            "max_single_sleeve_pre_net_turnover_share": cfg.max_sleeve_turnover_share,
             "max_month_share": cfg.max_month_share,
             "gross_risk_does_not_net": True,
         },
@@ -761,6 +784,7 @@ def optimize_from_manifest(
         "proxy_portfolios_evaluated": len(proxy_ranked),
         "exact_finalists_evaluated": len(evaluated),
         "authoritative_rank1": winner,
+        "exact_finalists": evaluated,
         "train_selection_passed": selection_error is None,
         "selection_error": selection_error,
         "decision": "freeze_train_rank1_before_december_holdout" if selection_error is None else "terminal_train_reject_no_substitution",
