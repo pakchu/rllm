@@ -1,0 +1,161 @@
+{
+  "protocol_version": "gross9_overlap_net_position_eval2025_stop_override_freeze_v1",
+  "policy_id": "G9-OVERLAP-NET-PORT-1-EVAL2025-DIAG-OVERRIDE",
+  "as_of_date": "2026-09-04",
+  "original_policy_id": "G9-OVERLAP-NET-PORT-1",
+  "objective": "open eval2025 diagnostically after explicit user override of the 2024 stop",
+  "original_chain": {
+    "validation_freeze": {
+      "path": "results/gross9_overlap_net_position_validation_freeze_2026-09-03.json",
+      "sha256": "26cc18ecdb480cff671fe54c1a5b2006a2ba25242e07a323afd1784ad462b085",
+      "manifest_hash": "da39842d3c18ac02347183bbfdc5822b5d60cda9c1915a40bcbc9f400e5c7d50"
+    },
+    "holdout_dec2023": {
+      "path": "results/gross9_overlap_net_position_holdout_dec2023_2026-09-03.json",
+      "sha256": "b953fb8313a091509cc9c4e59090740c7a1145ec36b1f21d0b9649d8121d155d",
+      "manifest_hash": "3056f5b28ab3e222927a9f03ce4b5669fa3b234e4a977d23853c33d041a9dee9"
+    },
+    "test2024_terminal": {
+      "path": "results/gross9_overlap_net_position_test2024_2026-09-03.json",
+      "sha256": "f7abba422c4ba4dccade7e9b95c37fa7eda31ddf5b82ab005b1200b5281e81bb",
+      "manifest_hash": "f304b6bf4166f36955170bdfff74586eee03dfae4e79abbb4a54467f691270df"
+    },
+    "original_protocol_terminal_reject_preserved": true
+  },
+  "fixed_portfolio": {
+    "sleeve_weights": {
+      "HVBLIC-6": 0.2,
+      "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8": 0.25,
+      "HVRDBR-6": 0.15,
+      "HVUI-12": 0.1
+    },
+    "selected_clocks": [
+      {
+        "sleeve_id": "HVBLIC-6",
+        "weight": 0.2,
+        "path": "data/high_volatility_basis_leverage_ignition_continuation_clocks_2023_2026.csv.gz",
+        "sha256": "3e9bea596f8c476c4ca9d1cbc495496b4ccae3f7a7190d0b46fff4466a6e3be7",
+        "rows": 612,
+        "split_counts": {
+          "train": 122,
+          "test": 204,
+          "eval": 184,
+          "final": 102
+        }
+      },
+      {
+        "sleeve_id": "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8",
+        "weight": 0.25,
+        "path": "data/gross9_overlap_portfolio_active_veto_clocks_2026-09-03/HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8.csv.gz",
+        "sha256": "c6117bdb72ea4e1218e4a11bbd885b2076fc66250110623066da78727f1bd782",
+        "rows": 400,
+        "split_counts": {
+          "train": 66,
+          "test": 144,
+          "eval": 127,
+          "final": 63
+        }
+      },
+      {
+        "sleeve_id": "HVRDBR-6",
+        "weight": 0.15,
+        "path": "data/high_volatility_record_discovery_breadth_relay_clocks_2023_2026.csv.gz",
+        "sha256": "fd4ee1d8769f21b787a6cbbb0b1a3f7077f71df9d30c2a21c2229ec6cc884683",
+        "rows": 428,
+        "split_counts": {
+          "train": 81,
+          "test": 148,
+          "eval": 131,
+          "final": 68
+        }
+      },
+      {
+        "sleeve_id": "HVUI-12",
+        "weight": 0.1,
+        "path": "data/high_volatility_ulcer_index_stress_trend_relay_clocks_2023_2026.csv.gz",
+        "sha256": "2e986274580000f5da871dad3e6ef109eec5d68c405ed4f0fde5edf1bdff9889",
+        "rows": 433,
+        "split_counts": {
+          "train": 56,
+          "test": 140,
+          "eval": 165,
+          "final": 72
+        }
+      }
+    ],
+    "weights_changed": false,
+    "rerank_repair_or_substitution_authorized": false
+  },
+  "user_override": {
+    "effective_date": "2026-09-04",
+    "scope": "eval2025 diagnostic only",
+    "overrides_original_stop_on_first_failure": true,
+    "relabels_test2024_as_pass": false,
+    "advance_beyond_eval2025_authorized": false,
+    "turnover_frequency_and_cost_caps": "disclosure_only"
+  },
+  "eval2025": {
+    "split": "eval",
+    "window": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "performance_checks": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_min": 3.0,
+      "strict_mdd_max_pct": 15.0,
+      "mean_exposure_weighted_gross_edge_min_bp": 20.0,
+      "stress_absolute_return_positive": true,
+      "stress_cagr_to_strict_mdd_min": 2.5,
+      "each_calendar_half_positive": true,
+      "weekly_cluster_signflip_one_sided_p_max": 0.1,
+      "aggregate_net_signed_episode_min": {
+        "test2024": 12,
+        "eval2025": 12,
+        "final2026": 8
+      },
+      "aggregate_net_signed_episode_definition": "nonzero sign episodes of sum(active sleeve side * sleeve weight) after atomic same-timestamp netting",
+      "mean_abs_net_position_max": 0.85,
+      "max_abs_net_position_max": 1.0
+    },
+    "checks_are_reported_not_predecessor_authorizing": true
+  },
+  "implementation": {
+    "evaluator": {
+      "path": "training/evaluate_gross9_overlap_net_position_eval2025_override.py",
+      "sha256": "dd83ddb5664eac3d87a780fa9cc6e82e7db5af3812926b5211522b0e4426e339"
+    },
+    "freezer": {
+      "path": "training/preregister_gross9_overlap_net_position_eval2025_override.py",
+      "sha256": "ba0c9dfb580c1ed329bd38b24f5fec2e0d201511b3a60c7710a020f4447938fd"
+    },
+    "original_evaluator": {
+      "path": "training/evaluate_gross9_overlap_net_position_portfolio.py",
+      "sha256": "de880be0ab8a8ce7579fb1390b436a6eb6235b77b95108f0ce4ea47d5b5c6ea2"
+    },
+    "fixed_ledger": {
+      "path": "training/evaluate_gross9_qtr_distill_economics.py",
+      "sha256": "8bd5aa7b2d62ab353d307705131694ce3f365b7590aed2a8be24e4958c3d69cf"
+    },
+    "optimizer_utilities": {
+      "path": "training/optimize_gross9_overlap_portfolio.py",
+      "sha256": "9a0bb885de4dc8ca97da319774c7463a1af9ee22f05a19ae8d64772a5a941903"
+    },
+    "net_risk_metrics": {
+      "path": "training/build_gross9_overlap_net_position_config.py",
+      "sha256": "4af87aa474913f80a5665f3b97cc210c19886d89aee3b9094605b25bb67fbd95"
+    },
+    "hash_bound_source_loader": {
+      "path": "training/evaluate_gross9_async_active_veto_train_economics.py",
+      "sha256": "8704b5c141d80e6987484e11c10361c31ae0b7c2bccbd12c2168afa4ed58a5d2"
+    }
+  },
+  "evidence_boundary": {
+    "eval2025_market_or_funding_rows_opened": 0,
+    "eval2025_outcomes_opened": false,
+    "final2026_outcomes_opened": false
+  },
+  "live_capital_authorized": false,
+  "order_submission_enabled": false,
+  "manifest_hash": "8897a7a1e45f8b115c01124cf1ef4ae5d712edb2e1e600ec7caf856314e23201"
+}
