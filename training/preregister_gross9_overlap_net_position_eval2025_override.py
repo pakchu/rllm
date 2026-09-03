@@ -11,8 +11,8 @@ from training import build_gross9_overlap_net_position_config as net_config
 from training import evaluate_gross9_overlap_net_position_portfolio as original_evaluator
 from training import preregister_gross9_overlap_net_position_validation as original_validation
 
-POLICY_ID = "G9-OVERLAP-NET-PORT-1-EVAL2025-DIAG-OVERRIDE"
-PROTOCOL_VERSION = "gross9_overlap_net_position_eval2025_stop_override_freeze_v1"
+POLICY_ID = "G9-OVERLAP-NET-PORT-1-EVAL2025-DIAG-OVERRIDE-V2"
+PROTOCOL_VERSION = "gross9_overlap_net_position_eval2025_stop_override_freeze_v2"
 AS_OF_DATE = "2026-09-04"
 ORIGINAL_FREEZE = original_validation.DEFAULT_OUTPUT
 HOLDOUT = original_evaluator.OUTPUTS["holdout_dec2023"]
@@ -20,7 +20,13 @@ TEST2024 = original_evaluator.OUTPUTS["test2024"]
 EVALUATOR = Path("training/evaluate_gross9_overlap_net_position_eval2025_override.py")
 FREEZER = Path("training/preregister_gross9_overlap_net_position_eval2025_override.py")
 DEFAULT_OUTPUT = Path(
+    "results/gross9_overlap_net_position_eval2025_override_freeze_v2_2026-09-04.json"
+)
+V1_FREEZE = Path(
     "results/gross9_overlap_net_position_eval2025_override_freeze_2026-09-04.json"
+)
+ATTEMPT_FAILURE = Path(
+    "results/gross9_overlap_net_position_eval2025_attempt_infrastructure_failure_2026-09-04.json"
 )
 
 
@@ -94,6 +100,17 @@ def build() -> dict[str, Any]:
     }
     if selected_weights != config.get("sleeve_weights"):
         raise RuntimeError(f"{POLICY_ID} fixed weights drift")
+    v1_freeze = original_validation.load_hashed_json(V1_FREEZE)
+    attempt_failure = original_validation.load_hashed_json(ATTEMPT_FAILURE)
+    if (
+        attempt_failure.get("attempt_freeze") != receipt(V1_FREEZE, v1_freeze)
+        or attempt_failure.get("economic_metrics_computed") is not False
+        or attempt_failure.get("candidate_pass_fail_observed") is not False
+        or attempt_failure.get("eval2025_returns_or_pnl_computed") is not False
+        or attempt_failure.get("disposition")
+        != "infrastructure_failure_reporting_only_successor_allowed"
+    ):
+        raise RuntimeError(f"{POLICY_ID} V1 infrastructure failure receipt drift")
     core = {
         "protocol_version": PROTOCOL_VERSION,
         "policy_id": POLICY_ID,
@@ -105,6 +122,12 @@ def build() -> dict[str, Any]:
             "holdout_dec2023": receipt(HOLDOUT, holdout),
             "test2024_terminal": receipt(TEST2024, test),
             "original_protocol_terminal_reject_preserved": True,
+        },
+        "v1_infrastructure_failure": {
+            "freeze": receipt(V1_FREEZE, v1_freeze),
+            "attempt_failure": receipt(ATTEMPT_FAILURE, attempt_failure),
+            "economic_metrics_computed": False,
+            "candidate_pass_fail_observed": False,
         },
         "fixed_portfolio": {
             "sleeve_weights": selected_weights,
@@ -125,6 +148,13 @@ def build() -> dict[str, Any]:
             "window": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
             "performance_checks": frozen["gates"]["oos"],
             "checks_are_reported_not_predecessor_authorizing": True,
+            "funding_time_normalization": {
+                "operation": "floor raw realized funding timestamp to its 5-minute bucket",
+                "rationale": "the fixed ledger already owns funding by timestamp.floor('5min')",
+                "rate_and_mark_price_changed": False,
+                "duplicate_normalized_buckets_allowed": False,
+                "normalization_is_reporting_only_infrastructure_repair": True,
+            },
         },
         "implementation": {
             "evaluator": {"path": str(EVALUATOR), "sha256": sha256_file(EVALUATOR)},

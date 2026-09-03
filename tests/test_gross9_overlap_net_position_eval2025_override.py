@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 
+import pandas as pd
 import pytest
 
 from training import evaluate_gross9_overlap_net_position_eval2025_override as evaluator
@@ -18,6 +19,11 @@ def test_freeze_binds_terminal_test_without_relabelling_it() -> None:
     assert value["user_override"]["advance_beyond_eval2025_authorized"] is False
     assert value["evidence_boundary"]["eval2025_market_or_funding_rows_opened"] == 0
     assert value["evidence_boundary"]["eval2025_outcomes_opened"] is False
+    assert value["v1_infrastructure_failure"]["economic_metrics_computed"] is False
+    assert value["v1_infrastructure_failure"]["candidate_pass_fail_observed"] is False
+    normalization = value["eval2025"]["funding_time_normalization"]
+    assert normalization["rate_and_mark_price_changed"] is False
+    assert normalization["duplicate_normalized_buckets_allowed"] is False
 
 
 def test_freeze_keeps_exact_weights_and_no_repair() -> None:
@@ -80,6 +86,27 @@ def test_public_source_receipt_redacts_database_location() -> None:
     assert "configured_host" not in public["database_identity"]
     assert "configured_database" not in public["database_identity"]
     assert public["database_environment_source"] == "redacted_local_env_file"
+
+
+def test_funding_millisecond_jitter_is_bucketed_without_value_changes() -> None:
+    raw = pd.DataFrame(
+        {
+            "date": pd.to_datetime(
+                ["2025-01-01T00:00:00.015Z", "2025-01-01T08:00:00.001Z"],
+                utc=True,
+            ),
+            "funding_rate": [0.0001, -0.0002],
+            "mark_price": [100.0, 101.0],
+        }
+    )
+
+    normalized = evaluator.normalize_funding_clock(raw)
+
+    assert normalized["date"].tolist() == pd.to_datetime(
+        ["2025-01-01T00:00:00Z", "2025-01-01T08:00:00Z"], utc=True
+    ).tolist()
+    assert normalized["funding_rate"].tolist() == raw["funding_rate"].tolist()
+    assert normalized["mark_price"].tolist() == raw["mark_price"].tolist()
 
 
 def test_evaluator_contains_no_search_or_selector_calls() -> None:

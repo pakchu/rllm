@@ -6,17 +6,20 @@ import json
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+import pandas as pd
+
 from training import build_gross9_overlap_net_position_config as net_config
+from training import evaluate_gross9_async_active_veto_train_economics as train_sources
 from training import evaluate_gross9_overlap_net_position_portfolio as original_evaluator
 from training import evaluate_gross9_qtr_distill_economics as fixed_ledger
 from training import optimize_gross9_overlap_portfolio as optimizer
 from training import preregister_gross9_overlap_net_position_eval2025_override as freeze_builder
 
 POLICY_ID = freeze_builder.POLICY_ID
-PROTOCOL_VERSION = "gross9_overlap_net_position_eval2025_stop_override_economics_v1"
+PROTOCOL_VERSION = "gross9_overlap_net_position_eval2025_stop_override_economics_v2"
 FREEZE = freeze_builder.DEFAULT_OUTPUT
 DEFAULT_OUTPUT = Path(
-    "results/gross9_overlap_net_position_eval2025_diagnostic_2026-09-04.json"
+    "results/gross9_overlap_net_position_eval2025_diagnostic_v2_2026-09-04.json"
 )
 
 
@@ -53,6 +56,52 @@ def public_source_receipt(source: Mapping[str, Any]) -> dict[str, Any]:
     return value
 
 
+def normalize_funding_clock(raw_funding: pd.DataFrame) -> pd.DataFrame:
+    funding = raw_funding.copy()
+    funding["date"] = pd.to_datetime(funding["date"], utc=True, errors="raise").dt.floor(
+        "5min"
+    )
+    if funding["date"].duplicated().any():
+        raise RuntimeError(f"{POLICY_ID} duplicate funding buckets after normalization")
+    return funding.sort_values("date").reset_index(drop=True)
+
+
+def load_normalized_eval2025_sources(
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    env_source = original_evaluator._ensure_db_environment()
+    market = train_sources.load_market_hash_bound(start, end)
+    _, raw_funding, database_receipt = original_evaluator.load_postgres_extracts(
+        start,
+        end,
+        include_market=False,
+    )
+    raw_receipt = original_evaluator._frame_receipt(raw_funding)
+    funding = normalize_funding_clock(raw_funding)
+    fixed_ledger.validate_market(market, start, end)
+    fixed_ledger.validate_funding(funding, start, end)
+    source = {
+        **database_receipt,
+        "database_environment_source": env_source,
+        "market_source": {
+            "mode": "hash_bound_gzip_physical_prefix",
+            "path": str(train_sources.econ.v1.MARKET),
+            "sha256": train_sources.econ.v1.MARKET_SHA,
+        },
+        "market_extract": original_evaluator._frame_receipt(market),
+        "funding_raw_extract": raw_receipt,
+        "funding_time_normalization": {
+            "operation": "floor_to_5min",
+            "rows": int(len(funding)),
+            "rate_and_mark_price_changed": False,
+            "duplicate_normalized_buckets": 0,
+        },
+        "funding_extract": original_evaluator._frame_receipt(funding),
+    }
+    return market, funding, source
+
+
 def run(
     output: str | Path = DEFAULT_OUTPUT,
     *,
@@ -70,8 +119,7 @@ def run(
         start,
         end,
     )
-    market, funding, source = original_evaluator.load_stage_sources(
-        "eval2025",
+    market, funding, source = load_normalized_eval2025_sources(
         start,
         end,
     )
