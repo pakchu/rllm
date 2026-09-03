@@ -1,18 +1,26 @@
 {
-  "protocol_version": "gross9_overlap_net_position_config_v1",
+  "protocol_version": "gross9_overlap_net_position_config_v2",
   "policy_id": "G9-OVERLAP-NET-PORT-1",
   "as_of_date": "2026-09-03",
   "config": {
     "path": "configs/shadow/gross9_overlap_net_position_portfolio_2026-09-03.json",
-    "protocol_hash": "367f8160b6a9c57140606057418a97034d2642d3c223d2a63bbf8c9cfdcf38e5",
-    "sha256": "34e45c70f740f20c3239bace1eb6e6b7f7c5a03aafd7b5f5a7298ef1e04fe731"
+    "protocol_hash": "7cfa3b7fc34acbace90db391bab528502a79c6b594126c8e3502925f252b6c34",
+    "sha256": "d64d8cbe1f8599e947474499870d4ead5e97219ae40d3608b54e6db432e5c313"
   },
   "source_selection": {
     "path": "results/gross9_overlap_portfolio_train_selection_2026-09-03.json",
     "sha256": "a197cbb568e888e82edeca01e2108fad2588e42eb9be74fa9c213a92c33caa8c",
     "manifest_hash": "00663b4e9112d02c6a9639e53fb490404a95ab59a62ed730b5eb9f213f876c21"
   },
+  "source_selection_decision": "terminal_train_reject_no_substitution",
   "risk_semantics_changed_by_user": true,
+  "post_train_policy_waiver": true,
+  "cost_rejection_gates_removed_by_user": [
+    "turnover_cap",
+    "sleeve_turnover_share_cap"
+  ],
+  "non_waived_gate_failures": [],
+  "train_selection_passed_under_current_policy": true,
   "portfolio_weights_changed": false,
   "selection_rank_changed": false,
   "net_position_risk_metrics": {
@@ -29,10 +37,11 @@
     "exact_score_formula_changed": false,
     "legacy_exposure_gate_failures": 0,
     "turnover_gate_passes": 0,
+    "current_policy_gate_passes": 64,
     "rank1_legacy_exposure_gates_passed": true,
-    "reason": "all exact finalists already passed both legacy exposure gates, all failed the unchanged turnover cap, and exposure is absent from the exact score; netting therefore cannot change the frozen raw rank1"
+    "reason": "all exact finalists passed the stricter legacy non-net exposure gates and every other retained rejection gate, while the exact score is unchanged; replacing risk with net-position caps and removing the two cost gates preserves the frozen raw rank1"
   },
-  "operating_cost_failure": {
+  "operating_cost_disclosure": {
     "measurement_window_days": 153,
     "atomic_transitions": 461,
     "nonzero_net_execution_events": 461,
@@ -61,10 +70,12 @@
     "stress_fee_less_funding_pct_of_initial_equity": 8.841413010096314,
     "max_single_sleeve_pre_net_turnover_share": 0.41452991452991433,
     "single_sleeve_share_cap": 0.4,
-    "failed_gates": [
+    "historical_frozen_failed_gates": [
       "turnover_cap",
       "sleeve_turnover_share_cap"
     ],
+    "current_rejection_gates": [],
+    "classification": "high_cost_disclosure_not_rejection",
     "risk_cost_separation": "opposite positions reduce position risk, but fees are charged whenever aggregate net quantity changes; small net exposure therefore does not imply low turnover",
     "per_sleeve": [
       {
@@ -97,11 +108,11 @@
       }
     ]
   },
-  "decision": "same_optimal_weights_under_net_position_risk; terminal_turnover_reject_remains",
+  "decision": "train_selected_after_user_waiver_of_turnover_disclosure_gates; holdout_oos_unopened; shadow_not_live",
   "evidence_boundary": {
     "new_market_or_funding_rows_opened": 0,
     "december_holdout_opened": false,
     "oos_opened": false
   },
-  "manifest_hash": "56838928d6ea6ea4c87de1794f4f7683960c1baaba0f101d53dff6415e9ba3af"
+  "manifest_hash": "cca9d37bc02e02d54f717bbcde5e54870a9f807154bc5cdaaa767492f70d12c4"
 }

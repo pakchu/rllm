@@ -1,4 +1,4 @@
-"""Build the net-position-risk successor config for G9-OVERLAP-PORT-1."""
+"""Build the net-position-risk, cost-disclosure successor to G9-OVERLAP-PORT-1."""
 from __future__ import annotations
 
 import argparse
@@ -12,7 +12,7 @@ import pandas as pd
 from training import optimize_gross9_overlap_portfolio as optimizer
 
 POLICY_ID = "G9-OVERLAP-NET-PORT-1"
-PROTOCOL_VERSION = "gross9_overlap_net_position_config_v1"
+PROTOCOL_VERSION = "gross9_overlap_net_position_config_v2"
 AS_OF_DATE = "2026-09-03"
 SELECTION = Path("results/gross9_overlap_portfolio_train_selection_2026-09-03.json")
 SELECTION_SHA256 = "a197cbb568e888e82edeca01e2108fad2588e42eb9be74fa9c213a92c33caa8c"
@@ -137,25 +137,53 @@ def build() -> tuple[dict[str, Any], dict[str, Any]]:
     base = rank1["primary"]["base"]
     stress = rank1["primary"]["stress"]
     finalist_rows = selection["exact_finalists"]
-    exposure_gate_names = ("mean_gross_exposure_cap", "max_gross_exposure_cap")
+    waived_rejection_gates = ("turnover_cap", "sleeve_turnover_share_cap")
+    legacy_exposure_gate_names = ("mean_gross_exposure_cap", "max_gross_exposure_cap")
+    remaining_rank1_gates = {
+        name: bool(passed)
+        for name, passed in rank1["gates"].items()
+        if name not in (*waived_rejection_gates, *legacy_exposure_gate_names)
+    }
+    remaining_rank1_gates["mean_abs_net_position_cap"] = (
+        net_risk["mean_abs_net_position"] <= optimizer.OptimizerConfig().max_mean_gross_exposure
+    )
+    remaining_rank1_gates["max_abs_net_position_cap"] = (
+        net_risk["max_abs_net_position"] <= optimizer.OptimizerConfig().max_gross
+    )
+    if not all(remaining_rank1_gates.values()):
+        failed = [name for name, passed in remaining_rank1_gates.items() if not passed]
+        raise RuntimeError(f"{POLICY_ID} rank1 failed retained rejection gates: {failed}")
+    non_waived_gate_failures = [
+        name for name, passed in remaining_rank1_gates.items() if not passed
+    ]
     exposure_gate_failures = sum(
-        not all(bool(row["gates"][name]) for name in exposure_gate_names)
+        not all(bool(row["gates"][name]) for name in legacy_exposure_gate_names)
         for row in finalist_rows
     )
     turnover_gate_passes = sum(bool(row["gates"]["turnover_cap"]) for row in finalist_rows)
+    current_policy_passes = sum(
+        all(
+            bool(passed)
+            for name, passed in row["gates"].items()
+            if name not in (*waived_rejection_gates, *legacy_exposure_gate_names)
+        )
+        and all(bool(row["gates"][name]) for name in legacy_exposure_gate_names)
+        for row in finalist_rows
+    )
     selection_invariance = {
         "scope": "frozen Jul-Nov proxy search and 64 exact-ledger finalists only",
         "exact_finalists_checked": len(finalist_rows),
         "exact_score_formula_changed": False,
         "legacy_exposure_gate_failures": exposure_gate_failures,
         "turnover_gate_passes": turnover_gate_passes,
+        "current_policy_gate_passes": current_policy_passes,
         "rank1_legacy_exposure_gates_passed": all(
-            bool(rank1["gates"][name]) for name in exposure_gate_names
+            bool(rank1["gates"][name]) for name in legacy_exposure_gate_names
         ),
         "reason": (
-            "all exact finalists already passed both legacy exposure gates, all failed the "
-            "unchanged turnover cap, and exposure is absent from the exact score; netting "
-            "therefore cannot change the frozen raw rank1"
+            "all exact finalists passed the stricter legacy non-net exposure gates and every "
+            "other retained rejection gate, while the exact score is unchanged; replacing risk "
+            "with net-position caps and removing the two cost gates preserves the frozen raw rank1"
         ),
     }
     annualized_net_turnover = float(risk["actual_net_turnover_weight_per_day"]) * 365.25
@@ -199,7 +227,11 @@ def build() -> tuple[dict[str, Any], dict[str, Any]]:
         ),
         "max_single_sleeve_pre_net_turnover_share": float(risk["max_sleeve_turnover_share"]),
         "single_sleeve_share_cap": 0.40,
-        "failed_gates": [name for name, passed in rank1["gates"].items() if not passed],
+        "historical_frozen_failed_gates": [
+            name for name, passed in rank1["gates"].items() if not passed
+        ],
+        "current_rejection_gates": [],
+        "classification": "high_cost_disclosure_not_rejection",
         "risk_cost_separation": (
             "opposite positions reduce position risk, but fees are charged whenever aggregate "
             "net quantity changes; small net exposure therefore does not imply low turnover"
@@ -210,7 +242,7 @@ def build() -> tuple[dict[str, Any], dict[str, Any]]:
         "name": "gross9_overlap_net_position_portfolio_2026_09_03",
         "policy_id": POLICY_ID,
         "successor_of": optimizer.POLICY_ID,
-        "status": "terminal_train_reject_diagnostic_config_not_live",
+        "status": "train_selected_shadow_only_holdout_oos_unopened",
         "as_of": AS_OF_DATE,
         "shadow_only": True,
         "live_capital_authorized": False,
@@ -224,6 +256,24 @@ def build() -> tuple[dict[str, Any], dict[str, Any]]:
         },
         "sleeve_weights": weights,
         "selected_weight_sum": float(sum(weights.values())),
+        "selection_gate_policy": {
+            "waived_rejection_gates": list(waived_rejection_gates),
+            "waiver_reason": "explicit user instruction: operating-cost gates are not required",
+            "cost_metrics_retained_as_disclosure": True,
+            "replaced_legacy_risk_gates": {
+                "mean_gross_exposure_cap": "mean_abs_net_position_cap",
+                "max_gross_exposure_cap": "max_abs_net_position_cap",
+            },
+            "net_position_risk_caps": {
+                "mean_abs_net_position": optimizer.OptimizerConfig().max_mean_gross_exposure,
+                "max_abs_net_position": optimizer.OptimizerConfig().max_gross,
+            },
+            "retained_rejection_gates": list(remaining_rank1_gates),
+            "non_waived_gate_failures": non_waived_gate_failures,
+            "all_retained_rejection_gates_passed": True,
+            "train_selected_after_user_waiver": True,
+            "original_preregistered_gate_result_preserved_as_failure": True,
+        },
         "net_position_risk_metrics": net_risk,
         "selection_invariance_evidence": selection_invariance,
         "economic_snapshot": {
@@ -235,7 +285,7 @@ def build() -> tuple[dict[str, Any], dict[str, Any]]:
             "long_intervals": int(base["long_intervals"]),
             "short_intervals": int(base["short_intervals"]),
         },
-        "operating_cost_failure": cost_detail,
+        "operating_cost_disclosure": cost_detail,
         "source_selection": {
             "path": str(SELECTION),
             "sha256": SELECTION_SHA256,
@@ -254,13 +304,21 @@ def build() -> tuple[dict[str, Any], dict[str, Any]]:
         "as_of_date": AS_OF_DATE,
         "config": {"path": str(CONFIG_OUTPUT), "protocol_hash": config["protocol_hash"]},
         "source_selection": config["source_selection"],
+        "source_selection_decision": selection["decision"],
         "risk_semantics_changed_by_user": True,
+        "post_train_policy_waiver": True,
+        "cost_rejection_gates_removed_by_user": list(waived_rejection_gates),
+        "non_waived_gate_failures": non_waived_gate_failures,
+        "train_selection_passed_under_current_policy": True,
         "portfolio_weights_changed": False,
         "selection_rank_changed": False,
         "net_position_risk_metrics": net_risk,
         "selection_invariance_evidence": selection_invariance,
-        "operating_cost_failure": cost_detail,
-        "decision": "same_optimal_weights_under_net_position_risk; terminal_turnover_reject_remains",
+        "operating_cost_disclosure": cost_detail,
+        "decision": (
+            "train_selected_after_user_waiver_of_turnover_disclosure_gates; "
+            "holdout_oos_unopened; shadow_not_live"
+        ),
         "evidence_boundary": config["evidence_boundary"],
     }
     audit = {**audit_core, "manifest_hash": canonical_hash(audit_core)}
