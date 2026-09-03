@@ -1,0 +1,285 @@
+{
+  "protocol_version": "gross9_overlap_net_position_sequential_economics_v1",
+  "policy_id": "G9-OVERLAP-NET-PORT-1",
+  "stage": "holdout_dec2023",
+  "split": "train",
+  "window": [
+    "2023-12-01T00:00:00Z",
+    "2024-01-01T00:00:00Z"
+  ],
+  "validation_freeze": {
+    "path": "results/gross9_overlap_net_position_validation_freeze_2026-09-03.json",
+    "sha256": "26cc18ecdb480cff671fe54c1a5b2006a2ba25242e07a323afd1784ad462b085",
+    "manifest_hash": "da39842d3c18ac02347183bbfdc5822b5d60cda9c1915a40bcbc9f400e5c7d50"
+  },
+  "implementation": {
+    "evaluator": {
+      "path": "training/evaluate_gross9_overlap_net_position_portfolio.py",
+      "sha256": "de880be0ab8a8ce7579fb1390b436a6eb6235b77b95108f0ce4ea47d5b5c6ea2"
+    },
+    "freezer": {
+      "path": "training/preregister_gross9_overlap_net_position_validation.py",
+      "sha256": "499a3d29eb101b55a29f1f42a89f24f74eb73fa79a50f05c3460d61abeb9681b"
+    },
+    "fixed_ledger": {
+      "path": "training/evaluate_gross9_qtr_distill_economics.py",
+      "sha256": "8bd5aa7b2d62ab353d307705131694ce3f365b7590aed2a8be24e4958c3d69cf"
+    },
+    "optimizer_utilities": {
+      "path": "training/optimize_gross9_overlap_portfolio.py",
+      "sha256": "9a0bb885de4dc8ca97da319774c7463a1af9ee22f05a19ae8d64772a5a941903"
+    },
+    "net_risk_metrics": {
+      "path": "training/build_gross9_overlap_net_position_config.py",
+      "sha256": "4af87aa474913f80a5665f3b97cc210c19886d89aee3b9094605b25bb67fbd95"
+    },
+    "hash_bound_source_loader": {
+      "path": "training/evaluate_gross9_async_active_veto_train_economics.py",
+      "sha256": "8704b5c141d80e6987484e11c10361c31ae0b7c2bccbd12c2168afa4ed58a5d2"
+    }
+  },
+  "predecessor": null,
+  "fixed_portfolio": {
+    "sleeve_weights": {
+      "HVBLIC-6": 0.2,
+      "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8": 0.25,
+      "HVRDBR-6": 0.15,
+      "HVUI-12": 0.1
+    },
+    "clock_receipts": [
+      {
+        "sleeve_id": "HVBLIC-6",
+        "weight": 0.2,
+        "path": "data/high_volatility_basis_leverage_ignition_continuation_clocks_2023_2026.csv.gz",
+        "sha256": "3e9bea596f8c476c4ca9d1cbc495496b4ccae3f7a7190d0b46fff4466a6e3be7",
+        "full_clock_rows": 612,
+        "stage_rows": 25
+      },
+      {
+        "sleeve_id": "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8",
+        "weight": 0.25,
+        "path": "data/gross9_overlap_portfolio_active_veto_clocks_2026-09-03/HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8.csv.gz",
+        "sha256": "c6117bdb72ea4e1218e4a11bbd885b2076fc66250110623066da78727f1bd782",
+        "full_clock_rows": 400,
+        "stage_rows": 14
+      },
+      {
+        "sleeve_id": "HVRDBR-6",
+        "weight": 0.15,
+        "path": "data/high_volatility_record_discovery_breadth_relay_clocks_2023_2026.csv.gz",
+        "sha256": "fd4ee1d8769f21b787a6cbbb0b1a3f7077f71df9d30c2a21c2229ec6cc884683",
+        "full_clock_rows": 428,
+        "stage_rows": 15
+      },
+      {
+        "sleeve_id": "HVUI-12",
+        "weight": 0.1,
+        "path": "data/high_volatility_ulcer_index_stress_trend_relay_clocks_2023_2026.csv.gz",
+        "sha256": "2e986274580000f5da871dad3e6ef109eec5d68c405ed4f0fde5edf1bdff9889",
+        "full_clock_rows": 433,
+        "stage_rows": 11
+      }
+    ],
+    "reranked_repaired_or_substituted": false
+  },
+  "source": {
+    "mode": "hash_bound_gzip_physical_prefix",
+    "market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "funding": {
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+    },
+    "market_extract": {
+      "rows": 8929,
+      "first_time": "2023-12-01T00:00:00Z",
+      "last_time": "2024-01-01T00:00:00Z",
+      "content_sha256": "05a9c5e602e3e98e915b15a89ce1c4f25e11ed50cbbda0d90adabc642323db2c",
+      "hash_method": "pandas_hash_pandas_object_uint64_sha256"
+    },
+    "funding_extract": {
+      "rows": 93,
+      "first_time": "2023-12-01T00:00:00Z",
+      "last_time": "2023-12-31T16:00:00Z",
+      "content_sha256": "769a1be5dcf3eb9e78a06b7499ad2bcf3a712ce3413e222c2fb42807988db913",
+      "hash_method": "pandas_hash_pandas_object_uint64_sha256"
+    }
+  },
+  "physical_rows_opened": {
+    "market": 8929,
+    "funding": 93,
+    "portfolio_clock": 65
+  },
+  "primary": {
+    "base": {
+      "initial_equity": 100000.0,
+      "final_equity": 102015.52665946474,
+      "absolute_return_pct": 2.015526659464739,
+      "cagr_pct": 26.50517739169551,
+      "strict_mdd_pct": 1.7914786225768475,
+      "cagr_to_strict_mdd": 14.795140202996501,
+      "transitions": 114,
+      "intervals": 65,
+      "long_intervals": 38,
+      "short_intervals": 27,
+      "total_fees": 1285.1171456819384,
+      "total_funding": 17.013528829062107,
+      "mean_gross_underlying_bp": 26.70343523138299,
+      "mean_exposure_weighted_gross_edge_bp": 27.585441038149145
+    },
+    "stress": {
+      "initial_equity": 100000.0,
+      "final_equity": 101156.91325049383,
+      "absolute_return_pct": 1.1569132504938295,
+      "cagr_pct": 14.514130149459481,
+      "strict_mdd_pct": 1.9116179022584223,
+      "cagr_to_strict_mdd": 7.592589571541576,
+      "transitions": 114,
+      "intervals": 65,
+      "long_intervals": 38,
+      "short_intervals": 27,
+      "total_fees": 2133.0624038705328,
+      "total_funding": 16.78575903311301,
+      "mean_gross_underlying_bp": 26.70343523138299,
+      "mean_exposure_weighted_gross_edge_bp": 27.585441038149145
+    },
+    "cluster_signflip": {
+      "method": "one_sided_UTC_week_cluster_signflip_monte_carlo",
+      "clusters": 5,
+      "draws": 100000,
+      "seed": 20260902,
+      "observed_log_effect": 0.01995483786318166,
+      "pvalue": 0.0966390336096639
+    },
+    "calendar_halves": {
+      "first": {
+        "initial_equity": 100000.0,
+        "final_equity": 101166.28998747702,
+        "absolute_return_pct": 1.1662899874770316,
+        "cagr_pct": 31.421599261271616,
+        "strict_mdd_pct": 1.208308877384301,
+        "cagr_to_strict_mdd": 26.004608465090357,
+        "transitions": 54,
+        "intervals": 32,
+        "long_intervals": 19,
+        "short_intervals": 13,
+        "total_fees": 594.9454114006761,
+        "total_funding": -1.6853900225355676,
+        "mean_gross_underlying_bp": 27.63335873200167,
+        "mean_exposure_weighted_gross_edge_bp": 31.458124099483037
+      },
+      "second": {
+        "initial_equity": 100000.0,
+        "final_equity": 100839.44629391152,
+        "absolute_return_pct": 0.8394462939115277,
+        "cagr_pct": 21.772676613746313,
+        "strict_mdd_pct": 1.791478622576903,
+        "cagr_to_strict_mdd": 12.153467163581336,
+        "transitions": 60,
+        "intervals": 33,
+        "long_intervals": 19,
+        "short_intervals": 14,
+        "total_fees": 682.2151275555282,
+        "total_funding": 18.483349398215896,
+        "mean_gross_underlying_bp": 25.80169123078306,
+        "mean_exposure_weighted_gross_edge_bp": 24.115517015193944
+      }
+    }
+  },
+  "source_shape": {
+    "intervals": 65,
+    "long_intervals": 38,
+    "short_intervals": 27,
+    "aggregate_net_signed_episodes": 41,
+    "aggregate_net_signed_episode_definition": "nonzero sign episodes of sum(active side*weight) after atomic same-timestamp netting",
+    "active_iso_weeks": 5
+  },
+  "net_position_risk": {
+    "max_abs_net_position": 0.5,
+    "mean_abs_net_position": 0.09247311827956989,
+    "legacy_max_nonnet_gross": 0.7,
+    "legacy_mean_nonnet_gross": 0.11384408602150538
+  },
+  "legacy_nonnet_risk_disclosure": {
+    "max_gross_exposure": 0.7,
+    "mean_gross_exposure": 0.11384408602150538,
+    "max_abs_net_exposure": 0.5,
+    "turnover_weight": 23.699999999999985,
+    "turnover_weight_per_day": 0.7645161290322576,
+    "max_month_share": 1.0,
+    "max_sleeve_turnover_share": 0.42194092827004254,
+    "active_iso_weeks": 5
+  },
+  "operating_cost_disclosure": {
+    "classification": "high_cost_disclosure_not_rejection",
+    "current_rejection_gates": [],
+    "measurement_window_days": 31.0,
+    "pre_net_turnover_weight": 23.699999999999985,
+    "actual_aggregate_net_turnover_weight": 21.13245673323293,
+    "actual_aggregate_net_turnover_weight_per_day": 0.6816921526849333,
+    "annualized_aggregate_net_turnover_x": 248.9880587681719,
+    "netting_savings_share": 0.10833515893531875,
+    "nonzero_net_execution_events": 114,
+    "nonzero_net_execution_events_per_day": 3.6774193548387095,
+    "base_fee_cash": 1285.1171456819384,
+    "base_funding_cash": 17.013528829062107,
+    "base_fee_less_funding_cash": 1268.1036168528763,
+    "stress_fee_cash": 2133.0624038705328,
+    "stress_funding_cash": 16.78575903311301,
+    "stress_fee_less_funding_cash": 2116.2766448374196,
+    "per_sleeve": [
+      {
+        "sleeve_id": "HVBLIC-6",
+        "intervals": 25,
+        "pre_net_turnover_weight": 10.000000000000002,
+        "pre_net_turnover_share": 0.42194092827004254
+      },
+      {
+        "sleeve_id": "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8",
+        "intervals": 14,
+        "pre_net_turnover_weight": 7.0,
+        "pre_net_turnover_share": 0.2953586497890297
+      },
+      {
+        "sleeve_id": "HVRDBR-6",
+        "intervals": 15,
+        "pre_net_turnover_weight": 4.499999999999999,
+        "pre_net_turnover_share": 0.18987341772151908
+      },
+      {
+        "sleeve_id": "HVUI-12",
+        "intervals": 11,
+        "pre_net_turnover_weight": 2.2,
+        "pre_net_turnover_share": 0.09282700421940934
+      }
+    ]
+  },
+  "monthly_stability": [
+    {
+      "month": "2023-12",
+      "base_return_pct": 2.015526659464739,
+      "stress_return_pct": 1.1569132504938295,
+      "intervals": 65
+    }
+  ],
+  "checks": {
+    "minimum_intervals": true,
+    "minimum_active_iso_weeks": true,
+    "absolute_return_positive": true,
+    "stress_absolute_return_positive": true,
+    "strict_mdd_max": true,
+    "mean_abs_net_position_cap": true,
+    "max_abs_net_position_cap": true
+  },
+  "waived_cost_gates_applied_as_rejections": false,
+  "passed": true,
+  "advance_to_next_stage": true,
+  "later_stage_outcomes_opened": false,
+  "live_capital_authorized": false,
+  "order_submission_enabled": false,
+  "status": "stage_pass_advance_authorized",
+  "decision": "pass",
+  "manifest_hash": "3056f5b28ab3e222927a9f03ce4b5669fa3b234e4a977d23853c33d041a9dee9"
+}
