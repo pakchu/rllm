@@ -1,0 +1,68 @@
+{
+  "design": {
+    "version": 1,
+    "seed": 20260905,
+    "fit": [
+      "2020-03-01",
+      "2023-01-01"
+    ],
+    "selection": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "report_only": [
+      "2024-01-01",
+      "source_end"
+    ],
+    "data_contamination": "All historical report windows were exposed in prior research; not pristine OOS or live authorization.",
+    "execution": "completed hourly features; exact next 5m open at T+5m; rebalance net units; charge every actual notional change; liquidate window end",
+    "risk": "same-symbol long/short offset; absolute net exposure cap 1.0; no position-overlap exclusion",
+    "costs_per_side": [
+      0.0,
+      0.0006,
+      0.001
+    ],
+    "funding": "actual timestamps/rates; mark_price if available, else settlement 5m open proxy (explicit approximation)",
+    "rebalance_hours": [
+      1,
+      6,
+      24
+    ],
+    "volatility_sizing": "raw 1x and 20% annualized target using past 24h volatility, clipped [0.10,1.0]",
+    "models": {
+      "ridge": {
+        "alpha": 100.0
+      },
+      "hgb": {
+        "max_iter": 150,
+        "max_leaf_nodes": 7,
+        "min_samples_leaf": 200,
+        "l2_regularization": 10.0,
+        "learning_rate": 0.05
+      },
+      "extra": {
+        "n_estimators": 100,
+        "max_depth": 5,
+        "min_samples_leaf": 100,
+        "max_features": 0.7
+      }
+    },
+    "forecast_horizons_hours": [
+      6,
+      24
+    ],
+    "forecast_thresholds": [
+      0.0,
+      0.0012
+    ],
+    "portfolio": "top 12 economic/model candidates by 2023 rank; all pairs weights .25/.5/.75; equal and training-inverse-vol mixtures; no correlation rejection",
+    "selection_score": "min(H1,H2 return/std hourly annualized) + .25*full2023 return/MDD - 2*number of negative half-years",
+    "freeze": "same ranking rule for all candidates; no 2024+ substitution; report five fixed finalists and controls",
+    "llm_rl": "deferred until a viable economic teacher exists; no PPOSM action/AUC gate"
+  },
+  "source_hashes": {
+    "market": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "funding": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+  },
+  "code_sha256": "8578a2aa3e888bc6ae226b4963d0cc0d6e828b8cd9bc8eeb9f2c915afd0c6088"
+}
