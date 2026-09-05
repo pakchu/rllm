@@ -1,0 +1,89 @@
+{
+  "protocol": "pposm_funding_alias_source_diagnostic_v1",
+  "as_of": "2026-09-05",
+  "boundary": "source timestamps, values, and cache-source identity only; no PPOSM signals, labels, returns, fills, or lifecycle outcomes opened",
+  "v1_terminal_receipt": {
+    "path": "results/pposm_fresh_forward_signal_inventory_2026-09-05.json",
+    "sha256": "1fa032f039cfac32ffd4bef4b7c6edf4eb77c114e5c5ebb941e7864205d9fe45",
+    "terminal": "source_incomplete",
+    "forward_counted": false
+  },
+  "db_source_receipt": {
+    "window": [
+      "2026-04-01T00:00:00Z",
+      "2026-09-05T10:05:00Z"
+    ],
+    "raw_frame_sha256": "a9b20f765fdc6afaa2da930f9baa6b2d1db7a6d0909b4ba6ab48374dae453d93",
+    "raw_rows": 624,
+    "raw_unique_timestamps": 624,
+    "null_funding_rate": 0,
+    "null_mark_price": 0,
+    "raw_exact_boundary_rows": 391,
+    "raw_positive_ms_offset_rows": 233,
+    "max_positive_offset_ms": 26
+  },
+  "alias_analysis": {
+    "method": "cluster adjacent raw timestamps within 100ms only when funding_rate and mark_price are exact-equal; preserve latest raw timestamp without snapping",
+    "logical_clusters": 473,
+    "singleton_clusters": 322,
+    "two_row_clusters": 151,
+    "clusters_over_two": 0,
+    "clusters_with_conflicting_funding_rate": 0,
+    "clusters_with_conflicting_mark_price": 0,
+    "offset_only_clusters": 82,
+    "missing_feature_availability_clusters": 0,
+    "observed_canonical_gap_hours": {
+      "8h": 472
+    },
+    "first_canonical_event": "2026-04-01T00:00:00Z",
+    "last_canonical_event": "2026-09-05T08:00:00Z",
+    "last_decision_age_hours": 2.0
+  },
+  "immutable_cache_overlap": {
+    "path": "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+    "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+    "window": [
+      "2026-04-01T00:00:00Z",
+      "2026-06-01T00:00:00Z"
+    ],
+    "rows": 183,
+    "latest-alias_timestamp_exact_matches": 183,
+    "funding_rate_exact_matches": 183,
+    "mark_price_exact_matches": 183
+  },
+  "root_cause": {
+    "classification": "database semantic aliases from repeated raw API ingestion, not a cached funding-file gap",
+    "detail": "The DB primary key is exact (symbol,funding_time), while repeated Binance funding-history responses were stored with both exact-boundary and +1..26ms timestamps for identical settlement values. The immutable cache contains the later timestamp identity once per event."
+  },
+  "implementation_receipts": {
+    "upbit_ingest": {
+      "path": "/home/pakchu/upbit-usdt/app/services/ingest.py",
+      "sha256": "3c7462737012173faedd9b793a95785bc314bfd24fe7c686e498a6d3edeb05bd"
+    },
+    "upbit_storage": {
+      "path": "/home/pakchu/upbit-usdt/app/storage/bars.py",
+      "sha256": "57e2e2f602009f7b30e43a0b7ebb6bb7edf919db6fa4b5126179ddceb9641f1f"
+    }
+  },
+  "official_contract_notes": {
+    "funding_history": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History",
+    "funding_info": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-Info",
+    "funding_faq": "https://www.binance.com/en/support/faq/detail/360033525031",
+    "inference": "Fixed 8h timestamps are not a safe universal completeness invariant because Binance documents dynamic funding intervals. Completeness must target causal feature availability and preserve raw event times."
+  },
+  "proposed_v2_gate": {
+    "alias_window_ms": 100,
+    "alias_value_match": "exact funding_rate and mark_price",
+    "canonical_time": "latest raw timestamp; never snap",
+    "max_canonical_gap": "12h",
+    "first_and_last_coverage": "within 12h",
+    "fixed_8h_assumption": false,
+    "claim_scope": "database feature availability, not vendor-global historical completeness"
+  },
+  "evidence_boundary": {
+    "pposm_signal_count_computed": false,
+    "economic_outcomes_opened": false,
+    "trained": false
+  },
+  "result_hash": "a8c07ea787cd99aa233ad3ad665a2d0e232fce7f49cecc8c7daf5309dd9f66e9"
+}
