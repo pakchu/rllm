@@ -1,0 +1,22 @@
+{
+  "design": {
+    "version": 1,
+    "candidate": "regional_trend24__both__reb24",
+    "formula": "vol20 * sign(mom168) when abs(mom168)>.75 and sign(mom168)*kimchi_premium_change24>0; else0",
+    "fresh_window": [
+      "2026-06-01T00:00:00Z",
+      "2026-09-05T10:05:00Z"
+    ],
+    "costs": [
+      0.0,
+      0.0006,
+      0.001
+    ],
+    "source": "fixed cache plus authoritative DB market/KRW/FX/funding seam",
+    "execution": "completed hourly features; exact next 5m open at T+5m; rebalance net units; charge every actual notional change; liquidate window end",
+    "decision": "one-shot report, no live promotion"
+  },
+  "code_sha256": "bf8c688c5629e89af74e20c1febf726718bb6d67e31a394985e66fc15ab7df62",
+  "family_report_sha256": "fd28fb789b99a137398b0f7a401efa8bb83a4a85c351788478dadd5acb9c2b87",
+  "cache_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+}
