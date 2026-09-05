@@ -1,0 +1,121 @@
+{
+  "protocol": "pposm_fresh_forward_gate_closure_v1",
+  "as_of": "2026-09-05",
+  "boundary": "causal decision features and frozen gate predicates only; no returns, fills, lifecycle labels, model scores, or training",
+  "v4_inventory": {
+    "path": "results/pposm_fresh_forward_signal_inventory_v4_2026-09-05.json",
+    "sha256": "ca6612e91167b053b78e8cda5a050a2ab343546f8bf95714be95b138a475c3b2",
+    "result_hash": "e29a4cbbe967782e3133b7e4edc6de77e03e284069eb8eb961af969d8f4076b2",
+    "signal_inventory_hash": "949df9b160f9569710d69ebc59271357e6b4efc8b39478e46927912e9cf3a276"
+  },
+  "window": [
+    "2026-06-02T00:00:00Z",
+    "2026-09-05T10:05:00Z"
+  ],
+  "frozen_thresholds": {
+    "base": {
+      "funding_rate_q10": -2.146e-05,
+      "trend_96_q70": 0.009017208457522975,
+      "premium_change_q20": -0.00026813,
+      "daily_momentum_4_q90": 0.09605902316678483
+    },
+    "context": {
+      "rex_576_range_pos": 0.45775573160555505,
+      "funding_daily_overheat": 0.02653893830704357,
+      "premium_3d_overheat": 0.045815363295544476,
+      "range_quantile": 0.6,
+      "overheat_quantile": 0.7
+    },
+    "confirmation": {
+      "bb_z_q": 1.3631330458165392,
+      "quote_vol_z_1d_q": 1.1440562923744482,
+      "bb_quantile": 0.8,
+      "quote_volume_quantile": 0.9
+    }
+  },
+  "full_window_funnel": {
+    "decision_rows": 2291,
+    "funding_available": 2291,
+    "premium_available": 2291,
+    "funding_base": 16,
+    "premium_base": 20,
+    "base_union": 36,
+    "base_plus_pullback_context": 7,
+    "base_plus_context_bb_ok": 5,
+    "base_plus_context_quote_ok": 5,
+    "final_active": 4,
+    "failure_partition": {
+      "no_base_event": 2255,
+      "base_event_context_failed": 29,
+      "bb_only_veto": 1,
+      "quote_only_veto": 1,
+      "both_confirmation_veto": 1
+    }
+  },
+  "after_last_signal_funnel": {
+    "decision_rows": 2163,
+    "funding_available": 2163,
+    "premium_available": 2163,
+    "funding_base": 11,
+    "premium_base": 20,
+    "base_union": 31,
+    "base_plus_pullback_context": 2,
+    "base_plus_context_bb_ok": 1,
+    "base_plus_context_quote_ok": 0,
+    "final_active": 0,
+    "failure_partition": {
+      "no_base_event": 2132,
+      "base_event_context_failed": 29,
+      "bb_only_veto": 0,
+      "quote_only_veto": 1,
+      "both_confirmation_veto": 1
+    }
+  },
+  "active_decisions": [
+    "2026-06-07T03:00:00Z",
+    "2026-06-07T04:00:00Z",
+    "2026-06-07T06:00:00Z",
+    "2026-06-07T07:00:00Z"
+  ],
+  "last_active_decision": "2026-06-07T07:00:00Z",
+  "days_from_last_active_to_end": 90.12847222222223,
+  "gaps": [
+    {
+      "start": "2026-06-02T00:00:00Z",
+      "end": "2026-06-07T03:00:00Z",
+      "hours": 123.0
+    },
+    {
+      "start": "2026-06-07T03:00:00Z",
+      "end": "2026-06-07T04:00:00Z",
+      "hours": 1.0
+    },
+    {
+      "start": "2026-06-07T04:00:00Z",
+      "end": "2026-06-07T06:00:00Z",
+      "hours": 2.0
+    },
+    {
+      "start": "2026-06-07T06:00:00Z",
+      "end": "2026-06-07T07:00:00Z",
+      "hours": 1.0
+    },
+    {
+      "start": "2026-06-07T07:00:00Z",
+      "end": "2026-09-05T10:05:00Z",
+      "hours": 2163.0833333333335
+    }
+  ],
+  "longest_gap": {
+    "start": "2026-06-07T07:00:00Z",
+    "end": "2026-09-05T10:05:00Z",
+    "hours": 2163.0833333333335
+  },
+  "cause": "After the June 7 signal, all 2,163 hourly decisions had funding and premium available. Thirty-one base events occurred; 29 failed the frozen pullback/context conditions, and the remaining two failed confirmation (one quote-volume veto and one joint BB/quote veto). The no-trade stretch is therefore frozen predicate selectivity, not cache or auxiliary unavailability.",
+  "evidence_boundary": {
+    "signal_inventory_already_opened": true,
+    "economic_outcomes_opened": false,
+    "trained": false
+  },
+  "result_hash": "1c2566d8684332be8dadb946702ebf8b4ad1736bde73bffffc0f0d9f068ef57d"
+}
