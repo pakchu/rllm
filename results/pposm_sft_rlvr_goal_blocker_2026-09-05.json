@@ -1,0 +1,152 @@
+{
+  "protocol": "pposm_sft_rlvr_goal_blocker_v2",
+  "as_of": "2026-09-05",
+  "objective": "Find a profitable non-replaceable PPOSM conditional action router using text SFT plus RLVR.",
+  "status": "blocked_local_evidence_exhausted_no_gate_weakening",
+  "deployment_authorized": false,
+  "professor_critic_recommendation": "BLOCKED",
+  "same_blocking_condition_recurred_enough": true,
+  "blocking_condition": "No locally available causal source supports both SKIP and TP12 under the fixed pre-2024 gate, while the parity-proven fresh period contains only four active anchors. Another local transformation would adaptively mine the same expanding folds rather than add information.",
+  "original_model": {
+    "result": {
+      "path": "results/pposm_conditional_residual_sft_rlvr_result_2026-09-02.json",
+      "sha256": "518848229be85fdf4fa143993a04f89ee0bbb3432693cd2b30d25a67b9fa5e0a"
+    },
+    "critic": {
+      "path": "results/pposm_conditional_residual_sft_rlvr_critic_2026-09-02.json",
+      "sha256": "b9297ee406e0e88d2fc499c3fc384a363607b0f855b13ae9cc1687065ebcbb80",
+      "decision": "FAIL",
+      "failed_checks": [
+        "base_ratio_lift_ge_0_05",
+        "stress_mdd_worsening_le_0_01pp"
+      ]
+    },
+    "closest_metrics": {
+      "return_control_pct": 53.070469596099,
+      "return_model_pct": 54.37608841155313,
+      "cagr_mdd_control": 3.3682420237580883,
+      "cagr_mdd_model": 3.331170976849798,
+      "stress_mdd_control_pct": 5.942984737185009,
+      "stress_mdd_model_pct": 6.094576330329337
+    }
+  },
+  "fresh_forward": {
+    "inventory": {
+      "path": "results/pposm_fresh_forward_signal_inventory_v4_2026-09-05.json",
+      "sha256": "ca6612e91167b053b78e8cda5a050a2ab343546f8bf95714be95b138a475c3b2",
+      "terminal": "pass",
+      "signals": 4,
+      "routes": {
+        "TP12": 3,
+        "SKIP": 1,
+        "TP4": 0
+      }
+    },
+    "gate_closure": {
+      "path": "results/pposm_fresh_forward_gate_closure_2026-09-05.json",
+      "sha256": "5b74810e3a50f24e7bb3462495296bab42a89e1f847cd28ff6c5e981d1dc5167",
+      "last_signal": "2026-06-07T07:00:00Z",
+      "no_signal_days_to_end": 90.12847222222223,
+      "after_last_signal": {
+        "hourly_decisions": 2163,
+        "funding_available": 2163,
+        "premium_available": 2163,
+        "base_events": 31,
+        "context_rejected": 29,
+        "confirmation_rejected": 2,
+        "active": 0
+      }
+    },
+    "continuation": {
+      "path": "results/pposm_fresh_forward_signal_continuation_2026-09-05.json",
+      "sha256": "c48bb8ba4b64ecce04609bdfba09580753f9eb89234d25833b093ed705191f70",
+      "reason": "four anchors make >=10 uses for each non-default action mathematically impossible"
+    },
+    "outcomes_opened": false
+  },
+  "cache_and_ingest_findings": {
+    "cache_tail": {
+      "path": "results/pposm_cache_tail_full_context_parity_diagnostic_2026-09-05.json",
+      "sha256": "c6980918a8a3de2afc4062a772781abb908f9601ab6640ed1cc641d0b607dbd5",
+      "finding": "immutable cache ends 2026-05-31T15:00Z, 33h before manifest cutoff; DB seam repairs 395 missing 5m rows and passes unchanged feature parity"
+    },
+    "funding_aliases": {
+      "path": "results/pposm_funding_alias_source_diagnostic_2026-09-05.json",
+      "sha256": "c56af6dc39ff07b95483e953cbfa5619b07b93e2e653ef6e1ef405058c1f3396",
+      "finding": "151 exact-value millisecond aliases caused by raw-time primary-key ingestion; canonical latest timestamp matches cache overlap"
+    },
+    "root_cause_of_no_trade": "Frozen entry predicate selectivity, not cache seam or funding/premium availability."
+  },
+  "source_support_attempts": {
+    "global_ratio_skip": {
+      "path": "results/pposm_global_ratio_skip_source_support_2026-09-05.json",
+      "sha256": "d167f212548237f52b7786fe9b85b867a5033c2d9ea41633d5b3df9132c09311",
+      "passed": false,
+      "best_auc": 0.532738
+    },
+    "global_ratio_micro_two_action": {
+      "path": "results/pposm_global_ratio_micro_two_action_source_support_2026-09-05.json",
+      "sha256": "91a262480e4725054ea7d8491f1ed8f4f1ab71ae5bbbb716090b91fcdc5acb62",
+      "passed": false
+    },
+    "intrahour_premium_broad": {
+      "path": "results/pposm_pre2024_intrahour_premium_action_source_2026-09-05.json",
+      "sha256": "4ec04ae8d8c1aab46dedb15696f868dd6ac1baa7d82a57954b92067ef167a888",
+      "passed": false,
+      "SKIP_auc": 0.6210383290675261,
+      "SKIP_2023_auc": 0.45652173913043476,
+      "TP12_auc": 0.5811864406779661
+    },
+    "premium_path_strict": {
+      "path": "results/pposm_premium1m_path_two_action_source_support_2026-09-05.json",
+      "sha256": "280cba7ddfeae4e9c21f7c6b2ce7cc541f52f38e84068ec1687ae619987f1d5e",
+      "passed": false,
+      "SKIP_auc": 0.4151104370082472,
+      "TP12_auc": 0.33932203389830506
+    },
+    "open_interest": {
+      "path": "results/pposm_pre2024_oi_action_source_2026-09-05.json",
+      "sha256": "799bc6f1ef4a8cb6e9e5be0f3f9af3fe441069b48c1752d48ada3be62a4ffea5",
+      "passed": false,
+      "SKIP_auc": 0.45784592245989303,
+      "TP12_auc": 0.5279795396419438
+    },
+    "premium_price_divergence": {
+      "path": "results/pposm_premium_price_divergence_two_action_source_support_2026-09-05.json",
+      "sha256": "c68d0b701818de8b4007ad5f39fe03154fbe130d1201b8fb59504af728338348",
+      "passed": false,
+      "SKIP": {
+        "auc": 0.5618226056182261,
+        "lower95": 0.5004772620032294,
+        "balanced_accuracy": 0.5404303725471609
+      },
+      "TP12": {
+        "auc": 0.608,
+        "lower95": 0.5466546563850033,
+        "balanced_accuracy": 0.6020338983050848,
+        "year2022_auc": 0.4986559139784946
+      }
+    }
+  },
+  "integrity": {
+    "gate_weakening": false,
+    "historical_oos_reopened_for_selection": false,
+    "fresh_economic_outcomes_opened": false,
+    "new_sft_or_rlvr_runs": 0,
+    "latest_full_test_result": "155 passed",
+    "branch": "codex/pposm-conditional-residual-goal-20260905"
+  },
+  "model_artifact_gap": {
+    "exact_sft_adapter_available": false,
+    "exact_rlvr_adapter_available": false,
+    "expected_rlvr_sha256": "e8a3dce3c936870b085e6a34dca752d9c097e57863c7f3c3e5b4f560c2584a3c",
+    "note": "Adapter recovery alone cannot unblock the failed economic/source gates."
+  },
+  "external_resume_conditions": [
+    "A genuinely new hash-bound causal source, preregistered before metrics, that passes all source-support gates for both SKIP and TP12.",
+    "A non-adaptive future period producing enough mature active anchors to make both non-default action counts feasible before opening outcomes.",
+    "Exact adapter recovery or a separately preregistered reproduction only after a source gate passes."
+  ],
+  "critic_basis": "Independent critic concluded current artifacts do not permit SFT+RLVR/OOS and the same blocking condition has recurred across the original attempt and repeated retries.",
+  "result_hash": "f9e85f6a075632cbfdfa7a1b4405e82d3c27c0ec68cb2c0713b4470a0e2186ea"
+}
