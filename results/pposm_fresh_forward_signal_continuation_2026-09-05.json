@@ -1,0 +1,64 @@
+{
+  "protocol": "pposm_fresh_forward_signal_continuation_v1",
+  "as_of": "2026-09-05",
+  "status": "insufficient_fresh_action_coverage",
+  "decision": "DO_NOT_OPEN_FRESH_OUTCOMES_CONTINUE_WITH_MATERIALLY_NEW_PRE2024_SOURCE",
+  "inventory": {
+    "path": "results/pposm_fresh_forward_signal_inventory_v4_2026-09-05.json",
+    "sha256": "ca6612e91167b053b78e8cda5a050a2ab343546f8bf95714be95b138a475c3b2",
+    "result_hash": "e29a4cbbe967782e3133b7e4edc6de77e03e284069eb8eb961af969d8f4076b2",
+    "signals": 4,
+    "frozen_base_state_routes": {
+      "TP12": 3,
+      "SKIP": 1,
+      "TP4": 0
+    },
+    "note": "These are frozen baseline state routes, not learned-router predictions."
+  },
+  "gate_closure": {
+    "path": "results/pposm_fresh_forward_gate_closure_2026-09-05.json",
+    "sha256": "5b74810e3a50f24e7bb3462495296bab42a89e1f847cd28ff6c5e981d1dc5167",
+    "result_hash": "1c2566d8684332be8dadb946702ebf8b4ad1736bde73bffffc0f0d9f068ef57d",
+    "days_after_last_signal": 90.12847222222223
+  },
+  "coverage_gate": {
+    "required": "adequate coverage for both SKIP and TP12 action decisions before another full OOS attempt",
+    "used_nondefault_count_min": 10,
+    "maximum_possible_nondefault_count_per_action_with_four_anchors": 4,
+    "passes": false,
+    "mathematical_reason": "No routing policy over four anchors can use either non-default action ten times.",
+    "historical_train_anchors": 462,
+    "maximum_new_anchor_lift": 4,
+    "maximum_anchor_lift_pct": 0.8658008658008658
+  },
+  "outcome_budget": {
+    "fresh_lifecycle_labels_opened": false,
+    "fresh_economic_returns_opened": false,
+    "reason": "Outcome-blind coverage already makes the preregistered materiality requirement impossible."
+  },
+  "model_artifact_status": {
+    "historical_rlvr_adapter_available": false,
+    "expected_sha256": "e8a3dce3c936870b085e6a34dca752d9c097e57863c7f3c3e5b4f560c2584a3c",
+    "effect": "Frozen-router fresh scoring is independently blocked, but adapter recovery is unnecessary because the four-anchor coverage gate already fails."
+  },
+  "next_admissible_research": {
+    "source": "authoritative bars_binance_premium BTCUSDT 1m intrahour path, pre-2024 only",
+    "why_materially_new": "Frozen PPOSM used hourly premium-index closes; the database preserves causal one-minute OHLC paths back to 2020.",
+    "required_before_oos": [
+      "hash-bound preregistration",
+      "pre-2024 expanding forward folds only",
+      "pooled AUC >=0.60 for SKIP and TP12",
+      "lower 95% AUC >0.50",
+      "balanced accuracy >=0.55",
+      "consistent year direction",
+      "no historical OOS repair"
+    ]
+  },
+  "evidence_boundary": {
+    "forward_signals_opened": true,
+    "fresh_outcomes_opened": false,
+    "historical_oos_reopened_for_selection": false,
+    "trained": false
+  },
+  "result_hash": "a28712e5aa9e337b6f6ad6f3d94376a0bd92b62b58d108b6b95b34ee8ac04742"
+}
