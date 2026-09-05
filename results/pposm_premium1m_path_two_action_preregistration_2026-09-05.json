@@ -1,0 +1,139 @@
+{
+  "protocol": "pposm_premium1m_path_two_action_preregistration_v1",
+  "created_at": "2026-09-05T12:21:29.654400+00:00",
+  "objective": "test whether non-hourly one-minute premium path shape separates both original pairwise PPOSM residual actions using pre-2024 only",
+  "why_successor": {
+    "predecessor": {
+      "path": "results/pposm_pre2024_intrahour_premium_action_source_2026-09-05.json",
+      "sha256": "4ec04ae8d8c1aab46dedb15696f868dd6ac1baa7d82a57954b92067ef167a888",
+      "result_hash": "a7ca41eef131a40711cd1b81a40680a79e23d17be14c0831e967f8381fd8a38b"
+    },
+    "methodological_delta": [
+      "eight path-only 60-minute features fixed independently of predecessor scores",
+      "exact close_time causality",
+      "label-maturity purged expanding folds",
+      "paired temporal simultaneous confidence bound"
+    ],
+    "gate_weakening": false
+  },
+  "source": {
+    "query": "\n    SELECT ts, close_time, close\n    FROM bars_binance_premium\n    WHERE symbol = :symbol AND interval = '1m'\n      AND ts >= :start AND ts < :end\n      AND ts < '2024-01-01T00:00:00Z'\n    ORDER BY ts\n",
+    "query_sha256": "53a4875c897ef5ff06c770dd58102ab47c888d5d50a706d4d9ef68babd01c83c",
+    "window": [
+      "2020-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "selected_columns": [
+      "ts",
+      "close_time",
+      "close"
+    ],
+    "coerce_float": false,
+    "anchor_path": "exact 60 rows with signal_time-60min <= ts < signal_time; no fill/interpolation/nearest",
+    "close_time_rule": "ts <= close_time < ts+1min and close_time <= signal_time"
+  },
+  "labels": {
+    "path": "data/pposm_residual_action_train_pre2024_2026-09-02.jsonl",
+    "sha256": "54bcddea310043b93ec0d770d7c9dd425e43c6aefc27b00fd98d82a9d355fbeb",
+    "pair_rows": 924,
+    "base_anchors": 462,
+    "candidate_actions": [
+      "SKIP",
+      "TP12"
+    ],
+    "default_action": "TP4",
+    "maturity": "maximum TP4/TP12 executable exit bar completion timestamp (exit row open plus 5min); purge across every fold boundary",
+    "pposm_manifest": {
+      "path": "results/pullback_premium_overheat_state_machine_manifest_2026-07-15.json",
+      "sha256": "41d6424b8ca719ee3e3b058f6f5f93bc360905ee02be5b5d9671ff5349978159"
+    }
+  },
+  "features": [
+    "path_total_variation",
+    "path_quadratic_variation",
+    "signed_path_efficiency",
+    "first_half_variation_share",
+    "last_quarter_variation_share",
+    "positive_occupation_centered",
+    "level_zero_cross_rate",
+    "increment_reversal_rate"
+  ],
+  "model": {
+    "pipeline": "StandardScaler_then_LogisticRegression",
+    "penalty": "l2",
+    "C": 0.25,
+    "solver": "liblinear",
+    "class_weight": "balanced",
+    "max_iter": 1000,
+    "threshold": 0.5,
+    "random_state": 20260906
+  },
+  "folds": [
+    {
+      "name": "train_2020_test_2021",
+      "train_years": [
+        2020
+      ],
+      "test_year": 2021
+    },
+    {
+      "name": "train_through_2021_test_2022",
+      "train_years": [
+        2020,
+        2021
+      ],
+      "test_year": 2022
+    },
+    {
+      "name": "train_through_2022_test_2023",
+      "train_years": [
+        2020,
+        2021,
+        2022
+      ],
+      "test_year": 2023
+    }
+  ],
+  "coverage_gates": {
+    "overall_min": 0.95,
+    "per_year_min": 0.9,
+    "test_fold_min": 10
+  },
+  "support_gates": {
+    "pooled_auc_min": 0.6,
+    "simultaneous_auc_lower95_strict_min": 0.5,
+    "balanced_accuracy_min": 0.55,
+    "each_year_auc_strict_min": 0.5
+  },
+  "bootstrap": {
+    "method": "year-stratified paired stationary bootstrap over base anchors",
+    "iterations": 10000,
+    "expected_block_length_anchors": 8,
+    "random_seed": 20260906,
+    "simultaneous_bound": "observed_auc[action] minus q95(max_action(observed_auc-bootstrap_auc))"
+  },
+  "selection": "none; exactly one feature vector, model, threshold, fold design, and conjunctive two-action gate",
+  "code_hashes": {
+    "preregistration_module": "ea1d567dc17cc08694ecf23ee431716e22bcf04a6d33e7e0e301cdf22b044492",
+    "evaluator_module": "713f424439af02e69eb3d69c0cb3eb60cc1418a4d1d77329c59524949501b722",
+    "frozen_data_module": "1f1eedbf69f47d654e211a8ab32e5f6b00bd14c7a25d2c9dab62c51a657076d0",
+    "pposm_module": "a17039f3b11f1a19dcb199efab9bd663c7d1fcacce9ca9eb61a2c8fd25e73589"
+  },
+  "runtime_versions": {
+    "numpy": "2.2.6",
+    "pandas": "2.3.3",
+    "scikit_learn": "1.7.2"
+  },
+  "terminal_rule": "any source/coverage/fold/action failure stops before SFT, RLVR, and 2024+ OOS; no same-source repair",
+  "evidence_boundary": {
+    "database_rows_opened": 0,
+    "pre2024_pair_labels_opened_by_this_preregistration": 0,
+    "source_support_metrics_computed": false,
+    "oos_labels_opened": 0,
+    "fresh_outcomes_opened": 0,
+    "sft_or_rlvr_started": false
+  },
+  "preregistration_hash": "ea975e36ac172b1b453f60e9207a2e07373044706c94c45da51116c67d6b91eb"
+}
