@@ -1,0 +1,68 @@
+{
+  "design": {
+    "seed": 20260906,
+    "selection": "six half-years in 2021--2023, fixed rule before run",
+    "reports": "2024,2025,2026H1; previously exposed, no clean OOS claim",
+    "ml": "annual refit on trailing three calendar years; maturity purge; no future row in fit; ridge/hgb/extra, 24h target",
+    "models": {
+      "ridge": {
+        "alpha": 100.0
+      },
+      "hgb": {
+        "max_iter": 150,
+        "max_leaf_nodes": 7,
+        "min_samples_leaf": 200,
+        "l2_regularization": 10.0,
+        "learning_rate": 0.05
+      },
+      "extra": {
+        "n_estimators": 100,
+        "max_depth": 5,
+        "min_samples_leaf": 100,
+        "max_features": 0.7
+      }
+    },
+    "mechanisms": [
+      "slow trend continuation",
+      "aligned-flow continuation",
+      "trend pullback reentry",
+      "range-bound reversal",
+      "funding carry with trend",
+      "regime switch trend/reversion",
+      "price-flow disagreement reversal"
+    ],
+    "sizing": "raw max1x and 20% annual vol target using past24h vol clipped [.1,1]",
+    "rebalances": [
+      6,
+      24
+    ],
+    "side_modes": [
+      "both",
+      "long",
+      "short"
+    ],
+    "rule_horizons": [
+      168,
+      720
+    ],
+    "thresholds": {
+      "trend": 0.75,
+      "reversion_z": 1.5,
+      "flow_alignment": 0.02,
+      "ml_return": 0.0012
+    },
+    "family_balance": "best two distinct selection paths per economic family and per ML family",
+    "mixtures": "all cross-family pairs at weights .25,.5,.75; equal and inverse-vol aggregate; net before costs",
+    "ranking": "mean six half-year annualized Sharpe minus .5*std(Sharpe), plus .25*min(Sharpe) plus .1*selection Calmar",
+    "no_cost_ratio_or_frequency_gate": true,
+    "finalists": "top five plus best pure-rule candidate, frozen before report-only replay",
+    "risk": "net exposure cap1; five-minute conservative intrabar MDD; funding proxy caveat inherited",
+    "no_live_changes": true
+  },
+  "code_sha256": "d02fa0f2b412eaecaec2d8d98bdd12c41e74278d1c1170de5cbb9d6eaf00ad03",
+  "engine_sha256": "8578a2aa3e888bc6ae226b4963d0cc0d6e828b8cd9bc8eeb9f2c915afd0c6088",
+  "sources": {
+    "market": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "funding": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+  }
+}
