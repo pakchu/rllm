@@ -1,0 +1,45 @@
+{
+  "design": {
+    "version": 1,
+    "selection": "six half-years 2021--2023",
+    "reports": "2024,2025,2026H1 exposed diagnostics",
+    "sources": "UTC calendar known ex ante; completed BTC price, aggressive flow and realized funding",
+    "mechanisms": [
+      "prequential hour-of-week drift",
+      "session-specific flow continuation",
+      "session exhaustion reversal",
+      "funding settlement crowding",
+      "weekend trend",
+      "month-end flow"
+    ],
+    "calendar_model": "annual trailing3y hour-of-week target means shrunk n/(n+100), mature6h/24h target",
+    "thresholds": {
+      "flow": 0.02,
+      "z": 1.5,
+      "trend": 0.75,
+      "funding": 5e-05,
+      "calendar_expected_return": 0.0005
+    },
+    "rebalance_hours": [
+      6,
+      24
+    ],
+    "sizing": [
+      "raw",
+      "vol20"
+    ],
+    "portfolio": "two representatives/family, cross-family pairs and aggregates, net before costs",
+    "costs": [
+      0.0,
+      0.0006,
+      0.001
+    ],
+    "risk": "net cap1 and five-minute MDD",
+    "no_frequency_or_fee_ratio_gate": true,
+    "no_live_changes": true
+  },
+  "code_sha256": "4d4d7913d3d646507cd3f85151effca6433c6944ab7f70ca481bb4bf0e1c47b8",
+  "base_sha256": "8578a2aa3e888bc6ae226b4963d0cc0d6e828b8cd9bc8eeb9f2c915afd0c6088",
+  "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+  "funding_sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+}
