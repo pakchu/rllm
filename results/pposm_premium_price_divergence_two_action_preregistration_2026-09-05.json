@@ -1,0 +1,135 @@
+{
+  "protocol": "pposm_premium_price_divergence_two_action_preregistration_v1",
+  "created_at": "2026-09-05T12:36:17.010864+00:00",
+  "objective": "test the predeclared one-minute premium-versus-BTC path divergence channel for both pairwise PPOSM residual actions",
+  "why_final_source": {
+    "predecessor": {
+      "path": "results/pposm_premium1m_path_two_action_source_support_2026-09-05.json",
+      "sha256": "280cba7ddfeae4e9c21f7c6b2ce7cc541f52f38e84068ec1687ae619987f1d5e",
+      "result_hash": "08f0546f4d8337613056e1ecdcd29bc6a6509acff7a15e2c6a52b17b0f748c89"
+    },
+    "novelty": "cross-path signed and lead-lag divergence cannot be reconstructed from the frozen hourly premium close or the premium-only path vector",
+    "identified_before_predecessor_metrics": true,
+    "gate_weakening": false
+  },
+  "sources": {
+    "premium_query": "\n    SELECT ts, close_time, close\n    FROM bars_binance_premium\n    WHERE symbol = :symbol AND interval = '1m'\n      AND ts >= :start AND ts < :end\n      AND ts < '2024-01-01T00:00:00Z'\n    ORDER BY ts\n",
+    "premium_query_sha256": "53a4875c897ef5ff06c770dd58102ab47c888d5d50a706d4d9ef68babd01c83c",
+    "market_query": "\n    SELECT ts, close\n    FROM bars_binance\n    WHERE symbol = :symbol AND interval = '1m'\n      AND ts >= :start AND ts < :end\n      AND ts < '2024-01-01T00:00:00Z'\n    ORDER BY ts\n",
+    "market_query_sha256": "bb5589a74c47ff360fc5129e49e53d7d83e418fd558ae7ceddde6cfe0aa62f4a",
+    "window": [
+      "2020-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "path": "exact paired 60-minute rows ending one minute before decision; no fill/interpolation/nearest",
+    "premium_close_time_rule": "ts <= close_time < ts+1min and close_time <= decision_time",
+    "market_completion_rule": "open-time ts <= decision_time-1min",
+    "coerce_float": false
+  },
+  "labels": {
+    "path": "data/pposm_residual_action_train_pre2024_2026-09-02.jsonl",
+    "sha256": "54bcddea310043b93ec0d770d7c9dd425e43c6aefc27b00fd98d82a9d355fbeb",
+    "pair_rows": 924,
+    "base_anchors": 462,
+    "candidate_actions": [
+      "SKIP",
+      "TP12"
+    ],
+    "default_action": "TP4",
+    "maturity": "maximum TP4/TP12 executable exit bar completion timestamp (exit row open plus 5min); purge across every fold boundary",
+    "pposm_manifest": {
+      "path": "results/pullback_premium_overheat_state_machine_manifest_2026-07-15.json",
+      "sha256": "41d6424b8ca719ee3e3b058f6f5f93bc360905ee02be5b5d9671ff5349978159"
+    }
+  },
+  "features": [
+    "increment_correlation",
+    "premium_leads_price_correlation",
+    "price_leads_premium_correlation",
+    "signed_comovement_mean",
+    "premium_beta_on_price",
+    "path_efficiency_difference",
+    "terminal_zscore_difference",
+    "half_drift_zscore_difference"
+  ],
+  "feature_numeric_guard": {
+    "epsilon": 1e-15,
+    "rule": "correlation, beta, efficiency, and z-score denominators at or below epsilon map to neutral 0"
+  },
+  "model": {
+    "pipeline": "StandardScaler_then_LogisticRegression",
+    "penalty": "l2",
+    "C": 0.25,
+    "solver": "liblinear",
+    "class_weight": "balanced",
+    "max_iter": 1000,
+    "threshold": 0.5,
+    "random_state": 20260906
+  },
+  "folds": [
+    {
+      "name": "train_2020_test_2021",
+      "train_years": [
+        2020
+      ],
+      "test_year": 2021
+    },
+    {
+      "name": "train_through_2021_test_2022",
+      "train_years": [
+        2020,
+        2021
+      ],
+      "test_year": 2022
+    },
+    {
+      "name": "train_through_2022_test_2023",
+      "train_years": [
+        2020,
+        2021,
+        2022
+      ],
+      "test_year": 2023
+    }
+  ],
+  "coverage_gates": {
+    "overall_min": 0.95,
+    "per_year_min": 0.9,
+    "test_fold_min": 10
+  },
+  "support_gates": {
+    "pooled_auc_min": 0.6,
+    "simultaneous_auc_lower95_strict_min": 0.5,
+    "balanced_accuracy_min": 0.55,
+    "each_year_auc_strict_min": 0.5
+  },
+  "bootstrap": {
+    "method": "year-stratified paired stationary bootstrap over base anchors",
+    "iterations": 10000,
+    "expected_block_length_anchors": 8,
+    "random_seed": 20260906,
+    "simultaneous_bound": "observed_auc[action] minus q95(max_action(observed_auc-bootstrap_auc))"
+  },
+  "selection": "none; one fixed cross-path feature vector and the unchanged strict-premium inference contract",
+  "code_hashes": {
+    "preregistration_module": "11af80231b1cc1027e2a86e30c57844501a1b302ed36ae52a008cc803645ec6a",
+    "evaluator_module": "8cc4ab2c5f99ad4da45569ea0f293e02892e64dcedaad6b0db7b724f938aa4c7",
+    "strict_premium_evaluator_module": "713f424439af02e69eb3d69c0cb3eb60cc1418a4d1d77329c59524949501b722"
+  },
+  "runtime_versions": {
+    "numpy": "2.2.6",
+    "pandas": "2.3.3",
+    "scikit_learn": "1.7.2"
+  },
+  "terminal_rule": "any failed action gate exhausts this cross-path source; no inversion, refit, SFT, RLVR, or OOS",
+  "evidence_boundary": {
+    "database_rows_opened": 0,
+    "source_support_metrics_computed": false,
+    "oos_labels_opened": 0,
+    "fresh_outcomes_opened": 0,
+    "sft_or_rlvr_started": false
+  },
+  "preregistration_hash": "25f0a285316eab86868ef8aa5bef6d8238ff5ff7d72e5c9b6984efc25bab5e87"
+}
