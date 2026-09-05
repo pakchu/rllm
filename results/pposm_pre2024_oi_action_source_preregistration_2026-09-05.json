@@ -1,0 +1,83 @@
+{
+  "code_hashes": {
+    "build_function": "0f20eb746e956dc03ef99ecb8cc9e310adfdcff1d9c6af0670d05daa92150ad7",
+    "builder_module": "943f907581357e6db80f8e2d29da7529090f847ca32fb8eb967b1ddefdd231be",
+    "preregistration_module": "d0f53af9046b2e288f3c57c0374742a62e5a5eed6003e5cf16d0b3e7ac9c4e18"
+  },
+  "created_at": "2026-09-05T00:00:00Z",
+  "features": {
+    "feature_selection": "none; all preregistered finite features are used",
+    "model": "deterministic balanced L2 logistic regression, one binary model per candidate action",
+    "normalization": "fit mean/std on each expanding training fold only",
+    "per_window_features": [
+      "level_mean",
+      "level_std",
+      "level_min",
+      "level_max",
+      "level_range",
+      "last_over_first_log",
+      "second_half_minus_first_half_log",
+      "abs_logdiff_sum",
+      "positive_logdiff_share",
+      "negative_logdiff_share",
+      "end_zscore"
+    ],
+    "source": "BTCUSDT open_interest_binance five-minute sum_open_interest paths ending strictly before each frozen PPOSM decision timestamp",
+    "windows_periods_5m": [
+      12,
+      48,
+      96,
+      288
+    ]
+  },
+  "label_contract": {
+    "candidate_actions": [
+      "SKIP",
+      "TP12"
+    ],
+    "default_action": "TP4",
+    "fresh_outcomes_opened": false,
+    "labels": "pre-2024 frozen PPOSM counterfactual utility only; SWITCH iff candidate utility exceeds TP4 utility",
+    "oos_labels_opened": false
+  },
+  "policy_id": "pposm_pre2024_oi_action_source_v1",
+  "preregistration_hash": "94aead0270bf82ca4701cfea8093deba50d0ee26831090cfe25334ff84b687f3",
+  "purpose": "test whether materially new pre-2024 OI paths can explain frozen PPOSM residual action labels before any OOS reopen",
+  "source_contract": {
+    "forbidden_sources": [
+      "2024_or_later_counterfactual_labels",
+      "fresh_forward_lifecycle_or_return_outcomes",
+      "gross9_future_rows",
+      "trained_adapter_scores",
+      "post_entry_outcomes_in_features",
+      "threshold_tuning_after_source_results"
+    ],
+    "minimum_feature_lookback_minutes": 1440,
+    "oi_query": "\n    SELECT ts AS date, sum_open_interest\n    FROM open_interest_binance\n    WHERE symbol = :symbol AND period = '5m' AND ts >= :start AND ts < :end\n    ORDER BY ts\n",
+    "oi_query_sha256": "bee20f235ace0bc668390b1050cc068f7a6939285881db5df823c5183b4893d1",
+    "oi_table": "open_interest_binance",
+    "period": "5m",
+    "query_end_exclusive": "2024-01-01T00:00:00Z",
+    "query_rows_opened_by_this_preregistration": 0,
+    "query_start": "2020-01-01T00:00:00Z",
+    "required_exact_grid": true,
+    "required_finite_positive_column": "sum_open_interest",
+    "symbol": "BTCUSDT"
+  },
+  "terminal_semantics": "fail closed unless every acceptance check passes; no OOS repair or model promotion from a failed source-support result",
+  "validation": {
+    "advance_if_all_pass": "only then open a separate preregistered historical OOS/residual-router check",
+    "balanced_accuracy_min_each_candidate": 0.55,
+    "bootstrap_lower95_auc_min_each_candidate": 0.5,
+    "candidate_actions": [
+      "SKIP",
+      "TP12"
+    ],
+    "consistent_year_direction": "every evaluated candidate-year AUC must be >= 0.50",
+    "default_action": "TP4",
+    "minimum_training_signals_before_fold": 80,
+    "minimum_validation_signals_per_fold": 10,
+    "pooled_auc_min_each_candidate": 0.6,
+    "split_policy": "pre-2024 expanding-forward years only; validate 2021, 2022, 2023 when both classes are present and at least 80 earlier signals exist"
+  }
+}
