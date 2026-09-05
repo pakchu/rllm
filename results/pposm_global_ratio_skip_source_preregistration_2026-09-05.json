@@ -1,0 +1,87 @@
+{
+  "as_of": "2026-09-05",
+  "design": {
+    "action": "SKIP-vs-TP4 only",
+    "anchors": 102,
+    "bootstrap_iterations": 2000,
+    "features": [
+      "ratio_log_level",
+      "ratio_dlog1",
+      "ratio_z288",
+      "ratio_available",
+      "ratio_age_bars"
+    ],
+    "folds": [
+      {
+        "name": "train_2020_test_2021",
+        "test_year": 2021,
+        "train_years": [
+          2020
+        ]
+      },
+      {
+        "name": "train_through_2021_test_2022",
+        "test_year": 2022,
+        "train_years": [
+          2020,
+          2021
+        ]
+      },
+      {
+        "name": "train_through_2022_test_2023",
+        "test_year": 2023,
+        "train_years": [
+          2020,
+          2021,
+          2022
+        ]
+      }
+    ],
+    "gates": {
+      "auc_lower95": 0.5,
+      "balanced_accuracy": 0.55,
+      "max_feature_null_fraction": 0.05,
+      "per_year_auc": 0.5,
+      "pooled_auc": 0.6
+    },
+    "join": "exact source create_time == signal_time - 5 minutes; no ffill/interpolation",
+    "models": [
+      "logreg_l2_balanced",
+      "hgb_balanced_weighted"
+    ],
+    "random_seed": 20260905,
+    "selection": "passing model first, then pooled AUC, lower95, balanced accuracy"
+  },
+  "evidence_boundary": {
+    "lifecycle_labels_opened": 0,
+    "oos_labels_opened": 0,
+    "sft_or_rlvr_started": false,
+    "source_support_metrics_computed": false
+  },
+  "implementation": {
+    "evaluator": "training/evaluate_pposm_global_ratio_skip_source.py",
+    "evaluator_sha256": "58df05e938fdad2dee125128dd3c40ac0191615f9151637c453b88bb5ea96db0",
+    "runtime_versions": {
+      "numpy": "2.2.6",
+      "pandas": "2.3.3",
+      "scikit_learn": "1.7.2"
+    }
+  },
+  "manifest_hash": "cef5b9ed2c0638dbe57560c079ef08e03705c80a912cbcbebbaf69f7f7e17c56",
+  "objective": "test whether the coverage-safe global account long-short ratio supports pre-2024 lifecycle SKIP-vs-TP4 separation before any new SFT/RLVR or OOS",
+  "protocol": "pposm_global_count_long_short_ratio_skip_source_preregistration_v1",
+  "scope": {
+    "binary_source_feasibility_only": true,
+    "full_professor_critic_pass_possible_from_this_artifact_alone": false,
+    "tp12_source_support_proven": false,
+    "train_only": true
+  },
+  "source": {
+    "path": "/home/pakchu/rllm/data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz",
+    "pposm_manifest": "results/pullback_premium_overheat_state_machine_manifest_2026-07-15.json",
+    "pposm_manifest_freeze_hash": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+    "pposm_manifest_sha256": "41d6424b8ca719ee3e3b058f6f5f93bc360905ee02be5b5d9671ff5349978159",
+    "pre2024_prefix_sha256": "1da4e6bb2929050eae69b58c7fa715900258858b76e5442c9897b1601934db99",
+    "sha256": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106"
+  }
+}
