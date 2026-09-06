@@ -1,0 +1,1205 @@
+{
+  "design": {
+    "version": 1,
+    "parent": "G9 + macro coefficient1 (existing long and short sleeves retained)",
+    "selection": "2024 only; 2025 and full2026H1 report without reranking",
+    "objective": "portfolio complement: stress-Calmar improvement + .5 relative MDD reduction; standalone profitability not required",
+    "families": [
+      "failed_rebound",
+      "sell_ignition",
+      "quiet_breakdown",
+      "crowded_break",
+      "distribution",
+      "currency_riskoff",
+      "regional_unwind",
+      "trend_acceleration"
+    ],
+    "thresholds": [
+      0.5,
+      1.0
+    ],
+    "hold_hours": [
+      3,
+      6,
+      12
+    ],
+    "hedge_coefficients": [
+      0.25,
+      0.5,
+      1.0
+    ],
+    "execution": "completed-hour predictors, next5m open; short-only overlay capped by currently positive parent net units, native-event rebalances and parent barrier exits",
+    "costs": [
+      0.0006,
+      0.001
+    ],
+    "no_frequency_overlap_correlation_gate": true,
+    "live_authorized": false,
+    "controls": [
+      "no hedge",
+      "always-on hedge at each searched coefficient"
+    ],
+    "report_finalists": "top5 distinct selection paths plus controls",
+    "caveat": "all historical periods already exposed; not pristine OOS or guaranteed new independent alpha"
+  },
+  "code_hash": "6b0a28ff48f6c192c73ff5e2dddafc6d191c93ea246eae9ec5c6c84ca17a83ec",
+  "engine_hash": "dbae4fae3df021e34b5046b2827e6b7eb20ff2945bc3db29c8ffdad5e7bf22e1",
+  "context_hash": "76df6d180c2da027c84fad7024e8049a36518744d6d93c7a61830cbce9552b5b",
+  "specs": [
+    {
+      "name": "no_hedge",
+      "family": "control",
+      "coefficient": 0.0,
+      "hold": 0,
+      "threshold": 0.0
+    },
+    {
+      "name": "always_0.25",
+      "family": "always",
+      "coefficient": 0.25,
+      "hold": 1,
+      "threshold": 0.0
+    },
+    {
+      "name": "always_0.5",
+      "family": "always",
+      "coefficient": 0.5,
+      "hold": 1,
+      "threshold": 0.0
+    },
+    {
+      "name": "always_1.0",
+      "family": "always",
+      "coefficient": 1.0,
+      "hold": 1,
+      "threshold": 0.0
+    },
+    {
+      "name": "failed_rebound_t0.5_h3_w0.25",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "failed_rebound_t0.5_h3_w0.5",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "failed_rebound_t0.5_h3_w1.0",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "failed_rebound_t0.5_h6_w0.25",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "failed_rebound_t0.5_h6_w0.5",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "failed_rebound_t0.5_h6_w1.0",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "failed_rebound_t0.5_h12_w0.25",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "failed_rebound_t0.5_h12_w0.5",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "failed_rebound_t0.5_h12_w1.0",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "failed_rebound_t1.0_h3_w0.25",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "failed_rebound_t1.0_h3_w0.5",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "failed_rebound_t1.0_h3_w1.0",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "failed_rebound_t1.0_h6_w0.25",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "failed_rebound_t1.0_h6_w0.5",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "failed_rebound_t1.0_h6_w1.0",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "failed_rebound_t1.0_h12_w0.25",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "failed_rebound_t1.0_h12_w0.5",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "failed_rebound_t1.0_h12_w1.0",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "sell_ignition_t0.5_h3_w0.25",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "sell_ignition_t0.5_h3_w0.5",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "sell_ignition_t0.5_h3_w1.0",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "sell_ignition_t0.5_h6_w0.25",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "sell_ignition_t0.5_h6_w0.5",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "sell_ignition_t0.5_h6_w1.0",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "sell_ignition_t0.5_h12_w0.25",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "sell_ignition_t0.5_h12_w0.5",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "sell_ignition_t0.5_h12_w1.0",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "sell_ignition_t1.0_h3_w0.25",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "sell_ignition_t1.0_h3_w0.5",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "sell_ignition_t1.0_h3_w1.0",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "sell_ignition_t1.0_h6_w0.25",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "sell_ignition_t1.0_h6_w0.5",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "sell_ignition_t1.0_h6_w1.0",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "sell_ignition_t1.0_h12_w0.25",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "sell_ignition_t1.0_h12_w0.5",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "sell_ignition_t1.0_h12_w1.0",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h3_w0.25",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h3_w0.5",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h3_w1.0",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h6_w0.25",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h6_w0.5",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h6_w1.0",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h12_w0.25",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h12_w0.5",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h12_w1.0",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h3_w0.25",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h3_w0.5",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h3_w1.0",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h6_w0.25",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h6_w0.5",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h6_w1.0",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h12_w0.25",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h12_w0.5",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h12_w1.0",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "crowded_break_t0.5_h3_w0.25",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "crowded_break_t0.5_h3_w0.5",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "crowded_break_t0.5_h3_w1.0",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "crowded_break_t0.5_h6_w0.25",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "crowded_break_t0.5_h6_w0.5",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "crowded_break_t0.5_h6_w1.0",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "crowded_break_t0.5_h12_w0.25",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "crowded_break_t0.5_h12_w0.5",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "crowded_break_t0.5_h12_w1.0",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "crowded_break_t1.0_h3_w0.25",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "crowded_break_t1.0_h3_w0.5",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "crowded_break_t1.0_h3_w1.0",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "crowded_break_t1.0_h6_w0.25",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "crowded_break_t1.0_h6_w0.5",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "crowded_break_t1.0_h6_w1.0",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "crowded_break_t1.0_h12_w0.25",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "crowded_break_t1.0_h12_w0.5",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "crowded_break_t1.0_h12_w1.0",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "distribution_t0.5_h3_w0.25",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "distribution_t0.5_h3_w0.5",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "distribution_t0.5_h3_w1.0",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "distribution_t0.5_h6_w0.25",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "distribution_t0.5_h6_w0.5",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "distribution_t0.5_h6_w1.0",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "distribution_t0.5_h12_w0.25",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "distribution_t0.5_h12_w0.5",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "distribution_t0.5_h12_w1.0",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "distribution_t1.0_h3_w0.25",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "distribution_t1.0_h3_w0.5",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "distribution_t1.0_h3_w1.0",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "distribution_t1.0_h6_w0.25",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "distribution_t1.0_h6_w0.5",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "distribution_t1.0_h6_w1.0",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "distribution_t1.0_h12_w0.25",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "distribution_t1.0_h12_w0.5",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "distribution_t1.0_h12_w1.0",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "currency_riskoff_t0.5_h3_w0.25",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "currency_riskoff_t0.5_h3_w0.5",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "currency_riskoff_t0.5_h3_w1.0",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "currency_riskoff_t0.5_h6_w0.25",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "currency_riskoff_t0.5_h6_w0.5",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "currency_riskoff_t0.5_h6_w1.0",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "currency_riskoff_t0.5_h12_w0.25",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "currency_riskoff_t0.5_h12_w0.5",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "currency_riskoff_t0.5_h12_w1.0",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "currency_riskoff_t1.0_h3_w0.25",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "currency_riskoff_t1.0_h3_w0.5",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "currency_riskoff_t1.0_h3_w1.0",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "currency_riskoff_t1.0_h6_w0.25",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "currency_riskoff_t1.0_h6_w0.5",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "currency_riskoff_t1.0_h6_w1.0",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "currency_riskoff_t1.0_h12_w0.25",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "currency_riskoff_t1.0_h12_w0.5",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "currency_riskoff_t1.0_h12_w1.0",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "regional_unwind_t0.5_h3_w0.25",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "regional_unwind_t0.5_h3_w0.5",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "regional_unwind_t0.5_h3_w1.0",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "regional_unwind_t0.5_h6_w0.25",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "regional_unwind_t0.5_h6_w0.5",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "regional_unwind_t0.5_h6_w1.0",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "regional_unwind_t0.5_h12_w0.25",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "regional_unwind_t0.5_h12_w0.5",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "regional_unwind_t0.5_h12_w1.0",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "regional_unwind_t1.0_h3_w0.25",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "regional_unwind_t1.0_h3_w0.5",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "regional_unwind_t1.0_h3_w1.0",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "regional_unwind_t1.0_h6_w0.25",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "regional_unwind_t1.0_h6_w0.5",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "regional_unwind_t1.0_h6_w1.0",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "regional_unwind_t1.0_h12_w0.25",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "regional_unwind_t1.0_h12_w0.5",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "regional_unwind_t1.0_h12_w1.0",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "trend_acceleration_t0.5_h3_w0.25",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "trend_acceleration_t0.5_h3_w0.5",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "trend_acceleration_t0.5_h3_w1.0",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "trend_acceleration_t0.5_h6_w0.25",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "trend_acceleration_t0.5_h6_w0.5",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "trend_acceleration_t0.5_h6_w1.0",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "trend_acceleration_t0.5_h12_w0.25",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "trend_acceleration_t0.5_h12_w0.5",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "trend_acceleration_t0.5_h12_w1.0",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 12,
+      "coefficient": 1.0
+    },
+    {
+      "name": "trend_acceleration_t1.0_h3_w0.25",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.25
+    },
+    {
+      "name": "trend_acceleration_t1.0_h3_w0.5",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 0.5
+    },
+    {
+      "name": "trend_acceleration_t1.0_h3_w1.0",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 3,
+      "coefficient": 1.0
+    },
+    {
+      "name": "trend_acceleration_t1.0_h6_w0.25",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.25
+    },
+    {
+      "name": "trend_acceleration_t1.0_h6_w0.5",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 0.5
+    },
+    {
+      "name": "trend_acceleration_t1.0_h6_w1.0",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 6,
+      "coefficient": 1.0
+    },
+    {
+      "name": "trend_acceleration_t1.0_h12_w0.25",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.25
+    },
+    {
+      "name": "trend_acceleration_t1.0_h12_w0.5",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 0.5
+    },
+    {
+      "name": "trend_acceleration_t1.0_h12_w1.0",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 12,
+      "coefficient": 1.0
+    }
+  ],
+  "context_artifacts": {
+    "2024": {
+      "path": "research/short_complement_context/2024_context.npz",
+      "sha256": "f5f53f3c326b717138966608174845ef2163a398ab3cad0017457ee38d5c1b4e",
+      "rows_5m": 105408,
+      "feature_rows_hourly": 8784,
+      "shape_targets": [
+        105408,
+        6
+      ],
+      "shape_events": [
+        105408,
+        6
+      ],
+      "shape_barriers": [
+        105408,
+        6
+      ],
+      "shape_features": [
+        8784,
+        37
+      ],
+      "array_hashes": {
+        "open": "03e8a897b11aeed0b095c6a441b1431aa0fdb07e5c3ebe60186aa6e5b52bbbf4",
+        "end": "f604f91bff252decf29f8213c948a486ca16d5a7ca7ffa131074f5bc28cf128f",
+        "high": "6b9e246ad99a3f735846923b55f7dc5fbf8c763f5e032654ce610492641f6272",
+        "low": "948acca2304fbc31bdb54afe874e4dd88468b0c71623c314dd0891a40ad28889",
+        "funding": "b14f62221387f164c1466317068fbe4be0bdbd477afc9e8a3c032e80960dfe0e",
+        "date": "23e34e402eef601a1b6d44d02f7196d71260bfbce659a283f604ae4b5a30a018",
+        "end_date": "336843c3a32b9795b407c20b1d4364a8bfabb451dd72107b9e03b5b576ff8ff7",
+        "targets": "d90109e172fc89c43e020dc2a69fd10d3e0e3af0fe2271a5b3036f8ff3055a97",
+        "events": "4fcd22dbbd99fb3093ae28b364018fa129b80eba3bee99f3f3e111c650777682",
+        "barriers": "c518ec0ea1e747667427d80dfa3687a2457b1a40ae082b393585b2d1f09738f9",
+        "weights": "6f1fbc6de2cead239ab16aefa94da661384755e48b7d59d397f7e4eea79fefef",
+        "feature_date": "3eb51391ad3b5aecf51cfe46eb8ed6921da3deaaa8c27acf87083ebd8beba5ca",
+        "feature_next5m_date": "03ceef4f8cef6743ddc87c82338a01332907ded7c7edcd956153a06bde4bab87",
+        "features": "a9d95ee5b6fda0d5226c68248a7db9c9ccf025d6dc9aea9000f4cf876e43a837",
+        "feature_row_for_5m": "42142c1cc59705b21a2755ec9201bf8b36cbc1a4ff4825cbb9ec8070cc50587a"
+      }
+    },
+    "2025": {
+      "path": "research/short_complement_context/2025_context.npz",
+      "sha256": "5134219f2862b5c7000a5c86fccc3c6cdbae6313804ba6f5c5f7636b5ba4f842",
+      "rows_5m": 105120,
+      "feature_rows_hourly": 8760,
+      "shape_targets": [
+        105120,
+        6
+      ],
+      "shape_events": [
+        105120,
+        6
+      ],
+      "shape_barriers": [
+        105120,
+        6
+      ],
+      "shape_features": [
+        8760,
+        37
+      ],
+      "array_hashes": {
+        "open": "587388fac0074de78047d46609b6428b8e3963d6d31140c8cb427378b2155fc0",
+        "end": "4d59bd87a10d5ba634f98f68d8441912d315e296d1203565665fb212cb5de3f0",
+        "high": "8eaedc56c7ad49b0052480a0223b66a2893a3287ad5c867a5fb077544974e44b",
+        "low": "b76dd912e9d461af2bf909f51937ec2c2c677dcf22f6b4b5e4893a05703e9f4c",
+        "funding": "4e183fc30c6b8bfc68d86925acbfc34551d6e227f1d9adff82e86f19763aa46c",
+        "date": "66bda6f47e84806b25f6a11eec16fadfcde47293abb5b7641e9d7e8c4b8ca666",
+        "end_date": "bfd499a53ff37301a2c6502ef6567d9b70a944fe9143d7150c3461a82ecca8f2",
+        "targets": "86e787aa7d6f8cb9520000d7e8b0177831d77ec5c43a84c077aa110edfbf3149",
+        "events": "e026f5b3301af848210ff34cd203762216b8b78f015295babba9afcf7e3a0d0f",
+        "barriers": "cf0bc0f31b81259548244deae8df65103989774c8b052cc2aab95edd6f1416d0",
+        "weights": "6f1fbc6de2cead239ab16aefa94da661384755e48b7d59d397f7e4eea79fefef",
+        "feature_date": "00777d4b762b059c8b2de3a77e02077c62cdc97ad4747e5431aa918bce32679e",
+        "feature_next5m_date": "9b28b9af99c9b623a01583471fdd0931ea1a652273eda91d7f2bb990eafd9e1a",
+        "features": "fd6004d88073697751d09790e64d0d5d6dfcb593ca3e58c4b8557b044126c1cd",
+        "feature_row_for_5m": "71344c6d915d7cb96bacb7ac48ac4aa3f42d36d6f4f5bc6777d51a4a57da9dd0"
+      }
+    },
+    "2026H1": {
+      "path": "research/short_complement_context/2026H1_context.npz",
+      "sha256": "e9be436d1d6630a11f28dfcf4fdf9a9dbb0c0ff0768d18ea30c816920a7df782",
+      "rows_5m": 52128,
+      "feature_rows_hourly": 4343,
+      "shape_targets": [
+        52128,
+        6
+      ],
+      "shape_events": [
+        52128,
+        6
+      ],
+      "shape_barriers": [
+        52128,
+        6
+      ],
+      "shape_features": [
+        4343,
+        37
+      ],
+      "array_hashes": {
+        "open": "f7d5b8505eb32ab507519b7d5b11c8b5f1401acc654eb27cf0b882f8d4af0a3a",
+        "end": "6b2ce340b478731fc004df52d66151e791363a6387bf47736c28e5261a1e3e53",
+        "high": "9210aff0b4330cc91fafb1ce2ca6d7e558fc15781e2e54f945c8614a155e2e56",
+        "low": "95f63ffa1b39975557d1efbd22981e6ff69d2c9bf14e0431b12c0d16dbfa7914",
+        "funding": "574b7084cbee015cf461a7d1bf2bcf32fc902fc80924e833e344a1a81a42a608",
+        "date": "32b0941de2f4f8d7b3ce483b65ee533b1c679ad636d33a6b586d4329a574bcb0",
+        "end_date": "642ac2144e16db447ecd6c241dd56df5f0e35b591ad2504cc4a98db26ac41e15",
+        "targets": "90ef6389e2c75e8faf0f851d2a39046e7ec1462adb06c5f69e6c8b485d9e1caa",
+        "events": "f69165b9008a634df47befc7385c7412ca146e5002935117fe51ab525ad749b6",
+        "barriers": "a1e56703b41baa3eee2026dfa0ce1ec10874604d932fcc0d69b2337aad8e501b",
+        "weights": "6f1fbc6de2cead239ab16aefa94da661384755e48b7d59d397f7e4eea79fefef",
+        "feature_date": "05f18c30d8d13bcb4cd926449f397ed8c5f06e5d036981ddefa5f35d4875928f",
+        "feature_next5m_date": "7b4141056f9c9e1791b79c2be22adb7212889c68b35390ebed0e44a5f292dcd8",
+        "features": "c288d2dcfa5f24c491f654de7963da81cf21f40336d3d85c281d9c2bd19312a7",
+        "feature_row_for_5m": "b3ace56ba0b68353d1ccb8791c1899327df90891373a78f3578088c22dd28d32"
+      }
+    }
+  }
+}
