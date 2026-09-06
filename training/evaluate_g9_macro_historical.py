@@ -15,7 +15,7 @@ from execution.portfolio_live import _build_portfolio_feature_frame
 from preprocessing.live_db_features import LiveDbFeatureConfig
 from preprocessing.binance_aux_features import attach_binance_um_aux_frames
 
-OUT=base.ROOT/'research/g9_macro_historical'
+OUT=base.ROOT/'research/g9_macro_historical_v2'
 BARRIERS=base.ROOT/'research/g9_historical_barriers/report.json'
 RAW=base.ROOT/'research/g9_september_inputs/raw_enriched_cache.pkl'
 FUND=base.ROOT/'research/g9_september_inputs/raw_funding_cache.csv.gz'
@@ -26,7 +26,7 @@ G9=joint.CONTROL_G9[:6]
 WEIGHTS=np.array([G9,np.r_[G9[:5]*.5,1.],np.r_[G9[:5],.5],np.r_[G9[:5],1.]])
 LABELS=['g9','g9_half_macro1','g9_macro0.5','g9_macro1']
 WINDOWS={'2024':('2024-01-01','2025-01-01'),'2025':('2025-01-01','2026-01-01'),'2026H1':('2026-01-01','2026-07-01')}
-DESIGN={'version':1,'windows':WINDOWS,'weights':dict(zip(LABELS,WEIGHTS.tolist())),
+DESIGN={'version':2,'windows':WINDOWS,'weights':dict(zip(LABELS,WEIGHTS.tolist())),
         'selection':'none; combinations fixed before opening these historical reports',
         'rank7':'causal annual refits for2024/2025; frozen2026 runtime model only in2026',
         'execution':'shared fixed-unit net ledger, post-fee netcap4.5, conservative barrier MDD and ruin',
@@ -38,6 +38,7 @@ def register():
     paths=[__file__,ledger.__file__,joint.__file__,builder.__file__,macro.__file__,macro_features.__file__,RAW,FUND,SPOT,MARKET,BARRIERS]
     paths += [exporter.resolve_frozen_input(value[0]) for value in exporter.INPUT_BINDINGS.values()]
     r={'design':DESIGN,'hashes':{str(p):base.sha(p) for p in paths}}
+    r=json.loads(json.dumps(r))
     path=OUT/'design.json'
     if path.exists() and json.loads(path.read_text())!=r:raise RuntimeError('Historical design drift')
     base.write_json(path,r);return r
