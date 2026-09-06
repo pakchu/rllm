@@ -37,3 +37,15 @@ def test_zero_weight_events_cannot_trigger_risk_resize():
     r=m.simulate(d,np.array([[0.,1.,0.]]*3),np.array([[1,1,1],[1,0,1],[1,0,1]],bool),np.array([[0.,1.,0.]]),.001)[0]
     assert r['orders_including_liquidation']==2
     assert r['net_cap_events']==0
+
+
+def test_net_risk_override_can_resize_all_sleeves_at_active_event():
+    # Funding reduces equity under carried units; the next active event enforces
+    # portfolio risk even if this requires resizing a non-event sleeve.
+    d={'open':np.array([100.,100.]),'end':np.array([100.,110.]),
+       'high':np.array([100.,110.]),'low':np.array([100.,100.]),
+       'funding':np.array([20.,0.]),'date':np.array(['2026-01-01','2026-01-02'],dtype='datetime64[ns]'),
+       'end_date':np.array(['2026-01-02','2026-01-03'],dtype='datetime64[ns]')}
+    r=m.simulate(d,np.array([[1.,1.,0.]]*2),np.array([[1,1,1],[1,0,0]],bool),np.array([[.5,.5,0.]]),0)[0]
+    assert r['net_cap_events']==1
+    assert np.isclose(r['return_pct'],-12.)  # .8 equity + .008 net units * 10
