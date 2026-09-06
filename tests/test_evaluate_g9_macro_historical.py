@@ -9,3 +9,11 @@ def test_fixed_combinations_and_full_h1():
     assert np.array_equal(h.WEIGHTS[2,:5],h.WEIGHTS[0,:5])
     assert h.WEIGHTS[2,5]==.5
     assert h.DESIGN['selection'].startswith('none')
+
+
+def test_registration_json_roundtrip_is_idempotent(tmp_path,monkeypatch):
+    monkeypatch.setattr(h,'OUT',tmp_path)
+    monkeypatch.setattr(h.exporter,'validate_frozen_inputs',lambda: {})
+    monkeypatch.setattr(h.exporter,'INPUT_BINDINGS',{})
+    monkeypatch.setattr(h.base,'sha',lambda path:'fixed')
+    assert h.register()==h.register()
