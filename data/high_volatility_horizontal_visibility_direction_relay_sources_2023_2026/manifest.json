@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvhvd_8_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1",
+  "query_sha256": "d7a739a09e8a42fdb6f8b52aa3ba40d67c3d0d17bffd9dcf199f8c3220c07473",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 376704,
+  "builder": {
+    "path": "training/build_high_volatility_horizontal_visibility_direction_relay_support.py",
+    "sha256": "84b02a45d43c57b9c90daa2544d5feb60b8feb523e28ee7b1ae52e8878d7496b"
+  },
+  "panel": {
+    "path": "data/high_volatility_horizontal_visibility_direction_relay_sources_2023_2026/scheduled_visibility_states.csv.gz",
+    "sha256": "3a3d32ccf0f966ad685f96f2a7044ae735dad76fd534b926943a35fead15c958",
+    "rows": 3924,
+    "valid_rows": 3319
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "f77863392570e1ab7018823c8bd0d0c72aa1c6861f1452a8272e87e2a33ed7b2"
+}

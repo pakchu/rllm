@@ -1,0 +1,135 @@
+{
+  "protocol_version": "high_volatility_caspc_quiet_premium_activity_v1",
+  "policy_id": "HVCASPCPQA-8",
+  "as_of_date": "2026-08-16",
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "candidate_family": [
+    "HVCASPCPQA-8"
+  ],
+  "candidate_family_size": 1,
+  "base_artifacts": {
+    "preregistration": {
+      "path": "results/high_volatility_cross_alt_serial_persistence_consensus_relay_preregistration_2026-08-13.json",
+      "sha256": "be77dfa8d83dfcb54171da4cf3263c57336fc629dd8f7b63ff8e8b33a860784a"
+    },
+    "support": {
+      "path": "results/high_volatility_cross_alt_serial_persistence_consensus_relay_support_2026-08-13.json",
+      "sha256": "53f401d5ab9a499838c128b7023b4e420925455ca7e858e5a4db5c6e4f83d52e"
+    },
+    "gross9": {
+      "path": "results/high_volatility_cross_alt_serial_persistence_consensus_relay_gross9_novelty_2026-08-13.json",
+      "sha256": "61c7fe10f3b331528315e8d7625aff7c8fb8ff1c82b6c553aa34f19ad89832f3"
+    },
+    "clock": {
+      "path": "data/high_volatility_cross_alt_serial_persistence_consensus_relay_clocks_2023_2026.csv.gz",
+      "sha256": "bffadb70bea5d96fc779c641dbe3a1f50ba94fdf76a4e950d778a32a2b64b085"
+    }
+  },
+  "construction": {
+    "base": "immutable HVCASPC-8 event times, side, entry and hold",
+    "state_grid": "every exact 03:00/11:00/19:00 UTC using [D-8h,D) completed data",
+    "premium_activity": "sum absolute one-minute bars_binance_premium close differences",
+    "btc_activity": "sqrt(sum squared BTCUSDT one-minute log-close returns)",
+    "relative_premium_activity": "premium_activity/btc_activity; both strict positive",
+    "rank": "strict-prior midrank over at most 270 valid state-grid blocks, minimum 180, current excluded",
+    "gate": "relative activity rank<=0.50; greater, missing or invalid is ineligible",
+    "additional_or_tuned_thresholds": "none; fixed median quiet-state gate",
+    "entry": "immutable D+5m",
+    "hold": "8 elapsed hours"
+  },
+  "mechanism": {
+    "claim": "Cross-alt serial persistence is more durable when derivative premium repricing remains quiet relative to the volatile BTC path, indicating spot-broad participation rather than crowded derivative leadership.",
+    "why_low_gross9_overlap_is_plausible": "the sparse quiet-premium subset of cross-alt serial persistence is absent from Gross9"
+  },
+  "clock": {
+    "decision": "immutable base 03:00/11:00/19:00 UTC",
+    "entry": "D+5m",
+    "hold": "8 elapsed hours",
+    "funding": "not a signal; exact held settlements sealed until economics"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "tables": [
+      "bars_binance",
+      "bars_binance_premium"
+    ],
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "postentry_prices_returns_pnl": "sealed"
+  },
+  "research_boundary": {
+    "HVCASPC_train_pass_test_fail_known": true,
+    "prior_HVCELV_premium_router_train_failure_known": true,
+    "exact_HVCASPC_quiet_premium_incidence_or_outcomes_known": false,
+    "source_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "repair_of_prior_candidate": false,
+    "selection_basis": "quiet relative premium activity applied to a distinct immutable CASPC base"
+  },
+  "stopping_rule": "source support, Gross9, train/test/eval/final; stop first failure; no rank, median, side, base, clock, hold, subset, substitution, or control repair.",
+  "manifest_hash": "cdc9f6df9f4c6de7417e3848a8f944bb359601a4ee0b009a14f52753ae3cb8f4"
+}

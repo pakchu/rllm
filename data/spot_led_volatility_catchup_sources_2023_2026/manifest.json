@@ -1,0 +1,20 @@
+{
+  "protocol_version": "slvcr_6_spot_source_v1",
+  "query": "SELECT date_bin('1 hour',ts,TIMESTAMPTZ '1970-01-01') AS hour_start,(array_agg(open ORDER BY ts))[1] AS hour_open,(array_agg(close ORDER BY ts DESC))[1] AS hour_close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_binance_spot WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1",
+  "table": "bars_binance_spot",
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-06-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "output": {
+    "path": "data/spot_led_volatility_catchup_sources_2023_2026/spot_hourly.csv.gz",
+    "sha256": "94d398e948f1283321e3784abc2a2d5dfff7a2331ff88c9720754a5720d2c6fc",
+    "rows": 27768,
+    "valid_rows": 27767
+  },
+  "manifest_hash": "78912addb00258b0be8bb79061f4447a0026eed211e115f9e655dfb1efb4d444"
+}

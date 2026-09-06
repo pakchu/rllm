@@ -1,0 +1,20 @@
+{
+  "protocol_version": "spvir_6_hourly_source_v1",
+  "queries": {
+    "spot": "SELECT date_bin('1 hour',ts,TIMESTAMPTZ '1970-01-01') AS hour_start,(array_agg(open ORDER BY ts))[1] AS hour_open,(array_agg(close ORDER BY ts DESC))[1] AS hour_close,sum(volume) AS base_volume,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_binance_spot WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1",
+    "perpetual": "SELECT date_bin('1 hour',ts,TIMESTAMPTZ '1970-01-01') AS hour_start,(array_agg(open ORDER BY ts))[1] AS hour_open,(array_agg(close ORDER BY ts DESC))[1] AS hour_close,sum(volume) AS base_volume,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1"
+  },
+  "window": [
+    "2023-06-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "output": {
+    "path": "data/spot_participation_volatility_ignition_sources_2023_2026/hourly_panel.csv.gz",
+    "sha256": "eeea18b5dbe744bb6e85a03f3a182b00c2c57addfd39513cc309214169a35b7e",
+    "rows": 27768,
+    "valid_rows": 27767
+  },
+  "manifest_hash": "2752d7811ab3bf6d5a25bf3aec10df1ff55d4d669a9af5e4fd38d69371ec6d4a"
+}

@@ -1,0 +1,145 @@
+{
+  "protocol_version": "korean_cash_leadership_relay_v1",
+  "policy_id": "KCLR-12",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During a high-variation completed Asia session, same-direction movement in Upbit KRW-BTC cash and Binance BTCUSDT perpetual is cash-sponsored regional price discovery when the absolute Upbit move exceeds the perpetual move. Follow the common direction for twelve hours as the larger Korean cash impulse transmits globally.",
+    "side": "common strict nonzero sign of completed Upbit and Binance returns",
+    "why_distinct": "KPAR used FX-adjusted kimchi-premium acceleration; DCVPRR used cross-venue participation rotation; SLVCR used Binance spot/perpetual partial transmission under implied-volatility expansion. KCLR uses direct Upbit-versus-perpetual price leadership, no FX, premium, volume, flow, or implied volatility, and promotes no prior control.",
+    "why_suited_to_volatile_regimes": "completed Binance session realized-variation rank must be at least 0.65",
+    "why_low_gross9_overlap_is_plausible": "one daily 08:05 UTC regional cash-leadership clock is distinct from the dense asymmetric fresh_kimchi_fx sleeve"
+  },
+  "features": {
+    "session": "exact aligned bars_upbit KRW-BTC and bars_binance BTCUSDT 1m paths [00:00,08:00) UTC each calendar day; all 480 timestamps required",
+    "returns": "log(07:59 close/00:00 open) independently by venue; strict nonzero and same sign",
+    "leadership": "abs(Upbit return)>abs(Binance perpetual return), strict inequality and no magnitude threshold",
+    "btc_variation": "sqrt(sum squared Binance 1m log(close/open)) over the completed session",
+    "btc_variation_rank": "strict-prior midrank against at most 270 previous valid daily sessions; minimum 180; current excluded; rank>=0.65",
+    "availability": "08:00 UTC after both exact source paths complete",
+    "missing_duplicate_nonpositive_or_incoherent": "ineligible or source failure; no imputation"
+  },
+  "clock": {
+    "decision": "each calendar day 08:00 UTC after both source sessions complete",
+    "entry": "exact 08:05 UTC BTCUSDT perpetual 5m open",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes",
+    "no_imputation": true
+  },
+  "policy": {
+    "history_observations": 270,
+    "minimum_history_observations": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "upbit": {
+      "table": "bars_upbit",
+      "symbol": "KRW-BTC",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "read_only": true
+    },
+    "perpetual": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_leadership_gate",
+      "binance_leadership",
+      "one_day_stale_geometry",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "database_metadata_only_opened_before_preregistration": true,
+    "upbit_or_binance_values_used_to_select_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent Korean cash price-leadership channel plus user-required high volatility"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, strict economics; no session, leadership, threshold, side, hold, timing, volatility, or subset repair",
+  "manifest_hash": "d3aa5c201469c91623da2bb8b24856ed2e9bc4c3a11ac07633acbb12189fa4d0"
+}

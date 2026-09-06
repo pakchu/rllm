@@ -1,0 +1,27 @@
+{
+  "protocol_version": "hvcbr_6_btc_source_v1",
+  "queries": {
+    "perp": "\nSELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "spot": "\nSELECT ts,open,high,low,close\nFROM bars_binance_spot\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n"
+  },
+  "tables": [
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "exact_candidate_outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_cash_basis_reversion_relay_sources_2023_2026/eight_hour_cash_basis_panel.csv.gz",
+    "sha256": "73ca15517bb004341da8c85aa3d62d208caa6062934bb7c56604c6f0720e4269",
+    "rows": 3654,
+    "valid_rows": 3652
+  },
+  "manifest_hash": "fbfd173fb9ac5ca71cc78b02d8e79aa46075a3b3c428ce46871d21c361fd2fb9"
+}

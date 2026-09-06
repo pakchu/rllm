@@ -1,0 +1,316 @@
+"""Outcome-blind preregistration for the Gross9 async same-side pair search.
+
+This file freezes the next non-LLM signal-alpha search space before any
+new pair-combination incidence or pair-combination outcome is opened.  It binds
+only already-published, train-economic PASS component artifacts and their
+predecessor prereg/source-support/Gross9/clock files by path and SHA-256.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+from itertools import combinations
+from pathlib import Path
+from typing import Any, Mapping, Sequence
+
+
+POLICY_ID = "G9ASYNCPAIR-8"
+PROTOCOL_VERSION = "gross9_async_same_side_pair_search_preregistration_v1"
+AS_OF_DATE = "2026-09-02"
+DEFAULT_OUTPUT = Path("results/gross9_async_same_side_pair_search_preregistration_2026-09-02.json")
+FAMILYWISE_ALPHA = 0.10
+COMPONENT_ORDER = (
+    "HVCELV-8",
+    "HVCASPCWMV-8",
+    "HVCPF17-8",
+    "HVCQTR-24",
+    "HVDIMIO-8",
+    "HVDEMWMV-24",
+    "HVEIV-24",
+    "HVLVR-8",
+    "HVSAUD-8",
+)
+CANDIDATE_FAMILY = tuple(f"{left}__ASYNC_SAME_SIDE_6H__{right}" for left, right in combinations(COMPONENT_ORDER, 2))
+FAMILY_SIZE = 36
+BONFERRONI_RAW_P_MAX = FAMILYWISE_ALPHA / FAMILY_SIZE
+TRAIN_WINDOW = ("2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z")
+
+GROSS9_PRE2025_CLOCK_MANIFEST = {
+    "path": "data/gross9_pre2025_structural_clocks_2026-08-08/manifest.json",
+    "sha256": "5433812da786a959cda1cfcf4825bc2e4a228ea8152a4b8cce1e867f29adf073",
+    "manifest_hash": "c1f7c2096cea035d053dd3d7b887b13f3220b6d96ddb99893b5be26cb44ae650",
+    "authority_sha256": "329878d90b6cd9c731eb4871ac041256f95f03c14dd261ada681d3a370709875",
+}
+
+COMPONENT_ARTIFACTS: dict[str, dict[str, Any]] = {
+    "HVCELV-8": {
+        "train_economics": {"path": "results/high_volatility_caspc_ehlers_active_veto_train_economics_2026-08-16.json", "sha256": "6f0841ffd68d3571ee87bea1a995022c73c34183749792ea69b90051f4829f68", "manifest_hash": "3ef7256425e3929e9693997d833cb213614fec203514a5252ef1ca2345145888"},
+        "preregistration": {"path": "results/high_volatility_caspc_ehlers_active_veto_preregistration_2026-08-16.json", "sha256": "7dc8f6228fa32eba7d5aded586d389855a47fbf12917800c43537e5e18c6244f"},
+        "source_support": {"path": "results/high_volatility_caspc_ehlers_active_veto_support_2026-08-16.json", "sha256": "9b7d2230588465a73dd9646387d3d7000b3f26d98daeef4e25cf51f4118c6375"},
+        "gross9": {"path": "results/high_volatility_caspc_ehlers_active_veto_gross9_novelty_2026-08-16.json", "sha256": "b7d94871688fce546a6a187594cf9665856193d7129cba4c2ca6e69fa9aa3b17", "manifest_hash": "1f27e8fd2f0edfc0663d47cd76fa12a6793963698c23e28e0ebc50a51a1ab419"},
+        "clock": {"path": "data/high_volatility_caspc_ehlers_active_veto_clocks_2023_2026.csv.gz", "sha256": "1f8512a74906921169b115ec917c80c76b714c5a2f5fda25698feb6b4b026294", "rows": 130},
+    },
+    "HVCASPCWMV-8": {
+        "train_economics": {"path": "results/high_volatility_caspc_weekly_momentum_active_veto_train_economics_2026-08-17.json", "sha256": "13adf7a6470165f683ab56454b8bbe3693553f132ae1710d9193b969cca95ee5", "manifest_hash": "808f5daa20b7f1e04a7434f7ee75cb1e3f5baf2b33f6c84b909ceeb84cc9921b"},
+        "preregistration": {"path": "results/high_volatility_caspc_weekly_momentum_active_veto_preregistration_2026-08-17.json", "sha256": "3bddb2b206bc2a64bc7d8247021e0e530ae7d375883f4355f0e2f46a4f18b96b"},
+        "source_support": {"path": "results/high_volatility_caspc_weekly_momentum_active_veto_support_2026-08-17.json", "sha256": "315c4b4772d4369176db95a7e80c15708a739c66c0e09e808ee83733269d69ef"},
+        "gross9": {"path": "results/high_volatility_caspc_weekly_momentum_active_veto_gross9_novelty_2026-08-17.json", "sha256": "387ad714ae73795b7c8466b5f25bfc7111fdbcc902b75284b96c893b16b600fa", "manifest_hash": "6859d8b50967cdc9c918ea6521aaa352aad518f54d4f0bad1a433704a1d7bddc"},
+        "clock": {"path": "data/high_volatility_caspc_weekly_momentum_active_veto_clocks_2023_2026.csv.gz", "sha256": "b535d44ade990216e961f59e1d3a9e830980e369cb536ca54b174f349b945437", "rows": 125},
+    },
+    "HVCPF17-8": {
+        "train_economics": {"path": "results/high_volatility_complementary_persistence_17utc_fallback_train_economics_2026-08-16.json", "sha256": "ea5907060a43ee7bad3f7b8e85fb1455261256043d79968a46c3f3a9d090a142", "manifest_hash": "01d5eaf3aa606290b7810132e46431df51cda5c6601ec80b047518992d5b9297"},
+        "preregistration": {"path": "results/high_volatility_complementary_persistence_17utc_fallback_preregistration_2026-08-16.json", "sha256": "503b8d6697077df0b5a259cb36e0e5f876f369cc23d1a20aaf3d5c741a850ea3"},
+        "source_support": {"path": "results/high_volatility_complementary_persistence_17utc_fallback_support_2026-08-16.json", "sha256": "603ecc40c2dd0c4a4392c80cbad2e9c68f3ade4089c186a7183e5a9202525ca1"},
+        "gross9": {"path": "results/high_volatility_complementary_persistence_17utc_fallback_gross9_novelty_2026-08-16.json", "sha256": "10443f7cb617b388be0c2ecc7d9566e9cb44cf7ac95d0538bc698d747c2e0a11", "manifest_hash": "75f13a29da5618d83286cdf7f3627afbaf00279b5bf789ccb0f8fdd10cad9c9c"},
+        "clock": {"path": "data/high_volatility_complementary_persistence_17utc_fallback_clocks_2023_2026.csv.gz", "sha256": "7fa5242540c2789bbbf4d753a7db076d37d71929e6ca490333cc2546412362bb", "rows": 435},
+    },
+    "HVCQTR-24": {
+        "train_economics": {"path": "results/high_volatility_credit_quality_transition_relay_train_economics_2026-08-18.json", "sha256": "fd64706bb751fea4abf5df0c8fff5ee1a2f4d0517678009bf858675754792fe2", "manifest_hash": "860cb8246e5f9c9b5b8c87837d18c3fcc4e4c7909838a10d48599f242b6f5c34"},
+        "preregistration": {"path": "results/high_volatility_credit_quality_transition_relay_preregistration_2026-08-18.json", "sha256": "af178c8ef143d693b2d60480c24122ddf0e76d7a1eb4625b634a0de40c03b0a6"},
+        "source_support": {"path": "results/high_volatility_credit_quality_transition_relay_support_2026-08-18.json", "sha256": "7812ab6b475a1d9fbc1f9d7f90572df05c1409a29f9c1b94e2ab4fec634fa02f"},
+        "gross9": {"path": "results/high_volatility_credit_quality_transition_relay_gross9_novelty_2026-08-18.json", "sha256": "2677e52c18daf07b52f2caf3d2710b99a621f52f1fe84355640c201d76248880", "manifest_hash": "b7aab4bf6a0d1189b29e964ea0cbbecd05bc05878d1a9b52fdf2253e6f6d9642"},
+        "clock": {"path": "data/high_volatility_credit_quality_transition_relay_clocks_2023_2026.csv.gz", "sha256": "7026c3e650f9587964b43ff51114c35bf032cf1667b877263ba4842a5aed663e", "rows": 199},
+    },
+    "HVDIMIO-8": {
+        "train_economics": {"path": "results/high_volatility_dcs_imi_active_override_train_economics_2026-08-16.json", "sha256": "6157ff884cc075fbb83e2049f42cff7732be0fd0eb6dc8874abfa0bd2c239538", "manifest_hash": "d0e84f77b1e32ab71c84fd412dd4fc61721009f63bae4d84c9244d9641302afc"},
+        "preregistration": {"path": "results/high_volatility_dcs_imi_active_override_preregistration_2026-08-16.json", "sha256": "0f65c339a809584308740821f347786f1ee03d1a53ad5144d82c63d5b4ef650b"},
+        "source_support": {"path": "results/high_volatility_dcs_imi_active_override_support_2026-08-16.json", "sha256": "512cad6f872ec16f1a1d393848dfaf7e726ae4dd9a48c53653d6f5ace096ad8a"},
+        "gross9": {"path": "results/high_volatility_dcs_imi_active_override_gross9_novelty_2026-08-16.json", "sha256": "e78124cadbf0a11fb7e345b0cb2b4dcee35891db3d363f97d6a7a103880730a4", "manifest_hash": "f51f8bda551137cd2d9b17e78a01f715e4d5345a4e84c98643e9292680a30944"},
+        "clock": {"path": "data/high_volatility_dcs_imi_active_override_clocks_2023_2026.csv.gz", "sha256": "1d00f42635f911020a79147a592f60d7b54773e0426778d3d2a027817216be3d", "rows": 235},
+    },
+    "HVDEMWMV-24": {
+        "train_economics": {"path": "results/high_volatility_demarker_weekly_momentum_active_veto_train_economics_2026-08-17.json", "sha256": "8c57c7a4a4d0512665dfb17225475345f8ec8537b736d46c5b7cc6639a88db35", "manifest_hash": "7b39705be2225e9e45bb0e4bf872cf042f290b2c677699dfc96bfa38609a53c0"},
+        "preregistration": {"path": "results/high_volatility_demarker_weekly_momentum_active_veto_preregistration_2026-08-17.json", "sha256": "6209b6cee86acfe3d2e68d26368426fd9153031a1fd33a37253e9d55170ec5cf"},
+        "source_support": {"path": "results/high_volatility_demarker_weekly_momentum_active_veto_support_2026-08-17.json", "sha256": "a699c3d8d0b21f0cb3d8784e4bbc2556cef1b0780b24bd8983a2a70f101816d5"},
+        "gross9": {"path": "results/high_volatility_demarker_weekly_momentum_active_veto_gross9_novelty_2026-08-17.json", "sha256": "eb831ff0204a3497863377d14b76e155e329d3b80b92fed95cf29267f8ee6cc3", "manifest_hash": "b87bb08500d4b3dfb9188b33151e813d77571118575f2bc2d6bbbbd7a56f2ade"},
+        "clock": {"path": "data/high_volatility_demarker_weekly_momentum_active_veto_clocks_2023_2026.csv.gz", "sha256": "fd0ae6e974f5d0f3026d62fed76eed07fdb19af5e3e242458fdbcac59729a12a", "rows": 110},
+    },
+    "HVEIV-24": {
+        "train_economics": {"path": "results/high_volatility_ehlers_imi_veto_train_economics_2026-08-16.json", "sha256": "00c47471e1e1a3a14c0b38b7f06ae8e34ef6ac31d4db115c8d6bf3b2356a6fb6", "manifest_hash": "1f2dfd39548c9e7f25c5a3901613e47f726b7c1acd1ec2420b443a10e62c5be8"},
+        "preregistration": {"path": "results/high_volatility_ehlers_imi_veto_preregistration_2026-08-16.json", "sha256": "09992a113faa45c9ef420ba40f1ff9363e2ee3f2f11548315056b1e1730bb60d"},
+        "source_support": {"path": "results/high_volatility_ehlers_imi_veto_support_2026-08-16.json", "sha256": "94463c0f3f49cca89c8ef58834cef8e0da035ca379821449454a1409923d9a5b"},
+        "gross9": {"path": "results/high_volatility_ehlers_imi_veto_gross9_novelty_2026-08-16.json", "sha256": "c33dc01156e5b0c0b27f5c85e27d25658695c1fc496d8064c866167fe000adeb", "manifest_hash": "0a8aece774e26d5b39601d06e0977c23b77783cf65e5acee91d97ff5158fceae"},
+        "clock": {"path": "data/high_volatility_ehlers_imi_veto_clocks_2023_2026.csv.gz", "sha256": "3f16540ef8eb05cff29767cff287dab9dbe00a8537351642e328d39c511e4c13", "rows": 183},
+    },
+    "HVLVR-8": {
+        "train_economics": {"path": "results/high_volatility_lagged_veto_reverse_train_economics_2026-08-16.json", "sha256": "899cfb4b79f32715e4a2b1a4472087d1de2c0282033f003794a6d5939751fc4c", "manifest_hash": "f4960e748d16a72c1b84b8ffa8a24d0ed693ba3a10eb899f13ef96ca66169a73"},
+        "preregistration": {"path": "results/high_volatility_lagged_veto_reverse_preregistration_2026-08-16.json", "sha256": "05191c2885153e565ac91250dc4a978a8c154b27c664c8383d2ee2b9195c23e0"},
+        "source_support": {"path": "results/high_volatility_lagged_veto_reverse_support_2026-08-16.json", "sha256": "79f09b619b387b474e27dd7cdd8f03b2850586ece3662aa5cd7bcfcff38b5edd"},
+        "gross9": {"path": "results/high_volatility_lagged_veto_reverse_gross9_novelty_2026-08-16.json", "sha256": "df77a623f4cd90da19c2fe021499ebe5cfc0ceeda1eb88c52fbe3ae8827a2206", "manifest_hash": "5c5ec731bc5d947079c4e21deb08f98e80ec98229c7adff17367a1d464c08a2c"},
+        "clock": {"path": "data/high_volatility_lagged_veto_reverse_clocks_2023_2026.csv.gz", "sha256": "57d75a299da3b4892f30583c090d18e9746c67b31338cedcba53b0d427d098fd", "rows": 226},
+    },
+    "HVSAUD-8": {
+        "train_economics": {"path": "results/high_volatility_spot_adverse_underwater_duration_relay_train_economics_2026-08-18.json", "sha256": "fabc3e5e444016d81361236a2f3b023a1da8c4c3416a4c868597d3b4885e84f3", "manifest_hash": "7c12addb61c0f1bd4636c98fc28d83370b84861c26595771235596b0b88c07f6"},
+        "preregistration": {"path": "results/high_volatility_spot_adverse_underwater_duration_relay_preregistration_2026-08-18.json", "sha256": "6f65fe4632da0c714cf971a95d1be98fb28bb8ef2a4926188656ff58af676446"},
+        "source_support": {"path": "results/high_volatility_spot_adverse_underwater_duration_relay_support_2026-08-18.json", "sha256": "1fc578d0c95d12c4f9cea7da4ee0f712fc0546573c2e334011eb19e2ee55b27a"},
+        "gross9": {"path": "results/high_volatility_spot_adverse_underwater_duration_relay_gross9_novelty_2026-08-18.json", "sha256": "77a222777e6baf434260657baf9b1768745b42f0ac02bcc6b9ae321b028edc6c", "manifest_hash": "90b155a7b34597e9287588727647662cea786e873ae315e301c182921d82f89c"},
+        "clock": {"path": "data/high_volatility_spot_adverse_underwater_duration_relay_clocks_2023_2026.csv.gz", "sha256": "2a7a893cdc2026227c00ba0a7622f35277c149498cd8413dd21e2d286eaf38d9", "rows": 183},
+    },
+}
+
+
+def canonical_hash(value: Any) -> str:
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def sha256_file(path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": PROTOCOL_VERSION,
+        "policy_id": POLICY_ID,
+        "as_of_date": AS_OF_DATE,
+        "objective": "find a non-LLM signal-trading alpha by testing untried asynchronous same-side pair combinations among the exact nine existing Gross9-passing train-economic components",
+        "exploratory_discovery": True,
+        "fresh_confirmatory_evidence": False,
+        "component_order": list(COMPONENT_ORDER),
+        "component_count": len(COMPONENT_ORDER),
+        "component_artifacts": COMPONENT_ARTIFACTS,
+        "gross9_pre2025_clock_manifest": GROSS9_PRE2025_CLOCK_MANIFEST,
+        "implementation": {
+            "preregister": {
+                "path": "training/preregister_gross9_async_pair_search.py",
+                "sha256": sha256_file(__file__),
+            },
+            "train_clock_builder": {
+                "path": "training/build_gross9_async_pair_train_clocks.py",
+                "sha256": sha256_file(
+                    Path(__file__).with_name("build_gross9_async_pair_train_clocks.py")
+                ),
+            },
+        },
+        "candidate_family": list(CANDIDATE_FAMILY),
+        "candidate_family_size": FAMILY_SIZE,
+        "construction": {
+            "operator": "asynchronous same-side two-component confirmation",
+            "pair_definition": "all 36 unordered pairs from the nine frozen train-economic PASS components",
+            "entry_rule": "for a pair (A,B), accept the later trigger event as candidate entry when the other component has at least one same-side confirming entry in the prior 6 elapsed hours; the later trigger supplies entry_time and side",
+            "lookback_window": "inclusive [later entry minus 6 elapsed hours, later entry]",
+            "same_timestamp_confirmation": "allowed once, then deduplicated by entry_time and side",
+            "output_entry_time": "later trigger component entry_time",
+            "output_side": "later trigger component side, identical to the prior confirming component side",
+            "duplicate_same_pair_same_timestamp_side_policy": "deduplicate before reservation",
+            "reservation": "one chronological half-open reservation inside each candidate-pair clock after candidate construction; touching intervals allowed",
+            "component_formula_threshold_clock_mutability": "immutable",
+        },
+        "clock": {
+            "entry": "later same-side trigger event",
+            "hold": "8 elapsed hours",
+            "gross_exposure": 0.5,
+            "funding": "not a signal input; exact held settlements only after source and Gross9 pass",
+        },
+        "stages": {
+            "train": list(TRAIN_WINDOW),
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "must_pass_before_economics": True,
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.20,
+            "max_month_share": 0.45,
+        },
+        "gross9_novelty_gates": {
+            "must_pass_before_economics": True,
+            "exact_entry_jaccard_max": 0.10,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "comparator": GROSS9_PRE2025_CLOCK_MANIFEST,
+        },
+        "economic_gates": {
+            "train_window_only_for_initial_rank_and_gate": list(TRAIN_WINDOW),
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": BONFERRONI_RAW_P_MAX,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "costs": {"base_each_notional_side_bp": 6, "stress_each_notional_side_bp": 10},
+            "accounting": "fixed quantity, exact funding, every held 5m favorable then adverse, global HWM, full-calendar CAGR",
+        },
+        "selection": {
+            "eligibility": "pair passes source-support and Gross9 novelty gates before any economics",
+            "ranking_metric": "descending train base-cost CAGR divided by strict MDD",
+            "tie_breaks": ["descending train base-cost absolute return", "ascending frozen candidate_family order"],
+            "raw_rank_one_no_substitution": True,
+            "winner_train_gate": "raw rank-one pair must pass every train economic gate; failure terminates the family",
+            "later_stages": "after winner freeze, evaluate test/eval/final sequentially; stop on first failure; no rerank or repair",
+        },
+        "familywise_multiplicity": {
+            "family": "all C(9,2)=36 async same-side pairs, including candidates later failing source or Gross9 gates",
+            "rule": "Bonferroni",
+            "familywise_alpha": FAMILYWISE_ALPHA,
+            "number_of_hypotheses": FAMILY_SIZE,
+            "winner_raw_weekly_signflip_p_max": BONFERRONI_RAW_P_MAX,
+            "equivalent_adjusted_p": "min(1, 36 * raw one-sided weekly sign-flip p)",
+        },
+        "research_boundary": {
+            "llm_path_paused": True,
+            "component_standalone_train_outcomes_known": True,
+            "component_standalone_outcomes_used_to_change_components": False,
+            "component_formulas_thresholds_clocks_frozen": True,
+            "component_clock_rows_opened_by_preregistration": 0,
+            "pair_combination_incidence_opened_by_preregistration": False,
+            "pair_combination_outcomes_opened_by_preregistration": False,
+            "test_eval_final_outcomes_opened_before_winner_freeze": False,
+            "classification": "exploratory discovery; not fresh confirmatory evidence",
+        },
+        "stopping_rule": "Fixed sequence over the frozen 36-pair family: source support, Gross9 novelty, train-only raw ranking and rank-one train gates, then frozen-winner test/eval/final economics. Stop on first failure with no pair substitution, formula, threshold, side, clock, hold, subset, cost, control, or rerank repair.",
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(value: Mapping[str, Any]) -> None:
+    core = dict(value)
+    manifest_hash = core.pop("manifest_hash", None)
+    if manifest_hash != canonical_hash(core):
+        raise RuntimeError("G9ASYNCPAIR-8 preregistration drift")
+    if value.get("protocol_version") != PROTOCOL_VERSION or value.get("policy_id") != POLICY_ID:
+        raise RuntimeError("G9ASYNCPAIR-8 protocol identity drift")
+    if tuple(value.get("component_order", ())) != COMPONENT_ORDER:
+        raise RuntimeError("G9ASYNCPAIR-8 component family drift")
+    if tuple(value.get("candidate_family", ())) != CANDIDATE_FAMILY:
+        raise RuntimeError("G9ASYNCPAIR-8 candidate family drift")
+    if value.get("candidate_family_size") != FAMILY_SIZE:
+        raise RuntimeError("G9ASYNCPAIR-8 family size drift")
+    if value.get("economic_gates", {}).get("weekly_signflip_one_sided_p_max") != BONFERRONI_RAW_P_MAX:
+        raise RuntimeError("G9ASYNCPAIR-8 Bonferroni drift")
+    if value.get("research_boundary", {}).get("pair_combination_incidence_opened_by_preregistration") is not False:
+        raise RuntimeError("G9ASYNCPAIR-8 incidence boundary drift")
+
+
+def select_train_winner(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Freeze the raw rank-one row after the future train search is run."""
+    if len(rows) != FAMILY_SIZE:
+        raise ValueError("G9ASYNCPAIR-8 selection requires exactly 36 candidate rows")
+    by_id: dict[str, Mapping[str, Any]] = {}
+    for row in rows:
+        candidate = row.get("candidate")
+        if not isinstance(candidate, str) or candidate in by_id:
+            raise ValueError("G9ASYNCPAIR-8 candidate IDs must be unique strings")
+        by_id[candidate] = row
+    if set(by_id) != set(CANDIDATE_FAMILY):
+        raise ValueError("G9ASYNCPAIR-8 selection requires the exact frozen family")
+
+    eligible: list[tuple[int, Mapping[str, Any], float, float]] = []
+    for order, candidate in enumerate(CANDIDATE_FAMILY):
+        row = by_id[candidate]
+        for flag in ("source_pass", "gross9_pass", "train_economic_pass"):
+            if type(row.get(flag)) is not bool:
+                raise ValueError(f"G9ASYNCPAIR-8 {flag} must be boolean")
+        if not row["source_pass"] or not row["gross9_pass"]:
+            continue
+        ratio = row.get("train_cagr_to_strict_mdd")
+        absolute = row.get("train_absolute_return")
+        if (
+            isinstance(ratio, bool)
+            or isinstance(absolute, bool)
+            or not isinstance(ratio, (int, float))
+            or not isinstance(absolute, (int, float))
+            or not math.isfinite(float(ratio))
+            or not math.isfinite(float(absolute))
+        ):
+            raise ValueError("G9ASYNCPAIR-8 train ranking metrics must be numeric")
+        eligible.append((order, row, float(ratio), float(absolute)))
+    if not eligible:
+        raise RuntimeError("G9ASYNCPAIR-8 no source/Gross9 eligible pairs")
+    eligible.sort(key=lambda item: (-item[2], -item[3], item[0]))
+    _, winner, ratio, absolute = eligible[0]
+    if winner.get("train_economic_pass") is not True:
+        raise RuntimeError("G9ASYNCPAIR-8 raw rank one failed train; no substitution")
+    return {
+        "candidate": winner["candidate"],
+        "train_cagr_to_strict_mdd": ratio,
+        "train_absolute_return": absolute,
+        "frozen_before_test": True,
+        "substitution_authorized": False,
+        "rerank_authorized": False,
+    }
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args(argv)
+    value = build()
+    validate(value)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

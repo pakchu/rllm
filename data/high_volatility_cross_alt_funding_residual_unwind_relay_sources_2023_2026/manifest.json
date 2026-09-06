@@ -1,0 +1,46 @@
+{
+  "protocol_version": "hvcafru_8_sources_v1",
+  "queries": {
+    "funding": "SELECT funding_time,symbol,funding_rate FROM funding_rates_binance WHERE symbol=ANY(:symbols) AND funding_time>=:start AND funding_time<:end ORDER BY funding_time,symbol",
+    "bars": "SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS block_start,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1"
+  },
+  "query_sha256": {
+    "funding": "fb48e505dd3e4145075b85310c562c36b592c109e03b09cd1df18b41aa6c7e46",
+    "bars": "568b279b2feba127b87b798c707921eb07cada4dcb190f318c50769b0c7fe131"
+  },
+  "tables": [
+    "funding_rates_binance",
+    "bars_binance"
+  ],
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "funding": 4203,
+    "bars": 3924
+  },
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_funding_residual_unwind_relay_support.py",
+    "sha256": "20028613588d140136a921a74b5db432ebff3a65b58318d4860b15a0a0fbc9db"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_funding_residual_unwind_relay_sources_2023_2026/settlement_states.csv.gz",
+    "sha256": "537f2c1020f1ee807e94e2134ee12c034cbfd82a811d8ae88c39e52cf4144e81",
+    "rows": 3923,
+    "valid_rows": 0
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "57017029c969af6d4980b010687943c7fbe56a02b269df0099cd87f0e8d6db91"
+}

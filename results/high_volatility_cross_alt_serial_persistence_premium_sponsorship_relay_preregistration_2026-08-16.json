@@ -1,0 +1,192 @@
+{
+  "protocol_version": "high_volatility_cross_alt_serial_persistence_premium_sponsorship_relay_v1",
+  "policy_id": "HVCASPCPSC-8",
+  "slug": "high_volatility_cross_alt_serial_persistence_premium_sponsorship_relay",
+  "as_of_date": "2026-08-16",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "When at least four of six liquid alt perpetuals exhibit unusually strong positive first-order return persistence and finish in one common direction, broad crypto inventory is being executed sequentially rather than repriced in one isolated jump. During elevated BTC variation, propagate that persistent direction into BTC for eight hours only when exact same-block BTC perpetual premium displacement agrees with that direction.",
+    "side": "strict common completed displacement sign among at least four positive-autocorrelation tail alts",
+    "why_distinct": "HVSRAR estimates BTC-only serial autocorrelation. HVABLR estimates directional lead-lag between an alt basket and BTC. HVCAPEC measures path efficiency without ordering information. HVCASPC separately estimates each alt own-lag five-minute return autocorrelation, ranks it by own causal history, and requires a common displacement direction; HVCASPCPSC adds only exact decision-available same-block BTC perpetual premium displacement concordance to the frozen HVCASPC geometry; it uses no BTC direction, volume, funding, fitted outcome, prior event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed trailing twenty-four-hour BTC realized variation must rank in its causal upper 35 percent, while same-direction premium displacement identifies derivative-sponsored July-like volatile states",
+    "why_low_gross9_overlap_is_plausible": "the conjunction of offset cross-alt serial-persistence breadth and same-block BTC premium displacement concordance is absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 03:00, 11:00, and 19:00 UTC boundaries D",
+    "alt_path": "96 exact five-minute aggregates per alt from 480 exact coherent bars_binance one-minute rows [D-8h,D)",
+    "five_minute_return": "log(five-minute close/five-minute open), finite",
+    "alt_displacement": "sum of 96 five-minute returns, strict nonzero",
+    "serial_persistence": "sample Pearson correlation of returns[0:95] and returns[1:96], both sample standard deviations strict positive",
+    "persistence_rank": "per-symbol strict-prior midrank of serial_persistence over at most 270 earlier jointly source-valid decisions, minimum 180, current excluded",
+    "tail_alt": "serial_persistence strict positive and persistence_rank>=0.75",
+    "consensus": "at least four tail alts have one common strict displacement sign; larger breadth wins and equal positive/negative breadth rejects",
+    "consensus_strength": "median persistence_rank among selected-side tail alts",
+    "btc_realized_variation": "sqrt(sum squared exact BTCUSDT one-minute log(close/open) returns over [D-24h,D)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "premium_block": "480 exact unique coherent BTCUSDT bars_binance_premium interval=1m rows [D-8h,D); finite signed OHLC",
+    "premium_displacement": "last completed premium close minus first completed premium open; strict nonzero",
+    "premium_sponsorship": "sign(premium_displacement) equals the frozen cross-alt consensus side",
+    "eligible_state": "source-valid persistence consensus, variation gate, and premium sponsorship",
+    "onset": "eligible now and immediately previous exact source-valid decision ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after all completed paths are available",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact held-interval funding only after novelty"
+  },
+  "policy": {
+    "block_minutes": 480,
+    "five_minute_bars": 96,
+    "history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "persistence_rank_min": 0.75,
+    "minimum_consensus_breadth": 4,
+    "variation_hours": 24,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_premium_sponsorship_gate",
+      "no_persistence_tail",
+      "no_variation_gate",
+      "negative_autocorrelation_consensus",
+      "one_block_stale_persistence",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "DOGEUSDT",
+        "ADAUSDT"
+      ],
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "premium": {
+      "table": "bars_binance_premium",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "database_symbol_coverage_metadata_only_opened_before_preregistration": true,
+    "prior_btc_serial_alt_leadlag_and_path_efficiency_outcomes_known": true,
+    "base_hvcaspc_train_pass_test_fail_known": true,
+    "prior_hvcaspc_oi_sponsorship_train_failure_known": true,
+    "exact_hvcaspc_premium_sponsorship_intersection_incidence_or_outcomes_known": false,
+    "repository_cross_alt_per_symbol_serial_persistence_consensus_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "broad sequential-order execution with causal BTC premium displacement sponsorship"
+  },
+  "stopping_rule": "terminal first failure; no universe, bar size, autocorrelation, history, rank, breadth, variation, onset, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "8d906ac59786062ef8a22b3a30ba84a94266e3eaa64ccfab2d8744993085c8ee"
+}

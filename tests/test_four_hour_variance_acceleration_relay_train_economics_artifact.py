@@ -1,0 +1,4 @@
+import hashlib,json
+from training import evaluate_four_hour_variance_acceleration_relay_economics as economics
+def test_fhvar_train_economics_is_terminal_and_later_stages_closed():
+ assert hashlib.sha256(economics.OUTPUTS["train"].read_bytes()).hexdigest()=="f96fe8e8c952eb2be8311c6120aebf87a90eb66122112524a9c092bb5b29dbde";p=json.loads(economics.OUTPUTS["train"].read_text());core={k:v for k,v in p.items() if k!="manifest_hash"};assert p["manifest_hash"]==economics.canonical_hash(core);assert p["stage"]=="train" and p["passed"] is False and p["decision"]=="terminal_reject_no_repair" and p["advance_to_next_stage"] is False and p["later_stage_outcomes_opened"] is False;assert p["primary"]["base"]["cagr_to_strict_mdd"]<3 and p["primary"]["stress"]["absolute_return_pct"]<0;assert not economics.OUTPUTS["test"].exists() and not economics.OUTPUTS["eval"].exists() and not economics.OUTPUTS["final"].exists()

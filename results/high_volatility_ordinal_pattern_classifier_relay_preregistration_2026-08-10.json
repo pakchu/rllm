@@ -1,0 +1,175 @@
+{
+  "protocol_version": "high_volatility_ordinal_pattern_classifier_relay_v1",
+  "policy_id": "HVOCPR-8",
+  "as_of_date": "2026-08-10",
+  "oos_outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "pretraining_outcomes_authorized_after_preregistration": true,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Continuation versus reversal after a volatile BTC block depends on the ordering frequencies of consecutive price triples and the transition structure of minute-return signs; one fixed pre-2023 linear classifier estimates the next-eight-hour sign.",
+    "side": "strict sign of frozen classification score",
+    "why_distinct": "HVOCPR uses ordinal-pattern and sign-transition distributions, not directional-change counts, rank concordance, Fourier energy, path analog distances, OI/premium state, or any prior event/control outcome.",
+    "volatile_market_target": "causal variation rank>=0.65",
+    "why_low_gross9_overlap_is_plausible": "ordinal dynamics on fixed eight-hour boundaries are absent from Gross9"
+  },
+  "training_contract": {
+    "source_window": [
+      "2020-04-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "label_window": [
+      "2021-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "decisions": "exact 00:00/08:00/16:00 UTC completed boundaries",
+    "label": "strict sign of log(exit_open/entry_open), entry=D+5m, exit=entry+8h, exit strictly before label end; zero label rejected",
+    "standardization": "population mean/std on training rows only; reject nonfinite/zero scale",
+    "estimator": "closed-form standardized ridge classifier with intercept alpha=100 and targets {-1,+1}",
+    "score_threshold": "numpy linear-method q50 of absolute fitted scores among training rows variation_rank>=0.65; OOS uses >=",
+    "hyperparameter_grid": false,
+    "feature_selection": false,
+    "refit_after_2022_12_31": false,
+    "model_frozen_before_oos_incidence": true
+  },
+  "feature_contract": {
+    "ordered_features": [
+      "normalized_full_return",
+      "normalized_late_return",
+      "variation_rank",
+      "ordinal_012",
+      "ordinal_021",
+      "ordinal_102",
+      "ordinal_120",
+      "ordinal_201",
+      "ordinal_210",
+      "transition_pp",
+      "transition_pn",
+      "transition_np",
+      "transition_nn",
+      "semivariance_balance",
+      "absolute_return_autocorrelation"
+    ],
+    "block": "480 exact coherent BTCUSDT bars_binance 1m rows [D-8h,D)",
+    "returns": "479 close-to-close log returns; root variation=sqrt(sum squares)",
+    "ordinal_patterns": "for each of 478 consecutive log-close triples with three distinct values, stable ascending-rank permutation among 012,021,102,120,201,210; each count divided by valid distinct triples; reject if none",
+    "sign_transitions": "for each of 478 adjacent return pairs with both strict nonzero, frequencies pp,pn,np,nn divided by valid pairs; reject if none",
+    "normalized_returns": "full and final-two-hour returns divided by root variation",
+    "semivariance_balance": "(positive squares-negative squares)/all squares",
+    "absolute_return_autocorrelation": "absolute Pearson correlation of adjacent absolute returns with nonzero variances",
+    "variation_rank": "strict-prior midrank <=270 valid blocks, minimum180, current excluded",
+    "no_imputation": true
+  },
+  "oos_clock": {
+    "start": "2023-07-01T00:00:00Z",
+    "eligibility": "source valid, variation_rank>=0.65, frozen score finite/nonzero, abs score>=frozen q50",
+    "entry": "D+5m BTCUSDT open",
+    "side": "sign frozen score",
+    "hold": "8 elapsed hours",
+    "reservation": "fixed boundaries half-open; exit first on equal open",
+    "funding": "not input; exact only after novelty"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "variation_rank_min": 0.65,
+    "ridge_alpha": 100.0,
+    "score_quantile": 0.5,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp sides, favorable-then-adverse held 5m, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged passes all stages",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_score_gate",
+      "one_boundary_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_family_outcomes_known": true,
+    "prior_event_sets_or_controls_promoted": false,
+    "candidate_specific_score_and_incidence_opened": false,
+    "oos_postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "selection_basis": "new ordinal-dynamics classification mechanism specified before its labels/incidence"
+  },
+  "stopping_rule": "freeze prereg/model/source/novelty/economics; terminal first failure; no feature/alpha/threshold/side/hold/clock/subset/control repair",
+  "manifest_hash": "bfd77704d53fadf22e12d0bbe6414ff8124d9437792db4d3fae910fcd0a60187"
+}

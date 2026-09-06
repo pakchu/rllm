@@ -1,0 +1,115 @@
+{
+  "architecture": "shadow_tp4_lifecycle_anchor_residual_router",
+  "artifacts": {
+    "data_summary": {
+      "path": "results/pposm_lifecycle_residual_data_summary_2026-09-02.json",
+      "sha256": "566f06b3f7338d450de8dbf0139b29cec16c6e46ab4f9bc788f6f30287360026"
+    },
+    "preregistration": {
+      "path": "results/pposm_lifecycle_residual_sft_rlvr_preregistration_2026-09-02.json",
+      "sha256": "888416e252944d37c6b36430d679945b4f07002530a6bb5197f6220986cc0ac6"
+    },
+    "rlvr_adapter": {
+      "path": "checkpoints/pposm_lifecycle_residual_sft_rlvr_2026-09-02/adapter_model.safetensors",
+      "sha256": "2100bd1136a8090bdbec38e51ebfa485e606d84889c3e9ebcce760cd698cf5cc"
+    },
+    "sft_adapter": {
+      "path": "checkpoints/pposm_lifecycle_residual_sft_2026-09-02/adapter_model.safetensors",
+      "sha256": "fe14683978824880a928d530d69e54b04206c6aad9ea7eb7f7ab3727a9629525"
+    },
+    "threshold_failure": {
+      "path": "results/pposm_lifecycle_residual_train_threshold_failure_2026-09-02.json",
+      "sha256": "4c20a8af15efdcb38908e3f65c26da10421e517c8b0412eb5bceb28b96f72eac"
+    },
+    "train_scores": {
+      "path": "results/pposm_lifecycle_residual_train_scores_2026-09-02.jsonl",
+      "sha256": "771066702f54357340cd1a480b4bcc4884ed5c0811a624e4261d14c70cc2b297"
+    }
+  },
+  "as_of": "2026-09-02",
+  "checks": {
+    "oos_prompts_generated": false,
+    "oos_rerank_or_repair": false,
+    "oos_scores_opened": false,
+    "rlvr_completed_with_nonzero_reward_std_and_gradient": true,
+    "sft_completed": true,
+    "train_threshold_feasible": false
+  },
+  "negative_result": "The lifecycle utility and oracle are train-profitable, but the learned single global margin threshold cannot jointly satisfy train materiality, stress-MDD, and absolute ratio gates.",
+  "next_train_only_question": "Before any OOS opening, test whether action-specific calibrated heads or separate candidate specialists can express the train-feasible lifecycle policy; otherwise stop this family.",
+  "protocol": "pposm_lifecycle_anchor_residual_sft_rlvr_train_verdict_v1",
+  "status": "fail_train_threshold_no_oos_opened",
+  "train_stage": {
+    "anchors": 102,
+    "best_infeasible": {
+      "best_threshold_by_ranking_even_if_infeasible": 1.2034912109375,
+      "deltas": {
+        "base_6bp": {
+          "absolute_return_pct": 42.2922619731209,
+          "cagr_to_strict_mdd": 0.5961161650461766,
+          "log_equity": 0.20128294944738145,
+          "strict_mdd_pct": 0.4537057614472655,
+          "trades": -9.0
+        },
+        "stress_10bp": {
+          "absolute_return_pct": 41.40425613101051,
+          "cagr_to_strict_mdd": 0.5386699624234086,
+          "log_equity": 0.20488439003563574,
+          "strict_mdd_pct": 0.7398572110821959,
+          "trades": -9.0
+        }
+      },
+      "failed_gates": [
+        "materiality",
+        "stress_mdd_worsening_le_0_01pp",
+        "base_ratio_ge_3"
+      ],
+      "materiality": {
+        "difference_rate_vs_always_tp4": 0.21861471861471862,
+        "max_action_share": 0.7813852813852814,
+        "non_default_count": 101,
+        "non_default_counts": {
+          "SKIP": 2,
+          "TP12": 99
+        },
+        "passes": false,
+        "route_counts": {
+          "SKIP": 2,
+          "TP12": 99,
+          "TP4": 361
+        },
+        "signals": 462
+      },
+      "route_stream_sha256": "a23ec240953bb485d41ba7daf5d194886ebcd312a067d1728b4e42cad2d69299"
+    },
+    "candidate_thresholds": 37,
+    "control_economics": {
+      "base_6bp": {
+        "absolute_return_pct": 89.67626803061623,
+        "cagr_pct": 20.058653693555705,
+        "cagr_to_strict_mdd": 2.0212400128353694,
+        "longs": 102,
+        "mean_gross_bps": 144.1006380612376,
+        "mean_net_bps": 64.22022720931254,
+        "shorts": 0,
+        "strict_mdd_pct": 9.923934597661999,
+        "trades": 102,
+        "win_rate": 0.6764705882352942
+      },
+      "stress_10bp": {
+        "absolute_return_pct": 82.0902493673193,
+        "cagr_pct": 18.667361229252187,
+        "cagr_to_strict_mdd": 1.8742382806220248,
+        "longs": 102,
+        "mean_gross_bps": 144.1006380612376,
+        "mean_net_bps": 60.19373386003951,
+        "shorts": 0,
+        "strict_mdd_pct": 9.959972230989134,
+        "trades": 102,
+        "win_rate": 0.6568627450980392
+      }
+    },
+    "full_signals": 462
+  },
+  "verdict_hash": "b49c2a9416dcff3408b82909f7251b2c62de20284bd092267b6899d35ce4ccc9"
+}

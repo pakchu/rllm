@@ -1,0 +1,150 @@
+{
+  "protocol_version": "high_volatility_cash_basis_reversion_relay_v1",
+  "policy_id": "HVCBR-6",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "At a fixed eight-hour boundary in an unusually volatile BTC block, an extreme final-two-hour change in the Binance perpetual-versus-spot log basis represents a temporary leverage-market dislocation. Trade the perpetual opposite the basis-change direction for six elapsed hours.",
+    "long": "basis_change<0: perpetual cheapened relative to spot",
+    "short": "basis_change>0: perpetual richened relative to spot",
+    "why_distinct": "HVCBR uses the first difference of directly aligned spot/perpetual price basis and trades convergence. SLVCR used same-direction partial price transmission under BVOL/DVOL expansion; premium-index candidates used Binance premium candles rather than cash-futures price basis. No prior control is promoted.",
+    "why_suited_to_volatile_regimes": "completed perpetual eight-hour realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "three fixed UTC cash-futures basis-dislocation clocks are absent from Gross9"
+  },
+  "features": {
+    "sources": [
+      "BTCUSDT bars_binance interval=1m",
+      "BTCUSDT bars_binance_spot interval=1m"
+    ],
+    "block_valid": "480 exact aligned distinct minute rows per source in [decision-8h,decision), finite positive coherent OHLC; no imputation",
+    "basis_start": "log(perpetual open at decision-2h / spot open at decision-2h)",
+    "basis_end": "log(perpetual close at decision-1m / spot close at decision-1m)",
+    "basis_change": "basis_end-basis_start, strict nonzero",
+    "basis_shock_rank": "strict-prior midrank of abs(basis_change) among at most 270 valid fixed eight-hour blocks, minimum 180, current excluded; rank>=0.80",
+    "realized_variation": "sum squared perpetual 1m close-to-close log returns within completed 8h block",
+    "variation_rank": "strict-prior midrank among at most 270 valid fixed eight-hour blocks, minimum 180, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact 00:00,08:00,16:00 UTC",
+    "entry": "exact decision+5m BTCUSDT perpetual open",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "funding_oi_premium_implied_vol": "not signal inputs; exact funding only after novelty passes"
+  },
+  "policy": {
+    "history_observations": 270,
+    "minimum_history_observations": 180,
+    "variation_rank_min": 0.65,
+    "absolute_basis_change_rank_min": 0.8,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "perp_1m": {
+      "table": "bars_binance",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ]
+    },
+    "spot_1m": {
+      "table": "bars_binance_spot",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ]
+    },
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "window": [
+      "2023-04-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "materialize_after_preregistration": true,
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_basis_shock_gate",
+      "one_boundary_stale_geometry",
+      "direction_follow_basis"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_spot_perp_family_incidence_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_hvcbr_direction_threshold_hold_or_clock": false,
+    "hvcbr_candidate_incidence_opened": false,
+    "hvcbr_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent high-volatility cash-futures basis convergence mechanism"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no threshold, side, hold, clock, basis, or subset repair.",
+  "manifest_hash": "af71581adcd34641a887676bcd80f137bef6ff7e6df80ab2de4809b31d14af25"
+}

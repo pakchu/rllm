@@ -1,0 +1,40 @@
+{
+  "protocol_version": "hvccloiar_8_sources_v1",
+  "queries": {
+    "open_interest": "SELECT ts AS decision_time,sum_open_interest FROM open_interest_binance WHERE symbol='BTCUSDT' AND period='5m' AND ts>=:start AND ts<:end AND extract(minute FROM ts)=0 AND extract(second FROM ts)=0 AND extract(hour FROM ts) IN (0,8,16) ORDER BY ts",
+    "bars": "SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,(array_agg(close ORDER BY ts DESC))[1] AS final_close,max(high) AS cycle_high,min(low) AS cycle_low,sum(ln(close/open)) AS completed_return,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1"
+  },
+  "query_sha256": {
+    "open_interest": "e69284774dffb4c371fc1ac1137a5853396a3b3c1dd92befdc4957c7b707649e",
+    "bars": "577270601daaf73b731545704d77ebb30dc7ca6fdac3951fb07c44754985d590"
+  },
+  "tables": [
+    "open_interest_binance",
+    "bars_binance"
+  ],
+  "symbol": "BTCUSDT",
+  "window": [
+    "2020-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "open_interest": 6234,
+    "bars": 7212
+  },
+  "builder": {
+    "path": "training/build_high_volatility_causal_close_location_open_interest_acceptance_relay_support.py",
+    "sha256": "d01b3ce64bbcd566930424e944d8f4ccc130bcca49f65bb98b1116772469302e"
+  },
+  "panel": {
+    "path": "data/high_volatility_causal_close_location_open_interest_acceptance_relay_sources_2020_2026/settlement_states.csv.gz",
+    "sha256": "ddb904cab670c803931eea3ece9d99a13f50daae4169807f78ba3360a90ce602",
+    "rows": 6234,
+    "valid_rows": 6058
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "held_interval_funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "1eeb7e8c914f9feb94f180acebae27add3cb4b39f45eaf1cbe6e051c9b23f66a"
+}

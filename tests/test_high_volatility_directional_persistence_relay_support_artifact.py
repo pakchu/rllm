@@ -1,0 +1,4 @@
+import hashlib,json
+from training import build_high_volatility_directional_persistence_relay_support as support
+def test_hvdpr_source_support_is_frozen_terminal():
+ assert hashlib.sha256(support.RESULT.read_bytes()).hexdigest()=="4df108b898eccfbf6062ec34cf4d12cb45e90569b553ef777a7ebb4c56cae40a";assert hashlib.sha256(support.CLOCK.read_bytes()).hexdigest()=="21fb994b212c15a6818cb860fd67c2e0ac10a4a698fe8aec9ea81eedcc3532cf";p=json.loads(support.RESULT.read_text());core={k:v for k,v in p.items() if k!="manifest_hash"};assert p["manifest_hash"]==support.chash(core);assert p["support_passed"] is False and p["advance_to_gross9_novelty"] is False and p["advance_to_economic_outcomes"] is False;assert p["decision"]=="terminal_source_support_reject" and p["postentry_return_pnl_execution_price_opened"] is False and p["gross9_rows_opened"] is False;assert all(p["support"][s]["events"]==0 for s in ("train","test","eval","final"))

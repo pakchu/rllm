@@ -1,0 +1,84 @@
+{
+  "protocol": "pposm_fresh_forward_source_availability_audit_v1",
+  "as_of": "2026-09-05",
+  "requested_forward_window": [
+    "2026-06-02T00:00:00Z",
+    "2026-09-05T00:05:00Z"
+  ],
+  "query_scope": "schema/table/time coverage only; no PPOSM labels, routes, returns, fills, or lifecycle outcomes computed",
+  "database_identity_sha256": "c52bdce1f58729a2591131ba67e98794cec63d33fca57b3c108597156a1c8c1e",
+  "required_tables": [
+    "bars_binance",
+    "bars_binance_premium",
+    "funding_rates_binance"
+  ],
+  "present_tables": [
+    "bars_binance",
+    "bars_binance_premium",
+    "funding_rates_binance",
+    "open_interest_binance",
+    "open_interest_binance_live"
+  ],
+  "absent_tables": [],
+  "bars_binance": null,
+  "causal_forward_clock_available": true,
+  "pposm_forward_labels_materializable": true,
+  "reason": "frozen PPOSM requires market, premium, and funding; all three cover the fixed fresh-forward window. Label/outcome materialization still requires a separate preregistered replay.",
+  "implementation_receipts": {
+    "upbit_ingest": {
+      "path": "/home/pakchu/upbit-usdt/app/services/ingest.py",
+      "sha256": "3c7462737012173faedd9b793a95785bc314bfd24fe7c686e498a6d3edeb05bd"
+    },
+    "upbit_storage": {
+      "path": "/home/pakchu/upbit-usdt/app/storage/bars.py",
+      "sha256": "57e2e2f602009f7b30e43a0b7ebb6bb7edf919db6fa4b5126179ddceb9641f1f"
+    }
+  },
+  "evidence_boundary": {
+    "economic_outcomes_opened": false,
+    "pposm_signal_count_computed": false,
+    "pposm_lifecycle_labels_computed": false
+  },
+  "optional_not_required_by_frozen_pposm": [
+    "open_interest_binance",
+    "open_interest_binance_live"
+  ],
+  "coverage": {
+    "bars_binance_btcusdt_1m": {
+      "total_rows": 3677303,
+      "first": "2019-09-08 17:57:00+00:00",
+      "last": "2026-09-05 10:20:00+00:00",
+      "forward_rows": 136805
+    },
+    "bars_binance_premium_btcusdt_1m": {
+      "total_rows": 3512580,
+      "first": "2020-01-01 00:00:00+00:00",
+      "last": "2026-09-05 10:20:00+00:00",
+      "forward_rows": 136805
+    },
+    "funding_rates_binance_btcusdt": {
+      "total_rows": 7598,
+      "first": "2020-01-01 00:00:00+00:00",
+      "last": "2026-09-05 08:00:00+00:00",
+      "forward_rows": 330
+    },
+    "open_interest_binance": {
+      "total_rows": 622225,
+      "first": "2020-09-01 00:00:00+00:00",
+      "last": "2026-08-03 13:35:00+00:00",
+      "forward_rows": 18060,
+      "periods": [
+        "1m",
+        "5m"
+      ]
+    },
+    "open_interest_binance_live": {
+      "total_rows": 46207974,
+      "first": "2026-07-11 02:51:43.462430+00:00",
+      "last": "2026-09-05 10:21:31.875851+00:00",
+      "forward_rows": 45849802
+    }
+  },
+  "prior_conflicting_probe_superseded": "a helper inspected a different/incomplete environment; this artifact binds the /home/pakchu/rllm/.env database identity hash without exposing credentials",
+  "result_hash": "d8b38c5dcd666ea029d247c1eda1472353790bba4c5fb7d74e383d16dd0580f4"
+}

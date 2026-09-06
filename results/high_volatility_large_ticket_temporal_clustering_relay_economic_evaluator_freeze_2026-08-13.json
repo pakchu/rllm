@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvlttc_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVLTTC-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_large_ticket_temporal_clustering_relay_economics.py",
+    "sha256": "a948cf83e3e149dc7225defd4ace6bb9897e425ed950e9cdbdf24ac03218b0ee"
+  },
+  "authorization": {
+    "path": "results/high_volatility_large_ticket_temporal_clustering_relay_gross9_novelty_2026-08-13.json",
+    "sha256": "d7701615cd82ddeae675a3bec63590ba3ab2402157476d691e8994e0ffae288e"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "2158d531da17e78480779e00d80ba5efb08bd2681654f8a60c9abdfbe970855a"
+}

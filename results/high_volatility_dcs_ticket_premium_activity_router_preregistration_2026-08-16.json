@@ -1,0 +1,136 @@
+{
+  "protocol_version": "high_volatility_dcs_ticket_premium_activity_router_v1",
+  "policy_id": "HVDCSATPAPAR-8",
+  "as_of_date": "2026-08-16",
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "candidate_family": [
+    "HVDCSATPAPAR-8"
+  ],
+  "candidate_family_size": 1,
+  "base_artifacts": {
+    "preregistration": {
+      "path": "results/high_volatility_directional_change_scarcity_ticket_participation_acceleration_relay_preregistration_2026-08-16.json",
+      "sha256": "8003732efa6d369c474ec08b71178729a4ba557f43ec7325142bec01a203f153"
+    },
+    "support": {
+      "path": "results/high_volatility_directional_change_scarcity_ticket_participation_acceleration_relay_support_2026-08-16.json",
+      "sha256": "5abaebfb9999921fd9834ade8a928c55326d0a0ca3cb09bb22d920c491bbefe6"
+    },
+    "gross9": {
+      "path": "results/high_volatility_directional_change_scarcity_ticket_participation_acceleration_relay_gross9_novelty_2026-08-16.json",
+      "sha256": "28bed590847c8c3582424875b9a54a8d02bba54cb65f5bd5ecf6c3132c71dd44"
+    },
+    "clock": {
+      "path": "data/high_volatility_directional_change_scarcity_ticket_participation_acceleration_relay_clocks_2023_2026.csv.gz",
+      "sha256": "089a077cfe89b63540a4b0b0af1a18bf9b5818ac269875e2e9e688c2c432cef0"
+    }
+  },
+  "construction": {
+    "base": "immutable HVDCSATPA-8 event times, entry and hold",
+    "state_grid": "every exact 00:00/08:00/16:00 UTC using [D-8h,D) completed data",
+    "premium_activity": "sum of absolute one-minute bars_binance_premium close differences",
+    "btc_activity": "sqrt(sum squared BTCUSDT one-minute log-close returns)",
+    "relative_premium_activity": "premium_activity/btc_activity; both strict positive",
+    "rank": "strict-prior midrank over at most 270 valid state-grid blocks, minimum 180, current excluded",
+    "router": "relative activity rank<=0.50 keeps immutable HVDCSATPA side; rank>0.50 flips it",
+    "missing": "ineligible",
+    "additional_or_tuned_thresholds": "none; fixed median split",
+    "entry": "immutable D+5m",
+    "hold": "8 elapsed hours"
+  },
+  "mechanism": {
+    "claim": "A high-variation directional-change-scarcity path with rising ticket size and participation should continue under quiet relative premium repricing, but reverse when active derivative premium repricing indicates crowded sponsorship.",
+    "why_low_gross9_overlap_is_plausible": "the sparse ticket-sponsored DCS incidence and premium-state polarity are absent from Gross9"
+  },
+  "clock": {
+    "decision": "immutable base 00:00/08:00/16:00 UTC",
+    "entry": "D+5m",
+    "hold": "8 elapsed hours",
+    "funding": "not a signal; exact held settlements sealed until economics"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "tables": [
+      "bars_binance",
+      "bars_binance_premium"
+    ],
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "postentry_prices_returns_pnl": "sealed"
+  },
+  "research_boundary": {
+    "HVDCSATPA_train_pass_test_fail_known": true,
+    "prior_premium_activity_router_outcomes_known": true,
+    "exact_HVDCSATPA_premium_router_incidence_or_outcomes_known": false,
+    "source_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "repair_of_prior_candidate": false,
+    "selection_basis": "relative premium crowding polarity applied to a distinct immutable ticket-sponsored DCS base"
+  },
+  "stopping_rule": "source support, Gross9, train/test/eval/final; stop first failure; no rank, median, direction, base, side, clock, hold, subset, substitution, or control repair.",
+  "manifest_hash": "10f4fb8429c33e504482c33f245d9c8346ae7a28f8321eb736f236337945b8a0"
+}

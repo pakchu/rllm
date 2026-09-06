@@ -1,0 +1,45 @@
+{
+  "protocol_version": "hvkatr_24_sources_v1",
+  "kospi_url": "https://query1.finance.yahoo.com/v8/finance/chart/%5EKS11",
+  "source_window": [
+    "2021-01-01T00:00:00+00:00",
+    "2026-08-02T00:00:00+00:00"
+  ],
+  "yahoo_metadata": {
+    "symbol": "^KS11",
+    "exchange_timezone": "Asia/Seoul",
+    "rows": 1365,
+    "first_session": "2021-01-04",
+    "last_session": "2026-07-31",
+    "native_close_local": "15:30"
+  },
+  "btc_query": "SELECT ts,open,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts",
+  "btc_window": [
+    "2021-01-02T06:30:00+00:00",
+    "2026-08-01T06:31:00+00:00"
+  ],
+  "btc_rows": 2933281,
+  "builder": {
+    "path": "training/build_high_volatility_kospi_asymmetric_transition_relay_support.py",
+    "sha256": "1cb95d0e526edd2b29633c08c94e88df65e7d4153ab6bee95f1260bcf55c0a8f"
+  },
+  "outputs": {
+    "raw_kospi": {
+      "path": "data/high_volatility_kospi_asymmetric_transition_relay_sources_2021_2026/ks11_yahoo_chart.json",
+      "sha256": "16dda3286d1e465d34399d151f7159f6fa4fdfc5f9a0406c980d5a745f87a318"
+    },
+    "kospi_panel": {
+      "path": "data/high_volatility_kospi_asymmetric_transition_relay_sources_2021_2026/kospi_sessions.csv.gz",
+      "sha256": "e04e776ad550000c2e54bafb52622b75dce4708407357fc6fc443191f910a3ab",
+      "rows": 1365
+    },
+    "features": {
+      "path": "data/high_volatility_kospi_asymmetric_transition_relay_sources_2021_2026/hvkatr_preentry_features.csv.gz",
+      "sha256": "eef6322037fbe3bf105ca051121607a8ebebf773c845f22e28d2fcc972e33d63",
+      "rows": 1365
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "29c86e95c1593ddb8c7eaf616b0e584c6ff4e80719affb3c9e99152f80acc026"
+}

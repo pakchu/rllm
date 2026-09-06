@@ -1,0 +1,39 @@
+{
+  "protocol_version": "hvcelvpar_8_sources_v1",
+  "queries": {
+    "premium": "WITH tagged AS (SELECT ts,date_bin('8 hours',ts-INTERVAL '3 hours',TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '11 hours' AS decision_time,close FROM bars_binance_premium WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end), path AS (SELECT *,lag(close) OVER(PARTITION BY decision_time ORDER BY ts) AS previous_close FROM tagged) SELECT decision_time,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,sum(abs(close-previous_close)) FILTER(WHERE previous_close IS NOT NULL) AS premium_total_variation,count(previous_close) AS adjacent_pairs,bool_and(close IS NOT NULL) AS coherent FROM path GROUP BY decision_time ORDER BY decision_time",
+    "btc": "SELECT date_bin('8 hours',ts-INTERVAL '3 hours',TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '11 hours' AS decision_time,(array_agg(open ORDER BY ts))[1] AS block_open,(array_agg(close ORDER BY ts DESC))[1] AS block_close,sum(power(ln(close/open),2)) AS squared_return_sum,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY decision_time ORDER BY decision_time"
+  },
+  "query_sha256": {
+    "premium": "8c294ba3e74fb47db06980bc69d6ca195cd5fb046d06a0e19c1fec34bc45bc39",
+    "btc": "73d253c555e42e7e4a6a6aa83fda582e939da6c0b6a3b91f32b664bcd81df318"
+  },
+  "tables": [
+    "bars_binance_premium",
+    "bars_binance"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "premium_blocks": 3925,
+    "btc_blocks": 3925
+  },
+  "builder": {
+    "path": "training/build_high_volatility_caspc_ehlers_premium_activity_router_support.py",
+    "sha256": "a39259fddc4fd8b9bd3c36d7859d57c1cec7f663a931fb488c566f412918a6b5"
+  },
+  "panel": {
+    "path": "data/high_volatility_caspc_ehlers_premium_activity_router_sources_2023_2026/cycle_states.csv.gz",
+    "sha256": "ea1f8dc7adba7abc92c29245401cae7c0bfb071797a8fbc46a96198217986142",
+    "rows": 3925,
+    "valid_rows": 3921
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "held_interval_funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "a5f3b706d6109cfa2005b69629b8c5a1cff7d372ba1419ea089c457ad8a84653"
+}

@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvcarq_6_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,symbol,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "bc4a439d8c3bf2a17a584850e7ba26d3bb52f66fdff92eb8e3bb26ac34897bce",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 2636928,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_realized_quarticity_concentration_spillover_relay_support.py",
+    "sha256": "b0e6d3baaf24eb0186bcbeddc2e6d5e6fdee1380728b27a47ca014d93113ec95"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_realized_quarticity_concentration_spillover_relay_sources_2023_2026/scheduled_quarticity_states.csv.gz",
+    "sha256": "f9d73a72afa577d538926e3836735685487ea95b2f866c220165691c9d502029",
+    "rows": 3924,
+    "valid_rows": 3921
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "cf77cff5e3e56708629f884edcb4bce5fd9b5277daaed87b21919aa565d09233"
+}

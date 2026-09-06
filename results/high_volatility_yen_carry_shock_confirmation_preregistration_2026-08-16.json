@@ -1,0 +1,129 @@
+{
+  "protocol_version": "high_volatility_yen_carry_shock_confirmation_v1",
+  "policy_id": "HVYCSC-8",
+  "as_of_date": "2026-08-16",
+  "singleton": true,
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "candidate_family": [
+    "HVYCSC-8"
+  ],
+  "candidate_family_size": 1,
+  "mechanism": {
+    "claim": "After a causally high-variation completed BTC eight-hour cycle, lower quadratic variation in the second four hours together with unchanged return direction and higher directional efficiency indicates volatility decay into price acceptance; follow that accepted direction for eight hours.",
+    "side": "common strict sign of completed BTC and USDJPY eight-hour returns",
+    "why_distinct": "HVYCSC uses within-cycle variance decay and an efficiency ordering. Prior temporal-variance ignition concentrated variance late over a 24-hour daily clock; this candidate requires the opposite variance ordering on fixed eight-hour cycles and reuses no event set or control.",
+    "why_suited_to_volatile_regimes": "the completed eight-hour variation must rank in its causal upper 35 percent",
+    "why_low_gross9_overlap_is_plausible": "exact USDJPY carry-shock confirmation is absent from Gross9 primitives"
+  },
+  "features": {
+    "decision": "exact 00:00, 08:00, or 16:00 UTC boundary D",
+    "cycle": "480 exact coherent BTCUSDT bars_binance interval=1m rows [D-8h,D)",
+    "minute_return": "ln(close/open) for each completed minute; finite",
+    "btc_return": "sum of 480 exact coherent BTCUSDT minute ln(close/open) returns, strict nonzero",
+    "usd_jpy_return": "ln(close[D-1m]/open[D-8h]) from exact bars_polygon USDJPY endpoint rows, strict nonzero and no fill",
+    "direction_agreement": "BTC and USDJPY returns have one strict sign",
+    "yen_shock_rank": "strict-prior midrank of abs(usd_jpy_return) over at most 270 source-valid cycles; current excluded; minimum 180; rank>=0.75",
+    "realized_variation": "sqrt(first_half_qv+second_half_qv), strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 source-valid cycles; current excluded; minimum 180; rank>=0.65",
+    "onset": "eligible now and immediately prior exact source-valid cycle ineligible; missing prior opportunity cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decisions": "exact 00/08/16 UTC boundaries",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact held settlements only after source and Gross9 pass"
+  },
+  "policy": {
+    "history_cycles": 270,
+    "minimum_history_cycles": 180,
+    "path_minutes": 480,
+    "variation_rank_min": 0.65,
+    "yen_shock_rank_min": 0.75,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "bars": "Postgres bars_binance BTCUSDT exact coherent 1m OHLC and bars_polygon USDJPY exact endpoints",
+    "window": [
+      "2023-04-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source support and Gross9 pass"
+  },
+  "research_boundary": {
+    "prior_fx_network_barbell_factor_failures_known": true,
+    "prior_fx_macro_family_outcomes_known": true,
+    "exact_yen_carry_shock_confirmation_incidence_or_outcomes_known": false,
+    "prior_event_sets_reused": false,
+    "prior_outcomes_used_to_set_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence"
+  },
+  "stopping_rule": "terminal first failure; no USDJPY endpoint, shock rank, direction agreement, variation history, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "96df654f35cbbdad417c32d8fd612b37a6c7167efe5a156a690a8d99d32f97aa"
+}

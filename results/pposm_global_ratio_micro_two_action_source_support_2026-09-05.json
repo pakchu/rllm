@@ -1,0 +1,620 @@
+{
+  "action_pass": {
+    "SKIP": false,
+    "TP12": false
+  },
+  "anchors": {
+    "actual_total": 204,
+    "candidate_counts": {
+      "SKIP": 102,
+      "TP12": 102
+    },
+    "expected_per_action": 102,
+    "first_signal_time": "2020-07-29 01:00:00",
+    "last_signal_time": "2023-10-27 20:00:00",
+    "target_counts_by_action": {
+      "SKIP": {
+        "0": 77,
+        "1": 25
+      },
+      "TP12": {
+        "0": 74,
+        "1": 28
+      }
+    }
+  },
+  "artifact_bindings": {
+    "anchor_label_identity_sha256": "dae0af6fb6d98e377e399a3aecef534aa692e9cd0db1a839e1010b27679ff3ec",
+    "diagnostic_implementation_sha256": "8622dcfd4dac321ae225bfdf4add174f6f5df9d44e9ee8a829a51d00743931bd",
+    "joined_feature_sha256": "3790d931726cc28e757ea999743b511d8d399afbabace4f9617a554465089b1f",
+    "lifecycle_builder_sha256": "051abae6a84f57a4ce5df256d1ec50bf5124e2993a809296014ed4757896c38b",
+    "manifest_file_sha256": "41d6424b8ca719ee3e3b058f6f5f93bc360905ee02be5b5d9671ff5349978159",
+    "manifest_freeze_hash": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+    "oof_score_sha256": "2aecb49e9f6b75b662fc9a1586f277319633eb94ee8ea9977a78502bd33ede08",
+    "preregistration_sha256": "27400de72832ba1ce4dab3538960680f0556059238da59a25f7312177298bec8"
+  },
+  "bootstrap_auc_ci": {
+    "SKIP": {
+      "hgb_micro_leaf2_l2_1": {
+        "iterations": 2000,
+        "lower95": 0.32544465174129356,
+        "upper95": 0.6142095706411783
+      },
+      "logreg_l2_c025_balanced_poly": {
+        "iterations": 2000,
+        "lower95": 0.39535331218077696,
+        "upper95": 0.6753946932006633
+      }
+    },
+    "TP12": {
+      "hgb_micro_leaf2_l2_1": {
+        "iterations": 2000,
+        "lower95": 0.35493218311572466,
+        "upper95": 0.6435976117425314
+      },
+      "logreg_l2_c025_balanced_poly": {
+        "iterations": 2000,
+        "lower95": 0.38076557093425606,
+        "upper95": 0.689073174795877
+      }
+    }
+  },
+  "boundary": {
+    "folds": [
+      {
+        "name": "train_2020_test_2021",
+        "test_year": 2021,
+        "train_years": [
+          2020
+        ]
+      },
+      {
+        "name": "train_through_2021_test_2022",
+        "test_year": 2022,
+        "train_years": [
+          2020,
+          2021
+        ]
+      },
+      {
+        "name": "train_through_2022_test_2023",
+        "test_year": 2023,
+        "train_years": [
+          2020,
+          2021,
+          2022
+        ]
+      }
+    ],
+    "join": "exact source create_time == signal_time - 5 minutes; no ffill/interpolation",
+    "labels": "pre-2024 lifecycle residual KEEP-vs-SWITCH labels for SKIP and TP12 only",
+    "oos_labels_built_or_read": false
+  },
+  "config": {
+    "bootstrap_iterations": "2000",
+    "expected_metrics_sha256": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106",
+    "expected_pre2024_prefix_sha256": "1da4e6bb2929050eae69b58c7fa715900258858b76e5442c9897b1601934db99",
+    "manifest": "results/pullback_premium_overheat_state_machine_manifest_2026-07-15.json",
+    "metrics_csv": "/home/pakchu/rllm/data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz",
+    "output": "results/pposm_global_ratio_micro_two_action_source_support_2026-09-05.json",
+    "preregistration": "results/pposm_global_ratio_micro_two_action_preregistration_2026-09-05.json",
+    "random_seed": "20260905",
+    "write_output": "True"
+  },
+  "features": {
+    "columns": [
+      "ratio_log_level",
+      "ratio_dlog1",
+      "ratio_z288",
+      "ratio_abs_z288",
+      "ratio_z288_sq",
+      "ratio_abs_dlog1",
+      "ratio_dlog1_sq",
+      "ratio_available",
+      "ratio_age_bars"
+    ],
+    "max_null_fraction_by_action": {
+      "SKIP": 0.029411764705882353,
+      "TP12": 0.029411764705882353
+    },
+    "model_rows_after_dropna_by_action": {
+      "SKIP": 99,
+      "TP12": 99
+    },
+    "null_fraction_by_action": {
+      "SKIP": {
+        "ratio_abs_dlog1": 0.029411764705882353,
+        "ratio_abs_z288": 0.029411764705882353,
+        "ratio_age_bars": 0.0196078431372549,
+        "ratio_available": 0.0,
+        "ratio_dlog1": 0.029411764705882353,
+        "ratio_dlog1_sq": 0.029411764705882353,
+        "ratio_log_level": 0.029411764705882353,
+        "ratio_z288": 0.029411764705882353,
+        "ratio_z288_sq": 0.029411764705882353
+      },
+      "TP12": {
+        "ratio_abs_dlog1": 0.029411764705882353,
+        "ratio_abs_z288": 0.029411764705882353,
+        "ratio_age_bars": 0.0196078431372549,
+        "ratio_available": 0.0,
+        "ratio_dlog1": 0.029411764705882353,
+        "ratio_dlog1_sq": 0.029411764705882353,
+        "ratio_log_level": 0.029411764705882353,
+        "ratio_z288": 0.029411764705882353,
+        "ratio_z288_sq": 0.029411764705882353
+      }
+    }
+  },
+  "gates": {
+    "SKIP": {
+      "hgb_micro_leaf2_l2_1": {
+        "checks": {
+          "balanced_accuracy_ge_0_55": false,
+          "every_valid_year_auc_gt_0_50": false,
+          "exactly_3_valid_folds": true,
+          "lower95_gt_0_50": false,
+          "max_feature_null_le_5pct": true,
+          "pooled_auc_ge_0_60": false
+        },
+        "pass": false,
+        "valid_years": [
+          2021,
+          2022,
+          2023
+        ]
+      },
+      "logreg_l2_c025_balanced_poly": {
+        "checks": {
+          "balanced_accuracy_ge_0_55": true,
+          "every_valid_year_auc_gt_0_50": false,
+          "exactly_3_valid_folds": true,
+          "lower95_gt_0_50": false,
+          "max_feature_null_le_5pct": true,
+          "pooled_auc_ge_0_60": false
+        },
+        "pass": false,
+        "valid_years": [
+          2021,
+          2022,
+          2023
+        ]
+      }
+    },
+    "TP12": {
+      "hgb_micro_leaf2_l2_1": {
+        "checks": {
+          "balanced_accuracy_ge_0_55": false,
+          "every_valid_year_auc_gt_0_50": false,
+          "exactly_3_valid_folds": true,
+          "lower95_gt_0_50": false,
+          "max_feature_null_le_5pct": true,
+          "pooled_auc_ge_0_60": false
+        },
+        "pass": false,
+        "valid_years": [
+          2021,
+          2022,
+          2023
+        ]
+      },
+      "logreg_l2_c025_balanced_poly": {
+        "checks": {
+          "balanced_accuracy_ge_0_55": false,
+          "every_valid_year_auc_gt_0_50": true,
+          "exactly_3_valid_folds": true,
+          "lower95_gt_0_50": false,
+          "max_feature_null_le_5pct": true,
+          "pooled_auc_ge_0_60": false
+        },
+        "pass": false,
+        "valid_years": [
+          2021,
+          2022,
+          2023
+        ]
+      }
+    }
+  },
+  "models": {
+    "SKIP": {
+      "hgb_micro_leaf2_l2_1": {
+        "folds": [
+          {
+            "accuracy": 0.6551724137931034,
+            "auc": 0.5476190476190477,
+            "balanced_accuracy": 0.49107142857142855,
+            "name": "train_2020_test_2021",
+            "test_class_counts": {
+              "0": 21,
+              "1": 8
+            },
+            "test_rows": 29,
+            "test_year": 2021,
+            "train_class_counts": {
+              "0": 11,
+              "1": 3
+            },
+            "train_rows": 14,
+            "train_years": [
+              2020
+            ],
+            "valid": true
+          },
+          {
+            "accuracy": 0.46153846153846156,
+            "auc": 0.36896551724137927,
+            "balanced_accuracy": 0.4086206896551724,
+            "name": "train_through_2021_test_2022",
+            "test_class_counts": {
+              "0": 29,
+              "1": 10
+            },
+            "test_rows": 39,
+            "test_year": 2022,
+            "train_class_counts": {
+              "0": 32,
+              "1": 11
+            },
+            "train_rows": 43,
+            "train_years": [
+              2020,
+              2021
+            ],
+            "valid": true
+          },
+          {
+            "accuracy": 0.7647058823529411,
+            "auc": 0.6904761904761905,
+            "balanced_accuracy": 0.7261904761904762,
+            "name": "train_through_2022_test_2023",
+            "test_class_counts": {
+              "0": 14,
+              "1": 3
+            },
+            "test_rows": 17,
+            "test_year": 2023,
+            "train_class_counts": {
+              "0": 61,
+              "1": 21
+            },
+            "train_rows": 82,
+            "train_years": [
+              2020,
+              2021,
+              2022
+            ],
+            "valid": true
+          }
+        ],
+        "pooled": {
+          "accuracy": 0.5882352941176471,
+          "auc": 0.4724702380952381,
+          "balanced_accuracy": 0.48660714285714285,
+          "class_counts": {
+            "0": 64,
+            "1": 21
+          },
+          "valid_rows": 85
+        }
+      },
+      "logreg_l2_c025_balanced_poly": {
+        "folds": [
+          {
+            "accuracy": 0.5517241379310345,
+            "auc": 0.5952380952380952,
+            "balanced_accuracy": 0.5744047619047619,
+            "name": "train_2020_test_2021",
+            "test_class_counts": {
+              "0": 21,
+              "1": 8
+            },
+            "test_rows": 29,
+            "test_year": 2021,
+            "train_class_counts": {
+              "0": 11,
+              "1": 3
+            },
+            "train_rows": 14,
+            "train_years": [
+              2020
+            ],
+            "valid": true
+          },
+          {
+            "accuracy": 0.48717948717948717,
+            "auc": 0.4793103448275863,
+            "balanced_accuracy": 0.4913793103448276,
+            "name": "train_through_2021_test_2022",
+            "test_class_counts": {
+              "0": 29,
+              "1": 10
+            },
+            "test_rows": 39,
+            "test_year": 2022,
+            "train_class_counts": {
+              "0": 32,
+              "1": 11
+            },
+            "train_rows": 43,
+            "train_years": [
+              2020,
+              2021
+            ],
+            "valid": true
+          },
+          {
+            "accuracy": 0.5882352941176471,
+            "auc": 0.5238095238095238,
+            "balanced_accuracy": 0.75,
+            "name": "train_through_2022_test_2023",
+            "test_class_counts": {
+              "0": 14,
+              "1": 3
+            },
+            "test_rows": 17,
+            "test_year": 2023,
+            "train_class_counts": {
+              "0": 61,
+              "1": 21
+            },
+            "train_rows": 82,
+            "train_years": [
+              2020,
+              2021,
+              2022
+            ],
+            "valid": true
+          }
+        ],
+        "pooled": {
+          "accuracy": 0.5294117647058824,
+          "auc": 0.5334821428571428,
+          "balanced_accuracy": 0.5595238095238095,
+          "class_counts": {
+            "0": 64,
+            "1": 21
+          },
+          "valid_rows": 85
+        }
+      }
+    },
+    "TP12": {
+      "hgb_micro_leaf2_l2_1": {
+        "folds": [
+          {
+            "accuracy": 0.5517241379310345,
+            "auc": 0.5565476190476191,
+            "balanced_accuracy": 0.5744047619047619,
+            "name": "train_2020_test_2021",
+            "test_class_counts": {
+              "0": 21,
+              "1": 8
+            },
+            "test_rows": 29,
+            "test_year": 2021,
+            "train_class_counts": {
+              "0": 9,
+              "1": 5
+            },
+            "train_rows": 14,
+            "train_years": [
+              2020
+            ],
+            "valid": true
+          },
+          {
+            "accuracy": 0.5641025641025641,
+            "auc": 0.5162337662337662,
+            "balanced_accuracy": 0.47564935064935066,
+            "name": "train_through_2021_test_2022",
+            "test_class_counts": {
+              "0": 28,
+              "1": 11
+            },
+            "test_rows": 39,
+            "test_year": 2022,
+            "train_class_counts": {
+              "0": 30,
+              "1": 13
+            },
+            "train_rows": 43,
+            "train_years": [
+              2020,
+              2021
+            ],
+            "valid": true
+          },
+          {
+            "accuracy": 0.4117647058823529,
+            "auc": 0.2857142857142857,
+            "balanced_accuracy": 0.38095238095238093,
+            "name": "train_through_2022_test_2023",
+            "test_class_counts": {
+              "0": 14,
+              "1": 3
+            },
+            "test_rows": 17,
+            "test_year": 2023,
+            "train_class_counts": {
+              "0": 58,
+              "1": 24
+            },
+            "train_rows": 82,
+            "train_years": [
+              2020,
+              2021,
+              2022
+            ],
+            "valid": true
+          }
+        ],
+        "pooled": {
+          "accuracy": 0.5294117647058824,
+          "auc": 0.4967532467532468,
+          "balanced_accuracy": 0.4902597402597403,
+          "class_counts": {
+            "0": 63,
+            "1": 22
+          },
+          "valid_rows": 85
+        }
+      },
+      "logreg_l2_c025_balanced_poly": {
+        "folds": [
+          {
+            "accuracy": 0.3793103448275862,
+            "auc": 0.5119047619047619,
+            "balanced_accuracy": 0.41666666666666663,
+            "name": "train_2020_test_2021",
+            "test_class_counts": {
+              "0": 21,
+              "1": 8
+            },
+            "test_rows": 29,
+            "test_year": 2021,
+            "train_class_counts": {
+              "0": 9,
+              "1": 5
+            },
+            "train_rows": 14,
+            "train_years": [
+              2020
+            ],
+            "valid": true
+          },
+          {
+            "accuracy": 0.5897435897435898,
+            "auc": 0.5974025974025974,
+            "balanced_accuracy": 0.5487012987012987,
+            "name": "train_through_2021_test_2022",
+            "test_class_counts": {
+              "0": 28,
+              "1": 11
+            },
+            "test_rows": 39,
+            "test_year": 2022,
+            "train_class_counts": {
+              "0": 30,
+              "1": 13
+            },
+            "train_rows": 43,
+            "train_years": [
+              2020,
+              2021
+            ],
+            "valid": true
+          },
+          {
+            "accuracy": 0.35294117647058826,
+            "auc": 0.5238095238095237,
+            "balanced_accuracy": 0.47619047619047616,
+            "name": "train_through_2022_test_2023",
+            "test_class_counts": {
+              "0": 14,
+              "1": 3
+            },
+            "test_rows": 17,
+            "test_year": 2023,
+            "train_class_counts": {
+              "0": 58,
+              "1": 24
+            },
+            "train_rows": 82,
+            "train_years": [
+              2020,
+              2021,
+              2022
+            ],
+            "valid": true
+          }
+        ],
+        "pooled": {
+          "accuracy": 0.47058823529411764,
+          "auc": 0.5367965367965368,
+          "balanced_accuracy": 0.4801587301587301,
+          "class_counts": {
+            "0": 63,
+            "1": 22
+          },
+          "valid_rows": 85
+        }
+      }
+    }
+  },
+  "overall_pass": false,
+  "overall_pass_rule": "overall pass iff both SKIP and TP12 selected action gates pass",
+  "preregistration": {
+    "manifest_hash": "bce936705c0e0012b4105be450bcf0e42b0c4b693049fb05ec388030d9c6973b",
+    "path": "results/pposm_global_ratio_micro_two_action_preregistration_2026-09-05.json",
+    "sha256": "27400de72832ba1ce4dab3538960680f0556059238da59a25f7312177298bec8"
+  },
+  "protocol": "pposm_global_count_long_short_ratio_micro_two_action_source_support_v1",
+  "runtime_versions": {
+    "numpy": "2.2.6",
+    "pandas": "2.3.3",
+    "scikit_learn": "1.7.2"
+  },
+  "scope_limits": {
+    "binary_per_candidate_action_only": true,
+    "full_professor_critic_rubric_satisfied": false,
+    "no_oos_labels": true,
+    "reason": "This source-support diagnostic tests only pre-2024 global-ratio separability for SKIP and TP12 lifecycle residual labels before SFT/RLVR or OOS economics.",
+    "train_only": true
+  },
+  "selected_gate_by_action": {
+    "SKIP": {
+      "checks": {
+        "balanced_accuracy_ge_0_55": true,
+        "every_valid_year_auc_gt_0_50": false,
+        "exactly_3_valid_folds": true,
+        "lower95_gt_0_50": false,
+        "max_feature_null_le_5pct": true,
+        "pooled_auc_ge_0_60": false
+      },
+      "pass": false,
+      "valid_years": [
+        2021,
+        2022,
+        2023
+      ]
+    },
+    "TP12": {
+      "checks": {
+        "balanced_accuracy_ge_0_55": false,
+        "every_valid_year_auc_gt_0_50": true,
+        "exactly_3_valid_folds": true,
+        "lower95_gt_0_50": false,
+        "max_feature_null_le_5pct": true,
+        "pooled_auc_ge_0_60": false
+      },
+      "pass": false,
+      "valid_years": [
+        2021,
+        2022,
+        2023
+      ]
+    }
+  },
+  "selected_model_train_only_by_action": {
+    "SKIP": "logreg_l2_c025_balanced_poly",
+    "TP12": "logreg_l2_c025_balanced_poly"
+  },
+  "selection_rule": "for each action choose a passing model first; within pass/fail bucket break ties by pooled AUC, lower95 CI, then balanced accuracy",
+  "source": {
+    "expected_pre2024_prefix_sha256": "1da4e6bb2929050eae69b58c7fa715900258858b76e5442c9897b1601934db99",
+    "expected_sha256": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106",
+    "feature_causality": "features are computed at source bar t and joined only when t == signal_time - 5 minutes",
+    "feature_frame_end_exclusive": "2024-01-01",
+    "first_create_time": "2020-09-01 00:00:00",
+    "last_create_time": "2023-12-31 23:55:00",
+    "path": "/home/pakchu/rllm/data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz",
+    "pre2024_prefix_sha256": "1da4e6bb2929050eae69b58c7fa715900258858b76e5442c9897b1601934db99",
+    "pre2024_prefix_sha256_matches_expected": true,
+    "ratio_column": "count_long_short_ratio",
+    "rows": 349992,
+    "sha256": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106",
+    "sha256_matches_expected": true
+  },
+  "summary_sha256_without_self": "16f11363e2c9555c987f3bfdb2db3c1648b5a29fd30a65e7f8d4c84a36c398c0"
+}

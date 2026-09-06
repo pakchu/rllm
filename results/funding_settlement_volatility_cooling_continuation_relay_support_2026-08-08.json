@@ -1,0 +1,116 @@
+{
+  "protocol_version": "fsvccr_6_source_support_v1",
+  "policy_id": "FSVCCR-6",
+  "preregistration": {
+    "path": "results/funding_settlement_volatility_cooling_continuation_relay_preregistration_2026-08-08.json",
+    "sha256": "e09b099437e30b9d39410a8d172eef504bc39327963a8bcd3fa869cecfc3a2d6",
+    "manifest_hash": "68d7b87e3f407e6cb08d0677df21246a72e5f4b3ed7b22bd4863cad5f74ca13d"
+  },
+  "source_manifests": {
+    "volatility": {
+      "path": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/manifest.json",
+      "sha256": "5a6b8fb8d2da235afee4709d219bc3e537498e15078fafa27d57ba284723cd7e"
+    },
+    "completed_price": {
+      "path": "data/options_led_intrahour_absorption_sources_2023_2026/manifest.json",
+      "sha256": "1ca33578613d084801c02fce5f15213daa6c5a419ad621b056648b2f01e276e2"
+    },
+    "train_funding": {
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+    },
+    "later_funding": {
+      "table": "funding_rates_binance",
+      "symbol": "BTCUSDT"
+    }
+  },
+  "completed_preentry_sources_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "gross9_rows_opened": false,
+  "clock": {
+    "path": "data/funding_settlement_volatility_cooling_continuation_relay_clocks_2023_2026.csv.gz",
+    "sha256": "c60cae19fd151c635bf74daa0142a2b94bee712feedb11bd0fbd1ee467e0c28f",
+    "rows": 81
+  },
+  "controls": {
+    "no_funding_extreme": {
+      "path": "data/funding_settlement_volatility_cooling_continuation_relay_controls_2023_2026/no_funding_extreme.csv.gz",
+      "sha256": "f66157056c9888e824e2f2f9f2b21278069e2065e0da310ce7dcfa76b79a598b",
+      "rows": 165
+    },
+    "no_trend_tail": {
+      "path": "data/funding_settlement_volatility_cooling_continuation_relay_controls_2023_2026/no_trend_tail.csv.gz",
+      "sha256": "fd83a555a022ae8e26e2076217301e4bb6afb02b80411fea84bdb4b2bce0abd5",
+      "rows": 126
+    },
+    "no_joint_cooling": {
+      "path": "data/funding_settlement_volatility_cooling_continuation_relay_controls_2023_2026/no_joint_cooling.csv.gz",
+      "sha256": "fd95ffea474f49986484bd504b8fa2658f81aa23093dce390390bfdfc9355801",
+      "rows": 164
+    },
+    "no_same_direction": {
+      "path": "data/funding_settlement_volatility_cooling_continuation_relay_controls_2023_2026/no_same_direction.csv.gz",
+      "sha256": "ce6c85d51a7378f26506a599b8e69b3078f8eb85310c0dc825db31544f70d0d5",
+      "rows": 185
+    },
+    "no_deceleration_cap": {
+      "path": "data/funding_settlement_volatility_cooling_continuation_relay_controls_2023_2026/no_deceleration_cap.csv.gz",
+      "sha256": "5288c5409140ac5634c08be02e99d29a7627a713ec5e5fc8c71733d6d020d60e",
+      "rows": 88
+    },
+    "direction_flip": {
+      "path": "data/funding_settlement_volatility_cooling_continuation_relay_controls_2023_2026/direction_flip.csv.gz",
+      "sha256": "31a1c6a9d55b2f9c971ffb40196c34aeafbfbd1bf239f268a5d16f7ba510001a",
+      "rows": 81
+    }
+  },
+  "support": {
+    "train": {
+      "events": 20,
+      "longs": 8,
+      "shorts": 12,
+      "minority_side_share": 0.4,
+      "max_month_share": 0.6
+    },
+    "test": {
+      "events": 31,
+      "longs": 17,
+      "shorts": 14,
+      "minority_side_share": 0.45161290322580644,
+      "max_month_share": 0.1935483870967742
+    },
+    "eval": {
+      "events": 11,
+      "longs": 7,
+      "shorts": 4,
+      "minority_side_share": 0.36363636363636365,
+      "max_month_share": 0.18181818181818182
+    },
+    "final": {
+      "events": 19,
+      "longs": 11,
+      "shorts": 8,
+      "minority_side_share": 0.42105263157894735,
+      "max_month_share": 0.3684210526315789
+    }
+  },
+  "support_checks": {
+    "train_minimum_events": true,
+    "train_side_balance": true,
+    "train_month_concentration": false,
+    "test_minimum_events": true,
+    "test_side_balance": true,
+    "test_month_concentration": true,
+    "eval_minimum_events": false,
+    "eval_side_balance": true,
+    "eval_month_concentration": true,
+    "final_minimum_events": true,
+    "final_side_balance": true,
+    "final_month_concentration": true
+  },
+  "support_passed": false,
+  "advance_to_gross9_novelty": false,
+  "advance_to_economic_outcomes": false,
+  "decision": "terminal_source_support_reject",
+  "manifest_hash": "af567c01bde9177a09944e584aa13c9ecbfa941bc2416dbe7440542b6b734bfe"
+}

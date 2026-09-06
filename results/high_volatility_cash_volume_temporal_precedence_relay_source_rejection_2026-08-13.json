@@ -1,0 +1,40 @@
+{
+  "protocol_version": "hvcvtp_8_source_integrity_v1",
+  "policy_id": "HVCVTP-8",
+  "preregistration": {
+    "path": "results/high_volatility_cash_volume_temporal_precedence_relay_preregistration_2026-08-13.json",
+    "sha256": "573eaefe87cf1c69501264243f887032281955c8e4cbe65f22f8950d196836af"
+  },
+  "query": "SELECT count(*) AS rows,count(quote_asset_volume) AS nonnull_rows,min(ts) FILTER (WHERE quote_asset_volume IS NOT NULL) AS first_nonnull,max(ts) FILTER (WHERE quote_asset_volume IS NOT NULL) AS last_nonnull FROM bars_binance_spot WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end",
+  "source_contract": {
+    "table": "bars_binance_spot",
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "required_column": "quote_asset_volume",
+    "required_window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "observed": {
+    "rows": 1883433,
+    "nonnull_rows": 39501,
+    "nonnull_share": 0.02097287240905304,
+    "first_nonnull": "2026-07-04T13:39:00+00:00",
+    "last_nonnull": "2026-07-31T23:59:00+00:00"
+  },
+  "checks": {
+    "complete_required_column": false,
+    "train_source_available": false,
+    "test_source_available": false,
+    "eval_source_available": false
+  },
+  "source_integrity_passed": false,
+  "candidate_incidence_opened": false,
+  "postentry_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "advance_to_source_support": false,
+  "decision": "terminal_source_contract_reject",
+  "failure_action": "reject HVCVTP-8 unchanged; no source field, window, history, threshold, clock, side, hold, subset, or control repair",
+  "manifest_hash": "5538ea58fb43199ff6cd2eb768898d653279ccff038c348ed951dc97e260eb9c"
+}

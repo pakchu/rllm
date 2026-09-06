@@ -1,0 +1,209 @@
+"""Outcome-blind preregistration for HVTPDCR-8."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+POLICY_ID = "HVTPDCR-8"
+DEFAULT_OUTPUT = Path(
+    "results/high_volatility_turning_point_deficiency_continuation_relay_preregistration_2026-08-12.json"
+)
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "high_volatility_turning_point_deficiency_continuation_relay_v1",
+        "policy_id": POLICY_ID,
+        "as_of_date": "2026-08-12",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": (
+                "The classical turning-point count is an ordinal randomness diagnostic. A completed "
+                "high-variation BTC path with unusually few strict local extrema is directionally "
+                "persistent rather than oscillatory. When its full-block and final-two-hour returns "
+                "agree, follow that direction for eight elapsed hours."
+            ),
+            "side": "common strict sign of completed eight-hour return and final-two-hour return",
+            "why_distinct": (
+                "HVTPDCR counts only strict three-close ordinal extrema and ignores every return "
+                "magnitude. HVDCS counts volatility-threshold state-machine reversals; HVCSR sums "
+                "absolute second-difference magnitudes; sign-run candidates use consecutive return "
+                "signs; recurrence and Lempel-Ziv candidates use different path objects. HVTPDCR "
+                "reuses no event set or control and uses no volume, flow, funding, OI, cross-asset, "
+                "fitted outcome, or amplitude threshold."
+            ),
+            "external_basis": {
+                "origin": "classical turning-point test for randomness of a continuous sequence",
+                "fixed_object": (
+                    "an interior observation is a turning point exactly when it is strictly greater "
+                    "than both neighbors or strictly less than both neighbors"
+                ),
+                "selection_use": "ordinal object and low-count persistence interpretation only; no incidence or outcomes",
+            },
+            "why_suited_to_volatile_regimes": (
+                "the causal upper variation tail targets July-like auctions, while the lower turning-point "
+                "tail requires those auctions to traverse price levels with unusually few local reversals"
+            ),
+            "why_low_gross9_overlap_is_plausible": (
+                "three fixed UTC ordinal turning-point-deficiency onsets are absent from Gross9 primitives"
+            ),
+        },
+        "features": {
+            "decision_grid": "exact 00:00/08:00/16:00 UTC boundaries",
+            "block": "96 exact coherent BTCUSDT five-minute aggregates from 480 unique bars_binance interval=1m rows [D-8h,D)",
+            "close_path": "the 96 completed five-minute closes in ascending UTC order",
+            "turning_point": (
+                "for interior index i=1..94, one iff close_i is strictly above both adjacent closes "
+                "or strictly below both adjacent closes; equality is not a turning point"
+            ),
+            "turning_point_count": "integer sum over the 94 interior positions",
+            "turning_point_share": "turning_point_count/94 exactly in [0,1]",
+            "turning_point_rank": (
+                "strict-prior midrank of turning_point_share over at most 270 valid blocks, minimum 180, "
+                "current excluded; rank<=0.20"
+            ),
+            "realized_variation": "sqrt(sum squared five-minute log(close/open) returns), strict positive",
+            "variation_rank": (
+                "strict-prior midrank over at most 270 valid blocks, minimum 180, current excluded; rank>=0.65"
+            ),
+            "block_return": "log(last five-minute close/first five-minute open) over eight hours",
+            "late_return": "log(last five-minute close/open of the first bar in [D-2h,D))",
+            "direction_confirmation": "block return and late return have one strict nonzero sign",
+            "onset": "eligible now and immediately prior exact source-valid block ineligible; missing prior cannot trigger",
+            "no_imputation": True,
+        },
+        "clock": {
+            "decision": "completed eight-hour boundary",
+            "entry": "exact BTCUSDT perpetual D+5m open",
+            "side": "common completed-return sign",
+            "hold": "8 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding": "not a signal input; exact settlements only after novelty passes",
+        },
+        "policy": {
+            "five_minute_observations": 96,
+            "interior_observations": 94,
+            "history_blocks": 270,
+            "minimum_history_blocks": 180,
+            "turning_point_rank_max": 0.20,
+            "variation_rank_min": 0.65,
+            "entry_delay_minutes": 5,
+            "hold_hours": 8,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.20,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.10,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.10,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held "
+                "5m favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged candidate passes train, test, eval, final",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_turning_point_deficiency_tail",
+                "no_variation_gate",
+                "turning_point_share_below_two_thirds",
+                "one_block_stale_geometry",
+                "direction_flip",
+                "forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "bars": {
+                "table": "bars_binance",
+                "symbol": "BTCUSDT",
+                "interval": "1m",
+                "columns": ["ts", "open", "high", "low", "close"],
+                "window": ["2023-04-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+                "read_after_preregistration": True,
+            },
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "prior_path_geometry_outcomes_known": True,
+            "repository_strict_ordinal_turning_point_count_candidate_found": False,
+            "prior_event_sets_reused": False,
+            "prior_candidate_outcomes_used_to_set_formula_rank_side_hold_or_clock": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": "classical strict ordinal turning-point deficiency during high variation",
+        },
+        "stopping_rule": (
+            "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no ordinal "
+            "definition, aggregation, rank, variation, side, hold, clock, subset, threshold, or control repair."
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(payload: dict[str, Any]) -> None:
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    if payload.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("HVTPDCR preregistration hash mismatch")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    validate(result)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
+    print(args.output)

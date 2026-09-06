@@ -1,0 +1,191 @@
+{
+  "id": "oi_divergence_pullback_range_rsi_h96_s6_fresh_v1",
+  "status": "shadow_candidate",
+  "enabled": false,
+  "live_authorized": false,
+  "research_only": true,
+  "symbol": "BTCUSDT",
+  "side": "long",
+  "leverage": 1.0,
+  "position_overlap_allowed": false,
+  "execution": {
+    "decision_stride_5m_bars": 6,
+    "entry_delay_5m_bars": 1,
+    "hold_5m_bars": 96,
+    "hold_hours": 8.0,
+    "entry_price": "next 5m open",
+    "exit": "fixed 8h or evaluation boundary"
+  },
+  "signal": {
+    "gates": [
+      {
+        "feature": "oi_minus_px_4h_z",
+        "op": ">=",
+        "threshold": 0.8954018630586817,
+        "fit": "train<2024 q0.80"
+      },
+      {
+        "feature": "return_zscore_48",
+        "op": "<=",
+        "threshold": -0.7389570664259131,
+        "fit": "train<2024 q0.20"
+      },
+      {
+        "feature": "range_vol",
+        "op": ">=",
+        "threshold": 0.04008415457867338,
+        "fit": "train<2024 q0.70"
+      },
+      {
+        "feature": "rsi_norm",
+        "op": "<=",
+        "threshold": -0.04507656773717145,
+        "fit": "train<2024 q0.40"
+      }
+    ],
+    "feature_definition": {
+      "oi_minus_px_4h_z": "rolling z-score of 4h log(open_interest/open_interest_lag) minus 4h BTC close return; rolling window 288 bars, min 50"
+    },
+    "required_current_oi": true,
+    "excluded_feature_families": [
+      "pb30",
+      "rex_8640"
+    ]
+  },
+  "accounting": {
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "funding": "realized funding events during each position",
+    "mdd": "strict in-position 5m adverse excursion"
+  },
+  "evidence": {
+    "historical_validation_from_source": {
+      "train_pre2024": {
+        "return_pct": 42.7062700833547,
+        "cagr_pct": 11.263303983206029,
+        "strict_mdd_pct": 44.2859741452347,
+        "cagr_to_strict_mdd": 0.25433117822514906,
+        "trades": 313,
+        "p_value": 0.32849037978244944
+      },
+      "test_2024": {
+        "return_pct": 52.53849841120575,
+        "cagr_pct": 52.4065700510906,
+        "strict_mdd_pct": 6.338587931137207,
+        "cagr_to_strict_mdd": 8.267861962386364,
+        "trades": 64,
+        "p_value": 0.028515044300355896
+      },
+      "eval_2025": {
+        "return_pct": 36.59891260550321,
+        "cagr_pct": 36.628095383326254,
+        "strict_mdd_pct": 5.458067791615839,
+        "cagr_to_strict_mdd": 6.710817230887242,
+        "trades": 40,
+        "p_value": 0.04284215715596895
+      },
+      "ytd_2026": {
+        "return_pct": 0.6246305933853114,
+        "cagr_pct": 1.4976182310927566,
+        "strict_mdd_pct": 9.649785802176158,
+        "cagr_to_strict_mdd": 0.1551970439338688,
+        "trades": 17,
+        "p_value": 0.9054486036644509
+      }
+    },
+    "fresh_window": [
+      "2026-06-01T00:00:00Z",
+      "2026-08-03T21:45:00Z"
+    ],
+    "fresh_source_receipt": {
+      "row_counts": {
+        "btcusdt_1m": 183485,
+        "btckrw_1m": 183143,
+        "usdkrw_1m": 125592,
+        "forex_1m": 781546,
+        "premium_1m": 183485,
+        "funding": 1721
+      },
+      "funding_aliases": {
+        "policy": {
+          "alias_grouping": "sort by raw funding_time; group only adjacent rows whose timestamp delta from the previous row is <=100ms",
+          "max_cluster_span_ms": 100,
+          "canonical_timestamp": "latest raw timestamp in the accepted near-alias cluster; no snapping to cadence",
+          "required_exact_equal_columns": [
+            "funding_rate",
+            "mark_price"
+          ],
+          "reject": [
+            "exact_duplicate_timestamp",
+            "malformed_timestamp",
+            "nonfinite_funding_rate_or_mark_price",
+            "unequal_values_within_near_alias_cluster",
+            "cluster_span_gt_100ms"
+          ],
+          "preserve_events_separated_by_at_least": "1min"
+        },
+        "raw_rows": 2000,
+        "canonical_rows": 1721,
+        "alias_clusters": 279,
+        "alias_rows_removed": 279,
+        "max_cluster_span_ms": 16.0,
+        "cluster_size_histogram": {
+          "1": 1442,
+          "2": 279
+        },
+        "selected_timestamp": "latest_raw_timestamp",
+        "passed": true,
+        "reason": "pass",
+        "raw_hash": "ac6f2dd77da6126e015f432fd97e0aa3a5d6e20376808ccbd45d39b454f2e5ad",
+        "canonical_hash": "5c510c67a7d93f2ed2a1bdfe058481e8ec273abc75b951158df0483815512bb8"
+      }
+    },
+    "fresh_oi": {
+      "rows": 27236,
+      "first": "2026-05-01 00:00:00",
+      "last": "2026-08-03 13:35:00",
+      "sha256": "9a3a1478bb726a21d5e34e1a402c7b8b00479db4b438ad3ce147ff1d5871f362"
+    },
+    "signal_candidates": 13,
+    "scheduled_nonoverlap_trades": 8,
+    "schedule_hash": "ba8c29edff98bf7c81602d87ed5f3f8ed9a78920775a91cae540939bf7e2afbb",
+    "fresh_base": {
+      "absolute_return_pct": 6.96463490580872,
+      "cagr_pct": 46.93309084500348,
+      "strict_mdd_pct": 5.2455086786057254,
+      "cagr_to_strict_mdd": 8.947290667237722,
+      "trades": 8,
+      "longs": 8,
+      "shorts": 0,
+      "mean_net_bps": 85.48348243455767,
+      "mean_gross_bps": 97.81286107017756,
+      "win_rate": 0.75
+    },
+    "fresh_stress": {
+      "absolute_return_pct": 6.2817026037638835,
+      "cagr_pct": 41.6514482190492,
+      "strict_mdd_pct": 5.245508678605737,
+      "cagr_to_strict_mdd": 7.940402117515934,
+      "trades": 8,
+      "longs": 8,
+      "shorts": 0,
+      "mean_net_bps": 77.41186732569099,
+      "mean_gross_bps": 97.81286107017756,
+      "win_rate": 0.75
+    }
+  },
+  "risks": [
+    "Only eight recent non-overlapping trades; uncertainty is large despite positive cost stress.",
+    "The source candidate has weak pre-2024 training performance and a weak original 2026 YTD result.",
+    "Historical test/eval periods and thresholds were exposed before this distillation; they are not new OOS evidence.",
+    "The fresh authoritative OI source ends at 2026-08-03 13:35 UTC, so later behavior is untested.",
+    "Long-only regime concentration can overlap economically with other BTC dip-buying sleeves.",
+    "No liquidation, capacity, market-impact, or tick-order model."
+  ],
+  "artifacts": {
+    "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json": "6533650bb6800308762dc02f310dbfe7dbd59c8a217d55305f6c5388eb2a480b",
+    "research/oi_divergence_fresh_v2/report.json": "ec108c6a7ebf6634431fbae42dbf34a26fadfb1792d418be026a2f54b253c725"
+  },
+  "implementation": "training/evaluate_oi_divergence_fresh_v2.py:run",
+  "result_hash": "a166f211b372af778becf6204d3f4060e064088ea2e920a3c8baa5b3244c4c3e"
+}

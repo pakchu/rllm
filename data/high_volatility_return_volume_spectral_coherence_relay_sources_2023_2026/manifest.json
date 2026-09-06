@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvrvsc_8_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,sum(quote_asset_volume) AS quote_turnover,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND quote_asset_volume>=0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1",
+  "query_sha256": "7e1f7a073f78ce817601ed4eecbf38de96eb6a9b2f7e020d6b077a88308ab91b",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 376704,
+  "builder": {
+    "path": "training/build_high_volatility_return_volume_spectral_coherence_relay_support.py",
+    "sha256": "022a8e564de4109984d3a354132e91c6f619a42adeb06fc26f974f9a50b443fd"
+  },
+  "panel": {
+    "path": "data/high_volatility_return_volume_spectral_coherence_relay_sources_2023_2026/scheduled_spectral_states.csv.gz",
+    "sha256": "d5d5d583a78d88d8a90071afa5b11ad8900a68182fab1df2ed324f6cb188ef6d",
+    "rows": 3924,
+    "valid_rows": 3923
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "85ad6a515f71edd147271ccd084bfc977d1bc8e9c26f6a6ec1bc882ec23c337c"
+}

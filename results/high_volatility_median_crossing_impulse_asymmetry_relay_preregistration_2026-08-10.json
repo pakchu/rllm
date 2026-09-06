@@ -1,0 +1,156 @@
+{
+  "protocol_version": "high_volatility_median_crossing_impulse_asymmetry_relay_v1",
+  "policy_id": "HVMCIA-8",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In a volatile completed BTC block, repeated crossings of the block's robust median price can have systematically larger first accepted displacements on one side. Follow the side with stronger post-crossing acceptance rather than the endpoint direction.",
+    "side": "strict sign of upward minus downward median-crossing overshoot mass",
+    "why_distinct": "Median breadth uses constituent returns; median-shift compares return halves; cumulative-VWAP recross counts crossings of an expanding volume-weighted reference; range traversal uses absolute extrema. HVMCIA fixes the completed block median level and compares the first accepted log-price overshoot after every upcross versus downcross, with no endpoint gate, volume, flow, funding, OI, cross-asset, prior event, fitted outcome, or control.",
+    "why_suited_to_volatile_regimes": "completed realized variation must rank in its causal upper 35% while median-crossing acceptance asymmetry enters its upper 30%",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily robust-level crossing-impulse onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 07:00/15:00/23:00 UTC boundaries",
+    "block": "480 exact coherent bars_binance BTCUSDT one-minute rows [D-8h,D)",
+    "log_close_path": "p_i=log(close_i), i=0..479",
+    "median_level": "sample median of the 480 completed log closes",
+    "upcross": "p_(i-1)<=median and p_i>median for i=1..479",
+    "downcross": "p_(i-1)>=median and p_i<median for i=1..479",
+    "crossing_support": "at least one upcross and one downcross",
+    "up_overshoot_mass": "sum(p_i-median) over upcrosses",
+    "down_overshoot_mass": "sum(median-p_i) over downcrosses",
+    "crossing_impulse_asymmetry": "(up_mass-down_mass)/(up_mass+down_mass), finite strict nonzero",
+    "asymmetry_rank": "strict-prior midrank of abs(crossing_impulse_asymmetry) over at most 270 earlier source-valid blocks, minimum 180, current excluded; rank>=0.70",
+    "realized_variation": "sqrt(sum squared log(close/open) minute returns), finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank, current excluded; rank>=0.65",
+    "eligible_state": "asymmetry and variation gates pass",
+    "onset": "eligible now and immediately previous exact source-valid block ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed eight-hour boundary",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "asymmetry_rank_min": 0.7,
+    "variation_rank_min": 0.65,
+    "minimum_upcrosses": 1,
+    "minimum_downcrosses": 1,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_asymmetry_tail",
+      "no_variation_gate",
+      "crossing_step_return_asymmetry",
+      "one_block_stale_crossings",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_median_breadth_median_shift_vwap_recross_and_range_traversal_outcomes_known": true,
+    "repository_median_crossing_impulse_asymmetry_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "directional first-acceptance displacement across a robust completed level"
+  },
+  "stopping_rule": "Terminal first failure; no level, crossing convention, impulse formula, rank, onset, side, hold, clock, subset, threshold, or control repair.",
+  "manifest_hash": "2b1f3cf83a6b4c3ccd68ca58917f00f268720f4f2cc2aa9f97e70a68adb7e997"
+}

@@ -1,0 +1,21 @@
+{
+  "protocol_version": "ujcvr_12_usdjpy_source_v1",
+  "query": "SELECT date_trunc('day',ts) AS source_day,(array_agg(open ORDER BY ts))[1] AS session_open,max(high) AS session_high,min(low) AS session_low,(array_agg(close ORDER BY ts DESC))[1] AS session_close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_polygon WHERE symbol='USDJPY' AND interval='1m' AND ts>=:start AND ts<:end AND extract(isodow from ts) BETWEEN 1 AND 5 AND extract(hour from ts)>=13 AND extract(hour from ts)<21 GROUP BY 1 ORDER BY 1",
+  "table": "bars_polygon",
+  "symbol": "USDJPY",
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/usdjpy_carry_volatility_relay_sources_2023_2026/usdjpy_sessions.csv.gz",
+    "sha256": "7a76d2033652d1f40ea9a35c332dee2cda0cfa806396af65c720dc9e3e34ea78",
+    "rows": 929,
+    "valid_rows": 913
+  },
+  "manifest_hash": "d00a0cc343f7e27bcb75d7de3f6b1129ea0062f9dd1646859db98246f3a4c3ad"
+}

@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvcavs_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVCAVS-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_cross_alt_variance_shock_propagation_relay_economics.py",
+    "sha256": "ac1dd5b7040cb7192e8ef28e8e14ed783074d4d2e2d1235fc6539a9a5d134984"
+  },
+  "authorization": {
+    "path": "results/high_volatility_cross_alt_variance_shock_propagation_relay_gross9_novelty_2026-08-13.json",
+    "sha256": "ec4dc971bee5206c87a60754037fdfc48607d94ea1f5acbe8603e7b357c5a5a3"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "6df88f3f02299c0fdb02ad9fb749737284c283d4de5d6051a10a2a75f625f890"
+}

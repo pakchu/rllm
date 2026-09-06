@@ -1,0 +1,1242 @@
+{
+  "as_of_date": "2026-07-30",
+  "attempt_and_reproduction_contract": {
+    "each_authoritative_stage": {
+      "atomic_write_once_claim_before_first_protected_read": true,
+      "claim_binds": [
+        "commit",
+        "preregistration",
+        "evaluator closure",
+        "dependency hashes",
+        "prior receipt hashes"
+      ],
+      "retry_resume_or_fallback_after_claim": false,
+      "stop_on_first_failure": true
+    },
+    "verification_replay": {
+      "allowed_only_after_successful_committed_authoritative_bytes": true,
+      "authoritative_failure_permanently_forbids_replay": true,
+      "byte_identical_temp_artifacts_and_receipts_required": true,
+      "canonical_write_ranking_or_repair_authority": false,
+      "clean_checkout_and_upstream_exact": true,
+      "mismatch": "terminal reproducibility failure",
+      "separate_atomic_write_once_claim": true,
+      "verification_only": true
+    }
+  },
+  "calendars": {
+    "full": [
+      "2023-06-01T00:00:00Z",
+      "2026-06-01T00:00:00Z"
+    ],
+    "full_calendar_years": 3,
+    "future25": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "future26": [
+      "2026-01-01T00:00:00Z",
+      "2026-06-01T00:00:00Z"
+    ],
+    "interval_eligibility": "entry>=start AND exit<=end; no clipping",
+    "pre_source_full_calendar_idleness_included": true,
+    "selection": [
+      "2023-06-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "selection_periods": {
+      "2023H2": [
+        "2023-06-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "2024": [
+        "2024-01-01T00:00:00Z",
+        "2025-01-01T00:00:00Z"
+      ]
+    },
+    "support_subperiods": {
+      "2024H1": [
+        "2024-01-01T00:00:00Z",
+        "2024-07-01T00:00:00Z"
+      ],
+      "2024H2": [
+        "2024-07-01T00:00:00Z",
+        "2025-01-01T00:00:00Z"
+      ]
+    }
+  },
+  "controls": {
+    "accepted_primary_parent_set": {
+      "constant_long": "accepted primary entries fixed LONG",
+      "constant_short": "accepted primary entries fixed SHORT",
+      "deterministic_random_side": "SHA256 UTF-8(CVVH-432|<primary-id>|RANDOM_SIDE); first byte<128 LONG else SHORT",
+      "direction_flip": "flip accepted primary side",
+      "one_bar_delayed_entry": "shift accepted primary entry and exit +300 seconds; do not rerun reservation"
+    },
+    "controls_cannot_replace_repair_or_redefine_primary": true,
+    "independent_own_clock": {
+      "body_lead_only": "omit Binance range leadership",
+      "deribit_led": "swap leadership; opposite dominant DVOL body maps to side",
+      "range_lead_only": "omit Binance body-magnitude leadership",
+      "stale_deribit": "state[t]=BVOL[t] vs DVOL[t-1]; prior=BVOL[t-1] vs DVOL[t-2]; require t,t-1,t-2 valid and retain T availability"
+    }
+  },
+  "economic_contract": {
+    "engine": "exact ESDI strict-open fixed-quantity engine",
+    "market_calendar": "complete unique finite BTCUSDT perpetual 5m OHLC, including period-end boundary open; missing/duplicate/off-grid is terminal",
+    "nonpositive_or_nonfinite_equity": "terminal liquidation failure",
+    "opens_only_after_committed_clean_exact_novelty_reproduction": true,
+    "path_order": [
+      "global/pre-entry high-water mark",
+      "favorable held OHLC plus funding credits",
+      "adverse held OHLC plus funding debits",
+      "hypothetical liquidation cost",
+      "entry and exit side costs"
+    ],
+    "signflip": {
+      "cluster": "UTC entry month",
+      "gated_stages": "exact exhaustive 2^k sign enumeration; k<=19 including combined selection",
+      "stitched_full_if_k_gt_20": "fixed-seed Monte Carlo allowed because full is descriptive"
+    },
+    "sizing": "exit first at exact open; size entries from post-exit pre-entry equity; quantity remains fixed to exit",
+    "source_specific_superiority": {
+      "cannot_completely_qualify": [
+        "direction_flip",
+        "deterministic_random_side",
+        "constant_long",
+        "constant_short"
+      ],
+      "costs": [
+        "base",
+        "stress"
+      ],
+      "diagnostic_only_cannot_replace": [
+        "deribit_led",
+        "stale_deribit",
+        "one_bar_delayed_entry"
+      ],
+      "metric": "cagr_to_strict_mdd",
+      "operator": "primary > control",
+      "periods": [
+        "2023H2",
+        "2024"
+      ],
+      "primary_must_strictly_exceed": [
+        "body_lead_only",
+        "range_lead_only"
+      ]
+    },
+    "standalone_gate_base_and_stress_each_gated_stage": {
+      "absolute_return": ">0",
+      "calendar_month_clustered_signflip_p": "<=1/10",
+      "full_calendar_cagr_to_strict_mdd": ">=3",
+      "mean_gross_underlying_bp": ">=20",
+      "strict_mdd": "<=3/20"
+    }
+  },
+  "execution": {
+    "aligned_availability_still_waits_minutes": 5,
+    "base_cost_bp_per_notional_side": 6,
+    "early_close_stop_take_profit_trailing_or_pyramiding": false,
+    "entry": "ceil_to_5m(joint_availability)+5 elapsed minutes",
+    "funding_cash": "-side_sign*fixed_quantity*funding_rate*settlement_mark",
+    "funding_interval": "entry_time<=funding_time<exit_time",
+    "hold_bars_5m": 432,
+    "hold_seconds": 129600,
+    "leverage": "1/2",
+    "missing_exact_market_open": "terminal economic-stage failure",
+    "reservation": {
+      "accept": "entry>=previous accepted exit",
+      "interval": "[entry,exit)",
+      "scope": "one global CVVH position",
+      "suppressed_candidates_queued": false
+    },
+    "stress_cost_bp_per_notional_side": 10
+  },
+  "gross9": {
+    "all_five_positive_weight_sleeves_required": true,
+    "authority": {
+      "base_portfolio": {
+        "path": "configs/live/portfolio_added_alpha_mainnet_live_2026-07-18.json",
+        "sha256": "3f6c929f6b03797093b8b81f50ede533176aa169f5f81a4bb5f616d31afd24ff"
+      },
+      "clock_reconstruction": {
+        "exact_runtime_config_and_transitive_hash_validation_required": true,
+        "failure_or_missing_dependency_is_terminal": true,
+        "five_signed_sleeves_required": true,
+        "stage": "after ESDI source-support pass and before ESDI economics"
+      },
+      "portfolio": {
+        "path": "configs/shadow/portfolio_rank7_capacity_candidate_2026-07-28.json",
+        "sha256": "006f82e1f0affad9f96a08a6c600542feec4a0e1198ed99b8630627de4913450"
+      },
+      "pre2025_anchor": {
+        "metadata_only_until_economic_stage": true,
+        "path": "results/gross9_pre2025_authoritative_anchor_2026-07-28.json",
+        "sha256": "329878d90b6cd9c731eb4871ac041256f95f03c14dd261ada681d3a370709875"
+      },
+      "runtime": {
+        "portfolio_live.py": {
+          "path": "execution/portfolio_live.py",
+          "sha256": "5edd4e9aa749e538d7de6a9990e31b94fbcb444b7e1498714cea82036962863d"
+        },
+        "rank7_runtime.py": {
+          "path": "execution/rank7_runtime.py",
+          "sha256": "1ba1ab8f0af7cee0bac4885836776d50f2aff9dd30319d47e9a322f82f36c0dc"
+        },
+        "rex_llm_live.py": {
+          "path": "execution/rex_llm_live.py",
+          "sha256": "2e0de376e967b237afb711dd44503ec45dbb9b6548f575219c1cf93cc2de9c48"
+        }
+      },
+      "runtime_code_closure": {
+        "all_distribution_inventory_count": 108,
+        "all_distribution_inventory_sha256": "a5b435e485426d7254ed222692bf3b9c6444ae992e582084398dc57b960549dc",
+        "ast_import_closure_must_match_before_artifact_creation": true,
+        "bound_by_git_blob_and_sha256_in_repository_identity": true,
+        "environment_lock_paths": [
+          "pyproject.toml",
+          "uv.lock"
+        ],
+        "exact_runtime_environment": {
+          "all_distributions": {
+            "accelerate": "1.12.0",
+            "aiohappyeyeballs": "2.6.1",
+            "aiohttp": "3.13.2",
+            "aiosignal": "1.4.0",
+            "annotated-doc": "0.0.4",
+            "anyio": "4.12.1",
+            "async-timeout": "5.0.1",
+            "attrs": "25.4.0",
+            "bitsandbytes": "0.49.2",
+            "certifi": "2025.10.5",
+            "charset-normalizer": "3.4.4",
+            "chronos-forecasting": "2.3.1",
+            "click": "8.3.3",
+            "cloudpickle": "3.1.2",
+            "contourpy": "1.3.2",
+            "cycler": "0.12.1",
+            "datasets": "4.6.1",
+            "dateparser": "1.2.2",
+            "dill": "0.4.0",
+            "einops": "0.8.2",
+            "exceptiongroup": "1.3.1",
+            "farama-notifications": "0.0.4",
+            "filelock": "3.20.0",
+            "fonttools": "4.61.1",
+            "frozenlist": "1.8.0",
+            "fsspec": "2025.10.0",
+            "gymnasium": "1.2.3",
+            "h11": "0.16.0",
+            "hf-xet": "1.4.3",
+            "httpcore": "1.0.9",
+            "httpx": "0.28.1",
+            "huggingface-hub": "1.12.0",
+            "idna": "3.11",
+            "iniconfig": "2.3.0",
+            "jinja2": "3.1.6",
+            "joblib": "1.5.3",
+            "kiwisolver": "1.4.9",
+            "markdown-it-py": "4.0.0",
+            "markupsafe": "3.0.3",
+            "matplotlib": "3.10.8",
+            "mdurl": "0.1.2",
+            "momentfm": "0.1.5",
+            "mpmath": "1.3.0",
+            "multidict": "6.7.0",
+            "multiprocess": "0.70.18",
+            "networkx": "3.4.2",
+            "numpy": "2.2.6",
+            "nvidia-cublas-cu12": "12.8.4.1",
+            "nvidia-cuda-cupti-cu12": "12.8.90",
+            "nvidia-cuda-nvrtc-cu12": "12.8.93",
+            "nvidia-cuda-runtime-cu12": "12.8.90",
+            "nvidia-cudnn-cu12": "9.10.2.21",
+            "nvidia-cufft-cu12": "11.3.3.83",
+            "nvidia-cufile-cu12": "1.13.1.3",
+            "nvidia-curand-cu12": "10.3.9.90",
+            "nvidia-cusolver-cu12": "11.7.3.90",
+            "nvidia-cusparse-cu12": "12.5.8.93",
+            "nvidia-cusparselt-cu12": "0.7.1",
+            "nvidia-nccl-cu12": "2.27.5",
+            "nvidia-nvjitlink-cu12": "12.8.93",
+            "nvidia-nvshmem-cu12": "3.3.20",
+            "nvidia-nvtx-cu12": "12.8.90",
+            "packaging": "26.0",
+            "pandas": "2.3.3",
+            "peft": "0.18.1",
+            "pillow": "12.1.1",
+            "pluggy": "1.6.0",
+            "propcache": "0.4.1",
+            "protobuf": "7.34.1",
+            "psutil": "7.2.2",
+            "pyarrow": "23.0.1",
+            "pycryptodome": "3.23.0",
+            "pygments": "2.20.0",
+            "pyparsing": "3.3.2",
+            "pytest": "9.1.1",
+            "python-binance": "1.0.32",
+            "python-dateutil": "2.9.0.post0",
+            "pytz": "2025.2",
+            "pyyaml": "6.0.3",
+            "regex": "2025.11.3",
+            "requests": "2.32.5",
+            "rich": "15.0.0",
+            "safetensors": "0.7.0",
+            "scikit-learn": "1.7.2",
+            "scipy": "1.15.3",
+            "sentencepiece": "0.2.1",
+            "shellingham": "1.5.4",
+            "six": "1.17.0",
+            "stable-baselines3": "2.7.1",
+            "sympy": "1.14.0",
+            "tabicl": "2.1.1",
+            "threadpoolctl": "3.6.0",
+            "tokenizers": "0.22.2",
+            "tomli": "2.4.1",
+            "torch": "2.9.0",
+            "torchvision": "0.24.0",
+            "tqdm": "4.67.3",
+            "transformers": "5.7.0.dev0",
+            "triton": "3.5.0",
+            "trl": "0.29.0",
+            "typer": "0.25.0",
+            "typing-extensions": "4.15.0",
+            "tzdata": "2025.2",
+            "tzlocal": "5.3.1",
+            "urllib3": "2.5.0",
+            "websockets": "15.0.1",
+            "xxhash": "3.6.0",
+            "yarl": "1.22.0"
+          },
+          "all_distributions_count": 108,
+          "all_distributions_sha256": "a5b435e485426d7254ed222692bf3b9c6444ae992e582084398dc57b960549dc",
+          "packages": {
+            "SQLAlchemy": null,
+            "datasets": "4.6.1",
+            "numpy": "2.2.6",
+            "pandas": "2.3.3",
+            "peft": "0.18.1",
+            "scikit-learn": "1.7.2",
+            "scipy": "1.15.3",
+            "torch": "2.9.0",
+            "transformers": "5.7.0.dev0",
+            "trl": "0.29.0",
+            "websockets": "15.0.1"
+          },
+          "platform": {
+            "libc": [
+              "glibc",
+              "2.39"
+            ],
+            "machine": "x86_64",
+            "system": "Linux"
+          },
+          "python": {
+            "implementation": "CPython",
+            "version": [
+              3,
+              10,
+              10
+            ]
+          }
+        },
+        "paths": [
+          "execution/__init__.py",
+          "execution/binance_aggtrade_stream.py",
+          "execution/portfolio_live.py",
+          "execution/portfolio_shadow_policies.py",
+          "execution/rank7_runtime.py",
+          "execution/rex_llm_live.py",
+          "execution/wave_execution.py",
+          "models/__init__.py",
+          "models/option_a.py",
+          "models/option_b_vlm.py",
+          "preprocessing/__init__.py",
+          "preprocessing/binance_aux_features.py",
+          "preprocessing/chart_generator.py",
+          "preprocessing/external_features.py",
+          "preprocessing/indicators.py",
+          "preprocessing/live_db_features.py",
+          "preprocessing/market_features.py",
+          "preprocessing/scalars.py",
+          "preprocessing/timeframe.py",
+          "training/__init__.py",
+          "training/alpha_feature_backtest.py",
+          "training/alpha_linear_combo_scan.py",
+          "training/audit_confirmed_pullback_squeeze_live_parity.py",
+          "training/audit_weak_feature_responsibility_stability.py",
+          "training/build_rex_event_reasoning_policy_data.py",
+          "training/build_rex_regime_thesis_sft.py",
+          "training/eval_pairwise_candidate_backtest.py",
+          "training/eval_text_label.py",
+          "training/eval_text_trader.py",
+          "training/evaluate_oi_llm_selector.py",
+          "training/evaluate_portfolio_llm_selector.py",
+          "training/event_candidate_pool_probe.py",
+          "training/hierarchical_direct_split_search.py",
+          "training/hierarchical_regime_filter_search.py",
+          "training/long_component_tp_union_scan.py",
+          "training/long_regime_alpha_union_validate.py",
+          "training/long_regime_combo_scan.py",
+          "training/long_regime_gate_scan.py",
+          "training/long_regime_interest_gate_validation.py",
+          "training/long_regime_score_gate_validation.py",
+          "training/online_risk_overlay_backtest.py",
+          "training/path_outcome_dataset.py",
+          "training/portfolio_opt_new_alpha_pool.py",
+          "training/search_bidirectional_state_alpha.py",
+          "training/search_bocpd_state_gated_alpha.py",
+          "training/search_causal_online_expert_alpha.py",
+          "training/search_confirmed_pullback_squeeze_alpha.py",
+          "training/search_crossvenue_microstructure_consensus_alpha.py",
+          "training/search_deribit_dvol_alpha.py",
+          "training/search_funding_premium_external_state_gate_alpha.py",
+          "training/search_funding_premium_independent_gate_alpha.py",
+          "training/search_gaussian_hmm_regime_alpha.py",
+          "training/search_inventory_purge_reclaim_alpha.py",
+          "training/search_jump_variation_bidirectional_alpha.py",
+          "training/search_kalman_state_gated_alpha.py",
+          "training/search_kimchi_leadlag_bidirectional_alpha.py",
+          "training/search_liquidity_recovery_bidirectional_alpha.py",
+          "training/search_liveparity_state_feature_interactions.py",
+          "training/search_market_braid_alpha.py",
+          "training/search_nested_barrier_witness_alpha.py",
+          "training/search_orderflow_trophic_succession_alpha.py",
+          "training/search_positioning_disagreement_alpha.py",
+          "training/search_positioning_hgb_path_alpha.py",
+          "training/search_semimarkov_duration_alpha.py",
+          "training/search_significant_cagr_mdd_pool.py",
+          "training/search_specific_pullback_squeeze_alpha.py",
+          "training/search_spot_perp_transfer_entropy_alpha.py",
+          "training/search_volume_clock_bidirectional_alpha.py",
+          "training/strict_bar_backtest.py",
+          "training/train_text_sft.py",
+          "training/wave_feature_ridge_policy.py",
+          "utils.py",
+          "pyproject.toml",
+          "uv.lock"
+        ],
+        "required_runtime_abi_and_selected_packages": {
+          "packages": {
+            "SQLAlchemy": null,
+            "datasets": "4.6.1",
+            "numpy": "2.2.6",
+            "pandas": "2.3.3",
+            "peft": "0.18.1",
+            "scikit-learn": "1.7.2",
+            "scipy": "1.15.3",
+            "torch": "2.9.0",
+            "transformers": "5.7.0.dev0",
+            "trl": "0.29.0",
+            "websockets": "15.0.1"
+          },
+          "platform": {
+            "libc": [
+              "glibc",
+              "2.39"
+            ],
+            "machine": "x86_64",
+            "system": "Linux"
+          },
+          "python": {
+            "implementation": "CPython",
+            "version": [
+              3,
+              10,
+              10
+            ]
+          }
+        },
+        "roots": [
+          "execution/portfolio_live.py",
+          "execution/rank7_runtime.py",
+          "execution/rex_llm_live.py"
+        ],
+        "runtime_environment_must_match_before_artifact_creation": true
+      },
+      "sleeves": {
+        "cand_rex_veto_7": {
+          "clock_artifact_preexists": false,
+          "config": {
+            "path": "configs/live/rex_veto_7_candidate.json",
+            "sha256": "36df47c4737eb99f4ca5e2b257d9bd2fbf130df9d731b9ac02fcfe5192acd4db"
+          },
+          "side": "AUTO from exact REX decision"
+        },
+        "fresh_kimchi_fx": {
+          "clock_artifact_preexists": false,
+          "config": {
+            "path": "configs/shadow/fresh_kimchi_fx_2026-07-16.json",
+            "sha256": "f3e764d5d065643905105ae1c46668a22684569289c3781b79fc6b2efcc5154f"
+          },
+          "side": "AUTO from exact exclusive long/short gates"
+        },
+        "frozen_annual_rank7": {
+          "bundle_manifest": {
+            "path": "artifacts/rank7/frozen_annual_rank7_2026/manifest.json",
+            "sha256": "2c45484dce48658ef7d342df7a3bb8e83cd0f31d4728bbb72fd38e612ec3b7a9"
+          },
+          "clock_artifact_preexists": false,
+          "config": {
+            "path": "configs/shadow/frozen_annual_rank7_2026-07-16.json",
+            "sha256": "b75621bb604266d1cd2529a29f8bdb6aec3b1f2c14ff00d88673ef007362526d"
+          },
+          "immutable_model_bundle_preexists": true,
+          "side": "LONG"
+        },
+        "markov_transition_long": {
+          "clock_artifact_preexists": false,
+          "config": {
+            "path": "configs/shadow/markov_transition_long_2026-07-16.json",
+            "sha256": "ebfec66715428b2fffead13e17229fb4369816daeeeab2c02cf0115e7110b755"
+          },
+          "side": "LONG"
+        },
+        "rex_taker_low_range_position": {
+          "clock_artifact_preexists": false,
+          "config": {
+            "path": "configs/shadow/rex_taker_low_range_position_2026-07-16.json",
+            "sha256": "d4c56a6f1659189876c1d3f2e519a3dbc2608c754720c5cd1f65a02adb5589e4"
+          },
+          "side": "AUTO from exact REX decision"
+        }
+      },
+      "transitive_source_manifest": {
+        "path": "configs/shadow/portfolio_added_alpha_signal_parity_sources_2026-07-16.json",
+        "sha256": "27a5095b18acaf10c9f5aa68c2ddac1ab1ebe4f506828e1fcfec34c414eb3ba6",
+        "validate_every_declared_source_hash_at_novelty_stage": true
+      }
+    },
+    "authority_hash": "b3490c484d3fda1d5b649498e0d84325e203cd2664086e68cebd76509a54957e",
+    "gross": 9.0,
+    "reference_preregistration": {
+      "manifest_hash": "d5279f95cc7b92757aa77ecbbc5835d8b1cc4ce34f5a81d6f279abdcf2fcfe8a",
+      "path": "results/ethereum_settlement_demand_impulse_preregistration_2026-07-30.json",
+      "sha256": "2a481fc60044d3d468340457d50f92a91f2a52184a464e1a91badfb418bbcaba"
+    },
+    "reuse_exact_esdi_runtime_closure_validation": true,
+    "weights": {
+      "cand_rex_veto_7": 1.6,
+      "fresh_kimchi_fx": 2.0,
+      "frozen_annual_rank7": 3.0,
+      "markov_transition_long": 2.0,
+      "rex_taker_low_range_position": 0.4
+    }
+  },
+  "gross9_evidence_boundary": {
+    "complete_esdi_authority_closure_must_validate": true,
+    "full_domain_sleeve_clocks_for_structural_novelty": true,
+    "future_rows_used_for_economic_weight_ranking": false,
+    "future_rows_used_for_structural_candidate_veto": true,
+    "portfolio_return_pnl_metrics_at_novelty": false,
+    "reconstruct_only_after_source_support_pass": true
+  },
+  "manifest_hash": "dd3e334939b24cb5508c66ed9787c2c3e1a0ad006dcadcbfb673e541d6520cad",
+  "mechanism": {
+    "body": "(close-open)/open",
+    "candidate_sort": [
+      "entry_time",
+      "signal_time",
+      "canonical_id",
+      "side"
+    ],
+    "canonical_id": "CVVH-432|<control>|T=<four-digit RFC3339 whole-second UTC Z>",
+    "comparison": "exact positive-denominator cross multiplication",
+    "implementation": "training/cross_venue_volatility_shape_handoff.py",
+    "onset": {
+      "continued_same_side": "suppress",
+      "emit": "current in {LONG,SHORT} AND current != previous",
+      "first_after_gap_or_invalid": "suppress",
+      "opposite_side_transition": "emit",
+      "requires_current_and_previous_valid_consecutive_hours": true
+    },
+    "primary": {
+      "binance_absolute_body_strictly_greater": true,
+      "binance_negative": "LONG",
+      "binance_positive": "SHORT",
+      "binance_range_strictly_greater": true,
+      "equality": "NONE",
+      "opposite_nonzero_bodies": true
+    },
+    "range": "(high-low)/open"
+  },
+  "novelty": {
+    "all_declared_comparators_and_sleeves_must_pass": true,
+    "common_window_policy": {
+      "path": "docs/novelty-comparator-common-window-policy-2026-07-23.md",
+      "sha256": "928bce6e04fb34001478b4b4ea84156580b661c88a0f0338065a891c009bd580"
+    },
+    "common_window_policy_contamination_disclosure": {
+      "disclosed": true,
+      "effect": "prospective policy motivation only; no CVVH source value, incidence, comparator overlap, or outcome was opened",
+      "eligibility_rule_frozen_before_cvvh_incidence": true,
+      "fact": "source-only RMSR verification exposed a valid prior comparator interval crossing the 2023/2024 common-window boundary"
+    },
+    "comparator_removal_after_overlap_seen": false,
+    "failure_action": "retire exact CVVH-432 unchanged before outcomes",
+    "full_containment_only_no_clip_shift_or_split": true,
+    "matching": {
+      "objective_order": [
+        "maximum matched cardinality",
+        "minimum exact total absolute elapsed seconds",
+        "lexicographically smallest ordered timestamp-pair list"
+      ],
+      "one_to_one": true,
+      "reported_pair_list_sha256": true,
+      "tolerance_elapsed_seconds": 21600
+    },
+    "minimum_fully_contained_rows_each_clock": 10,
+    "opens_only_after_committed_source_support_pass": true,
+    "prior_volatility_comparators": {
+      "CMSR-36": {
+        "common_window": [
+          "2023-07-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "control": "primary"
+        },
+        "header": [
+          "control",
+          "signal_time",
+          "feature_available_time",
+          "entry_time",
+          "exit_time",
+          "side",
+          "pair",
+          "next_share_slope",
+          "next_flow",
+          "next_return",
+          "front_return",
+          "next_lead_shock"
+        ],
+        "header_line_sha256": "28703a32b4c55e4e912f54c1bddea62c8c49c658d73d42d3319f491e1e40c365",
+        "path": "data/coinm_next_maturity_shock_relay_clocks_2020_2023.csv.gz",
+        "sha256": "e81450d4e76ffd0ce2ae96edf97106f2f4c473da233be0db18dc2530c8da8e87",
+        "side_column": "side",
+        "side_parser": {
+          "-1": -1,
+          "1": 1
+        },
+        "validated_binding": {
+          "bytes": 79366,
+          "header": [
+            "control",
+            "signal_time",
+            "feature_available_time",
+            "entry_time",
+            "exit_time",
+            "side",
+            "pair",
+            "next_share_slope",
+            "next_flow",
+            "next_return",
+            "front_return",
+            "next_lead_shock"
+          ],
+          "header_line_sha256": "28703a32b4c55e4e912f54c1bddea62c8c49c658d73d42d3319f491e1e40c365",
+          "path": "data/coinm_next_maturity_shock_relay_clocks_2020_2023.csv.gz",
+          "rows_decoded": 0,
+          "sha256": "e81450d4e76ffd0ce2ae96edf97106f2f4c473da233be0db18dc2530c8da8e87"
+        }
+      },
+      "OPDR-24": {
+        "common_window": [
+          "2023-07-01T00:00:00Z",
+          "2026-06-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "OPDR-24",
+          "control": "primary"
+        },
+        "header": [
+          "candidate",
+          "control",
+          "split",
+          "decision_time",
+          "feature_available_time",
+          "entry_time",
+          "exit_time",
+          "side",
+          "log_bvol_dvol_ratio",
+          "premium_move_bp",
+          "premium_path_range_bp",
+          "premium_efficiency",
+          "prior_ratio_q20",
+          "prior_ratio_q80",
+          "prior_move_abs_q80_bp",
+          "prior_efficiency_q70"
+        ],
+        "header_line_sha256": "d93332440131f5f2dcc169dacf90588b686d1705d147f819028c0fe146561f60",
+        "path": "data/options_perpetual_demand_relay_clocks_2023_2026.csv.gz",
+        "sha256": "ceb79b206c3e1f6bf78b02cd2ace9a94f875ce930a704cc6e7a5a8b255021b99",
+        "side_column": "side",
+        "side_parser": {
+          "-1": -1,
+          "1": 1
+        },
+        "validated_binding": {
+          "bytes": 10214,
+          "header": [
+            "candidate",
+            "control",
+            "split",
+            "decision_time",
+            "feature_available_time",
+            "entry_time",
+            "exit_time",
+            "side",
+            "log_bvol_dvol_ratio",
+            "premium_move_bp",
+            "premium_path_range_bp",
+            "premium_efficiency",
+            "prior_ratio_q20",
+            "prior_ratio_q80",
+            "prior_move_abs_q80_bp",
+            "prior_efficiency_q70"
+          ],
+          "header_line_sha256": "d93332440131f5f2dcc169dacf90588b686d1705d147f819028c0fe146561f60",
+          "path": "data/options_perpetual_demand_relay_clocks_2023_2026.csv.gz",
+          "rows_decoded": 0,
+          "sha256": "ceb79b206c3e1f6bf78b02cd2ace9a94f875ce930a704cc6e7a5a8b255021b99"
+        }
+      },
+      "PCBR-12": {
+        "common_window": [
+          "2023-07-01T00:00:00Z",
+          "2026-06-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "PCBR-12",
+          "control": "primary"
+        },
+        "header": [
+          "candidate",
+          "control",
+          "split",
+          "context_start_time",
+          "decision_time",
+          "feature_available_time",
+          "entry_time",
+          "exit_time",
+          "side",
+          "context_range",
+          "trigger_move",
+          "trigger_efficiency",
+          "terminal_location",
+          "outside_distance"
+        ],
+        "header_line_sha256": "fec5bab4efda93d624dac7dfa65abf5a58c173ad60b56114bb7931403bd6d193",
+        "path": "data/premium_compression_breakout_relay_clocks_2020_2026.csv.gz",
+        "sha256": "659fc1b6b6e3a20e60031ed1d50f51c8c7d2836956f911f62ad13e4152740cda",
+        "side_column": "side",
+        "side_parser": {
+          "-1": -1,
+          "1": 1
+        },
+        "validated_binding": {
+          "bytes": 25362,
+          "header": [
+            "candidate",
+            "control",
+            "split",
+            "context_start_time",
+            "decision_time",
+            "feature_available_time",
+            "entry_time",
+            "exit_time",
+            "side",
+            "context_range",
+            "trigger_move",
+            "trigger_efficiency",
+            "terminal_location",
+            "outside_distance"
+          ],
+          "header_line_sha256": "fec5bab4efda93d624dac7dfa65abf5a58c173ad60b56114bb7931403bd6d193",
+          "path": "data/premium_compression_breakout_relay_clocks_2020_2026.csv.gz",
+          "rows_decoded": 0,
+          "sha256": "659fc1b6b6e3a20e60031ed1d50f51c8c7d2836956f911f62ad13e4152740cda"
+        }
+      },
+      "PSR-30/6": {
+        "common_window": [
+          "2023-07-01T00:00:00Z",
+          "2026-06-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "planned_exit_time",
+        "filters": {
+          "candidate": "PSR-30/6"
+        },
+        "header": [
+          "candidate",
+          "split",
+          "path_start_time",
+          "decision_time",
+          "feature_available_time",
+          "entry_time",
+          "planned_exit_time",
+          "direction",
+          "prior_center",
+          "path_range",
+          "efficiency",
+          "turns",
+          "up_excursion",
+          "down_excursion",
+          "max_excursion",
+          "terminal_deviation"
+        ],
+        "header_line_sha256": "3afc1ce5df81815a2bed10b1934e356b1e4487f5d35e9c696fdc5ec29067667c",
+        "path": "data/premium_snapback_recenter_clocks_2020_2026.csv.gz",
+        "sha256": "cb209ed35f9baa08cc2fb3dd5bd60b8e747b1408c09507b774ca275e0b2b2db6",
+        "side_column": "direction",
+        "side_parser": {
+          "-1": -1,
+          "1": 1
+        },
+        "validated_binding": {
+          "bytes": 56890,
+          "header": [
+            "candidate",
+            "split",
+            "path_start_time",
+            "decision_time",
+            "feature_available_time",
+            "entry_time",
+            "planned_exit_time",
+            "direction",
+            "prior_center",
+            "path_range",
+            "efficiency",
+            "turns",
+            "up_excursion",
+            "down_excursion",
+            "max_excursion",
+            "terminal_deviation"
+          ],
+          "header_line_sha256": "3afc1ce5df81815a2bed10b1934e356b1e4487f5d35e9c696fdc5ec29067667c",
+          "path": "data/premium_snapback_recenter_clocks_2020_2026.csv.gz",
+          "rows_decoded": 0,
+          "sha256": "cb209ed35f9baa08cc2fb3dd5bd60b8e747b1408c09507b774ca275e0b2b2db6"
+        }
+      },
+      "old_dvol_price_follow": {
+        "common_window": [
+          "2023-07-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {},
+        "header": [
+          "signal_time",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "header_line_sha256": "b1902adacd728da49ffe96210821a10c86d43e05bd1a6c7da43ba6fb31775a39",
+        "path": "data/opdr_old_dvol_price_follow_comparator_2023h2.csv.gz",
+        "sha256": "a9c9d1c8d32510e63e604dfdc8b9d079f7e7a4bc206fd0a0197cad8c65b03d3d",
+        "side_column": "side",
+        "side_parser": {
+          "-1": -1,
+          "1": 1
+        },
+        "validated_binding": {
+          "bytes": 429,
+          "header": [
+            "signal_time",
+            "entry_time",
+            "exit_time",
+            "side"
+          ],
+          "header_line_sha256": "b1902adacd728da49ffe96210821a10c86d43e05bd1a6c7da43ba6fb31775a39",
+          "path": "data/opdr_old_dvol_price_follow_comparator_2023h2.csv.gz",
+          "rows_decoded": 0,
+          "sha256": "a9c9d1c8d32510e63e604dfdc8b9d079f7e7a4bc206fd0a0197cad8c65b03d3d"
+        }
+      }
+    },
+    "raw_artifact_validation_before_window_filter": true,
+    "signed_exposure_grid": {
+      "LONG": 1,
+      "SHORT": -1,
+      "frequency_seconds": 300,
+      "idle": 0,
+      "interval": "[entry,exit)"
+    },
+    "thresholds_each_prior_volatility_and_gross9_sleeve": {
+      "absolute_signed_exposure_pearson_max": "7/20",
+      "exact_entry_jaccard_max": "1/10",
+      "occupied_5m_bar_jaccard_max": "1/4",
+      "one_to_one_6h_max_matched_share_max": "7/20",
+      "pearson_implementation_gate": "exact square<=49/400"
+    },
+    "undefined_metric_or_missing_group": "terminal failure"
+  },
+  "policy_id": "CVVH-432",
+  "producer_effects": {
+    "compressed_artifact_hash_reads": true,
+    "csv_data_rows_decoded": 0,
+    "git_metadata_subprocess_calls": "read-only",
+    "gzip_header_lines_decoded": 7,
+    "network_calls": {
+      "read_only_git_ls_remote_attestation": 1,
+      "source_or_web": 0
+    },
+    "output_publication": "atomic hard-link write-once"
+  },
+  "protocol_version": "cross_venue_volatility_shape_handoff_preregistration_v1",
+  "repository": {
+    "branch": "codex/cvvh-volatility-shape-20260730",
+    "canonical_remote_commit": "e7f973e305d80dc0f9a1fabbd20ec92f8776d611",
+    "commit": "e7f973e305d80dc0f9a1fabbd20ec92f8776d611",
+    "protocol_seal": {
+      "docs/cross-venue-volatility-shape-handoff-mechanism-decision-2026-07-30.md": {
+        "git_blob": "2a21bfc07cc51a635304f6f272fe3eedf4c9781a",
+        "sha256": "1293210540857e118dbe2a0504528e32866fd50338c182167488e38ec9150d14"
+      },
+      "docs/cross-venue-volatility-shape-handoff-preregistration-2026-07-30.md": {
+        "git_blob": "801b3acb49aa87f2a444e5ad8abaae95b19cd8dd",
+        "sha256": "5fcc1145f0eef62de74dae6599b44d6a6e74b461e352133e09e1b0335dcd6297"
+      },
+      "docs/novelty-comparator-common-window-policy-2026-07-23.md": {
+        "git_blob": "6fd945d1a4982070e45f652eadc4698b708b216a",
+        "sha256": "928bce6e04fb34001478b4b4ea84156580b661c88a0f0338065a891c009bd580"
+      },
+      "pyproject.toml": {
+        "git_blob": "fa8a6907c7e965f588216f23a4e6e51e270bbea0",
+        "sha256": "972713ffd03a621c8e3a5acf61b8aa5f7aa68d573d68415bfab34a5b68304e90"
+      },
+      "results/ethereum_settlement_demand_impulse_preregistration_2026-07-30.json": {
+        "git_blob": "1b3d8b244426c0876d2995ce4a23159961d3cfa6",
+        "sha256": "2a481fc60044d3d468340457d50f92a91f2a52184a464e1a91badfb418bbcaba"
+      },
+      "tests/test_cross_venue_volatility_shape_handoff.py": {
+        "git_blob": "4054ba6fae0980ba43170c9e5371a5a0afd6f413",
+        "sha256": "8138f7223ee953310993c8eb3ab01e6ff71bee2788893959075fec3bb0a7e868"
+      },
+      "tests/test_preregister_cross_venue_volatility_shape_handoff.py": {
+        "git_blob": "fee9264c64bf95db28bfff0a5636cc88406c2228",
+        "sha256": "e9802587d604f16c9a8455a26a211689d9309aa2241eda5e71af34f16f68e7be"
+      },
+      "training/cross_venue_volatility_shape_handoff.py": {
+        "git_blob": "cb5cfde050537b4b0217932b535882c563515b0f",
+        "sha256": "7ef51d2bbf548d9dbd94cbf62fe42e71e0402fe1e10f80f32ef0801cb4dc63be"
+      },
+      "training/preregister_cross_venue_volatility_shape_handoff.py": {
+        "git_blob": "a8fb764ab47fbc3e3f8e6181afa2da4ae1cedc60",
+        "sha256": "4bdc5bc0d872b0e799721f0c576489cf6116300781b4b4c26ad66f7bc036bffd"
+      },
+      "uv.lock": {
+        "git_blob": "e4d529eca8110a530c362eb7883430bb81893140",
+        "sha256": "ff965ca88c9eb9f17efe74a6d550ab99d093b44cda2467cee6f5738fb60f770a"
+      }
+    },
+    "protocol_seal_hash": "7097827f946e1d4bb569e38786089a5e1c8b3148cbedb3f09a56a2cee56dd4f8",
+    "tracked_clean": true,
+    "tree": "0b01ca9aec616d9b67bd8bd5120d455e735f9b74",
+    "upstream": "origin/codex/cvvh-volatility-shape-20260730",
+    "upstream_commit": "e7f973e305d80dc0f9a1fabbd20ec92f8776d611",
+    "upstream_exact": true,
+    "upstream_fetch_urls": [
+      "https://github.com/pakchu/rllm.git"
+    ],
+    "upstream_push_urls": [
+      "https://github.com/pakchu/rllm.git"
+    ],
+    "upstream_ref": "refs/remotes/origin/codex/cvvh-volatility-shape-20260730",
+    "upstream_remote": "origin",
+    "upstream_remote_url": "https://github.com/pakchu/rllm.git"
+  },
+  "research_boundary": {
+    "btc_execution_rows_opened": 0,
+    "bvol_or_dvol_rows_decoded": 0,
+    "candidate_incidence_opened": false,
+    "comparator_rows_decoded": 0,
+    "forbidden_repairs": [
+      "close-ratio substitution",
+      "BTC price-follow feature",
+      "premium-path direction or efficiency",
+      "24h or 48h hold substitution",
+      "polarity inversion",
+      "threshold grid",
+      "rank2 substitution"
+    ],
+    "funding_rows_opened": 0,
+    "gross9_clock_rows_opened": 0,
+    "known_prior_mechanisms": [
+      "close-level BVOL/DVOL disagreement",
+      "BTC price-follow after DVOL movement",
+      "OPDR close-ratio plus premium path"
+    ],
+    "return_pnl_cagr_or_drawdown_opened": false
+  },
+  "same_gross": {
+    "baseline_gross": 9.0,
+    "candidate_weights": [
+      "1/4",
+      "1/2",
+      "3/4"
+    ],
+    "comparison": "unscaled authoritative Gross9 at gross 9",
+    "configured_treatment_gross": 9.0,
+    "freeze_rank": 1,
+    "future": {
+      "each_requires_standalone_and_same_gross_base_stress": true,
+      "each_requires_strict_mdd_reduction_in_at_least_one_cost_cell": true,
+      "failure": "terminal veto",
+      "future25_then_future26": true,
+      "rerank_repair_or_alternate_weight": false,
+      "weight": "exact frozen rank1 only"
+    },
+    "gross9_weights": {
+      "cand_rex_veto_7": 1.6,
+      "fresh_kimchi_fx": 2.0,
+      "frozen_annual_rank7": 3.0,
+      "markov_transition_long": 2.0,
+      "rex_taker_low_range_position": 0.4
+    },
+    "rank2_substitution": false,
+    "ranking": "maximum minimum 2023H2/2024 base/stress improvement; tie lower candidate weight",
+    "requirements_every_period_base_and_stress": {
+      "cagr_to_strict_mdd_absolute_improvement_min": "1/20",
+      "liquidation_safe": true,
+      "treatment_absolute_return_positive": true,
+      "unscaled_absolute_return_retention_min": "97/100"
+    },
+    "selection_periods_only": [
+      "2023H2",
+      "2024"
+    ],
+    "stitched_exact_three_year_report": {
+      "can_repair_or_rerank": false,
+      "descriptive_non_gating": true,
+      "required_after_both_future_pass": true
+    },
+    "strict_mdd_reduced_in_at_least_one_selection_cost_cell": true,
+    "top1_must_pass_or_terminal": true,
+    "treatment": "scale every Gross9 sleeve by (9-w)/9 and add CVVH at w"
+  },
+  "sequence_rules": {
+    "control_can_replace_primary": false,
+    "future_can_rank_or_repair": false,
+    "ordinary_failure_repair_under_same_identity": false,
+    "parameter_threshold_hold_latency_or_polarity_repair": false,
+    "stop_at_first_failure": true
+  },
+  "singleton": true,
+  "source_contract": {
+    "allowed_pre_support_reads": [
+      "compressed file SHA-256",
+      "compressed byte count",
+      "single UTF-8 CSV header line",
+      "hash-bound JSON metadata bytes"
+    ],
+    "artifacts": {
+      "binance_btc_bvol_hourly": {
+        "header": [
+          "date",
+          "feature_available_time_utc",
+          "trade_earliest_time_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "source_rows",
+          "source_complete",
+          "feature_valid",
+          "feature_invalid_reason"
+        ],
+        "header_line_sha256": "b23c2c08e4856d7939fb0fccae8b524f41533d417fc1fdcef3b77b27536c1f14",
+        "parser": {
+          "candle_open_clock": "date",
+          "join_clock": "feature_available_time_utc",
+          "ohlc": [
+            "open",
+            "high",
+            "low",
+            "close"
+          ],
+          "validity": "source_complete=true AND feature_valid=true AND source_rows=3600"
+        },
+        "path": "data/binance_btc_bvol_hourly_opdr_2023_2026/BTCBVOLUSDT_1h_2023-06-20_2026-06-30.csv.gz",
+        "sha256": "40c0d1aecb15119e7fab31aae4108c632d25de136401a6896896852c7f4032b1",
+        "validated_binding": {
+          "bytes": 498557,
+          "header": [
+            "date",
+            "feature_available_time_utc",
+            "trade_earliest_time_utc",
+            "open",
+            "high",
+            "low",
+            "close",
+            "source_rows",
+            "source_complete",
+            "feature_valid",
+            "feature_invalid_reason"
+          ],
+          "header_line_sha256": "b23c2c08e4856d7939fb0fccae8b524f41533d417fc1fdcef3b77b27536c1f14",
+          "path": "data/binance_btc_bvol_hourly_opdr_2023_2026/BTCBVOLUSDT_1h_2023-06-20_2026-06-30.csv.gz",
+          "rows_decoded": 0,
+          "sha256": "40c0d1aecb15119e7fab31aae4108c632d25de136401a6896896852c7f4032b1"
+        }
+      },
+      "binance_btc_bvol_manifest": {
+        "path": "data/binance_btc_bvol_hourly_opdr_2023_2026/build_manifest.json",
+        "sha256": "6c62a389cbc8d6524444f5e5fe1d2945c20bafa9fa707b7f2a4801c74221a7e4",
+        "validated_binding": {
+          "bytes": 269823,
+          "path": "data/binance_btc_bvol_hourly_opdr_2023_2026/build_manifest.json",
+          "sha256": "6c62a389cbc8d6524444f5e5fe1d2945c20bafa9fa707b7f2a4801c74221a7e4"
+        }
+      },
+      "deribit_btc_dvol_hourly": {
+        "header": [
+          "date",
+          "close_time",
+          "open",
+          "high",
+          "low",
+          "close"
+        ],
+        "header_line_sha256": "4c782bb5326dbbdba97b985119bad56d917d6d4d8e3a01110890fcbbe202583a",
+        "parser": {
+          "candle_open_clock": "date",
+          "join_clock": "close_time",
+          "ohlc": [
+            "open",
+            "high",
+            "low",
+            "close"
+          ],
+          "required_end_filter": "close_time < 2026-07-01T00:00:00Z"
+        },
+        "path": "data/deribit_btc_dvol_1h_2023-06-20_2026-07-01.csv.gz",
+        "sha256": "26b768f81c2fa49fd59d9f1a173a829329a7ed5bb94c2d71af7c33b46f4f02cf",
+        "validated_binding": {
+          "bytes": 344128,
+          "header": [
+            "date",
+            "close_time",
+            "open",
+            "high",
+            "low",
+            "close"
+          ],
+          "header_line_sha256": "4c782bb5326dbbdba97b985119bad56d917d6d4d8e3a01110890fcbbe202583a",
+          "path": "data/deribit_btc_dvol_1h_2023-06-20_2026-07-01.csv.gz",
+          "rows_decoded": 0,
+          "sha256": "26b768f81c2fa49fd59d9f1a173a829329a7ed5bb94c2d71af7c33b46f4f02cf"
+        }
+      },
+      "deribit_btc_dvol_summary": {
+        "path": "data/deribit_btc_dvol_1h_2023-06-20_2026-07-01.csv.gz.summary.json",
+        "sha256": "22e0a6e311fcad34a51f5b0844b7807e7c851eecc4a367f89b7a7d6ce438bf74",
+        "validated_binding": {
+          "bytes": 557,
+          "path": "data/deribit_btc_dvol_1h_2023-06-20_2026-07-01.csv.gz.summary.json",
+          "sha256": "22e0a6e311fcad34a51f5b0844b7807e7c851eecc4a367f89b7a7d6ce438bf74"
+        }
+      }
+    },
+    "decimal_tokens": {
+      "all_ohlc_finite_and_strictly_positive": true,
+      "binary_float_feature_arithmetic": false,
+      "coefficient_digits_max": 128,
+      "envelope": "high>=max(open,close) AND low<=min(open,close)",
+      "exponent_max": 128,
+      "exponent_min": -128,
+      "parse": "exact Decimal token to exact rational coefficient"
+    },
+    "join": {
+      "bvol_key": "feature_available_time_utc",
+      "duplicate_or_nonmonotonic": "terminal failure",
+      "dvol_key": "close_time",
+      "fill_imputation_tolerance_or_nearest": false,
+      "first_post_gap_or_invalid_can_emit": false,
+      "joint_availability": "max of both exact source clocks",
+      "type": "exact UTC one-to-one completed-hour inner join"
+    },
+    "source_value_or_incidence_reads_before_committed_evaluator": false
+  },
+  "stage_sequence": [
+    "mechanism_commit_and_push",
+    "preregistration_producer_tests_commit_and_push",
+    "write_once_canonical_preregistration_commit_and_push",
+    "source_support_evaluator_tests_commit_and_push",
+    "authoritative_source_support_claim_then_one_run",
+    "commit_source_support_or_terminal_failure",
+    "novelty_evaluator_tests_commit_and_push",
+    "authoritative_novelty_claim_then_one_run",
+    "commit_novelty_or_terminal_failure",
+    "economics_evaluator_tests_commit_and_push",
+    "physical stages 2023H2, 2024, selection, same_gross, future25, future26, full",
+    "clean_checkout_verification_only_replay_after_success",
+    "final_independent_review_commit_and_push"
+  ],
+  "support_gates": {
+    "failure_action": "retire exact CVVH-432 unchanged before novelty",
+    "full": {
+      "maximum_accepted_entry_gap_elapsed_days": 90,
+      "maximum_same_side_run": 12
+    },
+    "future25": {
+      "each_side_min": 8,
+      "maximum_month_share": "1/4",
+      "total_min": 30
+    },
+    "future26": {
+      "each_side_min": 4,
+      "maximum_month_share": "3/10",
+      "total_min": 15
+    },
+    "opens_before_novelty_gross9_or_outcomes": true,
+    "selection": {
+      "2023H2_min": 12,
+      "2024H1_min": 12,
+      "2024H2_min": 12,
+      "each_side_min": 14,
+      "maximum_month_share": "1/5",
+      "total_min": 45
+    },
+    "selection_prefix_append_invariance": {
+      "byte_identical_fields": [
+        "base_validity",
+        "states",
+        "raw_candidate_ids",
+        "accepted_ids",
+        "sides",
+        "entry_exit_clocks"
+      ],
+      "cutoff": "2025-01-01T00:00:00Z",
+      "later_rows_may_change_prefix": false
+    },
+    "structural_control_distinctness_each": {
+      "controls": [
+        "deribit_led",
+        "body_lead_only",
+        "range_lead_only",
+        "stale_deribit"
+      ],
+      "exact_entry_jaccard": {
+        "operator": "<",
+        "value": "9/10"
+      },
+      "matching": "same cardinality, exact-lag, lexicographic one-to-one objective as novelty",
+      "one_to_one_24h_max_matched_share": {
+        "operator": "<",
+        "value": "19/20"
+      }
+    },
+    "undefined_empty_or_zero_denominator": "terminal failure"
+  }
+}

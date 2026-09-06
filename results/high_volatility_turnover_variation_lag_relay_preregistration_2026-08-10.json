@@ -1,0 +1,152 @@
+{
+  "protocol_version": "high_volatility_turnover_variation_lag_relay_v1",
+  "policy_id": "HVTVLR-8",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When the time centroid of completed quote turnover lies materially after the time centroid of realized variation, participation is arriving to sponsor rather than initiate a volatile displacement. At a new upper-tail positive lag with consistent full-block and final-two-hour direction, follow the accepted direction for eight hours.",
+    "side": "common strict sign of completed eight-hour and final-two-hour BTC returns",
+    "why_distinct": "Daily late-volume continuation uses a terminal calendar bucket, variance backloading uses fixed halves, HVTLRR estimates turnover-to-next-return correlation, and cross-venue torsion compares Spot and perpetual centroids within five-minute buckets. HVTVLR directly compares continuous within-BTC eight-hour turnover and squared-return time centroids and reuses no prior event or control.",
+    "why_suited_to_volatile_regimes": "the completed BTC variation rank must be in its upper 35%, while positive lag requires participation to arrive after the price-energy center",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily turnover-versus-variation timing onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 07:00/15:00/23:00 UTC boundaries",
+    "block": "480 exact coherent bars_binance BTCUSDT one-minute rows [D-8h,D)",
+    "time_coordinate": "minute index divided by 479, from zero through one",
+    "turnover_centroid": "sum(time_coordinate*quote_asset_volume)/sum(quote_asset_volume), denominator strict positive",
+    "variation_centroid": "sum(time_coordinate*minute_log_return^2)/sum(minute_log_return^2), denominator strict positive",
+    "timing_lag": "turnover_centroid-variation_centroid, finite and strict positive",
+    "lag_rank": "strict-prior midrank over at most 270 earlier source-valid blocks, minimum 180, current excluded; rank>=0.75",
+    "realized_variation": "sum squared one-minute log(close/open) returns, finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank, current excluded; rank>=0.65",
+    "block_return": "log(last close/first open), finite strict nonzero",
+    "final_two_hour_return": "same formula over final 120 completed minutes, finite strict nonzero and same sign as block_return",
+    "eligible_state": "positive lag, lag-rank, variation-rank, and directional agreement gates pass",
+    "onset": "eligible now and immediately previous exact source-valid block ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed eight-hour boundary",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "lag_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_lag_tail",
+      "no_variation_gate",
+      "fixed_half_backloading",
+      "one_boundary_stale_geometry",
+      "direction_flip"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_timing_volume_variation_and_response_outcomes_known": true,
+    "repository_turnover_variation_centroid_lag_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "continuous participation-after-variation timing geometry"
+  },
+  "stopping_rule": "Terminal first failure; no centroid, lag sign, rank, direction, hold, clock, subset, or control repair.",
+  "manifest_hash": "703a7f2041c442603e6fe56f1f9d820cd46cf62a70a82854af1d7c5f7bb29bcb"
+}

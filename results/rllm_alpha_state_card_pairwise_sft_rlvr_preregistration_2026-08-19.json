@@ -1,0 +1,60 @@
+{
+  "protocol_version": "rllm_state_card_pairwise_sft_rlvr_v1",
+  "as_of": "2026-08-19",
+  "status": "preregistered_before_rlvr_training",
+  "objective": "pairwise A/B verifiable RLVR continuation from leakage-free pairwise SFT",
+  "inputs": {
+    "train_jsonl": {
+      "path": "data/rllm_alpha_state_card_pairwise_train_2026-08-19.jsonl",
+      "sha256": "7978e1f40732ed740cb8961cf84b34f488db247b54168373f0a4d49176b2db68",
+      "rows": 440
+    },
+    "sft_adapter": {
+      "path": "checkpoints/rllm_alpha_state_card_pairwise_qwen25_1p5b_lora_s128_2026-08-19",
+      "adapter_sha256": "f5c0fd337bd0de56a389d689788ccd53f381548888d619b774b7664493730757"
+    }
+  },
+  "rlvr_config": {
+    "max_steps": 64,
+    "learning_rate": 5e-06,
+    "num_generations": 4,
+    "per_device_train_batch_size": 4,
+    "gradient_accumulation_steps": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "max_completion_length": 4,
+    "seed": 20260820,
+    "loss_type": "dapo",
+    "beta": 0.0
+  },
+  "verifier_reward": {
+    "format_valid": 0.2,
+    "format_invalid": -0.5,
+    "exact_target": 1.0,
+    "labels": [
+      "A",
+      "B"
+    ],
+    "oos_metrics_in_reward": false
+  },
+  "evaluation_freeze": {
+    "dataset": "data/rllm_alpha_state_card_pairwise_2026-08-19.jsonl",
+    "max_samples": 512,
+    "sample_mode": "random",
+    "seed": 20260819,
+    "prediction_mode": "candidate_logprob",
+    "normalization": "mean",
+    "sft_accuracy": 0.376953125,
+    "sample_majority_accuracy": 0.626953125
+  },
+  "go_gates": {
+    "reward_std_positive": true,
+    "gradient_positive": true,
+    "accuracy_gt_sft": true,
+    "accuracy_gt_majority": true,
+    "full_oos_only_after_sample_go": true
+  },
+  "stopping_rule": "Reject without full OOS if frozen sample gates fail; do not retune on OOS.",
+  "manifest_hash": "22baa140081eb5fd3e39c3693165ddf04ac2e793a29388977cb3e52900107e66"
+}

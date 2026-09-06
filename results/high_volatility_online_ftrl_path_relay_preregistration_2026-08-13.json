@@ -1,0 +1,162 @@
+{
+  "protocol_version": "high_volatility_online_ftrl_path_relay_v1",
+  "policy_id": "HVOFL-8",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "The directional response to an eight-hour high-volatility BTC path is nonstationary but can be estimated causally by an online logistic model updated only with already-matured prior path responses. Trade only upper-confidence current predictions, allowing continuation or reversal to change without peeking into the current or later outcome.",
+    "side": "strict sign of the pre-entry FTRL logistic score",
+    "why_distinct": "HVOFL is one sequential FTRL-proximal learner over an ordered normalized hourly-return path. Fixed ridge/tree classifiers freeze one fit; KNN retrieves static analogs; response memory averages one shock scalar; online expert rotation selects among handcrafted sleeves. HVOFL has no expert pool, candidate event reuse, OOS refit, funding, OI, volume, flow, or promoted control.",
+    "why_suited_to_volatile_regimes": "current eight-hour variation must occupy its causal upper thirty-five percent and absolute model score its causal upper quartile",
+    "why_low_gross9_overlap_is_plausible": "offset high-volatility upper-confidence online-model clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 02:00, 10:00, and 18:00 UTC boundaries D",
+    "path": "96 exact completed five-minute closes [D-8h,D), grouped into eight ordered one-hour log returns",
+    "normalization": "divide all eight hourly returns by sqrt(sum hourly_return^2), finite strict positive",
+    "intercept": "fixed additional coordinate 1",
+    "counterfactual_label": "sign(log(open[D+8h+5m]/open[D+5m])); strict nonzero; becomes available only at D+8h+5m",
+    "causal_update_order": "before predicting at D, process every earlier source-valid example whose label availability<=D, once, in decision order",
+    "learner": "binary logistic FTRL-Proximal with alpha=0.05, beta=1, L1=0, L2=1; z/n initialized zero; standard published coordinate update; no reset or refit",
+    "warmup": "at least 120 matured updates before a prediction is eligible",
+    "score": "dot(weight,current vector), finite strict nonzero; side=sign(score)",
+    "variation": "sqrt(sum squared 95 five-minute close-to-close returns), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "confidence_rank": "strict-prior midrank of abs(score) over at most 270 prior post-warmup predictions, minimum 120, current excluded; rank>=0.75",
+    "eligibility": "warmup, strict score, variation gate, and confidence gate",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "decision boundary after current path and all eligible prior labels are complete",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "side": "strict score sign",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "bar_minutes": 5,
+    "path_bars": 96,
+    "hourly_features": 8,
+    "alpha": 0.05,
+    "beta": 1.0,
+    "l1": 0.0,
+    "l2": 1.0,
+    "minimum_matured_updates": 120,
+    "rank_history": 270,
+    "minimum_variation_history": 180,
+    "minimum_confidence_history": 120,
+    "variation_rank_min": 0.65,
+    "confidence_rank_min": 0.75,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "no_confidence_gate",
+      "one_decision_stale_model",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-03-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "causal_labels": "historical entry/exit opens may be opened only after their availability time and solely for sequential model updates; current prediction outcomes and stage economics remain sealed",
+    "execution_prices": "current and later candidate outcomes sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "published_ftrl_update_definition_selected": true,
+    "repository_exact_online_ftrl_path_candidate_found": false,
+    "adjacent_fixed_models_analog_response_memory_and_online_expert_candidates_known": true,
+    "adjacent_candidate_outcomes_used_to_set_features_learner_side_hold_clock_or_threshold": false,
+    "prior_event_sets_or_sleeves_reused": false,
+    "candidate_current_or_future_outcomes_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "singleton online FTRL logistic path learner with causal matured-label updates and upper-confidence high-variation gating"
+  },
+  "stopping_rule": "Terminal first failure; no feature, learner parameter, warmup, ranks, side, hold, clock, subset, threshold, or control repair.",
+  "manifest_hash": "20bb5755ab9bb38675d7595749a4c31f77e2bc6dfe77f028a8dfa7e082153686"
+}

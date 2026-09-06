@@ -1,0 +1,41 @@
+{
+  "protocol_version": "pposm_symbolic_router_balanced_rlvr_v1",
+  "status": "preregistered_before_rlvr",
+  "as_of": "2026-08-19",
+  "sft_adapter": {
+    "path": "checkpoints/pposm_symbolic_router_sft_qwen25_1p5b_s64_2026-08-19",
+    "sha256": "bbd0cd7fa79233200d9bd0654c376f8522bfcda05eb52a9ca85a238d5ba81e00"
+  },
+  "train": {
+    "path": "data/pposm_symbolic_router_train_pre2024_2026-08-19.jsonl",
+    "sha256": "53aaffa3625a557bf873db710a971bc127b1ddb291fd1a1effc7c8c07a56e134",
+    "raw_counts": {
+      "SKIP": 50,
+      "TP4": 133,
+      "TP12": 279
+    }
+  },
+  "rlvr": {
+    "sample_mode": "balanced_oversample",
+    "max_samples": 1024,
+    "effective_target_counts": "approximately equal",
+    "steps": 64,
+    "lr": 5e-06,
+    "generations": 4,
+    "batch": 4,
+    "gradient_accumulation": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "seed": 20260829
+  },
+  "evaluation": "same frozen 157 OOS rows, candidate logprob mean",
+  "gates": {
+    "accuracy_min": 0.95,
+    "recall_each_min": 0.8,
+    "distinct_routes": 3,
+    "economic_contract": "positive/stress/MDD15/ratio3/p0.20/schedule recall0.90"
+  },
+  "stopping_rule": "No OOS tuning.",
+  "manifest_hash": "da499cc580626c93ae279f7df2cadfb492d0f091cd56dfff73271f8df4aee231"
+}

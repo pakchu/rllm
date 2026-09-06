@@ -1,0 +1,242 @@
+"""Outcome-blind preregistration for EGVRR-12."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+POLICY_ID = "EGVRR-12"
+DEFAULT_OUTPUT = Path(
+    "results/emerging_growth_volatility_rotation_relay_preregistration_2026-08-10.json"
+)
+SOURCES = {
+    "vxeem_panel": {
+        "path": (
+            "data/emerging_market_volatility_confirmation_relay_sources_2022_2026/"
+            "cboe_vxeem_vix_panel.csv.gz"
+        ),
+        "sha256": "7d332f56676bd40c2b7bc816b432ffa2e31c113dbf4f5605fbe8eb4d0dca18ea",
+        "date_column": "observation_date",
+        "value_column": "VXEEM_close",
+    },
+    "vxn": {
+        "path": "data/cboe_vxn_2021_2026/source/VXN_History.csv",
+        "sha256": "a856a08bbec6c5fabd23c98d4b75bc28b93c24370ef8780e3e75243c22f66716",
+        "date_column": "DATE",
+        "value_column": "CLOSE",
+    },
+}
+
+
+def canonical_hash(payload: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+                   allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "emerging_growth_volatility_rotation_relay_v1",
+        "policy_id": POLICY_ID,
+        "slug": "emerging_growth_volatility_rotation_relay",
+        "as_of_date": "2026-08-10",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": (
+                "A tail change in log(VXEEM/VXN) identifies rotation between emerging-market "
+                "systemic uncertainty and Nasdaq growth uncertainty. In a high-variation BTC "
+                "regime, fade the relative uncertainty shock for twelve elapsed hours."
+            ),
+            "side": "negative strict sign of relative_volatility_change; no BTC direction confirmation",
+            "why_distinct": (
+                "EMVCR compared VXEEM with VIX and NVXCR compared VXN with VIX. EGVRR removes "
+                "the shared broad-equity denominator and directly measures the relative allocation "
+                "of uncertainty between emerging-market and Nasdaq-growth risk."
+            ),
+            "volatile_market_target": (
+                "BTC prior-24h realized-variation strict-prior decision rank must be at least 0.65"
+            ),
+            "why_low_gross9_overlap_is_plausible": (
+                "Gross9 has no exact VXEEM-versus-VXN relative-volatility tail clock"
+            ),
+        },
+        "features": {
+            "common_source_dates": (
+                "exact intersection of source dates having one positive finite close for both "
+                "VXEEM and VXN"
+            ),
+            "relative_volatility": "log(VXEEM_close/VXN_close) on exact common source date S",
+            "relative_volatility_change": (
+                "relative_volatility(S)-relative_volatility(previous exact common source date); "
+                "strict nonzero"
+            ),
+            "absolute_change_rank": {
+                "history": (
+                    "at most 252 strictly prior common-source-date absolute relative-volatility "
+                    "changes; minimum 126; current excluded"
+                ),
+                "midrank_formula": (
+                    "(count(prior_abs<current_abs)+0.5*count(prior_abs==current_abs))/N"
+                ),
+                "eligible": "rank>=0.70",
+            },
+            "availability": (
+                "source date S close is usable only at 09:30 America/New_York on the next exact "
+                "common Cboe source date D"
+            ),
+            "btc_variation": (
+                "sqrt(sum(log(close/open)^2)) over the exact 1440 unique BTCUSDT 1m rows in "
+                "[D 09:30 America/New_York-24 elapsed hours,D 09:30 America/New_York)"
+            ),
+            "btc_variation_rank": {
+                "history": (
+                    "at most 252 strictly prior valid decision variations; minimum 126; current "
+                    "excluded"
+                ),
+                "midrank_formula": "(count(prior<current)+0.5*count(prior==current))/N",
+                "eligible": "rank>=0.65",
+            },
+            "missing_duplicate_nonpositive_or_nonfinite": (
+                "source failure or ineligible as applicable; no imputation"
+            ),
+        },
+        "clock": {
+            "decision": (
+                "next exact common Cboe source date D at 09:30 America/New_York, after source S "
+                "and the exact prior-24h BTC variation path are available"
+            ),
+            "entry": "exact BTCUSDT D 09:35 America/New_York 5m open",
+            "side": "-sign(relative_volatility_change); no BTC direction confirmation",
+            "hold": "12 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+            "no_imputation": True,
+        },
+        "policy": {
+            "change_rank_history_observations": 252,
+            "change_rank_minimum_history_observations": 126,
+            "absolute_change_rank_min": 0.70,
+            "variation_rank_history_observations": 252,
+            "variation_rank_minimum_history_observations": 126,
+            "variation_rank_min": 0.65,
+            "entry_delay_minutes": 5,
+            "hold_hours": 12,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "rv20_stress_slice": {
+            "rv20": "sqrt(365*mean exact daily returns^2 over t-20 through t-1)",
+            "threshold": "numpy linear q90 over 756 strictly prior available RV20 observations",
+            "entry_filter": False,
+            "future_use": "only after all sequential full-calendar stages and economics pass",
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.20,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.10,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.10,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "future_can_rank_repair_or_reselect": False,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every "
+                "held 5m favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged candidate passes train, test, eval, final and strict economics",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_btc_variation_gate", "no_relative_change_tail", "vxeem_minus_vxn_raw",
+                "one_session_stale_relative_change", "direction_flip", "forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "cboe": SOURCES,
+            "btc": {
+                "table": "bars_binance", "symbol": "BTCUSDT", "interval": "1m",
+                "columns": ["ts", "open", "close"], "read_only": True,
+            },
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "prior_emvcr_outcomes_known": True,
+            "prior_nvxcr_outcomes_known": True,
+            "prior_nvlrr_outcomes_known": True,
+            "exact_vxeem_vxn_relative_volatility_change_previously_tested": False,
+            "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": (
+                "independent emerging-versus-growth uncertainty-rotation mechanism frozen without "
+                "candidate incidence, outcomes, or Gross9 results"
+            ),
+        },
+        "stopping_rule": (
+            "terminal first failure: source support, Gross9 novelty, strict economics, then RV20 "
+            "audit; no source, ratio, change, rank, side, hold, clock, volatility, subset, "
+            "comparator, or control repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(payload: dict[str, Any]) -> None:
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    if payload.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("EGVRR preregistration drift")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    payload = build()
+    validate(payload)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
+
+
+if __name__ == "__main__":
+    main()

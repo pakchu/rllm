@@ -1,0 +1,34 @@
+{
+  "protocol_version": "hvcapec_8_sources_v1",
+  "query": "WITH five AS (SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS bar_start,symbol,(array_agg(open ORDER BY ts))[1] AS first_open,(array_agg(close ORDER BY ts DESC))[1] AS last_close,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS minute_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2) SELECT date_bin('8 hours',bar_start,TIMESTAMPTZ '1970-01-01 06:00:00+00') AS block_start,symbol,sum(ln(last_close/first_open)) AS displacement,sum(abs(ln(last_close/first_open))) AS path_variation,sum(minute_squared_return) AS minute_squared_return,sum(minute_rows) AS source_rows,count(*) AS five_minute_bars,min(bar_start) AS first_bar,max(bar_start) AS last_bar,bool_and(minute_rows=5 AND distinct_rows=5 AND first_ts=bar_start AND last_ts=bar_start+INTERVAL '4 minutes' AND coherent) AS coherent FROM five GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "e7a040a49542d05eb0b085f8ea550398a6e625f8aca9529cd7eb46d40d5d1008",
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 27475,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_path_efficiency_consensus_relay_support.py",
+    "sha256": "3f3290ce8cce84261607165c0a364daec72cc6cf0897a6b2c65ce984d2a1b783"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_path_efficiency_consensus_relay_sources_2023_2026/block_states.csv.gz",
+    "sha256": "e1adfe4bda6cacaa558211aee2d440126f5a63d4c88a7a734f91c14564d94cc3",
+    "rows": 3924,
+    "valid_rows": 3743
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "671b50ff9ca024e632ce673b28c0b11d582b02b052ba0344f1b04d29aea29a13"
+}

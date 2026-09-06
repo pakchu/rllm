@@ -1,0 +1,344 @@
+{
+  "anchors": {
+    "actual": 102,
+    "candidate_counts": {
+      "SKIP": 102,
+      "TP12": 102
+    },
+    "expected": 102,
+    "first_signal_time": "2020-07-29 01:00:00",
+    "last_signal_time": "2023-10-27 20:00:00",
+    "skip_target_counts": {
+      "0": 77,
+      "1": 25
+    }
+  },
+  "artifact_bindings": {
+    "anchor_label_identity_sha256": "4d1f107284010eaf9b42cb038e0fe59f3cf202f9ee8b02c9aef494914381229a",
+    "diagnostic_implementation_sha256": "58df05e938fdad2dee125128dd3c40ac0191615f9151637c453b88bb5ea96db0",
+    "joined_feature_sha256": "de77262e88253f74968401acf7f5bdcbd94eac6c2a2cb70197e117c09ca87fa5",
+    "lifecycle_builder_sha256": "051abae6a84f57a4ce5df256d1ec50bf5124e2993a809296014ed4757896c38b",
+    "manifest_file_sha256": "41d6424b8ca719ee3e3b058f6f5f93bc360905ee02be5b5d9671ff5349978159",
+    "manifest_freeze_hash": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+    "oof_score_sha256": "c56d787ac8d5658be850234d1c38a04fcd966884f233e11faddd30f396a2ce93"
+  },
+  "bootstrap_auc_ci": {
+    "hgb_balanced_weighted": {
+      "iterations": 2000,
+      "lower95": 0.37901070885928,
+      "upper95": 0.6526989538239538
+    },
+    "logreg_l2_balanced": {
+      "iterations": 2000,
+      "lower95": 0.3989853896103896,
+      "upper95": 0.6739130434782609
+    }
+  },
+  "boundary": {
+    "folds": [
+      {
+        "name": "train_2020_test_2021",
+        "test_year": 2021,
+        "train_years": [
+          2020
+        ]
+      },
+      {
+        "name": "train_through_2021_test_2022",
+        "test_year": 2022,
+        "train_years": [
+          2020,
+          2021
+        ]
+      },
+      {
+        "name": "train_through_2022_test_2023",
+        "test_year": 2023,
+        "train_years": [
+          2020,
+          2021,
+          2022
+        ]
+      }
+    ],
+    "join": "exact source create_time == signal_time - 5 minutes; no ffill/interpolation",
+    "labels": "pre-2024 lifecycle residual SKIP-vs-ALWAYS-TP4 only",
+    "oos_labels_built_or_read": false
+  },
+  "config": {
+    "bootstrap_iterations": "2000",
+    "expected_metrics_sha256": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106",
+    "expected_pre2024_prefix_sha256": "1da4e6bb2929050eae69b58c7fa715900258858b76e5442c9897b1601934db99",
+    "manifest": "results/pullback_premium_overheat_state_machine_manifest_2026-07-15.json",
+    "metrics_csv": "/home/pakchu/rllm/data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz",
+    "output": "results/pposm_global_ratio_skip_source_support_2026-09-05.json",
+    "preregistration": "results/pposm_global_ratio_skip_source_preregistration_2026-09-05.json",
+    "random_seed": "20260905",
+    "write_output": "True"
+  },
+  "features": {
+    "columns": [
+      "ratio_log_level",
+      "ratio_dlog1",
+      "ratio_z288",
+      "ratio_available",
+      "ratio_age_bars"
+    ],
+    "max_null_fraction": 0.029411764705882353,
+    "model_rows_after_dropna": 99,
+    "null_fraction": {
+      "ratio_age_bars": 0.0196078431372549,
+      "ratio_available": 0.0,
+      "ratio_dlog1": 0.029411764705882353,
+      "ratio_log_level": 0.029411764705882353,
+      "ratio_z288": 0.029411764705882353
+    }
+  },
+  "gates": {
+    "hgb_balanced_weighted": {
+      "checks": {
+        "balanced_accuracy_ge_0_55": false,
+        "every_valid_year_auc_gt_0_50": false,
+        "exactly_3_valid_folds": true,
+        "lower95_gt_0_50": false,
+        "max_feature_null_le_5pct": true,
+        "pooled_auc_ge_0_60": false
+      },
+      "pass": false,
+      "valid_years": [
+        2021,
+        2022,
+        2023
+      ]
+    },
+    "logreg_l2_balanced": {
+      "checks": {
+        "balanced_accuracy_ge_0_55": false,
+        "every_valid_year_auc_gt_0_50": false,
+        "exactly_3_valid_folds": true,
+        "lower95_gt_0_50": false,
+        "max_feature_null_le_5pct": true,
+        "pooled_auc_ge_0_60": false
+      },
+      "pass": false,
+      "valid_years": [
+        2021,
+        2022,
+        2023
+      ]
+    }
+  },
+  "models": {
+    "hgb_balanced_weighted": {
+      "folds": [
+        {
+          "accuracy": 0.27586206896551724,
+          "auc": 0.5,
+          "balanced_accuracy": 0.5,
+          "name": "train_2020_test_2021",
+          "test_class_counts": {
+            "0": 21,
+            "1": 8
+          },
+          "test_rows": 29,
+          "test_year": 2021,
+          "train_class_counts": {
+            "0": 11,
+            "1": 3
+          },
+          "train_rows": 14,
+          "train_years": [
+            2020
+          ],
+          "valid": true
+        },
+        {
+          "accuracy": 0.5641025641025641,
+          "auc": 0.5293103448275862,
+          "balanced_accuracy": 0.5431034482758621,
+          "name": "train_through_2021_test_2022",
+          "test_class_counts": {
+            "0": 29,
+            "1": 10
+          },
+          "test_rows": 39,
+          "test_year": 2022,
+          "train_class_counts": {
+            "0": 32,
+            "1": 11
+          },
+          "train_rows": 43,
+          "train_years": [
+            2020,
+            2021
+          ],
+          "valid": true
+        },
+        {
+          "accuracy": 0.5294117647058824,
+          "auc": 0.47619047619047616,
+          "balanced_accuracy": 0.45238095238095233,
+          "name": "train_through_2022_test_2023",
+          "test_class_counts": {
+            "0": 14,
+            "1": 3
+          },
+          "test_rows": 17,
+          "test_year": 2023,
+          "train_class_counts": {
+            "0": 61,
+            "1": 21
+          },
+          "train_rows": 82,
+          "train_years": [
+            2020,
+            2021,
+            2022
+          ],
+          "valid": true
+        }
+      ],
+      "pooled": {
+        "accuracy": 0.4588235294117647,
+        "auc": 0.5197172619047619,
+        "balanced_accuracy": 0.5286458333333333,
+        "class_counts": {
+          "0": 64,
+          "1": 21
+        },
+        "valid_rows": 85
+      }
+    },
+    "logreg_l2_balanced": {
+      "folds": [
+        {
+          "accuracy": 0.3448275862068966,
+          "auc": 0.42857142857142855,
+          "balanced_accuracy": 0.43154761904761907,
+          "name": "train_2020_test_2021",
+          "test_class_counts": {
+            "0": 21,
+            "1": 8
+          },
+          "test_rows": 29,
+          "test_year": 2021,
+          "train_class_counts": {
+            "0": 11,
+            "1": 3
+          },
+          "train_rows": 14,
+          "train_years": [
+            2020
+          ],
+          "valid": true
+        },
+        {
+          "accuracy": 0.5128205128205128,
+          "auc": 0.5310344827586206,
+          "balanced_accuracy": 0.5413793103448276,
+          "name": "train_through_2021_test_2022",
+          "test_class_counts": {
+            "0": 29,
+            "1": 10
+          },
+          "test_rows": 39,
+          "test_year": 2022,
+          "train_class_counts": {
+            "0": 32,
+            "1": 11
+          },
+          "train_rows": 43,
+          "train_years": [
+            2020,
+            2021
+          ],
+          "valid": true
+        },
+        {
+          "accuracy": 0.5882352941176471,
+          "auc": 0.5,
+          "balanced_accuracy": 0.75,
+          "name": "train_through_2022_test_2023",
+          "test_class_counts": {
+            "0": 14,
+            "1": 3
+          },
+          "test_rows": 17,
+          "test_year": 2023,
+          "train_class_counts": {
+            "0": 61,
+            "1": 21
+          },
+          "train_rows": 82,
+          "train_years": [
+            2020,
+            2021,
+            2022
+          ],
+          "valid": true
+        }
+      ],
+      "pooled": {
+        "accuracy": 0.47058823529411764,
+        "auc": 0.5327380952380952,
+        "balanced_accuracy": 0.5364583333333333,
+        "class_counts": {
+          "0": 64,
+          "1": 21
+        },
+        "valid_rows": 85
+      }
+    }
+  },
+  "preregistration": {
+    "manifest_hash": "cef5b9ed2c0638dbe57560c079ef08e03705c80a912cbcbebbaf69f7f7e17c56",
+    "path": "results/pposm_global_ratio_skip_source_preregistration_2026-09-05.json",
+    "sha256": "c9d3eda2050cb2950e462d0e93203e722e3eef0cdaccdbaae0d49f85d120f32d"
+  },
+  "protocol": "pposm_global_count_long_short_ratio_skip_source_support_v1",
+  "runtime_versions": {
+    "numpy": "2.2.6",
+    "pandas": "2.3.3",
+    "scikit_learn": "1.7.2"
+  },
+  "scope_limits": {
+    "binary_skip_vs_tp4_only": true,
+    "full_professor_critic_rubric_satisfied": false,
+    "reason": "This source-support diagnostic tests only lifecycle SKIP-vs-ALWAYS-TP4 labels and cannot by itself prove TP12 coverage or the full text SFT+RLVR OOS economic rubric.",
+    "tp12_coverage_satisfied": false
+  },
+  "selected_gate": {
+    "checks": {
+      "balanced_accuracy_ge_0_55": false,
+      "every_valid_year_auc_gt_0_50": false,
+      "exactly_3_valid_folds": true,
+      "lower95_gt_0_50": false,
+      "max_feature_null_le_5pct": true,
+      "pooled_auc_ge_0_60": false
+    },
+    "pass": false,
+    "valid_years": [
+      2021,
+      2022,
+      2023
+    ]
+  },
+  "selected_model_train_only": "logreg_l2_balanced",
+  "selection_rule": "choose a passing model first; within pass/fail bucket break ties by pooled AUC, lower95 CI, then balanced accuracy",
+  "source": {
+    "expected_pre2024_prefix_sha256": "1da4e6bb2929050eae69b58c7fa715900258858b76e5442c9897b1601934db99",
+    "expected_sha256": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106",
+    "feature_causality": "features are computed at source bar t and joined only when t == signal_time - 5 minutes",
+    "feature_frame_end_exclusive": "2024-01-01",
+    "first_create_time": "2020-09-01 00:00:00",
+    "last_create_time": "2023-12-31 23:55:00",
+    "path": "/home/pakchu/rllm/data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz",
+    "pre2024_prefix_sha256": "1da4e6bb2929050eae69b58c7fa715900258858b76e5442c9897b1601934db99",
+    "pre2024_prefix_sha256_matches_expected": true,
+    "ratio_column": "count_long_short_ratio",
+    "rows": 349992,
+    "sha256": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106",
+    "sha256_matches_expected": true
+  },
+  "summary_sha256_without_self": "600a0c9e81a63a33ef08680a48bccc2dcc3e92b936019c10c3839e5721be03cd"
+}

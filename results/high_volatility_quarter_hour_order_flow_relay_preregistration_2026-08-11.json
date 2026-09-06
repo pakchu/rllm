@@ -1,0 +1,159 @@
+{
+  "protocol_version": "high_volatility_quarter_hour_order_flow_relay_v1",
+  "policy_id": "HVQHOFR-8",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "At cryptocurrency quarter-hour openings, concentrated algorithmic activity makes the completed first-five-minute aggressive quote imbalance informative. When its absolute imbalance is causally strong and trailing BTC realized variation is elevated, follow the imbalance direction for eight hours.",
+    "side": "strict sign of completed quarter-hour opening aggressive quote imbalance",
+    "why_distinct": "Existing fixed eight-hour flow candidates aggregate long blocks or compare halves; hour-of-week candidates use calendar means; trade-arrival candidates ignore quarter-hour phase. HVQHOFR uses 96 daily quarter-hour openings, a completed five-minute flow window, causal strength and volatility ranks, and an onset/reservation clock, without fitted returns, prior events, or promoted controls.",
+    "why_suited_to_volatile_regimes": "trailing completed 24-hour realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "entry minutes :10/:25/:40/:55 and quarter-hour onset reservation are absent from Gross9 primitives"
+  },
+  "features": {
+    "quarter_anchor": "every exact UTC :00/:15/:30/:45 boundary A",
+    "opening_window": "five exact completed BTCUSDT one-minute rows [A,A+5m)",
+    "feature_available_time": "A+5m",
+    "opening_imbalance": "(2*sum(taker_buy_quote)-sum(quote_asset_volume))/sum(quote_asset_volume), positive denominator and strict nonzero",
+    "imbalance_strength": "absolute opening imbalance",
+    "trailing_variation": "sqrt(sum squared log(close/open) over 1,440 exact completed one-minute rows [A-24h,A)), finite strict positive",
+    "prior_ranks": "strict-prior midranks over at most 2,688 earlier source-valid quarter windows, minimum 1,920, current excluded",
+    "strength_gate": "imbalance-strength rank>=0.75",
+    "variation_gate": "trailing-variation rank>=0.65",
+    "onset": "eligible now and immediately preceding exact source-valid quarter window ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "A+5m after opening window completes",
+    "entry": "exact BTCUSDT A+10m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_windows": 2688,
+    "minimum_history_windows": 1920,
+    "imbalance_strength_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_imbalance_strength",
+      "no_variation_gate",
+      "no_onset_requirement",
+      "one_window_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote"
+      ],
+      "window": [
+        "2023-05-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "external_primary_mechanism_read": true,
+    "repository_quarter_hour_order_flow_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "paper-supported quarter-hour periodic order-flow predictability with fixed causal ranks"
+  },
+  "stopping_rule": "Terminal first failure; no quarter phase, opening window, rank history, strength, variation, onset, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "paper": "The Quarter-Hour Effect: Periodic Algorithmic Trading and Return Predictability in Cryptocurrency Futures",
+    "authors": "Chan Kim and Peter Reinhard Hansen",
+    "published": "2026-07-10",
+    "url": "https://arxiv.org/abs/2607.09426",
+    "reported_horizon": "opening order imbalance forecasts four-to-twelve-hour futures returns",
+    "selection_use": "mechanism and fixed eight-hour horizon only; no repository incidence or outcome opened"
+  },
+  "manifest_hash": "9752d3342545daab3c2c22d3d3524db05b6c4f27c8767b409b45caeae233cc5b"
+}

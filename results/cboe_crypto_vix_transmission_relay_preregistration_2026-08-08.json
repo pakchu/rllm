@@ -1,0 +1,108 @@
+{
+  "protocol_version": "cboe_crypto_vix_transmission_relay_v1",
+  "policy_id": "CCVTR-6",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A completed daily VIX change that is confirmed by same-direction BVOL and DVOL repricing during the next Cboe source date 09:00-10:00 ET hour identifies cross-domain volatility transmission; rising risk maps to short BTC and falling risk maps to long BTC for six hours.",
+    "side": "negative sign of completed Cboe delta log VIX",
+    "why_distinct": "CCVTR uses no BTC price confirmation. Prior VIX dual-confirmation candidates used overnight and opening BTC returns; CCVDAR used Cboe front-slope disagreement with crypto volatility rather than VIX transmission confirmation.",
+    "why_low_gross9_overlap_is_plausible": "official Cboe VIX-to-crypto implied-volatility transmission at next-session 10:05 ET is absent from Gross9"
+  },
+  "features": {
+    "cboe_vix_change": "current minus immediately previous exact Cboe observation of log(VIX); nonzero, no magnitude threshold",
+    "crypto_opening_hour": "next exact Cboe source date [09:00,10:00) America/New_York",
+    "bvol_body": "completed-hour (close-open)/open, same nonzero sign as Cboe VIX change",
+    "dvol_body": "completed-hour (close-open)/open, same nonzero sign as Cboe VIX change",
+    "availability": "Cboe observation complete before next source date; crypto candles complete at 10:00 ET",
+    "btc_price_oi_funding_forbidden_as_signal_inputs": true,
+    "no_imputation": true
+  },
+  "clock": {
+    "entry": "next exact Cboe source date 10:05 America/New_York",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_crypto_confirmation",
+      "bvol_only_confirmation",
+      "dvol_only_confirmation",
+      "one_session_stale_vix_change",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "source_bindings": {
+    "data/cboe_volatility_surface_2021_2026/cboe_volatility_surface_2021-01-01_2026-08-07.csv.gz": "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0",
+    "data/cboe_volatility_surface_2021_2026/manifest.json": "ec1dd33efcee29b75c80294fb594969cd1b12a9343fc40f888525db4400bc936",
+    "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/bvol_hourly.csv.gz": "14673b491b6ed58a5927cfd2760589d11531a277e1098a5a7f40adbfdd656218",
+    "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/dvol_hourly.csv.gz": "5556bc470ce7c8134cf6d2a09fc1eab8f233604a8029fe6a4eaf838ff302446c",
+    "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/manifest.json": "5a6b8fb8d2da235afee4709d219bc3e537498e15078fafa27d57ba284723cd7e"
+  },
+  "research_boundary": {
+    "prior_vix_candidate_outcomes_known": true,
+    "selection_not_based_on_prior_control_or_direction_flip": true,
+    "candidate_incidence_opened": false,
+    "post_entry_outcomes_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no repair",
+  "manifest_hash": "eb0a9c3f69d529aec5ba0495aa770b348c347ecac0c0d6a3e57f20b5e7dc95fe"
+}

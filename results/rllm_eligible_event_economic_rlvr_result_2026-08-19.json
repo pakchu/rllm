@@ -1,0 +1,48 @@
+{
+  "protocol_version": "rllm_eligible_event_economic_rlvr_result_v1",
+  "as_of": "2026-08-19",
+  "preregistration_sha256": "ef49ec5f63fe51b2fc486b7c079916e7056f16f3814ce039ae2b8d4fc0386684",
+  "training": {
+    "steps": 64,
+    "max_reward_std": 0.4894088804721832,
+    "max_gradient_norm": 12.6731538772583,
+    "adapter_sha256": "ffcda5dca8886990bb613310fbc96a619df70078ecfd47edec5369e597571f46"
+  },
+  "sample_classification": {
+    "num_samples": 512,
+    "accuracy": 0.380859375,
+    "confusion": {
+      "target=NO_TRADE|pred=NO_TRADE": 1,
+      "target=NO_TRADE|pred=TRADE": 315,
+      "target=TRADE|pred=NO_TRADE": 2,
+      "target=TRADE|pred=TRADE": 194
+    }
+  },
+  "sample_utility": {
+    "sft": {
+      "trades": 256,
+      "mean_net": -0.002381018912055824,
+      "sum_net": -0.609540841486291,
+      "compounded_return_pct": -46.551064661278815,
+      "win_rate": 0.3828125
+    },
+    "economic_rlvr": {
+      "trades": 509,
+      "mean_net": -0.0026535105241611303,
+      "sum_net": -1.3506368567980154,
+      "compounded_return_pct": -74.91682755936725,
+      "win_rate": 0.381139489194499
+    }
+  },
+  "checks": {
+    "predicted_trade_count_min": true,
+    "predicted_trade_mean_net_positive": false,
+    "predicted_trade_compounded_utility_positive": false,
+    "beats_sft_selected_utility": false,
+    "full_oos_authorized": false
+  },
+  "decision": "reject_continuous_economic_rlvr_on_eligible_event_pool",
+  "root_cause": "train-era candidate pool undergoes structural OOS edge inversion; RLVR amplifies trade propensity rather than recovering absent gross edge",
+  "next": "close this candidate pool and move SFT+RLVR to independently positive PPOSM/residual-substitution mechanism",
+  "result_hash": "3c568e330915069a39d498f8db888b830db3914ea5a4ef92dfce299875f39b2b"
+}

@@ -1,0 +1,53 @@
+{
+  "protocol_version": "pposm_symbolic_router_sft_rlvr_v1",
+  "status": "preregistered_before_sft",
+  "as_of": "2026-08-19",
+  "data": {
+    "train": {
+      "path": "data/pposm_symbolic_router_train_pre2024_2026-08-19.jsonl",
+      "sha256": "53aaffa3625a557bf873db710a971bc127b1ddb291fd1a1effc7c8c07a56e134",
+      "rows": 462
+    },
+    "oos": {
+      "path": "data/pposm_symbolic_router_oos_2024_2026_2026-08-19.jsonl",
+      "sha256": "ce28cb17da902817fc8e2c67e63831504c075dd82bb3d618569178cb4a39b166",
+      "rows": 157,
+      "training_forbidden": true
+    }
+  },
+  "sft": {
+    "steps": 64,
+    "samples": 1024,
+    "balanced_oversample": true,
+    "lr": 1e-05,
+    "seed": 20260827
+  },
+  "rlvr": {
+    "schema": "pposm_state",
+    "exact_formula_reward": true,
+    "steps": 64,
+    "lr": 5e-06,
+    "generations": 4,
+    "batch": 4,
+    "gradient_accumulation": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "seed": 20260828
+  },
+  "classification_gates": {
+    "accuracy_min": 0.95,
+    "each_route_recall_min": 0.8,
+    "distinct_routes": 3
+  },
+  "economic_gates": {
+    "each_window_base_stress_positive": true,
+    "combined_mdd_max": 15,
+    "combined_ratio_min": 3,
+    "weekly_p_max": 0.2,
+    "baseline_schedule_recall_min": 0.9,
+    "material_route_changes_min": 1
+  },
+  "stopping_rule": "No OOS tuning or alternate normalization; exact model passes or fails.",
+  "manifest_hash": "e5e837c928983cb5adfebcb1444ad64e2ebd319e9d26d2ce0c7873f93f9a5700"
+}

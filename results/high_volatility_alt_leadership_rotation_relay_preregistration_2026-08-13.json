@@ -1,0 +1,168 @@
+{
+  "protocol_version": "high_volatility_alt_leadership_rotation_relay_v1",
+  "policy_id": "HVALRR-8",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A change in which liquid alt perpetual owns the largest absolute completed return across consecutive eight-hour blocks identifies rotation of marginal speculative price discovery rather than persistence of one idiosyncratic shock. During elevated BTC variation, follow the new leader's completed direction for eight elapsed hours when the new leader was not the prior leader and the prior leader no longer shares that direction.",
+    "side": "strict sign of the current block's unique largest-absolute-return alt",
+    "why_distinct": "Static breadth, dispersion, L1 coherence, return tails and HVALCR use only one contemporaneous cross-section. Rank-persistence compares the full return ordering across two halves but requires BTC confirmation. HVALRR uses the categorical transition of the unique absolute-return leader between two exact consecutive nonoverlapping blocks plus directional handoff; it does not condition on HVALCR concentration, reuse its event set or reverse its side, and uses no BTC return direction, flow, volume, OI, funding, premium, outcome fit or promoted control.",
+    "why_suited_to_volatile_regimes": "completed trailing twenty-four-hour BTC realized variation must occupy its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "offset cross-alt categorical leadership handoffs are absent from Gross9 primitives"
+  },
+  "features": {
+    "symbols": [
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "decision_grid": "exact 01:00, 09:00 and 17:00 UTC boundaries D",
+    "current_block": "480 exact coherent one-minute rows [D-8h,D) for six alts",
+    "prior_block": "480 exact coherent one-minute rows [D-16h,D-8h) for the same alts",
+    "block_return": "log(last completed close/first completed open), finite strict nonzero per alt",
+    "unique_leader": "exactly one alt has the strict largest absolute return independently in each block; ties reject",
+    "leadership_rotation": "current unique leader identity differs from prior unique leader identity",
+    "directional_handoff": "current leader return and the prior leader's current-block return have strict opposite signs",
+    "btc_realized_variation": "sqrt(sum squared exact BTC one-minute open-to-close log returns over [D-24h,D)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "eligible": "source-valid leadership rotation, directional handoff and variation gate",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after all completed paths are available",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "sign(current unique leader return)",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty",
+    "rv20": "q90 only after unchanged all-stage pass"
+  },
+  "policy": {
+    "block_minutes": 480,
+    "history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp and 10bp per notional side, held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "identity_change_without_directional_handoff",
+      "current_leader_persistence",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "symbol",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_cross_alt_outcomes_known": true,
+    "prior_hvalcr_outcome_known": true,
+    "prior_hvalcr_event_set_reused": false,
+    "prior_outcomes_used_to_set_identity_transition_side_hold_or_clock": false,
+    "repository_categorical_alt_leader_rotation_candidate_found": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent categorical leadership-handoff transition"
+  },
+  "stopping_rule": "terminal first failure; no universe, block, leader definition, transition, handoff, history, variation, side, hold, clock, subset, threshold, source or control repair",
+  "manifest_hash": "c98e84e28a56c923908a36f2f07587c6fc65143448765fea2197854656b1c2cf"
+}

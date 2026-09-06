@@ -1,0 +1,25 @@
+{
+  "protocol_version": "hvpiwr_12_sources_v1",
+  "queries": {
+    "premium_daily": "\nSELECT source_day, count(*) AS source_rows, count(DISTINCT ts) AS distinct_timestamps,\n       min(ts) AS first_ts, max(ts) AS last_ts,\n       (array_agg(open ORDER BY ts))[1] AS premium_open,\n       (array_agg(close ORDER BY ts DESC))[1] AS premium_close,\n       max(high) AS premium_high, min(low) AS premium_low,\n       bool_and(open IS NOT NULL AND high IS NOT NULL AND low IS NOT NULL AND close IS NOT NULL\n                AND high>=greatest(open,close) AND low<=least(open,close) AND high>=low) AS premium_coherent\nFROM (SELECT ts,date_trunc('day',ts) AS source_day,open,high,low,close\n      FROM bars_binance_premium\n      WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end) p\nGROUP BY source_day ORDER BY source_day\n",
+    "btc_daily": "\nWITH five_minute AS (\n SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS bar_time,\n        (array_agg(open ORDER BY ts))[1] AS open, max(high) AS high, min(low) AS low,\n        (array_agg(close ORDER BY ts DESC))[1] AS close, count(*) AS source_rows\n FROM bars_binance\n WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\n GROUP BY 1\n)\nSELECT date_trunc('day',bar_time) AS source_day, count(*) AS bars_5m,\n       sum(source_rows) AS source_rows_1m, min(bar_time) AS first_bar, max(bar_time) AS last_bar,\n       (array_agg(open ORDER BY bar_time))[1] AS day_open,\n       (array_agg(close ORDER BY bar_time DESC))[1] AS day_close,\n       sqrt(sum(power(ln(close/open),2))) AS btc_realized_variation,\n       bool_and(source_rows=5 AND open>0 AND high>=greatest(open,close,low)\n                AND low<=least(open,close,high) AND close>0) AS coherent\nFROM five_minute GROUP BY 1 ORDER BY 1\n"
+  },
+  "tables": [
+    "bars_binance_premium",
+    "bars_binance"
+  ],
+  "window": [
+    "2022-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "features": {
+    "path": "data/high_volatility_premium_index_wick_rejection_relay_sources_2023_2026/daily_preentry_features.csv.gz",
+    "sha256": "e0053fac58b9b4ff57dde35c35241f38e04deab1a1d9862cdb4a4180db661cf3",
+    "rows": 1673,
+    "valid_rows": 1669
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "57361ac1d627f88d283d8237c91ae3173d5ccb4e6daa4323d014ad2cc246a695"
+}

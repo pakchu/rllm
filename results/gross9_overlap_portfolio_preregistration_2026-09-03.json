@@ -1,0 +1,154 @@
+{
+  "as_of_date": "2026-09-03",
+  "evidence_boundary": {
+    "december_holdout_outcomes_opened": false,
+    "funding_rows_opened": 0,
+    "market_rows_opened": 0,
+    "oos_outcomes_opened": false,
+    "train_outcomes_opened": false
+  },
+  "immutable_universe": {
+    "canonical_sleeves": 71,
+    "manifest_hash": "b1c88b50fc923e3b54f63347b9e828c98540db2148690fc5d130e03bb7cf12cc",
+    "path": "results/gross9_overlap_portfolio_universe_2026-09-03.json",
+    "sha256": "e2a631cface501a1264d736c6635e64c2931667425b6abe873123d5e6c37ac8c"
+  },
+  "implementation": {
+    "optimizer": {
+      "path": "training/optimize_gross9_overlap_portfolio.py",
+      "sha256": "9a0bb885de4dc8ca97da319774c7463a1af9ee22f05a19ae8d64772a5a941903"
+    },
+    "preregister": {
+      "path": "training/preregister_gross9_overlap_portfolio.py",
+      "sha256": "c2152917f2223ce146a9601c0f5cc84172e1cb350ff3906a1190ae9d209e4a38"
+    }
+  },
+  "internal_holdout": {
+    "base_and_stress_return_positive": true,
+    "failure_terminal": true,
+    "minimum_active_weeks": 3,
+    "minimum_sleeve_intervals": 8,
+    "opened_only_after_rank1_freeze": true,
+    "strict_mdd_max_pct": 8.0
+  },
+  "manifest_hash": "8c29e116228c9bf8b3acfdce71028d1af0166a2e041c45948da661bf975606ab",
+  "objective": "find the best shadow portfolio inside a frozen deterministic grammar while allowing inter-sleeve position overlap",
+  "oos_sequence": {
+    "economic_gates_same_as_existing": true,
+    "rerank_or_repair_authorized": false,
+    "single_hypothesis_weekly_p_max": 0.1,
+    "source_signed_episode_min": {
+      "eval2025": 12,
+      "final2026": 8,
+      "test2024": 12
+    },
+    "stages": [
+      "test2024",
+      "eval2025",
+      "final2026"
+    ],
+    "stop_on_first_failure": true
+  },
+  "overlap_policy": {
+    "candidate_to_candidate_overlap": "disclosure_only",
+    "candidate_to_gross9_near_6h_overlap": "disclosure_only",
+    "exact_schedule_aliases": "one canonical sleeve only",
+    "execution_and_funding_use_aggregate_net_quantity": true,
+    "gross_risk_nets_opposite_positions": false,
+    "inter_sleeve_positions_allowed": true,
+    "intra_sleeve_positions_allowed": false
+  },
+  "policy_id": "G9-OVERLAP-PORT-1",
+  "preliminary_execution_receipt": {
+    "attempted_after_initial_preregistration": true,
+    "december_holdout_opened": false,
+    "first_persistable_reporting_attempt": {
+      "failed_gates": [
+        "turnover_cap",
+        "sleeve_turnover_share_cap"
+      ],
+      "raw_rank1_cagr_to_strict_mdd": 9.944970428302364,
+      "raw_rank1_return_pct": 11.063262930450101,
+      "raw_rank1_weights": {
+        "HVBLIC-6": 0.2,
+        "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8": 0.25,
+        "HVRDBR-6": 0.15,
+        "HVUI-12": 0.1
+      },
+      "result_committed": false,
+      "search_grammar_weights_and_thresholds_changed": false,
+      "turnover_bug": "turnover_cap was applied to hypothetical pre-net sleeve turnover instead of aggregate-net executed turnover"
+    },
+    "oos_opened": false,
+    "reporting_only_repair": "persist the deterministic raw rank1 and its failed gates instead of raising before the result artifact is written",
+    "result_artifact_written": false,
+    "search_grammar_or_gates_changed_after_attempt": false,
+    "terminal_exception": "G9-OVERLAP-PORT-1 no exact finalist passed gates; terminal train reject"
+  },
+  "protocol_version": "gross9_overlap_allowed_portfolio_preregistration_v1",
+  "reporting": [
+    "sleeve_intervals",
+    "long_short_intervals",
+    "atomic_transitions",
+    "nonzero_net_execution_events",
+    "signed_episodes",
+    "active_weeks",
+    "max_and_mean_gross",
+    "max_abs_net",
+    "gross_and_net_turnover",
+    "netting_savings",
+    "fees",
+    "funding",
+    "monthly_returns"
+  ],
+  "research_status": "adaptive_train_search_shadow_only_not_live",
+  "search_grammar": {
+    "authority": "top proxy finalists replayed with fixed-quantity aggregate-net ledger",
+    "beam_width": 8,
+    "exact_finalists": 64,
+    "maximum_gross": 1.0,
+    "maximum_sleeves": 8,
+    "minimum_gross": 0.25,
+    "proxy": "cost-adjusted signed entry/exit-open return aggregation for bounded search only",
+    "proxy_candidate_cap": 12000,
+    "random_search": false,
+    "raw_rank_one_no_substitution": true,
+    "weight_grid": [
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25
+    ]
+  },
+  "selection_windows": {
+    "holdout_opened_by_preregistration": false,
+    "internal_holdout": [
+      "2023-12-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "oos_opened_by_preregistration": false,
+    "proxy_and_exact_search": [
+      "2023-07-01T00:00:00Z",
+      "2023-12-01T00:00:00Z"
+    ]
+  },
+  "train_gates": {
+    "absolute_return_positive": true,
+    "base_positive_months_min": 4,
+    "both_chronological_halves_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "maximum_mean_gross": 0.85,
+    "maximum_simultaneous_gross": 1.0,
+    "maximum_single_sleeve_turnover_share": 0.4,
+    "maximum_turnover_weight_per_day": 0.2737850787132101,
+    "mean_exposure_weighted_gross_edge_min_bp": 20.0,
+    "minimum_active_iso_weeks": 12,
+    "minimum_sleeve_intervals": 30,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "stress_positive_months_min": 3,
+    "stress_return_positive": true,
+    "strict_mdd_max_pct": 12.0,
+    "worst_stress_month_min_pct": -2.5
+  }
+}

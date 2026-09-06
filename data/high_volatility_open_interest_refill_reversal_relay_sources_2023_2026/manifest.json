@@ -1,0 +1,29 @@
+{
+  "protocol_version": "hvoirr_8_sources_v1",
+  "queries": {
+    "premium": "\nSELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS block_start,\n       count(*) AS premium_rows, count(DISTINCT ts) AS premium_distinct,\n       min(ts) AS premium_first_ts, max(ts) AS premium_last_ts,\n       (array_agg(open ORDER BY ts))[1] AS premium_open,\n       (array_agg(close ORDER BY ts DESC))[1] AS premium_close\nFROM bars_binance_premium\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1\n",
+    "oi": "\nSELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS block_start,\n       count(*) AS oi_rows, count(DISTINCT ts) AS oi_distinct,\n       min(ts) AS oi_first_ts, max(ts) AS oi_last_ts,\n       (array_agg(sum_open_interest ORDER BY ts))[1] AS oi_first,\n       (array_agg(sum_open_interest ORDER BY ts DESC))[1] AS oi_last\nFROM open_interest_binance\nWHERE symbol='BTCUSDT' AND period='5m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1\n"
+  },
+  "tables": [
+    "bars_binance_premium",
+    "open_interest_binance"
+  ],
+  "dvol": {
+    "path": "data/options_crowding_deleveraging_relay_sources_v4_2023_2026/dvol_hourly.csv.gz",
+    "sha256": "5556bc470ce7c8134cf6d2a09fc1eab8f233604a8029fe6a4eaf838ff302446c"
+  },
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "features": {
+    "path": "data/high_volatility_open_interest_refill_reversal_relay_sources_2023_2026/eight_hour_preentry_features.csv.gz",
+    "sha256": "7eae37064804abcd3034005513dbcc6f1c206b8dbd4037b5505f956ca991da0a",
+    "rows": 3653,
+    "valid_rows": 2973
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "fb66c5f756c784e3ada804b19c864f153ecfd2324914e82ed6d9263587110286"
+}

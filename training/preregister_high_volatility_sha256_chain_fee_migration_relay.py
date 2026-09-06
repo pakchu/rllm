@@ -1,0 +1,217 @@
+"""Outcome-blind preregistration for HVSCFM-24."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_OUTPUT = Path(
+    "results/high_volatility_sha256_chain_fee_migration_relay_preregistration_2026-08-10.json"
+)
+
+
+def canonical_hash(payload: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "high_volatility_sha256_chain_fee_migration_relay_v1",
+        "policy_id": "HVSCFM-24",
+        "as_of_date": "2026-08-10",
+        "oos_outcomes_opened": False,
+        "oos_source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": (
+                "BTC and BCH expose separate transaction-demand markets over related SHA-256 "
+                "security infrastructure. During volatile BTC trading, a large completed three-day "
+                "migration of transaction fees relative to new issuance toward BTC indicates "
+                "BTC-specific blockspace sponsorship and is traded long; migration toward BCH is "
+                "traded short."
+            ),
+            "side": (
+                "strict sign of the three-observation change in log((BTC fees/issuance)/"
+                "(BCH fees/issuance))"
+            ),
+            "why_distinct": (
+                "Existing blockspace candidates use BTC-only fees, weight, witness mix, cadence, "
+                "or settlement load. HVSCFM compares fee pressure with subsidy on BTC and BCH; it "
+                "does not reuse the terminal cross-chain hashrate-allocation state."
+            ),
+            "volatile_market_target": "strict-prior completed UTC-day BTC realized-variation rank >=0.65",
+            "why_low_gross9_overlap_is_plausible": (
+                "entries follow the later of two variable Coin Metrics EOD completion timestamps, "
+                "rather than a fixed release, funding, daily close, or exchange-calendar clock"
+            ),
+        },
+        "source_contract": {
+            "official_api": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+            "official_catalog": (
+                "https://community-api.coinmetrics.io/v4/catalog/metrics?"
+                "metrics=FeeTotNtv%2CIssTotNtv%2CAssetEODCompletionTime"
+            ),
+            "assets": ["btc", "bch"],
+            "metrics": ["FeeTotNtv", "IssTotNtv", "AssetEODCompletionTime"],
+            "frequency": "1d",
+            "observation_window": ["2023-01-01", "2026-07-31"],
+            "schema": ["asset", "time", "FeeTotNtv", "IssTotNtv", "AssetEODCompletionTime"],
+            "row_validity": (
+                "exactly one row per asset and UTC observation day; finite nonnegative FeeTotNtv, "
+                "strictly-positive IssTotNtv, and completion epoch at least observation day plus "
+                "one elapsed day"
+            ),
+            "pair_validity": (
+                "both BTC and BCH rows required for every observation day; no interpolation, "
+                "forward fill, nearest-day join, or partial pair"
+            ),
+            "causal_availability": (
+                "feature availability is max(BTC AssetEODCompletionTime, BCH "
+                "AssetEODCompletionTime); the decision time is that timestamp rounded upward to "
+                "the next exact five-minute boundary"
+            ),
+            "revision_boundary": (
+                "AssetEODCompletionTime freezes semantic publication latency and the downloaded "
+                "gzip hash freezes this vintage; the API is not a historical revision-vintage archive"
+            ),
+            "bounded_probe_disclosure": (
+                "before preregistration, five 2023 days were opened only to confirm public BTC/BCH "
+                "schema, positivity, and metric availability; no event incidence or BTC outcome was computed"
+            ),
+        },
+        "feature_contract": {
+            "btc_fee_pressure": "BTC FeeTotNtv/BTC IssTotNtv; strict positive",
+            "bch_fee_pressure": "BCH FeeTotNtv/BCH IssTotNtv; strict positive",
+            "relative_fee_pressure": "log(btc_fee_pressure/bch_fee_pressure)",
+            "fee_migration": (
+                "current relative_fee_pressure minus the value exactly three paired observation "
+                "days earlier; strict nonzero"
+            ),
+            "absolute_migration_rank": (
+                "strict-prior midrank of abs(fee_migration), current excluded, at most 365 "
+                "valid paired days and minimum 180"
+            ),
+            "btc_variation": (
+                "sum squared close-to-close log returns from 1,440 exact coherent BTCUSDT "
+                "bars_binance 1m rows on the completed UTC observation day"
+            ),
+            "btc_variation_rank": "same strict-prior 365/180 rule",
+            "eligible_state": (
+                "absolute_migration_rank>=0.80, btc_variation_rank>=0.65, and "
+                "fee_migration strict nonzero"
+            ),
+            "onset": "current paired day eligible and immediately previous paired observation day ineligible",
+            "no_imputation": True,
+        },
+        "oos_clock": {
+            "start": "2023-07-01T00:00:00Z",
+            "entry": "decision time +5m BTCUSDT perpetual open",
+            "side": "sign(fee_migration)",
+            "hold": "24 elapsed hours",
+            "reservation": (
+                "chronological first eligible onset while flat; intervals half-open and exit first "
+                "on an equal-time entry"
+            ),
+            "funding": "not an input; exact settlements opened only after novelty passes",
+        },
+        "policy": {
+            "migration_days": 3,
+            "history_observations": 365,
+            "minimum_history_observations": 180,
+            "absolute_migration_rank_min": 0.80,
+            "btc_variation_rank_min": 0.65,
+            "entry_delay_minutes": 5,
+            "hold_hours": 24,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.20,
+            "max_month_share": 0.45,
+            "complete_paired_daily_grid_required": True,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.10,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.10,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp/10bp per notional side, favorable-then-adverse "
+                "held 5m path, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged passes every sequential economic stage",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_volatility_gate",
+                "no_migration_gate",
+                "btc_fee_pressure_change_only",
+                "one_observation_stale_features",
+                "direction_flip",
+                "forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        "research_boundary": {
+            "prior_btc_only_blockspace_family_outcomes_known": True,
+            "terminal_cross_chain_hashrate_source_incidence_known": True,
+            "prior_bch_or_cross_chain_fee_migration_outcomes_known": False,
+            "candidate_specific_incidence_opened": False,
+            "candidate_specific_postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "selection_basis": (
+                "new cross-chain blockspace-demand migration mechanism fixed before candidate "
+                "incidence or outcomes"
+            ),
+        },
+        "stopping_rule": (
+            "freeze preregistration, source support, Gross9 novelty, and sequential economics; "
+            "terminal first failure with no asset pair, availability, migration horizon, rank, "
+            "onset, side, hold, clock, subset, or control repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    args.output.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
+    print(args.output)

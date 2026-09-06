@@ -1,0 +1,27 @@
+{
+  "design": {
+    "version": 1,
+    "fit": "2024H1 for2024H2;2024 for2025;2024-2025 for2026. Labels mature strictly before fit cutoff.",
+    "selection": "2024H2 portfolio stress-Calmar +.5 relative MDD reduction; no later reranking",
+    "target": "forward6/12h BTC return conditional on observed positive parent target exposure",
+    "models": [
+      "ridge_alpha100",
+      "hgb_depth3_leaf80_iter100_l2_10"
+    ],
+    "thresholds": "training prediction quantile .1/.2, upper bounded at -.0012",
+    "weights": [
+      0.25,
+      0.5
+    ],
+    "hold": "forecast horizon6/12h",
+    "seed": 20260906,
+    "standalone_profit_gate": false,
+    "live_enabled": false,
+    "caveat": "all data exposed; annual refits are prequential, not same-year tuning"
+  },
+  "code_hash": "69ad2c822831c7ef5ba13e69e9c6fdb4df7d1f5fcb93fc9578669de5e144dccb",
+  "engine_hash": "dbae4fae3df021e34b5046b2827e6b7eb20ff2945bc3db29c8ffdad5e7bf22e1",
+  "rules_code_hash": "6b0a28ff48f6c192c73ff5e2dddafc6d191c93ea246eae9ec5c6c84ca17a83ec",
+  "context_hash": "76df6d180c2da027c84fad7024e8049a36518744d6d93c7a61830cbce9552b5b",
+  "predecessor_report": "dc8596ce1272c67beeff165432ca2be76c913899cb7d0987474c48d9f5260008"
+}

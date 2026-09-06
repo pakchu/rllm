@@ -1,0 +1,6 @@
+import pandas as pd
+from training import build_blockspace_stress_absorption_relay_support as support
+def test_bsar_enters_after_delayed_absorption_source_availability():
+ t=pd.Timestamp("2024-07-01T00:00:00Z");f=pd.DataFrame({"bucket_start_utc":[t-pd.Timedelta(hours=12),t],"joint_available_at_utc":[t+pd.Timedelta(hours=48),t+pd.Timedelta(hours=60)],"base_valid":[True,True],"R":[.04,.01],"W":[.01,.03],"U":[.02,.01],"rank_n":[180,180],"rank":[.8,.5],"q_rank_n":[180,180],"q_rank":[.6,.8]});c=support.clock(f);assert len(c)==1 and c.iloc[0].side==1 and c.iloc[0].entry_time>f.iloc[1].joint_available_at_utc and c.iloc[0].exit_time-c.iloc[0].entry_time==pd.Timedelta(hours=24)
+def test_bsar_rejects_opposed_witness_or_undecelerated_rotation():
+ t=pd.Timestamp("2024-07-01T00:00:00Z");common={"bucket_start_utc":[t-pd.Timedelta(hours=12),t],"joint_available_at_utc":[t+pd.Timedelta(hours=48),t+pd.Timedelta(hours=60)],"base_valid":[True,True],"R":[.04,.01],"W":[.01,.03],"U":[.02,.01],"rank_n":[180,180],"rank":[.8,.5],"q_rank_n":[180,180],"q_rank":[.6,.8]};opposed={**common,"W":[.01,-.03]};fast={**common,"R":[.04,.03]};assert support.clock(pd.DataFrame(opposed)).empty;assert support.clock(pd.DataFrame(fast)).empty

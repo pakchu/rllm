@@ -1,0 +1,172 @@
+{
+  "protocol_version": "high_volatility_cross_alt_return_turnover_concordance_relay_v1",
+  "policy_id": "HVCARTC-8",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated BTC realized variation, the cross-sectional covariance between six liquid alts' completed returns and their own causally normalized quote-turnover shocks identifies whether fresh crypto participation is concentrating in winners or losers; follow that participation-weighted direction in BTC for eight hours.",
+    "side": "long when the strict cross-sectional covariance is positive; short when it is negative",
+    "why_distinct": "HVCARTC uses the contemporaneous cross-sectional association of alt-only returns with symbol-specific turnover surprises. Turnover diffusion uses entropy of unsigned allocation, return breadth ignores activity, impact divides return by turnover, and flow candidates use taker direction. No BTC directional return, taker split, funding, OI, premium, fitted outcome, prior event, or promoted control is used.",
+    "why_suited_to_volatile_regimes": "BTC completed trailing twenty-four-hour realized variation must rank in its causal upper 35%, targeting July-like broad risk-transfer conditions",
+    "why_low_gross9_overlap_is_plausible": "offset eight-hour alt return-versus-turnover concordance clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "symbols": [
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "decision_grid": "00:00, 08:00, and 16:00 UTC after each completed eight-hour block",
+    "source_block": "480 exact coherent one-minute rows [D-8h,D) per symbol",
+    "alt_return": "log(last completed close/first completed open), finite",
+    "quote_turnover": "sum quote_asset_volume, finite and strictly positive",
+    "turnover_baseline": "per symbol median of at most 270 strictly prior valid eight-hour blocks, minimum 180, current excluded",
+    "turnover_shock": "log(current quote turnover/prior median)",
+    "concordance": "population covariance across the six current alt_return and turnover_shock values; strict nonzero",
+    "variation": "BTC sqrt(sum squared completed five-minute open-to-close log returns over [D-24h,D)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier valid decisions, minimum 180, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "exact eight-hour boundary after all completed source blocks",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "turnover_history_decisions": 270,
+    "minimum_turnover_history_decisions": 180,
+    "variation_hours": 24,
+    "variation_history_decisions": 270,
+    "minimum_variation_history_decisions": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "raw_turnover_level_covariance",
+      "one_block_stale_concordance",
+      "direction_flip"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "DOGEUSDT",
+        "ADAUSDT"
+      ],
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "price_volume_relation_read": true,
+    "repository_return_turnover_concordance_candidate_found": false,
+    "prior_cross_alt_return_and_turnover_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "cross-sectional concordance between alt return direction and own-history turnover surprise in the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no symbol, block, normalization, covariance, variation, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "origin": "Karpoff price-change/volume relation; crypto cross-sectional participation interpretation",
+    "fixed_definition": "six fixed liquid alts; completed eight-hour log return; quote turnover divided by that symbol's strictly prior median; cross-sectional population covariance of return and log turnover ratio; strict covariance sign",
+    "selection_use": "economic relation and sign interpretation only; no incidence or outcomes"
+  },
+  "manifest_hash": "a4dd3d540fc47504af491d9845b9804cb6e27f2da3884977380f13bd718f9f27"
+}

@@ -1,0 +1,125 @@
+{
+  "name": "gross9_qtr_distill_shadow_2026_09_02",
+  "policy_id": "G9QTR-DISTILL-8",
+  "status": "forward_shadow_only_not_live",
+  "as_of": "2026-09-02",
+  "shadow_only": true,
+  "live_capital_authorized": false,
+  "order_submission_enabled": false,
+  "additive_to_gross9_authorized": false,
+  "intended_use": [
+    "paper_signal_monitoring",
+    "replacement_or_compression_research",
+    "forward_shadow_parity"
+  ],
+  "common_veto": {
+    "component": "HVCQTR-24",
+    "active_window": "strict lower t-6h < veto.entry_time <= t",
+    "opposite_action": "suppress_to_cash",
+    "same_or_absent_action": "keep_base",
+    "side_reversal": false
+  },
+  "sleeve_weights": {
+    "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVCQTR-24": 0.16666666666666666,
+    "HVDEMWMV-24__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVCQTR-24": 0.16666666666666666,
+    "HVDIMIO-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVCQTR-24": 0.08333333333333333,
+    "HVLVR-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVCQTR-24": 0.08333333333333333
+  },
+  "gross_exposure_cap": 0.5,
+  "hold": "8 elapsed hours",
+  "execution": {
+    "position_model": "fixed quantity per sleeve until exit",
+    "same_timestamp_transition": "exit then simultaneous entry, aggregate quantity delta netted",
+    "base_cost_each_notional_side_bp": 6,
+    "stress_cost_each_notional_side_bp": 10,
+    "funding": "exact settlement on post-transition aggregate net quantity",
+    "renormalization": false,
+    "volatility_targeting": false
+  },
+  "train_shape_diagnostic": {
+    "classification": "preliminary_post_selection_train_shape_shadow",
+    "absolute_return_pct": 9.754788657006053,
+    "cagr_to_strict_mdd": 10.510292625119977,
+    "strict_mdd_pct": 1.9308384459892247,
+    "stress_absolute_return_pct": 8.085192220262272,
+    "stress_cagr_to_strict_mdd": 8.612466299687739,
+    "mean_exposure_weighted_gross_edge_bp": 59.17592092336987,
+    "weekly_signflip_p": 0.003299967000329997,
+    "legacy_familywise_p_max": 0.001388888888888889,
+    "legacy_familywise_pass": false,
+    "formal_train_pass": false
+  },
+  "structural_novelty": {
+    "passed": false,
+    "decision": "terminal_gross9_novelty_reject",
+    "failed_comparators": {
+      "cand_rex_veto_7": {
+        "one_to_one_6h_max_matched_share": 0.4444444444444444,
+        "limit": 0.35
+      },
+      "markov_transition_long": {
+        "one_to_one_6h_max_matched_share": 0.4166666666666667,
+        "limit": 0.35
+      }
+    },
+    "interpretation": "not authorized as an additive Gross9 alpha; retain only as shadow replacement/compression research"
+  },
+  "source_schedule_stats": {
+    "signed_episodes": 590,
+    "segments": 829,
+    "max_abs_target_exposure": 0.5,
+    "max_gross_exposure": 0.5,
+    "splits": {
+      "train": {
+        "signed_episodes": 96
+      },
+      "test": {
+        "signed_episodes": 204
+      },
+      "eval": {
+        "signed_episodes": 192
+      },
+      "final": {
+        "signed_episodes": 98
+      }
+    }
+  },
+  "oos": {
+    "economic_outcomes_opened": false,
+    "historical_oos_run_authorized": false,
+    "forward_shadow_monitoring_authorized": true,
+    "no_repair": true
+  },
+  "artifacts": {
+    "preregistration": {
+      "path": "results/gross9_qtr_distill_shadow_preregistration_2026-09-02.json",
+      "sha256": "2cc6ce9aad4d46be0f6baf82afc2e4fd98f2c67e44b150f26021a6a26cde38b9",
+      "manifest_hash": "1a112ca2a43014e852e4985b17636d3e08b2c3ab94b17cd2e37e0b77b7317d7a"
+    },
+    "clock_package": {
+      "path": "results/gross9_qtr_distill_split_clock_source_support_2026-09-02.json",
+      "sha256": "5b9ea50790d37f6daa2ccb7eaa351022b40088c503be8c0d8f39111c740270c7",
+      "manifest_hash": "734be40990a92c03e6bd0f70e0f0e2fbf177545bf936bb2eb6b56820f0045e70"
+    },
+    "train_structural_novelty": {
+      "path": "results/gross9_qtr_distill_train_gross9_novelty_2026-09-02.json",
+      "sha256": "e8781c156c3dfff29478f59ac7eb5d825387e256c7878ac53208eb7bee5ce5b4",
+      "manifest_hash": "f66dc7ea1af3b1dd16dedacd084b96785d598a0962a1bd5e8e0d3bd322a307c4",
+      "decision": "terminal_gross9_novelty_reject"
+    },
+    "preliminary_train_shape_diagnostic": {
+      "path": "results/gross9_qtr_distill_train_economics_2026-09-02.json",
+      "sha256": "2a09706548198f5756325b1d672f8a3d4d6664e6e2a83d077a385231f690cae7",
+      "manifest_hash": "275903d0a8ef6ce728492ea12814d450d220d869d0b63cecc73acb06bad7d897",
+      "historical_commit": "cbb5f8bc"
+    }
+  },
+  "fail_closed_requirements": [
+    "order submission remains disabled",
+    "no live capital",
+    "do not add to Gross9 gross",
+    "do not relax novelty or legacy p gates",
+    "require a new explicit protocol before any replacement decision"
+  ],
+  "protocol_hash": "197f5a4a521aaa338d6e0dc5b8662c8d7f0f93875f1184940e77a570a1addde7"
+}

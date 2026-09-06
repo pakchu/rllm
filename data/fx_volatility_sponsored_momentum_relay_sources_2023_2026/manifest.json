@@ -1,0 +1,29 @@
+{
+  "protocol_version": "fvsmr_12_fx_volatility_source_v1",
+  "query": "SELECT date_trunc('day',ts) AS source_day,(array_agg(open ORDER BY ts))[1] AS session_open,max(high) AS session_high,min(low) AS session_low,(array_agg(close ORDER BY ts DESC))[1] AS session_close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_polygon WHERE symbol=:symbol AND interval='1m' AND ts>=:start AND ts<:end AND extract(isodow from ts) BETWEEN 1 AND 5 AND extract(hour from ts)>=13 AND extract(hour from ts)<21 GROUP BY 1 ORDER BY 1",
+  "table": "bars_polygon",
+  "symbols": [
+    "EURUSD",
+    "GBPUSD",
+    "USDAUD",
+    "USDCAD",
+    "USDCHF",
+    "USDJPY"
+  ],
+  "fx_direction_used": false,
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/fx_volatility_sponsored_momentum_relay_sources_2023_2026/fx_volatility_sessions.csv.gz",
+    "sha256": "ce8363f70d6bb847ad767a0dc08318da20992b9ad50daab2c794cf43e8bf78b6",
+    "rows": 929,
+    "valid_rows": 903
+  },
+  "manifest_hash": "2b539cf72907ac8d911e3dae8f57b77ac74213c9a8ded57e06b164a113f1f315"
+}

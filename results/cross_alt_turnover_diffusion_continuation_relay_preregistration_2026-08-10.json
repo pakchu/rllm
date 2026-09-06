@@ -1,0 +1,144 @@
+{
+  "protocol_version": "cross_alt_turnover_diffusion_continuation_relay_v1",
+  "policy_id": "CATDCR-8",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When quote-turnover participation expands broadly across six liquid alt perpetuals relative to each asset's own history, a high-variation BTC move confirmed by cross-alt return breadth reflects market-wide risk transfer rather than a narrow BTC print. Follow the completed BTC direction for eight hours.",
+    "side": "strict sign of the completed BTC eight-hour return",
+    "why_distinct": "CATDCR's primary object is the entropy of six per-symbol self-normalized quote-turnover allocations. Cross-alt price candidates use return breadth, residuals, or beta; flow candidates use taker direction; ticket and impact candidates use per-execution size or return per notional. CLD-72 used residual-return HHI transition, leader decline, and taker-flow alignment on a six-hour clock, not turnover-allocation entropy. No prior event set or control is reused.",
+    "volatile_market_target": "completed BTC block variation must be in its causal upper 35%, while broad turnover diffusion identifies risk capital active across the crypto complex; causal RV20 q90 remains only a post-stage audit",
+    "why_low_gross9_overlap_is_plausible": "three conditional eight-hour boundaries driven by six-alt turnover allocation are absent from Gross9 primitives"
+  },
+  "features": {
+    "universe": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "block": "exact 480 unique coherent bars_binance 1m rows [D-8h,D) for all seven symbols at D in 00:00/08:00/16:00 UTC; no imputation",
+    "quote_turnover": "sum quote_asset_volume for each alt over the completed block, finite and strictly positive",
+    "self_normalized_turnover": "current alt quote turnover divided by that symbol's median over at most 270 strictly prior valid blocks, minimum 180, current excluded",
+    "turnover_allocation": "each of six positive self-normalized turnovers divided by their cross-sectional sum",
+    "turnover_entropy": "negative sum share*log(share), divided by log(6), finite in (0,1]",
+    "diffusion_rank": "strict-prior midrank of turnover entropy over at most 270 prior jointly valid blocks, minimum 180, current excluded; rank>=0.70",
+    "returns": "log(last close/first open) independently for all seven symbols; nonzero BTC",
+    "alt_return_breadth": "at least four of six strict nonzero alt return signs equal the BTC return sign",
+    "btc_variation": "sqrt(sum squared one-minute log(close/open)) over the completed BTC block",
+    "btc_variation_rank": "strict-prior midrank over at most 270 prior valid blocks, minimum 180, current excluded; rank>=0.65",
+    "source_valid": "finite positive coherent OHLC, finite nonnegative quote volume, exact unique minute grids for all symbols; no imputation"
+  },
+  "clock": {
+    "decision": "daily 00:00/08:00/16:00 UTC after the exact block completes",
+    "entry": "exact decision+5m BTCUSDT open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium_rv20": "not signal inputs; exact funding only after novelty; RV20 q90 only after all economic stages pass"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "market": {
+      "table": "bars_binance",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "DOGEUSDT",
+        "ADAUSDT"
+      ],
+      "interval": "1m",
+      "columns": [
+        "symbol",
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_diffusion_gate",
+      "raw_turnover_entropy",
+      "one_block_stale_diffusion",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "database_metadata_only_opened_before_preregistration": true,
+    "market_values_used_to_select_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cross-sectional turnover-allocation diffusion mechanism plus user-required volatile-market focus"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, strict economics; no entropy definition, rank, breadth, variation, side, hold, clock, universe, subset, or control repair",
+  "manifest_hash": "223c2cd92cc74f40cfccab783ad2e62fc712975f42d80b9f6a49e8236bf45890"
+}

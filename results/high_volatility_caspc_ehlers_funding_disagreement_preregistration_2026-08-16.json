@@ -1,0 +1,120 @@
+{
+  "protocol_version": "high_volatility_caspc_ehlers_funding_disagreement_v1",
+  "policy_id": "HVCELVFD-8",
+  "as_of_date": "2026-08-16",
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "candidate_family": [
+    "HVCELVFD-8"
+  ],
+  "candidate_family_size": 1,
+  "base_artifacts": {
+    "preregistration": {
+      "path": "results/high_volatility_caspc_ehlers_active_veto_preregistration_2026-08-16.json",
+      "sha256": "7dc8f6228fa32eba7d5aded586d389855a47fbf12917800c43537e5e18c6244f"
+    },
+    "support": {
+      "path": "results/high_volatility_caspc_ehlers_active_veto_support_2026-08-16.json",
+      "sha256": "9b7d2230588465a73dd9646387d3d7000b3f26d98daeef4e25cf51f4118c6375"
+    },
+    "gross9": {
+      "path": "results/high_volatility_caspc_ehlers_active_veto_gross9_novelty_2026-08-16.json",
+      "sha256": "b7d94871688fce546a6a187594cf9665856193d7129cba4c2ca6e69fa9aa3b17"
+    },
+    "clock": {
+      "path": "data/high_volatility_caspc_ehlers_active_veto_clocks_2023_2026.csv.gz",
+      "sha256": "1f8512a74906921169b115ec917c80c76b714c5a2f5fda25698feb6b4b026294"
+    }
+  },
+  "construction": {
+    "base": "immutable HVCELV-8 primary clock and side",
+    "funding_source": "latest BTCUSDT funding_rates_binance settlement with funding_time<=decision and funding_time>decision-8h",
+    "gate": "strict side*funding_rate<0; zero or missing is ineligible",
+    "entry": "immutable base D+5m",
+    "hold": "8 elapsed hours",
+    "additional_or_tuned_magnitude_thresholds": "none",
+    "alternatives": "none"
+  },
+  "mechanism": {
+    "claim": "Cross-alt serial persistence that survives an active Ehlers opposite veto is less crowded when its side disagrees with the latest settled perpetual funding sign, favoring continuation during volatile regimes.",
+    "why_low_gross9_overlap_is_plausible": "a sparse three-way cross-alt, oscillator-veto and settled-funding disagreement conjunction is absent from Gross9"
+  },
+  "clock": {
+    "decision": "immutable base 03:00/11:00/19:00 UTC",
+    "entry": "D+5m",
+    "hold": "8 elapsed hours",
+    "funding": "latest already settled event is a source signal; held-interval settlements remain sealed until economics"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "table": "funding_rates_binance",
+    "symbol": "BTCUSDT",
+    "columns": [
+      "funding_time",
+      "funding_rate"
+    ],
+    "read_after_preregistration": true,
+    "postentry_prices_returns_pnl": "sealed"
+  },
+  "research_boundary": {
+    "HVCELV_train_pass_test_positive_but_terminal_known": true,
+    "exact_funding_disagreement_incidence_or_outcomes_known": false,
+    "source_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "repair_of_prior_candidate": false,
+    "selection_basis": "causal funding-crowding disagreement added to immutable cross-alt oscillator-veto base"
+  },
+  "stopping_rule": "source support, Gross9, train/test/eval/final; stop first failure; no threshold, sign, subset, base, clock, hold, funding-window, substitution, or control repair.",
+  "manifest_hash": "81e5af089125915308210852aefe745a0aa6e8d001b7099f423b917a61344436"
+}

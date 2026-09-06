@@ -1,0 +1,155 @@
+{
+  "protocol_version": "high_volatility_eth_relative_variation_risk_relay_v1",
+  "policy_id": "HVERVR-8",
+  "slug": "high_volatility_eth_relative_variation_risk_relay",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "An upper-tail burst in realized variation of the ETH/BTC relative-price path identifies rapid rotation in crypto risk appetite. The completed ETH/BTC ratio direction maps risk-on ETH outperformance long BTC and risk-off ETH underperformance short BTC for eight hours while BTC variation is elevated.",
+    "side": "strict sign of completed ETH/BTC relative return",
+    "why_distinct": "ETH leadership requires same-sign absolute-return dominance, disagreement requires opposite asset signs, jump catchup isolates one ETH jump, and beta catchup fits a prior regression. HVERVR uses the quadratic variation and endpoint direction of the ETH/BTC relative-price path without individual-sign restrictions or prior event reuse.",
+    "volatile_market_target": "BTC completed eight-hour realized-variation strict-prior rank>=0.65",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily relative-variation onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 04:00, 12:00 and 20:00 UTC boundaries D",
+    "aligned_window": "480 exact coherent BTCUSDT and ETHUSDT bars_binance interval=1m rows per symbol over [D-8h,D)",
+    "relative_minute_return": "log(ETH close/open)-log(BTC close/open) at each aligned minute",
+    "relative_variation": "sum squared relative minute returns, finite strict positive",
+    "relative_variation_rank": "strict-prior midrank over at most 270 earlier source-valid blocks, minimum 180; current excluded; rank>=0.75",
+    "relative_return": "log((ETH last close/BTC last close)/(ETH first open/BTC first open)), finite strict nonzero",
+    "btc_variation": "sum squared BTC minute log(close/open), finite strict positive",
+    "btc_variation_rank": "strict-prior 270/180 midrank; current excluded; rank>=0.65",
+    "eligible_state": "relative-variation and BTC-variation gates pass",
+    "onset": "eligible now and immediately previous exact source-valid block ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after both paths complete",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "strict sign(relative_return)",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact realized funding only after novelty"
+  },
+  "policy": {
+    "window_minutes": 480,
+    "prior_blocks": 270,
+    "minimum_prior_blocks": 180,
+    "relative_variation_rank_min": 0.75,
+    "btc_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_relative_variation_gate",
+      "no_btc_variation_gate",
+      "btc_direction",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "symbol",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "query_window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_eth_leadership_disagreement_jump_and_beta_outcomes_known": true,
+    "repository_eth_btc_relative_variation_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent ETH/BTC relative-price variation risk channel"
+  },
+  "stopping_rule": "terminal first failure; no asset, relative-return, variation, rank, onset, side, clock, hold, subset, threshold, or control repair",
+  "manifest_hash": "448c4f44e47eb4f31375a2ff3e0dcdf80134ee0a6290830093862dc435fc1166"
+}

@@ -1,0 +1,29 @@
+{
+  "protocol_version": "hvfscs_6_sources_v1",
+  "queries": {
+    "funding": "\nSELECT funding_time,funding_rate\nFROM funding_rates_binance\nWHERE symbol='BTCUSDT' AND funding_time>=:start AND funding_time<:end\nORDER BY funding_time\n",
+    "perpetual": "\nSELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='5m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "spot": "\nSELECT ts,open,high,low,close,quote_asset_volume,taker_buy_quote\nFROM bars_binance_spot\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n"
+  },
+  "tables": [
+    "funding_rates_binance",
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "window": [
+    "2022-12-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "candidate_incidence_opened": false,
+  "postentry_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_funding_settlement_cash_sponsorship_relay_sources_2022_2026/settlement_cash_confirmation_panel.csv.gz",
+    "sha256": "21f827dff7be28a1e403719b832fd3e2cb71439f0e7f9d5d29648701fa4d3b7f",
+    "rows": 4296,
+    "valid_rows": 0
+  },
+  "manifest_hash": "71c9e238913c7ebc9d5e72c95a66dbcd2e7facb95227db592ada512b448845ad"
+}

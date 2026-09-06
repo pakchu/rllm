@@ -1,0 +1,156 @@
+{
+  "protocol_version": "korean_cash_volume_sponsorship_relay_v1",
+  "policy_id": "KCVSR-12",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "An unusually active completed Korean cash session supplies independent spot participation to a high-variation BTC move. When Upbit KRW-BTC base turnover is in its causal upper tail, the completed Binance BTC direction should relay for twelve hours rather than represent derivatives-only noise.",
+    "side": "strict sign of the completed Binance BTCUSDT 00:00-08:00 UTC return",
+    "why_distinct": "KCLR compared unadjusted venue return magnitudes and required price-sign agreement; KPAR measured FX-adjusted kimchi-premium acceleration. KCVSR uses neither venue-price leadership nor kimchi premium: Upbit contributes only causally ranked base-volume participation while Binance supplies direction and realized variation.",
+    "why_suited_to_volatile_regimes": "Binance session realized variation must rank at least 0.65 causally",
+    "why_low_gross9_overlap_is_plausible": "one regional cash-volume-conditioned 08:05 UTC clock is absent from Gross9 primitives"
+  },
+  "features": {
+    "session": "exact aligned bars_upbit KRW-BTC and bars_binance BTCUSDT 1m paths [00:00,08:00) UTC; all 480 timestamps required",
+    "upbit_base_volume": "sum of 480 finite nonnegative KRW-BTC base-volume observations; strict positive",
+    "binance_return": "log(07:59 close/00:00 open); strict nonzero",
+    "binance_realized_variation": "sqrt(sum of squared log(1m close/open)) over all 480 Binance bars; strict positive",
+    "causal_ranks": "strict-prior midranks over at most 270 earlier source-valid daily sessions, minimum 180; current excluded",
+    "eligibility": "Upbit base-volume rank>=0.75 and Binance realized-variation rank>=0.65",
+    "availability": "08:00 UTC after both exact source paths complete",
+    "missing_duplicate_nonfinite_or_nonpositive": "ineligible or source failure; no imputation",
+    "grid": false
+  },
+  "clock": {
+    "decision": "each calendar day 08:00 UTC after both source sessions complete",
+    "entry": "exact 08:05 UTC BTCUSDT perpetual open",
+    "side": "strict sign of completed Binance session return",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium_implied_vol_rv20": "not signal inputs; exact funding only after novelty; RV20 q90 only after all economic stages pass"
+  },
+  "policy": {
+    "session_minutes": 480,
+    "history_observations": 270,
+    "minimum_history_observations": 180,
+    "upbit_volume_rank_min": 0.75,
+    "binance_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "source_plan": {
+    "upbit": {
+      "table": "bars_upbit",
+      "symbol": "KRW-BTC",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume"
+      ],
+      "read_only": true
+    },
+    "perpetual": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volume_gate",
+      "no_variation_gate",
+      "one_day_stale_features",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "database_metadata_only_opened_before_preregistration": true,
+    "upbit_volume_values_used_to_select_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent Korean cash participation channel plus user-required high volatility"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no session, source, rank, side, hold, timing, volatility, subset, threshold, or control repair.",
+  "manifest_hash": "3fafb945c03239d9c15da9f271bfbbd475456e82d8d848b1ebe4b988d9c552e1"
+}

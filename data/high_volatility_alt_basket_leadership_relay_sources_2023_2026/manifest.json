@@ -1,0 +1,52 @@
+{
+  "protocol_version": "hvablr_6_alt_basket_leadership_source_v1",
+  "query": "SELECT ts,symbol,open,high,low,close\nFROM bars_binance\nWHERE symbol IN ('BTCUSDT','ADAUSDT','BNBUSDT','DOGEUSDT','ETHUSDT','SOLUSDT','XRPUSDT')\nAND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts,symbol",
+  "query_sha256": "6c7f8e45ead5ce9bb6eb76c833916056909df3084d7740371cef5896f8f51bde",
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ADAUSDT",
+    "BNBUSDT",
+    "DOGEUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "interval": "1m",
+  "columns": [
+    "ts",
+    "symbol",
+    "open",
+    "high",
+    "low",
+    "close"
+  ],
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 12277440,
+  "builder": {
+    "path": "training/build_high_volatility_alt_basket_leadership_relay_support.py",
+    "sha256": "7846855ea6ae67261d986bfd3fb5c7fca9cdf6b5c51bed56d10e38344554b70f"
+  },
+  "pair_panel": {
+    "path": "data/high_volatility_alt_basket_leadership_relay_sources_2023_2026/hourly_leadership_pairs.csv.gz",
+    "sha256": "e7cff70cbbb9009f44085b67d92567729039a7f75d804494e5a414ee64ae32eb",
+    "rows": 29226
+  },
+  "feature_panel": {
+    "path": "data/high_volatility_alt_basket_leadership_relay_sources_2023_2026/hourly_preentry_features.csv.gz",
+    "sha256": "14c8c456e83d265367d613a58f01cd63368b811620edce5ecacd8573c4a412a3",
+    "rows": 29226,
+    "valid_rows": 29226
+  },
+  "completed_preentry_sources_opened": true,
+  "candidate_incidence_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "funding_values_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "deterministic_immutable_artifacts": true,
+  "manifest_hash": "1f953c9508bd51388d3b2a710d25302ecf516587987879927258f92bfd97f5e2"
+}

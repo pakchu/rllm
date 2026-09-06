@@ -1,0 +1,34 @@
+{
+  "protocol_version": "stcsr_12_sources_v1",
+  "queries": {
+    "spot": "\nSELECT ts,open,high,low,close,number_of_trades\nFROM bars_binance_spot\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "perpetual": "\nSELECT ts,open,high,low,close,number_of_trades\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n"
+  },
+  "tables": [
+    "bars_binance_spot",
+    "bars_binance"
+  ],
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-01-01T08:00:00+00:00",
+    "2026-08-01T08:00:00+00:00"
+  ],
+  "candidate_outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "execution_price_opened": false,
+  "postentry_return_or_pnl_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "builder": {
+    "path": "training/build_spot_trade_count_sponsorship_relay_support.py",
+    "sha256": "4e4f5b41772e47272a6abfbd93fb0747a172f1c5938c64cd915fb2d6def993e7"
+  },
+  "output": {
+    "path": "data/spot_trade_count_sponsorship_relay_sources_2023_2026/spot_trade_count_sponsorship_relay_preentry_features.csv.gz",
+    "sha256": "47b53f890998bc097270cca3758231eb80aa35be651dc518637aae9f4e9bbb4d",
+    "rows": 1307,
+    "valid_rows": 26
+  },
+  "manifest_hash": "5225c8d46bcd666992e3f09e433c9334f475a652cac6710d8575d46e94027153"
+}

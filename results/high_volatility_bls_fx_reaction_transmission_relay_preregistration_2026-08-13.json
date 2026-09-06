@@ -1,0 +1,171 @@
+{
+  "protocol_version": "high_volatility_bls_fx_reaction_transmission_relay_v1",
+  "policy_id": "HVBLSFX-12",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "Major scheduled BLS releases create real-rate and dollar price discovery. When the first completed ten-minute USDJPY reaction is unusually directional while BTC is already volatile, the macro impulse should propagate into continuously traded BTC over the next twelve hours.",
+    "side": "strict sign of the completed USDJPY ten-minute reaction; dollar strength/yen weakness maps BTC long",
+    "external_basis": {
+      "market_attention": "Federal Reserve FEDS 2025-022 finds attention amplifies reactions to CPI, Employment Report and Federal Reserve announcements and high-attention announcements tend to overreact",
+      "global_cycle": "NBER 30994 reports positive US payroll and other favorable macro surprises raise global stock prices",
+      "fx_price_discovery": "NBER 8959 documents macro-announcement conditional mean jumps in high-frequency dollar exchange rates",
+      "calendar": "official BLS release schedules; published Eastern times converted with IANA America/New_York"
+    },
+    "why_distinct": "HVTMRF uses every Thursday claims window and fades BTC's own one-hour reaction. YLIRTR and HVDFXPR use broad daily FX sessions without official announcement events. HVBLSFX uses only named official BLS releases and the first ten-minute USDJPY reaction; BTC direction is never an input and no prior event or control is reused.",
+    "why_suited_to_volatile_regimes": "completed pre-release BTC 24-hour variation must occupy its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "sparse DST-aware official macro release clocks and external USDJPY direction are absent from Gross9"
+  },
+  "features": {
+    "release_universe": [
+      "Consumer Price Index",
+      "Employment Situation",
+      "Producer Price Index",
+      "U.S. Import and Export Price Indexes",
+      "Employment Cost Index",
+      "Productivity and Costs"
+    ],
+    "calendar": "official BLS yearly release schedules for 2023-2026; exact published date and time; releases not at 08:30 America/New_York reject",
+    "fx_reaction": "ten exact coherent bars_polygon USDJPY one-minute rows [A,A+10m); log(last close/first open), finite strict nonzero",
+    "reaction_magnitude_rank": "strict-prior midrank of absolute FX reaction over at most 120 earlier source-valid selected releases, minimum 60, current excluded; rank>=0.60",
+    "btc_variation": "sqrt(sum squared exact BTCUSDT one-minute open-to-close log returns over [A-24h,A)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 120 earlier source-valid selected releases, minimum 60, current excluded; rank>=0.65",
+    "event": "both ranks pass; one event per exact timestamp after deduplicating coincident selected releases",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "A+10m after FX reaction completes",
+    "entry": "exact BTCUSDT A+15m open",
+    "side": "USDJPY reaction sign",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty",
+    "rv20": "q90 only after unchanged all-stage pass"
+  },
+  "policy": {
+    "history_releases": 120,
+    "minimum_history_releases": 60,
+    "reaction_rank_min": 0.6,
+    "variation_rank_min": 0.65,
+    "reaction_minutes": 10,
+    "entry_delay_after_feature_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable-then-adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_reaction_tail",
+      "no_variation_gate",
+      "all_bls_releases",
+      "one_release_stale_fx",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "calendar": {
+      "provider": "US Bureau of Labor Statistics",
+      "year_pages": [
+        "https://www.bls.gov/schedule/2023/",
+        "https://www.bls.gov/schedule/2024/",
+        "https://www.bls.gov/schedule/2025/",
+        "https://www.bls.gov/schedule/2026/"
+      ],
+      "download_after_preregistration": true
+    },
+    "fx": {
+      "table": "bars_polygon",
+      "symbol": "USDJPY",
+      "interval": "1m"
+    },
+    "btc": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m"
+    },
+    "window": [
+      "2022-12-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "official_and_published_basis_read": true,
+    "repository_exact_bls_fx_reaction_transmission_found": false,
+    "prior_macro_fx_outcomes_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "official announcement-conditioned external FX price discovery"
+  },
+  "stopping_rule": "terminal first failure; no release universe, timestamp, reaction, rank, variation, side, hold, clock, subset, threshold, source, or control repair",
+  "manifest_hash": "802e57adcc72ec8e32fda8df10935028f732095d5156991870e80062598c9e25"
+}

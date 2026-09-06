@@ -1,0 +1,131 @@
+{
+  "protocol_version": "bcppsr_asym_source_support_v1",
+  "policy_id": "BCPPSR-ASYM",
+  "preregistration": {
+    "path": "results/bocpd_premium_stress_asymmetric_relay_preregistration_2026-08-09.json",
+    "sha256": "d428e9fc9d02e970e8c0da3e71c2224cc5e6812f3139882497af772e09381a41",
+    "manifest_hash": "a1ff2c50c985d0084e1cd5a943a9fe8e758b786e3e9e566f3b4298836dc4d56c"
+  },
+  "source": {
+    "mode": "bound_cache_plus_read_only_postgres_completed_sources",
+    "read_only": true,
+    "rows": 327744,
+    "first": "2023-06-20 00:00:00+00:00",
+    "last": "2026-07-31 23:55:00+00:00",
+    "end_exclusive": "2026-08-01 00:00:00+00:00",
+    "signal_dependent_tables": [
+      "bars_binance",
+      "funding_rates_binance",
+      "bars_binance_premium"
+    ],
+    "external_backward_asof_feature": "kimchi_premium_change",
+    "historical_cache": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "historical_cache_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "causal_context_first": "2019-12-31 15:00:00",
+    "causal_context_last": "2026-07-31 23:55:00",
+    "completed_hourly_first": "2020-01-01 14:00:00",
+    "completed_hourly_last": "2026-08-01 00:00:00",
+    "filter_restarted_at_support_boundary": false
+  },
+  "source_panel": {
+    "path": "data/bocpd_premium_stress_asymmetric_relay_sources_2023_2026/source_panel.csv.gz",
+    "sha256": "42a2cb87faeff122a2421cf59fb3513b866ca57d1cf40245fb54e43070f5dad1",
+    "rows": 327744
+  },
+  "clock": {
+    "path": "data/bocpd_premium_stress_asymmetric_relay_clock_2023_2026.csv.gz",
+    "sha256": "a28f24ea11a9662441da30f9f6edaa826a8a8d36262b2253b98c2108b923e495",
+    "rows": 238
+  },
+  "completed_preentry_sources_opened": true,
+  "btc_postentry_return_or_pnl_opened": false,
+  "gross9_rows_opened": false,
+  "economics_opened": false,
+  "controls": {
+    "long_state_only": {
+      "rows": 61,
+      "promotion_authorized": false
+    },
+    "short_state_only": {
+      "rows": 198,
+      "promotion_authorized": false
+    },
+    "no_bocpd_gate": {
+      "rows": 247,
+      "promotion_authorized": false
+    },
+    "premium_panic_only": {
+      "rows": 195,
+      "promotion_authorized": false
+    },
+    "kimchi_unwind_only": {
+      "rows": 135,
+      "promotion_authorized": false
+    },
+    "direction_flip": {
+      "rows": 238,
+      "promotion_authorized": false
+    }
+  },
+  "support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "support": {
+    "train": {
+      "events": 26,
+      "longs": 4,
+      "shorts": 22,
+      "minority_side_share": 0.15384615384615385,
+      "max_month_share": 0.2692307692307692
+    },
+    "test": {
+      "events": 66,
+      "longs": 9,
+      "shorts": 57,
+      "minority_side_share": 0.13636363636363635,
+      "max_month_share": 0.10606060606060606
+    },
+    "eval": {
+      "events": 87,
+      "longs": 16,
+      "shorts": 71,
+      "minority_side_share": 0.1839080459770115,
+      "max_month_share": 0.12643678160919541
+    },
+    "final": {
+      "events": 59,
+      "longs": 24,
+      "shorts": 35,
+      "minority_side_share": 0.4067796610169492,
+      "max_month_share": 0.2033898305084746
+    }
+  },
+  "support_checks": {
+    "train_minimum_events": true,
+    "train_side_balance": false,
+    "train_month_concentration": true,
+    "test_minimum_events": true,
+    "test_side_balance": false,
+    "test_month_concentration": true,
+    "eval_minimum_events": true,
+    "eval_side_balance": false,
+    "eval_month_concentration": true,
+    "final_minimum_events": true,
+    "final_side_balance": true,
+    "final_month_concentration": true
+  },
+  "support_passed": false,
+  "terminal_without_repair": true,
+  "repair_authorized": false,
+  "advance_to_gross9_novelty": false,
+  "advance_to_economic_outcomes": false,
+  "decision": "terminal_source_support_reject",
+  "manifest_hash": "858466235c513689a6d7b288d8a25dad07acd840003d885045bfd1cf81245889"
+}

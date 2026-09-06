@@ -1,0 +1,4 @@
+import hashlib,json
+from training import evaluate_cboe_convexity_acceleration_dual_confirmation_relay_economics as e
+def test_cvdcmr_train_economics_frozen_terminal():
+ p=e.OUTPUTS["train"];assert hashlib.sha256(p.read_bytes()).hexdigest()=="21eb84887ea7ceeeb6420a737e886f92ddbaa75ed2d9e91323856cfa741c6b84";d=json.loads(p.read_text());core={k:v for k,v in d.items() if k!="manifest_hash"};assert d["manifest_hash"]==e.canonical_hash(core) and d["passed"] is False and d["decision"]=="terminal_reject_no_repair";assert d["advance_to_next_stage"] is False and d["later_stage_outcomes_opened"] is False;assert d["primary"]["base"]["absolute_return_pct"]>4 and d["primary"]["stress"]["absolute_return_pct"]>2;assert d["primary"]["base"]["mean_gross_underlying_bp"]>38 and d["checks"]["each_calendar_half_positive"] is False

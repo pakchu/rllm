@@ -1,0 +1,171 @@
+{
+  "protocol_version": "jump_variation_flow_continuation_relay_v1",
+  "policy_id": "JVFCR-8",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When a large share of six-hour realized variance is discontinuous, the signed cubic jump and the recovery of taker imbalance distinguish sponsored continuation from an exhausted shock. Aligned positive states map long and aligned negative states map short.",
+    "why_distinct": "JVFCR uses causal jump/bipower decomposition plus aggressive-flow recovery. It is not a threshold, direction, hold, model, or diagnostic-control repair of any terminal 2026-08 candidate.",
+    "why_suited_to_volatile_regimes": "the jump-ratio gate explicitly requires discontinuous realized variation and therefore suppresses quiet-market signals"
+  },
+  "feature_contract": {
+    "bar": "completed BTCUSDT perpetual 5m bar",
+    "return": "log(close_t/close_t-1)",
+    "window_bars": 72,
+    "realized_variation": "sum(return^2) over 72 bars",
+    "bipower_variation": "(pi/2)*sum(abs(return_t)*abs(return_t-1)) over 72 bars",
+    "jump_ratio": "max(realized_variation-bipower_variation,0)/realized_variation",
+    "signed_jump": "sum(return^3)/realized_variation^(3/2) over 72 bars",
+    "taker_imbalance": "clip(2*taker_buy_quote/quote_asset_volume-1,-1,1)",
+    "flow_recovery": "12-bar mean taker imbalance minus 48-bar mean taker imbalance",
+    "finite_positive_volume_required": true,
+    "no_imputation": true
+  },
+  "frozen_states": {
+    "long_jump_continuation": {
+      "gates": [
+        {
+          "feature": "jv_jump_ratio_72",
+          "op": ">=",
+          "threshold": 0.31734477856221055
+        },
+        {
+          "feature": "jv_signed_jump_72",
+          "op": ">=",
+          "threshold": 0.15098978078538647
+        },
+        {
+          "feature": "jv_flow_recovery",
+          "op": ">=",
+          "threshold": 0.025127509061786887
+        }
+      ],
+      "side": 1
+    },
+    "short_jump_continuation": {
+      "gates": [
+        {
+          "feature": "jv_jump_ratio_72",
+          "op": ">=",
+          "threshold": 0.31734477856221055
+        },
+        {
+          "feature": "jv_signed_jump_72",
+          "op": "<=",
+          "threshold": -0.1495008467852352
+        },
+        {
+          "feature": "jv_flow_recovery",
+          "op": "<=",
+          "threshold": -0.025286664913192248
+        }
+      ],
+      "side": -1
+    },
+    "decision_grid": "UTC minute divisible by 30 on completed 5m bars",
+    "conflict": "skip if both states are true",
+    "availability": "decide after completed bar; enter next 5m open",
+    "global_reservation": "half-open; ignore states while a trade is active",
+    "no_threshold_side_hold_stride_or_subset_tuning": true
+  },
+  "clock": {
+    "entry": "next 5m open",
+    "hold": "8 elapsed hours",
+    "path_dependent_exit": false,
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "jump_only",
+      "no_flow_recovery",
+      "one_bar_stale_features",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "database_contract": {
+    "env_file": "/home/pakchu/rllm/.env",
+    "table": "bars_binance",
+    "symbol": "BTCUSDT",
+    "interval": "1m aggregated to complete 5m bars",
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close",
+      "quote_asset_volume",
+      "taker_buy_quote"
+    ],
+    "read_only": true
+  },
+  "source_bindings": {
+    "training/search_jump_variation_bidirectional_alpha.py": "a0e4aa9cef572a962a9adb9acdd8ecc55b4dd2a6810cbe94f50bf2e2526c064a",
+    "training/backtest_all_alpha_month.py": "3de3bc013cfd880d1f14740eb9a51f0c3506949dc9a716a36c44f15123226fe6",
+    "preprocessing/live_db_features.py": "a4b903913a51e1322e8946cd8dad8fea08b2361655520d20312a65f4219d5099"
+  },
+  "research_boundary": {
+    "prior_rule_family_outcomes_known": true,
+    "prior_outcome_warning": "The thresholds and an 8-hour rule with 1.5% take-profit and 1% stop-loss were selected after inspecting 2024 and later diagnostics. A pass cannot be represented as fresh-data discovery.",
+    "fixed_clock_candidate_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "post_entry_outcomes_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no repair",
+  "manifest_hash": "89d7c09c6d296ba627f0297e15afab8b0928403d70c477cab97d30c422cfe15f"
+}

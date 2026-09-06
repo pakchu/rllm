@@ -1,0 +1,158 @@
+{
+  "protocol_version": "high_volatility_variance_signature_reversal_relay_v1",
+  "policy_id": "HVVSR-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When completed one-minute realized variance is unusually large relative to nonoverlapping five-minute realized variance during an already volatile BTC day, the excess high-frequency variation identifies short-horizon reversal noise rather than persistent displacement; fade the completed four-hour return for twenty-four hours.",
+    "side": "short a strictly positive completed four-hour return and long a strictly negative return, only on a fresh joint signature-and-variation tail onset",
+    "why_distinct": "HVVSR compares identical-price realized variance at two fixed sampling frequencies. It is not a single-scale volatility level, jump/bipower statistic, OHLC range estimator, sign-count metric, volume/flow/OI/funding feature, fitted outcome, reused event set, prior repair, or promoted control.",
+    "why_suited_to_volatile_regimes": "both five-minute trailing realized variation and the one-minute/five-minute variance signature ratio must occupy causal upper tails",
+    "why_low_gross9_overlap_is_plausible": "a sparse dual-tail multiscale sampling-frequency diagnostic at four-hour boundaries is absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every completed four-hour BTCUSDT boundary",
+    "window": "exact 1,440 coherent one-minute bars [T-24h,T)",
+    "one_minute_rv": "sum squared one-minute close-to-previous-close log returns, excluding the unavailable return before the window",
+    "five_minute_rv": "sum squared close-to-previous-close log returns of 288 exact nonoverlapping five-minute closes, excluding the unavailable return before the window",
+    "signature_ratio": "one_minute_rv/five_minute_rv, finite strict positive",
+    "realized_variation": "sqrt(five_minute_rv), finite strict positive",
+    "four_hour_return": "log(last one-minute close / first one-minute open over [T-4h,T)), finite strict nonzero",
+    "prior_ranks": "strict-prior midranks over at most 270 earlier source-valid decisions, minimum 180, current excluded",
+    "event": "signature rank>=0.80 and variation rank>=0.65 now, while immediately prior source-valid decision was not jointly eligible",
+    "recursive_reset": "all rolling windows, rank histories, and onset state reset after any invalid four-hour source block",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "completed four-hour boundary",
+    "entry": "exact BTCUSDT boundary+5m open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "window_hours": 24,
+    "signature_rank_min": 0.8,
+    "variation_rank_min": 0.65,
+    "rank_history_decisions": 270,
+    "minimum_rank_history_decisions": 180,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_signature_gate",
+      "no_variation_gate",
+      "five_minute_return_continuation",
+      "one_bar_stale_onset",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "variance_signature_definition_read": true,
+    "repository_variance_signature_candidate_found": false,
+    "prior_multiscale_volatility_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "published variance-signature sampling-frequency diagnostic under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no sampling frequencies, window, formula, ranks, onset, side, hold, clock, subset, control, or other repair.",
+  "external_basis": {
+    "origin": "Hansen and Lunde, Realized Variance and Market Microstructure Noise",
+    "paper": "https://w4.stern.nyu.edu/salomon/docs/Hansen-Lunde.pdf",
+    "paper_sha256": "d745ba595974cc95c44e7c9752aa5bf0409e5c6eed274e0da1469b357ed0a2f4",
+    "support": "the volatility signature plot diagnoses sampling-frequency dependence and high-frequency microstructure contamination",
+    "selection_use": "fixed one-minute versus five-minute signature construction only; BTC direction, tails, onset, and holding application are untested; no incidence or outcomes"
+  },
+  "manifest_hash": "b85de6bbcfc31f4906765920f13352310d7228d79776873d0ee8ca60152269cb"
+}

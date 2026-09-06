@@ -1,0 +1,30 @@
+"""Outcome-blind preregistration for HVRPC-24."""
+from __future__ import annotations
+import argparse, hashlib, json
+from pathlib import Path
+from typing import Any
+
+POLICY_ID="HVRPC-24"; DEFAULT_OUTPUT=Path("results/high_volatility_risk_parity_consensus_relay_preregistration_2026-08-10.json")
+SOURCE=Path("data/high_volatility_risk_parity_consensus_relay_sources_2020_2026/spy_tlt_sessions.csv.gz")
+MARKET=Path("data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz"); MARKET_SHA="a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+def canonical_hash(x:Any)->str:return hashlib.sha256(json.dumps(x,sort_keys=True,separators=(",",":"),allow_nan=False).encode()).hexdigest()
+def build()->dict[str,Any]:
+ core={"protocol_version":"high_volatility_risk_parity_consensus_relay_v1","policy_id":POLICY_ID,"as_of_date":"2026-08-10","singleton":True,"outcomes_opened":False,"source_incidence_opened":False,"gross9_rows_opened":False,
+ "mechanism":{"claim":"Same-direction completed US cash-session returns in SPY and TLT identify a broad risk-parity liquidity impulse rather than an asset-class rotation. During elevated BTC variation, follow the common direction for twenty-four hours after both closes are certainly public.","side":"common strict sign of SPY and TLT raw open-to-close returns","why_distinct":"HVRPC requires equity-duration consensus. HVQGR used QQQ-versus-GLD strict disagreement and is terminal; Treasury candidates use official yields or fiscal stocks rather than simultaneous traded equity and duration returns. No prior event or control is reused.","volatile_market_target":"completed seven-day BTC variation causal rank at least 0.65","why_low_gross9_overlap_is_plausible":"one external 23:05 UTC cash-session consensus clock per eligible business date is absent from Gross9 primitives"},
+ "features":{"source":"candidate-specific Yahoo chart raw unadjusted SPY and TLT regular-session daily open/close snapshots, frozen after preregistration","session":"same official US trading date D, both finite positive opens/closes","consensus":"strict nonzero SPY and TLT log(open-to-close) returns with identical signs","availability":"D 23:00 UTC, after both 16:00 America/New_York regular closes in EST and EDT","btc_variation":"sqrt(sum squared exact completed 5m BTC log returns over seven elapsed days ending at decision)","variation_rank":"strict-prior midrank over all daily 23:00 UTC market states, at most 270 and minimum 180; current excluded; rank>=0.65","no_adjusted_close":True,"no_imputation":True},
+ "clock":{"decision":"cash-session date D at 23:00 UTC","entry":"23:05 UTC exact BTCUSDT open","hold":"24 elapsed hours","side":"common SPY/TLT session-return sign","reservation":"chronological half-open nonoverlap; exit first on equal open","gross_exposure":.5,"funding":"exact only after novelty"},
+ "policy":{"variation_history_days":270,"minimum_history_days":180,"variation_rank_min":.65,"entry_delay_minutes":5,"hold_hours":24,"leverage":.5,"base_cost_per_notional_side":.0006,"stress_cost_per_notional_side":.001},
+ "stages":{"train":["2023-07-01T00:00:00Z","2024-01-01T00:00:00Z"],"test":["2024-01-01T00:00:00Z","2025-01-01T00:00:00Z"],"eval":["2025-01-01T00:00:00Z","2026-01-01T00:00:00Z"],"final":["2026-01-01T00:00:00Z","2026-08-01T00:00:00Z"]},
+ "source_support_gates":{"minimum_events":{"train":8,"test":12,"eval":12,"final":8},"minority_side_share_min":.2,"max_month_share":.45},"novelty_gates":{"exact_entry_jaccard_max":.1,"candidate_near_6h_share_max":.35,"occupied_5m_bar_jaccard_max":.25,"absolute_signed_exposure_pearson_max":.35,"must_pass_before_economics":True},
+ "economic_gates":{"absolute_return_positive":True,"cagr_to_strict_mdd_min":3.,"strict_mdd_max_pct":15.,"mean_gross_underlying_min_bp":20.,"weekly_signflip_one_sided_p_max":.1,"stress_absolute_return_positive":True,"stress_cagr_to_strict_mdd_min":2.5,"each_calendar_half_positive":True,"stop_on_first_failure":True,"accounting":"fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable then adverse, global HWM, full-calendar CAGR"},
+ "post_stage_volatility_audit":{"prerequisite":"unchanged all-stage pass","rv20_q90_entry_filter":False,"minimum_q90_trades":8,"candidate_q90_absolute_return_positive":True,"identical_clock_forced_long_residual_positive":True},
+ "diagnostic_controls":{"names":["no_variation_gate","spy_only","tlt_only","one_session_stale_consensus","direction_flip","same_clock_forced_long"],"cannot_be_promoted":True},
+ "source_plan":{"spy":"Yahoo chart query1=2020-01-01 query2=2026-08-02 exclusive interval=1d events=history","tlt":"same contract","destination":str(SOURCE),"download_after_preregistration_commit":True,"historical_market":{"path":str(MARKET),"sha256":MARKET_SHA},"live_extension":"read-only Postgres BTCUSDT through 2026-08-01","execution_prices":"sealed until source and novelty pass"},
+ "research_boundary":{"prior_cross_asset_outcomes_known":True,"prior_event_sets_or_controls_reused":False,"exact_hvrpc_incidence_or_outcomes_known":False,"candidate_incidence_opened":False,"postentry_return_or_pnl_opened":False,"gross9_rows_opened":False,"candidate_count":1,"grid":False,"repair_of_prior_candidate":False,"promoted_prior_control":False,"selection_basis":"independent equity-duration consensus liquidity mechanism"},
+ "stopping_rule":"terminal first failure; no source, consensus, side, variation, clock, hold, subset, threshold, comparator, or control repair"}; return {**core,"manifest_hash":canonical_hash(core)}
+def validate(x:dict[str,Any])->None:
+ if x["manifest_hash"]!=canonical_hash({k:v for k,v in x.items() if k!="manifest_hash"}):raise RuntimeError("HVRPC drift")
+ if SOURCE.exists():raise RuntimeError("HVRPC source must not exist before preregistration")
+ if hashlib.sha256(MARKET.read_bytes()).hexdigest()!=MARKET_SHA:raise RuntimeError("market drift")
+if __name__=="__main__":
+ p=argparse.ArgumentParser();p.add_argument("--output",type=Path,default=DEFAULT_OUTPUT);a=p.parse_args();r=build();validate(r);a.output.write_text(json.dumps(r,indent=2)+"\n");print(a.output)

@@ -1,0 +1,21 @@
+{
+  "protocol_version": "hvrtr_12_daily_btc_source_v1",
+  "query": "WITH tagged AS (SELECT ts,date_trunc('day',ts) AS source_day,open,high,low,close,max(high) OVER (PARTITION BY date_trunc('day',ts)) AS daily_high,min(low) OVER (PARTITION BY date_trunc('day',ts)) AS daily_low FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end) SELECT source_day,(array_agg(open ORDER BY ts))[1] AS daily_open,max(daily_high) AS daily_high,min(daily_low) AS daily_low,(array_agg(close ORDER BY ts DESC))[1] AS daily_close,min(ts) FILTER (WHERE high=daily_high) AS first_high_time,min(ts) FILTER (WHERE low=daily_low) AS first_low_time,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM tagged GROUP BY source_day ORDER BY source_day",
+  "table": "bars_binance",
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_range_traversal_relay_sources_2023_2026/btc_daily_traversal.csv.gz",
+    "sha256": "19e9ef66486113b608269ffee0129d2b93ac64c53912c163979f88bf8a412613",
+    "rows": 1308,
+    "valid_rows": 1308
+  },
+  "manifest_hash": "5b2bed1b27eef9ca009a70f7c2060648f66480509a83f6babde5738aba389dfe"
+}

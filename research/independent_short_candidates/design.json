@@ -1,0 +1,3138 @@
+{
+  "design": {
+    "version": 1,
+    "selection": "2024 only; fixed finalists reported2025/full2026H1 without replacement",
+    "objective": "standalone short net return/drawdown, independent of any parent long position",
+    "families": [
+      "failed_rebound",
+      "sell_ignition",
+      "quiet_breakdown",
+      "crowded_break",
+      "distribution",
+      "currency_riskoff",
+      "regional_unwind",
+      "trend_acceleration",
+      "failed_breakout",
+      "long_exhaustion",
+      "regional_top",
+      "rally_dollar"
+    ],
+    "thresholds": [
+      0.5,
+      1.0
+    ],
+    "hold_hours": [
+      3,
+      6,
+      12,
+      24
+    ],
+    "exits": [
+      [
+        null,
+        null
+      ],
+      [
+        0.01,
+        0.01
+      ],
+      [
+        0.02,
+        0.015
+      ],
+      [
+        0.03,
+        0.02
+      ]
+    ],
+    "entry": "completed-hour features, next5m open, fixed1x entry notional",
+    "execution": "internally non-overlapping; stop before take on ambiguous5m bar; force-close at window end",
+    "costs": [
+      0.0006,
+      0.001
+    ],
+    "ranking": "selection10bp proxy Calmar + .1*selection return percentage points",
+    "finalists": "global top5 distinct schedules plus top1 per family, all before report",
+    "risk": "exact five-minute ledger for finalists; no cost-ratio/frequency/correlation gates",
+    "caveat": "historically exposed data; coarse trade-envelope drawdown used only for discovery ranking",
+    "live_enabled": false
+  },
+  "code_hash": "9ac81c99e85bccb6ca73d2c500e822b44bc9e05629fc8ac78966fa0fe2a355bf",
+  "source_code_hash": "6b0a28ff48f6c192c73ff5e2dddafc6d191c93ea246eae9ec5c6c84ca17a83ec",
+  "ledger_hash": "4e4aba76a6928e6aaea2a958f918beac94a558fd3ab17c552beb6e15f2151b10",
+  "context_hash": "76df6d180c2da027c84fad7024e8049a36518744d6d93c7a61830cbce9552b5b",
+  "specs": [
+    {
+      "name": "failed_rebound_t0.5_h3_tpNone_slNone",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_rebound_t0.5_h3_tp0.01_sl0.01",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_rebound_t0.5_h3_tp0.02_sl0.015",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_rebound_t0.5_h3_tp0.03_sl0.02",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_rebound_t0.5_h6_tpNone_slNone",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_rebound_t0.5_h6_tp0.01_sl0.01",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_rebound_t0.5_h6_tp0.02_sl0.015",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_rebound_t0.5_h6_tp0.03_sl0.02",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_rebound_t0.5_h12_tpNone_slNone",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_rebound_t0.5_h12_tp0.01_sl0.01",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_rebound_t0.5_h12_tp0.02_sl0.015",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_rebound_t0.5_h12_tp0.03_sl0.02",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_rebound_t0.5_h24_tpNone_slNone",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_rebound_t0.5_h24_tp0.01_sl0.01",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_rebound_t0.5_h24_tp0.02_sl0.015",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_rebound_t0.5_h24_tp0.03_sl0.02",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_rebound_t1.0_h3_tpNone_slNone",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_rebound_t1.0_h3_tp0.01_sl0.01",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_rebound_t1.0_h3_tp0.02_sl0.015",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_rebound_t1.0_h3_tp0.03_sl0.02",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_rebound_t1.0_h6_tpNone_slNone",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_rebound_t1.0_h6_tp0.01_sl0.01",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_rebound_t1.0_h6_tp0.02_sl0.015",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_rebound_t1.0_h6_tp0.03_sl0.02",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_rebound_t1.0_h12_tpNone_slNone",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_rebound_t1.0_h12_tp0.01_sl0.01",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_rebound_t1.0_h12_tp0.02_sl0.015",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_rebound_t1.0_h12_tp0.03_sl0.02",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_rebound_t1.0_h24_tpNone_slNone",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_rebound_t1.0_h24_tp0.01_sl0.01",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_rebound_t1.0_h24_tp0.02_sl0.015",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_rebound_t1.0_h24_tp0.03_sl0.02",
+      "family": "failed_rebound",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "sell_ignition_t0.5_h3_tpNone_slNone",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "sell_ignition_t0.5_h3_tp0.01_sl0.01",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "sell_ignition_t0.5_h3_tp0.02_sl0.015",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "sell_ignition_t0.5_h3_tp0.03_sl0.02",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "sell_ignition_t0.5_h6_tpNone_slNone",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "sell_ignition_t0.5_h6_tp0.01_sl0.01",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "sell_ignition_t0.5_h6_tp0.02_sl0.015",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "sell_ignition_t0.5_h6_tp0.03_sl0.02",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "sell_ignition_t0.5_h12_tpNone_slNone",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "sell_ignition_t0.5_h12_tp0.01_sl0.01",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "sell_ignition_t0.5_h12_tp0.02_sl0.015",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "sell_ignition_t0.5_h12_tp0.03_sl0.02",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "sell_ignition_t0.5_h24_tpNone_slNone",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "sell_ignition_t0.5_h24_tp0.01_sl0.01",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "sell_ignition_t0.5_h24_tp0.02_sl0.015",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "sell_ignition_t0.5_h24_tp0.03_sl0.02",
+      "family": "sell_ignition",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "sell_ignition_t1.0_h3_tpNone_slNone",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "sell_ignition_t1.0_h3_tp0.01_sl0.01",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "sell_ignition_t1.0_h3_tp0.02_sl0.015",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "sell_ignition_t1.0_h3_tp0.03_sl0.02",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "sell_ignition_t1.0_h6_tpNone_slNone",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "sell_ignition_t1.0_h6_tp0.01_sl0.01",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "sell_ignition_t1.0_h6_tp0.02_sl0.015",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "sell_ignition_t1.0_h6_tp0.03_sl0.02",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "sell_ignition_t1.0_h12_tpNone_slNone",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "sell_ignition_t1.0_h12_tp0.01_sl0.01",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "sell_ignition_t1.0_h12_tp0.02_sl0.015",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "sell_ignition_t1.0_h12_tp0.03_sl0.02",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "sell_ignition_t1.0_h24_tpNone_slNone",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "sell_ignition_t1.0_h24_tp0.01_sl0.01",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "sell_ignition_t1.0_h24_tp0.02_sl0.015",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "sell_ignition_t1.0_h24_tp0.03_sl0.02",
+      "family": "sell_ignition",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h3_tpNone_slNone",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h3_tp0.01_sl0.01",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h3_tp0.02_sl0.015",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h3_tp0.03_sl0.02",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h6_tpNone_slNone",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h6_tp0.01_sl0.01",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h6_tp0.02_sl0.015",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h6_tp0.03_sl0.02",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h12_tpNone_slNone",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h12_tp0.01_sl0.01",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h12_tp0.02_sl0.015",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h12_tp0.03_sl0.02",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h24_tpNone_slNone",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h24_tp0.01_sl0.01",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h24_tp0.02_sl0.015",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "quiet_breakdown_t0.5_h24_tp0.03_sl0.02",
+      "family": "quiet_breakdown",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h3_tpNone_slNone",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h3_tp0.01_sl0.01",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h3_tp0.02_sl0.015",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h3_tp0.03_sl0.02",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h6_tpNone_slNone",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h6_tp0.01_sl0.01",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h6_tp0.02_sl0.015",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h6_tp0.03_sl0.02",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h12_tpNone_slNone",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h12_tp0.01_sl0.01",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h12_tp0.02_sl0.015",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h12_tp0.03_sl0.02",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h24_tpNone_slNone",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h24_tp0.01_sl0.01",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h24_tp0.02_sl0.015",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "quiet_breakdown_t1.0_h24_tp0.03_sl0.02",
+      "family": "quiet_breakdown",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "crowded_break_t0.5_h3_tpNone_slNone",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "crowded_break_t0.5_h3_tp0.01_sl0.01",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "crowded_break_t0.5_h3_tp0.02_sl0.015",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "crowded_break_t0.5_h3_tp0.03_sl0.02",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "crowded_break_t0.5_h6_tpNone_slNone",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "crowded_break_t0.5_h6_tp0.01_sl0.01",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "crowded_break_t0.5_h6_tp0.02_sl0.015",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "crowded_break_t0.5_h6_tp0.03_sl0.02",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "crowded_break_t0.5_h12_tpNone_slNone",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "crowded_break_t0.5_h12_tp0.01_sl0.01",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "crowded_break_t0.5_h12_tp0.02_sl0.015",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "crowded_break_t0.5_h12_tp0.03_sl0.02",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "crowded_break_t0.5_h24_tpNone_slNone",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "crowded_break_t0.5_h24_tp0.01_sl0.01",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "crowded_break_t0.5_h24_tp0.02_sl0.015",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "crowded_break_t0.5_h24_tp0.03_sl0.02",
+      "family": "crowded_break",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "crowded_break_t1.0_h3_tpNone_slNone",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "crowded_break_t1.0_h3_tp0.01_sl0.01",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "crowded_break_t1.0_h3_tp0.02_sl0.015",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "crowded_break_t1.0_h3_tp0.03_sl0.02",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "crowded_break_t1.0_h6_tpNone_slNone",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "crowded_break_t1.0_h6_tp0.01_sl0.01",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "crowded_break_t1.0_h6_tp0.02_sl0.015",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "crowded_break_t1.0_h6_tp0.03_sl0.02",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "crowded_break_t1.0_h12_tpNone_slNone",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "crowded_break_t1.0_h12_tp0.01_sl0.01",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "crowded_break_t1.0_h12_tp0.02_sl0.015",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "crowded_break_t1.0_h12_tp0.03_sl0.02",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "crowded_break_t1.0_h24_tpNone_slNone",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "crowded_break_t1.0_h24_tp0.01_sl0.01",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "crowded_break_t1.0_h24_tp0.02_sl0.015",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "crowded_break_t1.0_h24_tp0.03_sl0.02",
+      "family": "crowded_break",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "distribution_t0.5_h3_tpNone_slNone",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "distribution_t0.5_h3_tp0.01_sl0.01",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "distribution_t0.5_h3_tp0.02_sl0.015",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "distribution_t0.5_h3_tp0.03_sl0.02",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "distribution_t0.5_h6_tpNone_slNone",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "distribution_t0.5_h6_tp0.01_sl0.01",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "distribution_t0.5_h6_tp0.02_sl0.015",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "distribution_t0.5_h6_tp0.03_sl0.02",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "distribution_t0.5_h12_tpNone_slNone",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "distribution_t0.5_h12_tp0.01_sl0.01",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "distribution_t0.5_h12_tp0.02_sl0.015",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "distribution_t0.5_h12_tp0.03_sl0.02",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "distribution_t0.5_h24_tpNone_slNone",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "distribution_t0.5_h24_tp0.01_sl0.01",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "distribution_t0.5_h24_tp0.02_sl0.015",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "distribution_t0.5_h24_tp0.03_sl0.02",
+      "family": "distribution",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "distribution_t1.0_h3_tpNone_slNone",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "distribution_t1.0_h3_tp0.01_sl0.01",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "distribution_t1.0_h3_tp0.02_sl0.015",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "distribution_t1.0_h3_tp0.03_sl0.02",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "distribution_t1.0_h6_tpNone_slNone",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "distribution_t1.0_h6_tp0.01_sl0.01",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "distribution_t1.0_h6_tp0.02_sl0.015",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "distribution_t1.0_h6_tp0.03_sl0.02",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "distribution_t1.0_h12_tpNone_slNone",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "distribution_t1.0_h12_tp0.01_sl0.01",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "distribution_t1.0_h12_tp0.02_sl0.015",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "distribution_t1.0_h12_tp0.03_sl0.02",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "distribution_t1.0_h24_tpNone_slNone",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "distribution_t1.0_h24_tp0.01_sl0.01",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "distribution_t1.0_h24_tp0.02_sl0.015",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "distribution_t1.0_h24_tp0.03_sl0.02",
+      "family": "distribution",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "currency_riskoff_t0.5_h3_tpNone_slNone",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "currency_riskoff_t0.5_h3_tp0.01_sl0.01",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "currency_riskoff_t0.5_h3_tp0.02_sl0.015",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "currency_riskoff_t0.5_h3_tp0.03_sl0.02",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "currency_riskoff_t0.5_h6_tpNone_slNone",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "currency_riskoff_t0.5_h6_tp0.01_sl0.01",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "currency_riskoff_t0.5_h6_tp0.02_sl0.015",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "currency_riskoff_t0.5_h6_tp0.03_sl0.02",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "currency_riskoff_t0.5_h12_tpNone_slNone",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "currency_riskoff_t0.5_h12_tp0.01_sl0.01",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "currency_riskoff_t0.5_h12_tp0.02_sl0.015",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "currency_riskoff_t0.5_h12_tp0.03_sl0.02",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "currency_riskoff_t0.5_h24_tpNone_slNone",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "currency_riskoff_t0.5_h24_tp0.01_sl0.01",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "currency_riskoff_t0.5_h24_tp0.02_sl0.015",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "currency_riskoff_t0.5_h24_tp0.03_sl0.02",
+      "family": "currency_riskoff",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "currency_riskoff_t1.0_h3_tpNone_slNone",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "currency_riskoff_t1.0_h3_tp0.01_sl0.01",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "currency_riskoff_t1.0_h3_tp0.02_sl0.015",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "currency_riskoff_t1.0_h3_tp0.03_sl0.02",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "currency_riskoff_t1.0_h6_tpNone_slNone",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "currency_riskoff_t1.0_h6_tp0.01_sl0.01",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "currency_riskoff_t1.0_h6_tp0.02_sl0.015",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "currency_riskoff_t1.0_h6_tp0.03_sl0.02",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "currency_riskoff_t1.0_h12_tpNone_slNone",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "currency_riskoff_t1.0_h12_tp0.01_sl0.01",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "currency_riskoff_t1.0_h12_tp0.02_sl0.015",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "currency_riskoff_t1.0_h12_tp0.03_sl0.02",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "currency_riskoff_t1.0_h24_tpNone_slNone",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "currency_riskoff_t1.0_h24_tp0.01_sl0.01",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "currency_riskoff_t1.0_h24_tp0.02_sl0.015",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "currency_riskoff_t1.0_h24_tp0.03_sl0.02",
+      "family": "currency_riskoff",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_unwind_t0.5_h3_tpNone_slNone",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_unwind_t0.5_h3_tp0.01_sl0.01",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_unwind_t0.5_h3_tp0.02_sl0.015",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_unwind_t0.5_h3_tp0.03_sl0.02",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_unwind_t0.5_h6_tpNone_slNone",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_unwind_t0.5_h6_tp0.01_sl0.01",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_unwind_t0.5_h6_tp0.02_sl0.015",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_unwind_t0.5_h6_tp0.03_sl0.02",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_unwind_t0.5_h12_tpNone_slNone",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_unwind_t0.5_h12_tp0.01_sl0.01",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_unwind_t0.5_h12_tp0.02_sl0.015",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_unwind_t0.5_h12_tp0.03_sl0.02",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_unwind_t0.5_h24_tpNone_slNone",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_unwind_t0.5_h24_tp0.01_sl0.01",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_unwind_t0.5_h24_tp0.02_sl0.015",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_unwind_t0.5_h24_tp0.03_sl0.02",
+      "family": "regional_unwind",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_unwind_t1.0_h3_tpNone_slNone",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_unwind_t1.0_h3_tp0.01_sl0.01",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_unwind_t1.0_h3_tp0.02_sl0.015",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_unwind_t1.0_h3_tp0.03_sl0.02",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_unwind_t1.0_h6_tpNone_slNone",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_unwind_t1.0_h6_tp0.01_sl0.01",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_unwind_t1.0_h6_tp0.02_sl0.015",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_unwind_t1.0_h6_tp0.03_sl0.02",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_unwind_t1.0_h12_tpNone_slNone",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_unwind_t1.0_h12_tp0.01_sl0.01",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_unwind_t1.0_h12_tp0.02_sl0.015",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_unwind_t1.0_h12_tp0.03_sl0.02",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_unwind_t1.0_h24_tpNone_slNone",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_unwind_t1.0_h24_tp0.01_sl0.01",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_unwind_t1.0_h24_tp0.02_sl0.015",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_unwind_t1.0_h24_tp0.03_sl0.02",
+      "family": "regional_unwind",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "trend_acceleration_t0.5_h3_tpNone_slNone",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "trend_acceleration_t0.5_h3_tp0.01_sl0.01",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "trend_acceleration_t0.5_h3_tp0.02_sl0.015",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "trend_acceleration_t0.5_h3_tp0.03_sl0.02",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "trend_acceleration_t0.5_h6_tpNone_slNone",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "trend_acceleration_t0.5_h6_tp0.01_sl0.01",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "trend_acceleration_t0.5_h6_tp0.02_sl0.015",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "trend_acceleration_t0.5_h6_tp0.03_sl0.02",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "trend_acceleration_t0.5_h12_tpNone_slNone",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "trend_acceleration_t0.5_h12_tp0.01_sl0.01",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "trend_acceleration_t0.5_h12_tp0.02_sl0.015",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "trend_acceleration_t0.5_h12_tp0.03_sl0.02",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "trend_acceleration_t0.5_h24_tpNone_slNone",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "trend_acceleration_t0.5_h24_tp0.01_sl0.01",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "trend_acceleration_t0.5_h24_tp0.02_sl0.015",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "trend_acceleration_t0.5_h24_tp0.03_sl0.02",
+      "family": "trend_acceleration",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "trend_acceleration_t1.0_h3_tpNone_slNone",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "trend_acceleration_t1.0_h3_tp0.01_sl0.01",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "trend_acceleration_t1.0_h3_tp0.02_sl0.015",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "trend_acceleration_t1.0_h3_tp0.03_sl0.02",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "trend_acceleration_t1.0_h6_tpNone_slNone",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "trend_acceleration_t1.0_h6_tp0.01_sl0.01",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "trend_acceleration_t1.0_h6_tp0.02_sl0.015",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "trend_acceleration_t1.0_h6_tp0.03_sl0.02",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "trend_acceleration_t1.0_h12_tpNone_slNone",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "trend_acceleration_t1.0_h12_tp0.01_sl0.01",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "trend_acceleration_t1.0_h12_tp0.02_sl0.015",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "trend_acceleration_t1.0_h12_tp0.03_sl0.02",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "trend_acceleration_t1.0_h24_tpNone_slNone",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "trend_acceleration_t1.0_h24_tp0.01_sl0.01",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "trend_acceleration_t1.0_h24_tp0.02_sl0.015",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "trend_acceleration_t1.0_h24_tp0.03_sl0.02",
+      "family": "trend_acceleration",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_breakout_t0.5_h3_tpNone_slNone",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_breakout_t0.5_h3_tp0.01_sl0.01",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_breakout_t0.5_h3_tp0.02_sl0.015",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_breakout_t0.5_h3_tp0.03_sl0.02",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_breakout_t0.5_h6_tpNone_slNone",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_breakout_t0.5_h6_tp0.01_sl0.01",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_breakout_t0.5_h6_tp0.02_sl0.015",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_breakout_t0.5_h6_tp0.03_sl0.02",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_breakout_t0.5_h12_tpNone_slNone",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_breakout_t0.5_h12_tp0.01_sl0.01",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_breakout_t0.5_h12_tp0.02_sl0.015",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_breakout_t0.5_h12_tp0.03_sl0.02",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_breakout_t0.5_h24_tpNone_slNone",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_breakout_t0.5_h24_tp0.01_sl0.01",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_breakout_t0.5_h24_tp0.02_sl0.015",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_breakout_t0.5_h24_tp0.03_sl0.02",
+      "family": "failed_breakout",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_breakout_t1.0_h3_tpNone_slNone",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_breakout_t1.0_h3_tp0.01_sl0.01",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_breakout_t1.0_h3_tp0.02_sl0.015",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_breakout_t1.0_h3_tp0.03_sl0.02",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_breakout_t1.0_h6_tpNone_slNone",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_breakout_t1.0_h6_tp0.01_sl0.01",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_breakout_t1.0_h6_tp0.02_sl0.015",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_breakout_t1.0_h6_tp0.03_sl0.02",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_breakout_t1.0_h12_tpNone_slNone",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_breakout_t1.0_h12_tp0.01_sl0.01",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_breakout_t1.0_h12_tp0.02_sl0.015",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_breakout_t1.0_h12_tp0.03_sl0.02",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "failed_breakout_t1.0_h24_tpNone_slNone",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "failed_breakout_t1.0_h24_tp0.01_sl0.01",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "failed_breakout_t1.0_h24_tp0.02_sl0.015",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "failed_breakout_t1.0_h24_tp0.03_sl0.02",
+      "family": "failed_breakout",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "long_exhaustion_t0.5_h3_tpNone_slNone",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "long_exhaustion_t0.5_h3_tp0.01_sl0.01",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "long_exhaustion_t0.5_h3_tp0.02_sl0.015",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "long_exhaustion_t0.5_h3_tp0.03_sl0.02",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "long_exhaustion_t0.5_h6_tpNone_slNone",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "long_exhaustion_t0.5_h6_tp0.01_sl0.01",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "long_exhaustion_t0.5_h6_tp0.02_sl0.015",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "long_exhaustion_t0.5_h6_tp0.03_sl0.02",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "long_exhaustion_t0.5_h12_tpNone_slNone",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "long_exhaustion_t0.5_h12_tp0.01_sl0.01",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "long_exhaustion_t0.5_h12_tp0.02_sl0.015",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "long_exhaustion_t0.5_h12_tp0.03_sl0.02",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "long_exhaustion_t0.5_h24_tpNone_slNone",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "long_exhaustion_t0.5_h24_tp0.01_sl0.01",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "long_exhaustion_t0.5_h24_tp0.02_sl0.015",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "long_exhaustion_t0.5_h24_tp0.03_sl0.02",
+      "family": "long_exhaustion",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "long_exhaustion_t1.0_h3_tpNone_slNone",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "long_exhaustion_t1.0_h3_tp0.01_sl0.01",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "long_exhaustion_t1.0_h3_tp0.02_sl0.015",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "long_exhaustion_t1.0_h3_tp0.03_sl0.02",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "long_exhaustion_t1.0_h6_tpNone_slNone",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "long_exhaustion_t1.0_h6_tp0.01_sl0.01",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "long_exhaustion_t1.0_h6_tp0.02_sl0.015",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "long_exhaustion_t1.0_h6_tp0.03_sl0.02",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "long_exhaustion_t1.0_h12_tpNone_slNone",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "long_exhaustion_t1.0_h12_tp0.01_sl0.01",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "long_exhaustion_t1.0_h12_tp0.02_sl0.015",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "long_exhaustion_t1.0_h12_tp0.03_sl0.02",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "long_exhaustion_t1.0_h24_tpNone_slNone",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "long_exhaustion_t1.0_h24_tp0.01_sl0.01",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "long_exhaustion_t1.0_h24_tp0.02_sl0.015",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "long_exhaustion_t1.0_h24_tp0.03_sl0.02",
+      "family": "long_exhaustion",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_top_t0.5_h3_tpNone_slNone",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_top_t0.5_h3_tp0.01_sl0.01",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_top_t0.5_h3_tp0.02_sl0.015",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_top_t0.5_h3_tp0.03_sl0.02",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_top_t0.5_h6_tpNone_slNone",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_top_t0.5_h6_tp0.01_sl0.01",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_top_t0.5_h6_tp0.02_sl0.015",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_top_t0.5_h6_tp0.03_sl0.02",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_top_t0.5_h12_tpNone_slNone",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_top_t0.5_h12_tp0.01_sl0.01",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_top_t0.5_h12_tp0.02_sl0.015",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_top_t0.5_h12_tp0.03_sl0.02",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_top_t0.5_h24_tpNone_slNone",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_top_t0.5_h24_tp0.01_sl0.01",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_top_t0.5_h24_tp0.02_sl0.015",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_top_t0.5_h24_tp0.03_sl0.02",
+      "family": "regional_top",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_top_t1.0_h3_tpNone_slNone",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_top_t1.0_h3_tp0.01_sl0.01",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_top_t1.0_h3_tp0.02_sl0.015",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_top_t1.0_h3_tp0.03_sl0.02",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_top_t1.0_h6_tpNone_slNone",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_top_t1.0_h6_tp0.01_sl0.01",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_top_t1.0_h6_tp0.02_sl0.015",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_top_t1.0_h6_tp0.03_sl0.02",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_top_t1.0_h12_tpNone_slNone",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_top_t1.0_h12_tp0.01_sl0.01",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_top_t1.0_h12_tp0.02_sl0.015",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_top_t1.0_h12_tp0.03_sl0.02",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "regional_top_t1.0_h24_tpNone_slNone",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "regional_top_t1.0_h24_tp0.01_sl0.01",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "regional_top_t1.0_h24_tp0.02_sl0.015",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "regional_top_t1.0_h24_tp0.03_sl0.02",
+      "family": "regional_top",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "rally_dollar_t0.5_h3_tpNone_slNone",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "rally_dollar_t0.5_h3_tp0.01_sl0.01",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "rally_dollar_t0.5_h3_tp0.02_sl0.015",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "rally_dollar_t0.5_h3_tp0.03_sl0.02",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "rally_dollar_t0.5_h6_tpNone_slNone",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "rally_dollar_t0.5_h6_tp0.01_sl0.01",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "rally_dollar_t0.5_h6_tp0.02_sl0.015",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "rally_dollar_t0.5_h6_tp0.03_sl0.02",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "rally_dollar_t0.5_h12_tpNone_slNone",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "rally_dollar_t0.5_h12_tp0.01_sl0.01",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "rally_dollar_t0.5_h12_tp0.02_sl0.015",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "rally_dollar_t0.5_h12_tp0.03_sl0.02",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "rally_dollar_t0.5_h24_tpNone_slNone",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "rally_dollar_t0.5_h24_tp0.01_sl0.01",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "rally_dollar_t0.5_h24_tp0.02_sl0.015",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "rally_dollar_t0.5_h24_tp0.03_sl0.02",
+      "family": "rally_dollar",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "rally_dollar_t1.0_h3_tpNone_slNone",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "rally_dollar_t1.0_h3_tp0.01_sl0.01",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "rally_dollar_t1.0_h3_tp0.02_sl0.015",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "rally_dollar_t1.0_h3_tp0.03_sl0.02",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 3,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "rally_dollar_t1.0_h6_tpNone_slNone",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "rally_dollar_t1.0_h6_tp0.01_sl0.01",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "rally_dollar_t1.0_h6_tp0.02_sl0.015",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "rally_dollar_t1.0_h6_tp0.03_sl0.02",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 6,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "rally_dollar_t1.0_h12_tpNone_slNone",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "rally_dollar_t1.0_h12_tp0.01_sl0.01",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "rally_dollar_t1.0_h12_tp0.02_sl0.015",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "rally_dollar_t1.0_h12_tp0.03_sl0.02",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 12,
+      "tp": 0.03,
+      "sl": 0.02
+    },
+    {
+      "name": "rally_dollar_t1.0_h24_tpNone_slNone",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": null,
+      "sl": null
+    },
+    {
+      "name": "rally_dollar_t1.0_h24_tp0.01_sl0.01",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.01,
+      "sl": 0.01
+    },
+    {
+      "name": "rally_dollar_t1.0_h24_tp0.02_sl0.015",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    {
+      "name": "rally_dollar_t1.0_h24_tp0.03_sl0.02",
+      "family": "rally_dollar",
+      "threshold": 1.0,
+      "hold": 24,
+      "tp": 0.03,
+      "sl": 0.02
+    }
+  ]
+}

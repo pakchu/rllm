@@ -1,0 +1,157 @@
+{
+  "protocol_version": "high_volatility_equal_variance_clock_concordance_relay_v1",
+  "policy_id": "HVEVC-8",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In a completed high-variation eight-hour BTC path, unanimous direction across four sequential equal-realized-variance intrinsic-time segments means price discovery persisted through every risk quartile rather than being created by one physical-time burst; follow that direction for eight elapsed hours.",
+    "side": "common strict sign of all four equal-variance-clock segment returns",
+    "why_distinct": "HVEVC partitions the path at cumulative squared-return quartiles and requires unanimity across those endogenous risk-time segments. Fixed temporal halves, equal-duration trend persistence, one dominant shock, variance concentration, path efficiency, directional-change state machines, and volatility dispersion do not construct or sign equal-variance intrinsic-time returns. HVEVC uses no fitted outcome, volume, flow, OI, funding, prior event, or control.",
+    "why_suited_to_volatile_regimes": "completed eight-hour variation must rank in its causal upper thirty-five percent and directional persistence must survive all four risk-time quartiles",
+    "why_low_gross9_overlap_is_plausible": "three fixed UTC clocks filtered by endogenous equal-variance segment unanimity are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 00:00, 08:00, and 16:00 UTC boundaries",
+    "path": "96 exact completed five-minute closes over [T-8h,T), yielding 95 ordered close-to-close log returns",
+    "realized_variance": "sum squared 95 returns, finite strict positive",
+    "variance_clock_assignment": "return i belongs to quartile min(3,floor(4*cumulative_variance_before_i/total_variance)); bars are indivisible and assignment is fixed before adding return i",
+    "segment_validity": "each of four ordered quartiles contains at least one return",
+    "segment_return": "sum of close-to-close log returns assigned to each intrinsic-time quartile, each finite strict nonzero",
+    "concordance": "all four segment returns have one common strict sign",
+    "variation_rank": "strict-prior midrank of sqrt(realized_variance) over at most 270 earlier source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "eligibility": "source-valid, four nonempty strict-nonzero segments, concordance, and variation rank gate",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "eight-hour boundary after all path closes complete",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "side": "common segment-return sign",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "bar_minutes": 5,
+    "path_bars": 96,
+    "variance_segments": 4,
+    "decision_hours": 8,
+    "variation_history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "three_of_four_concordance",
+      "equal_physical_time",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-05-25T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "realized_variance_intrinsic_time_definition_read": true,
+    "repository_exact_equal_variance_clock_concordance_candidate_found": false,
+    "adjacent_temporal_persistence_variance_concentration_dispersion_and_path_efficiency_candidates_known": true,
+    "adjacent_candidate_outcomes_used_to_set_formula_side_hold_clock_or_threshold": false,
+    "prior_event_sets_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "fixed four-segment realized-variance intrinsic clock concordance under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no path, variance clock, segment count, unanimity, variation rank, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "origin": "realized-variance intrinsic-time transformation",
+    "fixed_definition": "use cumulative squared five-minute close returns as the clock and split ordered returns at 25%, 50%, and 75% of completed total variation",
+    "selection_use": "the equal-variance time change only; no directional return, incidence, or outcome claim is imported"
+  },
+  "manifest_hash": "55b565ac56cfa4bb381345eae9e151ccba492aca2f5a43a8a2d37731fc9d425e"
+}

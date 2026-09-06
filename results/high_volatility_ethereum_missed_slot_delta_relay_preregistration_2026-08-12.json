@@ -1,0 +1,172 @@
+{
+  "protocol_version": "high_volatility_ethereum_missed_slot_delta_relay_v1",
+  "policy_id": "HVEMSD-24",
+  "as_of_date": "2026-08-12",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "After Ethereum proof of stake, each UTC day has exactly 7,200 twelve-second consensus slots. The difference between that schedule and canonical execution blocks measures missed block production without using a mutable explorer chart. An unusually large day-over-day change in missed slots is a cross-chain validator-liveness shock; during elevated completed BTC variation, rising missed-slot pressure maps short BTC and falling pressure maps long BTC for twenty-four hours.",
+    "side": "negative strict sign of the completed UTC-day missed-slot-count change",
+    "external_support": {
+      "ethereum_consensus_spec": "https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md",
+      "ethereum_execution_api": "https://ethereum.github.io/execution-apis/api/methods/eth_getBlockByNumber/",
+      "reported_facts": "Ethereum slots are twelve seconds; canonical execution block headers expose block number, hash, parent hash and timestamp.",
+      "inference_disclosure": "daily missed-slot change, BTC variation gate, directional map and 24-hour hold are preregistered adaptations, not a published trading rule"
+    },
+    "why_distinct": "ESDI used Ethereum EIP-1559 base fees as blockspace demand. Ethereum flaw, staking, bridge and ETH-price candidates use different objects. HVEMSD uses only the immutable post-Merge execution-block production deficit against the consensus slot schedule; it uses no fee, gas, transfer, validator identity, ETH return, prior event or control.",
+    "why_suited_to_volatile_regimes": "both the absolute validator-liveness change and completed BTC variation must lie in causal upper tails",
+    "why_low_gross9_overlap_is_plausible": "one delayed cross-chain liveness clock at 00:20 UTC is absent from Gross9"
+  },
+  "features": {
+    "source": "dual-replayed canonical Ethereum execution block headers from two fixed RPC hosts",
+    "utc_day_boundaries": "for each day D, exact first canonical execution block with timestamp>=D 00:00 UTC and exact first block with timestamp>=(D+1) 00:00 UTC",
+    "produced_blocks": "next_boundary_block_number-current_boundary_block_number",
+    "scheduled_slots": 7200,
+    "missed_slots": "7200-produced_blocks; integer in [0,7200]",
+    "change": "missed_slots[D]-missed_slots[D-1] for exact consecutive UTC days, strict nonzero",
+    "missed_change_rank": "strict-prior midrank of abs(change) over at most 365 valid changes, minimum 180, current excluded; rank>=0.70",
+    "availability": "D+1 00:20 UTC, after the day boundary plus at least 64 scheduled slots; both RPC hosts must agree on boundary block number/hash/timestamp and its 64-slot-later anchor",
+    "btc_variation": "sqrt(sum squared exact BTCUSDT 1m log(close/open)) over 24 elapsed hours ending at availability",
+    "btc_variation_rank": "strict-prior midrank over at most 270 valid decisions, minimum 180, current excluded; rank>=0.65",
+    "missing_reorg_duplicate_or_disagreement": "RPC disagreement, noncanonical parent relation, duplicate boundary, invalid timestamp, missing BTC minute or nonconsecutive day rejects; no imputation"
+  },
+  "clock": {
+    "decision": "00:20 UTC after the completed Ethereum UTC day",
+    "entry": "exact BTCUSDT 00:25 UTC five-minute open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+    "no_imputation": true
+  },
+  "policy": {
+    "missed_change_prior_observations": 365,
+    "missed_change_prior_minimum": 180,
+    "missed_change_midrank_min": 0.7,
+    "variation_prior_observations": 270,
+    "variation_prior_minimum": 180,
+    "variation_midrank_min": 0.65,
+    "confirmation_slots": 64,
+    "decision_hour_utc": 0,
+    "decision_minute_utc": 20,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "gross_exposure": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "ethereum": {
+      "chain_id": 1,
+      "rpc_method": "eth_getBlockByNumber",
+      "hosts": [
+        "https://eth-mainnet.public.blastapi.io",
+        "https://eth.merkle.io"
+      ],
+      "download_after_preregistration": true,
+      "fields": [
+        "number",
+        "hash",
+        "parentHash",
+        "timestamp"
+      ],
+      "full_transactions": false,
+      "post_merge_only": true
+    },
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_btc_volatility_gate",
+      "no_missed_change_tail",
+      "one_day_stale_change",
+      "missed_level_change",
+      "direction_flip",
+      "same_clock_forced_long"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "post_stage_volatility_audit": {
+    "rv20_q90_entry_filter": false,
+    "opened_only_after_all_train_test_eval_final_economic_gates_pass": true,
+    "cannot_repair_or_promote": true
+  },
+  "research_boundary": {
+    "consensus_schedule_execution_schema_and_transport_hosts_opened": true,
+    "ethereum_boundary_blocks_daily_counts_changes_ranks_or_incidence_opened": false,
+    "repository_exact_ethereum_missed_slot_delta_candidate_found": false,
+    "prior_ethereum_fee_flaw_staking_bridge_and_price_outcomes_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent immutable cross-chain validator-liveness object"
+  },
+  "stopping_rule": "terminal first-failure sequence: source contract and byte reproduction, source support, Gross9 novelty, train/test/eval/final strict economics, then RV20 q90; no source, threshold, side, hold, clock, subset or control repair",
+  "gross9_rows_opened": false,
+  "manifest_hash": "662d521b18882f1f4142ec96181495ea43244ff3410a247da97f8e3e12b064f8"
+}

@@ -1,0 +1,135 @@
+"""Outcome-blind preregistration for HVIHR-1."""
+from __future__ import annotations
+
+import argparse
+import copy
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+from training import preregister_high_volatility_ticket_elasticity_sponsorship_relay as template
+
+POLICY_ID = "HVIHR-1"
+DEFAULT_OUTPUT = Path("results/high_volatility_intraday_hour_reversal_preregistration_2026-08-11.json")
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    candidate = copy.deepcopy(template.build())
+    candidate.pop("manifest_hash")
+    candidate.update(
+        protocol_version="high_volatility_intraday_hour_reversal_v1",
+        policy_id=POLICY_ID,
+        as_of_date="2026-08-11",
+        mechanism={
+            "claim": "The completed third UTC hourly BTC return predicts the nineteenth UTC hourly return with the opposite sign. When strictly prior BTC variation and the predictor-hour magnitude are elevated, fade the third-hour return only during the later published target hour.",
+            "side": "opposite strict sign of the completed 02:00-03:00 UTC BTC return",
+            "why_distinct": "HVTOCM uses the first UTC half-hour to trade the final half-hour with momentum. HVIHR instead freezes a separately published hourly reversal pair, 02:00-03:00 to 18:00-19:00 UTC, with a fifteen-hour information gap. It uses no flow, volume, funding, OI, price-level anchor, fitted coefficient, prior event, or promoted control.",
+            "why_suited_to_volatile_regimes": "the twenty-four hours ending at 03:00 UTC must rank in its causal upper 35%, and the completed predictor hour must be in its own upper 30% magnitude tail",
+            "why_low_gross9_overlap_is_plausible": "at most one sparse 18:05 UTC position per day, lasting only to 19:00 UTC, is absent from Gross9 clocks",
+        },
+        external_basis={
+            "paper": "Intraday return predictability in the cryptocurrency markets: Momentum, reversal, or both",
+            "authors": ["Zhuzhu Wen", "Elie Bouri", "Yahua Xu", "Yang Zhao"],
+            "journal": "The North American Journal of Economics and Finance 62 (2022) 101733",
+            "doi": "10.1016/j.najef.2022.101733",
+            "ssrn_url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4080253",
+            "reported_relation": "Table 2 reports r3 predicting r19 with coefficient -0.16 and Newey-West t=-3.50 in Bitcoin hourly data.",
+            "hour_mapping": "r3 is 02:00-03:00 UTC and r19 is 18:00-19:00 UTC under the paper's p0=00:00 hourly indexing.",
+            "untested_adaptation": "the causal high-variation and predictor-magnitude gates, Binance perpetual execution, 18:05 entry, and current sample are not a published replication",
+        },
+        features={
+            "decision_grid": "every calendar day; predictor feature completes at exact 03:00 UTC and the frozen execution decision is 18:00 UTC",
+            "predictor_hour": "60 exact coherent BTCUSDT one-minute rows [02:00,03:00) UTC",
+            "predictor_return": "log(02:59 close/02:00 open), finite and strict nonzero",
+            "variation_window": "1,440 exact coherent one-minute rows [prior-day 03:00,current-day 03:00)",
+            "realized_variation": "sqrt(sum squared one-minute log(close/open) returns), finite strict positive",
+            "prior_ranks": "strict-prior midranks over at most 180 earlier source-valid daily decisions, minimum 120, current excluded",
+            "predictor_magnitude_gate": "absolute predictor-return rank>=0.70",
+            "variation_gate": "realized-variation rank>=0.65",
+            "source_validity": "exact distinct minute grids, finite positive coherent OHLC, no imputation",
+            "no_imputation": True,
+        },
+        clock={
+            "feature_available": "03:00 UTC after the completed predictor hour and variation window",
+            "decision": "18:00 UTC fixed target-hour boundary; no intervening data enter the signal",
+            "entry": "exact BTCUSDT 18:05 UTC open",
+            "exit": "exact BTCUSDT 19:00 UTC open",
+            "hold": "55 elapsed minutes inside the published nineteenth UTC hour",
+            "reservation": "global half-open; exit first on equal open",
+            "gross_exposure": 0.5,
+            "funding": "not a signal input; exact settlements only after novelty passes",
+        },
+        policy={
+            "history_days": 180,
+            "minimum_history_days": 120,
+            "predictor_magnitude_rank_min": 0.70,
+            "variation_rank_min": 0.65,
+            "entry_minute_utc": "18:05",
+            "exit_minute_utc": "19:00",
+            "hold_minutes": 55,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        diagnostic_controls={
+            "names": [
+                "no_predictor_magnitude_gate",
+                "no_variation_gate",
+                "one_day_stale_predictor",
+                "direction_flip",
+                "forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        source_plan={
+            "bars": {
+                "table": "bars_binance",
+                "symbol": "BTCUSDT",
+                "interval": "1m",
+                "columns": ["ts", "open", "high", "low", "close"],
+                "window": ["2023-02-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+                "read_after_preregistration": True,
+            },
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        research_boundary={
+            "external_published_hour_pair_read": True,
+            "repository_same_hour_pair_candidate_found": False,
+            "prior_event_sets_reused": False,
+            "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": "the strongest-magnitude reversal coefficient reported in the paper's seven-pair Bitcoin Table 2",
+        },
+        stopping_rule="Terminal first failure; no hour pair, rank history, predictor strength, variation, side, entry, exit, subset, threshold, or control repair.",
+    )
+    return {**candidate, "manifest_hash": canonical_hash(candidate)}
+
+
+def validate(candidate: dict[str, Any]) -> None:
+    core = {key: value for key, value in candidate.items() if key != "manifest_hash"}
+    if candidate.get("manifest_hash") != canonical_hash(core) or candidate != build():
+        raise RuntimeError("HVIHR preregistration drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    payload = build()
+    validate(payload)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n")
+    print(args.output)

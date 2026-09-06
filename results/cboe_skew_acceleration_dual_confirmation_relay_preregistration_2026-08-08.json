@@ -1,0 +1,99 @@
+{
+  "protocol_version": "cboe_skew_acceleration_dual_confirmation_relay_v1",
+  "policy_id": "CVSKDMR-6",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A positive completed daily change in Cboe SKEW/100 marks accelerating SKEW-pressure pressure; when BTC then moves in the same nonzero direction both overnight and during the next 09:00-10:00 ET hour, two-scale price discovery should continue for six hours.",
+    "eligible": "delta log(SKEW/100)>0 and sign(overnight_return)==sign(opening_hour_return)!=0",
+    "side": "common BTC direction",
+    "why_distinct": "CVSKDMR uses Cboe SKEW-pressure acceleration plus two nonoverlapping BTC confirmation horizons. CVHMR used an hourly tail under a level state; CVOBR used a VIX shock and one overnight horizon.",
+    "why_low_gross9_overlap_is_plausible": "official Cboe acceleration plus next-session 10:05 ET dual-confirmation timing is absent from Gross9"
+  },
+  "features": {
+    "skew_pressure_acceleration": "current minus immediately previous exact common Cboe observation of log(SKEW/100); positive only, no magnitude threshold",
+    "overnight_return": "source-date 16:00 ET hour_open to next exact Cboe source-date 09:00 ET hour_open",
+    "opening_hour_return": "next source-date [09:00,10:00) ET hour_close/hour_open-1",
+    "availability": "both BTC paths complete by 10:00 ET",
+    "missing_or_zero": "ineligible; no imputation"
+  },
+  "clock": {
+    "entry": "next exact Cboe source date 10:05 America/New_York",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_forbidden_as_signal_inputs": true
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true
+  },
+  "controls": [
+    "no_skew_pressure_acceleration",
+    "overnight_direction_only",
+    "opening_direction_only",
+    "one_session_stale_skew_acceleration",
+    "direction_flip"
+  ],
+  "source_bindings": {
+    "data/cboe_volatility_surface_2021_2026/cboe_volatility_surface_2021-01-01_2026-08-07.csv.gz": "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0",
+    "data/cboe_volatility_surface_2021_2026/manifest.json": "ec1dd33efcee29b75c80294fb594969cd1b12a9343fc40f888525db4400bc936",
+    "data/options_led_intrahour_absorption_sources_2023_2026/btc_intrahour_path.csv.gz": "7413b1dde7148efbc30eccd077e4f7430d57be87836bbd4551df9f6f85609579",
+    "data/options_led_intrahour_absorption_sources_2023_2026/manifest.json": "1ca33578613d084801c02fce5f15213daa6c5a419ad621b056648b2f01e276e2"
+  },
+  "research_boundary": {
+    "candidate_incidence_opened": false,
+    "post_entry_outcomes_opened": false,
+    "gross9_rows_opened": false,
+    "grid": false,
+    "repair_of_cvvdmr": false,
+    "promoted_cvvdmr_control": false,
+    "future_can_rank_repair_or_reselect": false
+  },
+  "stopping_rule": "terminal first failure; no repair",
+  "manifest_hash": "87840346e73ab72396b196007f4c0ab36c9daa0ef2614def73c17adc5ff3efcd"
+}

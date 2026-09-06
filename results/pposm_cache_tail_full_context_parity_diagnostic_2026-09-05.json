@@ -1,0 +1,98 @@
+{
+  "protocol": "pposm_cache_tail_full_context_parity_diagnostic_v1",
+  "as_of": "2026-09-05",
+  "boundary": "source coverage, runtime integration, and causal feature parity only; no forward PPOSM signals, labels, returns, fills, or lifecycle outcomes opened",
+  "v3_preregistration": {
+    "path": "results/pposm_fresh_forward_signal_inventory_v3_preregistration_2026-09-05.json",
+    "sha256": "018a7a24915b6047bf71bc09489a73a39b9ec4109710680b99342b2942eea0f5",
+    "preregistration_hash": "ba1ad25e9f585aff96c6459ea00bb4ebd258437cbe85eecd6636a87e489f954a",
+    "git_commit": "a2099a39"
+  },
+  "v3_runtime_failure": {
+    "stage": "after all source-completeness gates and before cache parity/signal inventory",
+    "exception": "TypeError: Invalid comparison between dtype=datetime64[ns] and Timestamp",
+    "cause": "frozen _read_before compares naive cache timestamps to timezone-aware 2026-06-02T00:00:00Z cutoff",
+    "reproduced_environments": [
+      "project Python 3.10 uv environment",
+      "wave_trading Python 3.12 environment"
+    ],
+    "result_artifact_written": false
+  },
+  "cache_receipt": {
+    "path": "/home/pakchu/rllm/data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "rows": 674785,
+    "date_min": "2019-12-31T15:00:00Z",
+    "date_max": "2026-05-31T15:00:00Z",
+    "summary_path": "results/cache_market_ext_5m_wavefull_2020_2026_summary.json",
+    "summary_sha256": "af055635dd2545ebec8bc2dac6ef1bf1d5fd54eec048379c49a1d35f57915566",
+    "expected_manifest_cutoff": "2026-06-02T00:00:00Z",
+    "first_db_seam_row": "2026-05-31T15:05:00Z",
+    "missing_to_manifest_cutoff_5m_rows": 395,
+    "missing_hourly_decisions_in_original_parity_window": 32,
+    "classification": "filename/end-date coverage mismatch; cache bytes and timestamps are internally valid but tail is 33 hours earlier than the manifest cutoff"
+  },
+  "source_gates": {
+    "market_1m_rows": 226685,
+    "premium_1m_rows": 226685,
+    "funding_raw_rows": 624,
+    "funding_canonical_rows": 473,
+    "full_db_5m_rows": 45337,
+    "forward_checked_5m_rows": 27481,
+    "all_passed": true
+  },
+  "common_overlap": {
+    "window": [
+      "2026-05-01T00:00:00Z",
+      "2026-05-31T15:05:00Z"
+    ],
+    "hourly_decisions": 736,
+    "cache_raw_vs_db_raw_market": {
+      "ohlc_and_trade_count_exact": true,
+      "maximum_quantity_relative_delta": 2.31e-16
+    },
+    "db_only_warmup_feature_comparison": {
+      "passed_at_original_tolerance": false,
+      "only_failed_feature": "bb_z",
+      "max_abs_delta": 1.4139778015120896e-07,
+      "cause": "rolling numerical path starts at April rather than the cache full-history prefix"
+    },
+    "full_context_hybrid_feature_comparison": {
+      "method": "cache enriched prefix before 2026-04-01 plus DB enriched rows from 2026-04-01; recompute full causal features",
+      "passed_at_atol_1e-10_rtol_1e-9": true,
+      "mismatches": 0,
+      "cache_rows": 736,
+      "hybrid_rows": 736,
+      "cache_frame_hash": "edbd6699296432efe166f723423f1cc71fd76325d7bec143cf73170aa58fb752",
+      "hybrid_frame_hash": "1c9e18ba323b8f40fbfec07922c663efb795effcbc60b1f23decfd059c27ea04"
+    }
+  },
+  "seam_reconstruction": {
+    "cache_precedence_before": "2026-05-31T15:05:00Z",
+    "db_precedence_from": "2026-05-31T15:05:00Z",
+    "merged_rows": 702661,
+    "merged_end": "2026-09-05T10:00:00Z",
+    "missing_5m_rows": 0,
+    "extra_5m_rows": 0,
+    "frozen_base_thresholds_equal": true,
+    "pre2024_feature_prefix_hash_equal": true,
+    "pre2024_feature_prefix_hash": "dff914fcbdee39871031e2b067a3c7d370c3b60c76d8f4c1a78aea21211b47fa"
+  },
+  "required_v4_corrections": {
+    "cache_loader_cutoff_argument": "naive-equivalent 2026-06-02; semantics unchanged",
+    "verify_cache_tail_exact": "2026-05-31T15:00:00Z",
+    "parity_window_end_exclusive": "2026-05-31T15:05:00Z",
+    "parity_feature_context": "full historical cache prefix plus DB replacement from query start",
+    "final_source_precedence": "cache through 2026-05-31T15:00Z, DB from 2026-05-31T15:05Z",
+    "parity_tolerances_unchanged": {
+      "atol": 1e-10,
+      "rtol": 1e-09
+    }
+  },
+  "evidence_boundary": {
+    "pposm_forward_signal_count_computed": false,
+    "economic_outcomes_opened": false,
+    "trained": false
+  },
+  "result_hash": "cd8d4a3d5b86e5a9820f14062b03d66cdadfa1019ed86ba91fba3a53b1efbea7"
+}

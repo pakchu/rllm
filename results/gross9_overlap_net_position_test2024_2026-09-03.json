@@ -1,0 +1,436 @@
+{
+  "protocol_version": "gross9_overlap_net_position_sequential_economics_v1",
+  "policy_id": "G9-OVERLAP-NET-PORT-1",
+  "stage": "test2024",
+  "split": "test",
+  "window": [
+    "2024-01-01T00:00:00Z",
+    "2025-01-01T00:00:00Z"
+  ],
+  "validation_freeze": {
+    "path": "results/gross9_overlap_net_position_validation_freeze_2026-09-03.json",
+    "sha256": "26cc18ecdb480cff671fe54c1a5b2006a2ba25242e07a323afd1784ad462b085",
+    "manifest_hash": "da39842d3c18ac02347183bbfdc5822b5d60cda9c1915a40bcbc9f400e5c7d50"
+  },
+  "implementation": {
+    "evaluator": {
+      "path": "training/evaluate_gross9_overlap_net_position_portfolio.py",
+      "sha256": "de880be0ab8a8ce7579fb1390b436a6eb6235b77b95108f0ce4ea47d5b5c6ea2"
+    },
+    "freezer": {
+      "path": "training/preregister_gross9_overlap_net_position_validation.py",
+      "sha256": "499a3d29eb101b55a29f1f42a89f24f74eb73fa79a50f05c3460d61abeb9681b"
+    },
+    "fixed_ledger": {
+      "path": "training/evaluate_gross9_qtr_distill_economics.py",
+      "sha256": "8bd5aa7b2d62ab353d307705131694ce3f365b7590aed2a8be24e4958c3d69cf"
+    },
+    "optimizer_utilities": {
+      "path": "training/optimize_gross9_overlap_portfolio.py",
+      "sha256": "9a0bb885de4dc8ca97da319774c7463a1af9ee22f05a19ae8d64772a5a941903"
+    },
+    "net_risk_metrics": {
+      "path": "training/build_gross9_overlap_net_position_config.py",
+      "sha256": "4af87aa474913f80a5665f3b97cc210c19886d89aee3b9094605b25bb67fbd95"
+    },
+    "hash_bound_source_loader": {
+      "path": "training/evaluate_gross9_async_active_veto_train_economics.py",
+      "sha256": "8704b5c141d80e6987484e11c10361c31ae0b7c2bccbd12c2168afa4ed58a5d2"
+    }
+  },
+  "predecessor": {
+    "stage": "holdout_dec2023",
+    "path": "results/gross9_overlap_net_position_holdout_dec2023_2026-09-03.json",
+    "sha256": "b953fb8313a091509cc9c4e59090740c7a1145ec36b1f21d0b9649d8121d155d",
+    "manifest_hash": "3056f5b28ab3e222927a9f03ce4b5669fa3b234e4a977d23853c33d041a9dee9"
+  },
+  "fixed_portfolio": {
+    "sleeve_weights": {
+      "HVBLIC-6": 0.2,
+      "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8": 0.25,
+      "HVRDBR-6": 0.15,
+      "HVUI-12": 0.1
+    },
+    "clock_receipts": [
+      {
+        "sleeve_id": "HVBLIC-6",
+        "weight": 0.2,
+        "path": "data/high_volatility_basis_leverage_ignition_continuation_clocks_2023_2026.csv.gz",
+        "sha256": "3e9bea596f8c476c4ca9d1cbc495496b4ccae3f7a7190d0b46fff4466a6e3be7",
+        "full_clock_rows": 612,
+        "stage_rows": 204
+      },
+      {
+        "sleeve_id": "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8",
+        "weight": 0.25,
+        "path": "data/gross9_overlap_portfolio_active_veto_clocks_2026-09-03/HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8.csv.gz",
+        "sha256": "c6117bdb72ea4e1218e4a11bbd885b2076fc66250110623066da78727f1bd782",
+        "full_clock_rows": 400,
+        "stage_rows": 144
+      },
+      {
+        "sleeve_id": "HVRDBR-6",
+        "weight": 0.15,
+        "path": "data/high_volatility_record_discovery_breadth_relay_clocks_2023_2026.csv.gz",
+        "sha256": "fd4ee1d8769f21b787a6cbbb0b1a3f7077f71df9d30c2a21c2229ec6cc884683",
+        "full_clock_rows": 428,
+        "stage_rows": 148
+      },
+      {
+        "sleeve_id": "HVUI-12",
+        "weight": 0.1,
+        "path": "data/high_volatility_ulcer_index_stress_trend_relay_clocks_2023_2026.csv.gz",
+        "sha256": "2e986274580000f5da871dad3e6ef109eec5d68c405ed4f0fde5edf1bdff9889",
+        "full_clock_rows": 433,
+        "stage_rows": 140
+      }
+    ],
+    "reranked_repaired_or_substituted": false
+  },
+  "source": {
+    "mode": "postgres_repeatable_read_exact_extract",
+    "symbol": "BTCUSDT",
+    "tables": [
+      "funding_rates_binance"
+    ],
+    "database_identity": {
+      "identity_sha256": "876b4bac8cd9589319740c3ecd24c0467d61c58526fd9209da97788bbe67b471",
+      "server_version_num": "160015",
+      "transaction_snapshot": "49265039:49265039:",
+      "network_and_database_names_redacted": true
+    },
+    "isolation_level": "REPEATABLE READ",
+    "extracted_at_utc": "2026-09-03T14:33:00.010144Z",
+    "query_contract": {
+      "market_sql_sha256": null,
+      "funding_sql_sha256": "e1f6ca47033f967f5fd00f516d6adb1b2c73011b61cd702f32fdd7ec89c7cf7e",
+      "database_identity_sql_sha256": "b8f1afd7c97af0ecc495a05d759d91e513c8eb76b117b1a4753e3eaf462f7718",
+      "parameters": {
+        "symbol": "BTCUSDT",
+        "start": "2024-01-01T00:00:00Z",
+        "end": "2025-01-01T00:00:00Z",
+        "market_query_end": null
+      }
+    },
+    "database_environment_source": "redacted_local_env_file",
+    "market_source": {
+      "mode": "hash_bound_gzip_physical_prefix",
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "market_extract": {
+      "rows": 105409,
+      "first_time": "2024-01-01T00:00:00Z",
+      "last_time": "2025-01-01T00:00:00Z",
+      "content_sha256": "4eaf3a757711ea30ad740551dd63e62c920a46f5fc53aad9312e87ba2bed2050",
+      "hash_method": "pandas_hash_pandas_object_uint64_sha256"
+    },
+    "funding_extract": {
+      "rows": 1098,
+      "first_time": "2024-01-01T00:00:00Z",
+      "last_time": "2024-12-31T16:00:00Z",
+      "content_sha256": "ee289cb5c5a95983c5aa1f2e24d0ed718dba1b6fc372d891b62b24567e239948",
+      "hash_method": "pandas_hash_pandas_object_uint64_sha256"
+    }
+  },
+  "physical_rows_opened": {
+    "market": 105409,
+    "funding": 1098,
+    "portfolio_clock": 636
+  },
+  "primary": {
+    "base": {
+      "initial_equity": 100000.0,
+      "final_equity": 80576.21573566459,
+      "absolute_return_pct": -19.42378426433541,
+      "cagr_pct": -19.3881169934489,
+      "strict_mdd_pct": 20.301876557521513,
+      "cagr_to_strict_mdd": -0.9549913742464324,
+      "transitions": 1088,
+      "intervals": 636,
+      "long_intervals": 309,
+      "short_intervals": 327,
+      "total_fees": 10810.132179377915,
+      "total_funding": 185.8894231652602,
+      "mean_gross_underlying_bp": -11.32039469524367,
+      "mean_exposure_weighted_gross_edge_bp": -8.216061505570645
+    },
+    "stress": {
+      "initial_equity": 100000.0,
+      "final_equity": 74303.03805702356,
+      "absolute_return_pct": -25.696961942976436,
+      "cagr_pct": -25.651724067920057,
+      "strict_mdd_pct": 26.42473792623681,
+      "cagr_to_strict_mdd": -0.970746583732464,
+      "transitions": 1088,
+      "intervals": 636,
+      "long_intervals": 309,
+      "short_intervals": 327,
+      "total_fees": 17328.77913407958,
+      "total_funding": 182.10940392784752,
+      "mean_gross_underlying_bp": -11.32039469524367,
+      "mean_exposure_weighted_gross_edge_bp": -8.216061505570645
+    },
+    "cluster_signflip": {
+      "method": "one_sided_UTC_week_cluster_signflip_monte_carlo",
+      "clusters": 51,
+      "draws": 100000,
+      "seed": 20260902,
+      "observed_log_effect": -0.21596667015139973,
+      "pvalue": 0.9798102018979811
+    },
+    "calendar_halves": {
+      "first": {
+        "initial_equity": 100000.0,
+        "final_equity": 85802.29188717002,
+        "absolute_return_pct": -14.197708112829977,
+        "cagr_pct": -26.333451444881884,
+        "strict_mdd_pct": 14.981948716460614,
+        "cagr_to_strict_mdd": -1.7576786533750055,
+        "transitions": 524,
+        "intervals": 305,
+        "long_intervals": 144,
+        "short_intervals": 161,
+        "total_fees": 5391.770794121222,
+        "total_funding": 156.51202356123562,
+        "mean_gross_underlying_bp": -21.232077177641447,
+        "mean_exposure_weighted_gross_edge_bp": -17.829120761197036
+      },
+      "second": {
+        "initial_equity": 100000.0,
+        "final_equity": 93909.16485263847,
+        "absolute_return_pct": -6.0908351473615285,
+        "cagr_pct": -11.787971483423142,
+        "strict_mdd_pct": 9.250861655986597,
+        "cagr_to_strict_mdd": -1.2742565959566243,
+        "transitions": 564,
+        "intervals": 331,
+        "long_intervals": 165,
+        "short_intervals": 166,
+        "total_fees": 6314.937825182837,
+        "total_funding": 34.23847890060535,
+        "mean_gross_underlying_bp": -2.1872733746052324,
+        "mean_exposure_weighted_gross_edge_bp": 0.41228471127616506
+      }
+    }
+  },
+  "source_shape": {
+    "intervals": 636,
+    "long_intervals": 309,
+    "short_intervals": 327,
+    "aggregate_net_signed_episodes": 417,
+    "aggregate_net_signed_episode_definition": "nonzero sign episodes of sum(active side*weight) after atomic same-timestamp netting",
+    "active_iso_weeks": 51
+  },
+  "net_position_risk": {
+    "max_abs_net_position": 0.7000000000000001,
+    "mean_abs_net_position": 0.07375910746812386,
+    "legacy_max_nonnet_gross": 0.7000000000000001,
+    "legacy_mean_nonnet_gross": 0.09494535519125682
+  },
+  "legacy_nonnet_risk_disclosure": {
+    "max_gross_exposure": 0.7000000000000001,
+    "mean_gross_exposure": 0.09494535519125682,
+    "max_abs_net_exposure": 0.7000000000000001,
+    "turnover_weight": 226.00000000000074,
+    "turnover_weight_per_day": 0.6174863387978162,
+    "max_month_share": 0.17138364779874213,
+    "max_sleeve_turnover_share": 0.36106194690265364,
+    "active_iso_weeks": 51
+  },
+  "operating_cost_disclosure": {
+    "classification": "high_cost_disclosure_not_rejection",
+    "current_rejection_gates": [],
+    "measurement_window_days": 366.0,
+    "pre_net_turnover_weight": 226.00000000000074,
+    "actual_aggregate_net_turnover_weight": 202.50290511184116,
+    "actual_aggregate_net_turnover_weight_per_day": 0.5532866259886371,
+    "annualized_aggregate_net_turnover_x": 202.0879401423497,
+    "netting_savings_share": 0.10396944640778538,
+    "nonzero_net_execution_events": 1088,
+    "nonzero_net_execution_events_per_day": 2.9726775956284155,
+    "base_fee_cash": 10810.132179377915,
+    "base_funding_cash": 185.8894231652602,
+    "base_fee_less_funding_cash": 10624.242756212656,
+    "stress_fee_cash": 17328.77913407958,
+    "stress_funding_cash": 182.10940392784752,
+    "stress_fee_less_funding_cash": 17146.669730151734,
+    "per_sleeve": [
+      {
+        "sleeve_id": "HVBLIC-6",
+        "intervals": 204,
+        "pre_net_turnover_weight": 81.6,
+        "pre_net_turnover_share": 0.36106194690265364
+      },
+      {
+        "sleeve_id": "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8",
+        "intervals": 144,
+        "pre_net_turnover_weight": 72.0,
+        "pre_net_turnover_share": 0.3185840707964591
+      },
+      {
+        "sleeve_id": "HVRDBR-6",
+        "intervals": 148,
+        "pre_net_turnover_weight": 44.4,
+        "pre_net_turnover_share": 0.1964601769911498
+      },
+      {
+        "sleeve_id": "HVUI-12",
+        "intervals": 140,
+        "pre_net_turnover_weight": 27.999999999999993,
+        "pre_net_turnover_share": 0.12389380530973408
+      }
+    ]
+  },
+  "monthly_stability": [
+    {
+      "month": "2024-01",
+      "base_return_pct": -3.4108332255843976,
+      "stress_return_pct": -4.233723238362841,
+      "intervals": 64
+    },
+    {
+      "month": "2024-02",
+      "base_return_pct": 1.4430929024131123,
+      "stress_return_pct": 0.7300045263880506,
+      "intervals": 53
+    },
+    {
+      "month": "2024-03",
+      "base_return_pct": -8.246531178294925,
+      "stress_return_pct": -9.48113275870124,
+      "intervals": 109
+    },
+    {
+      "month": "2024-04",
+      "base_return_pct": -1.9727757555875303,
+      "stress_return_pct": -2.42043929383019,
+      "intervals": 36
+    },
+    {
+      "month": "2024-05",
+      "base_return_pct": -2.166505306882305,
+      "stress_return_pct": -2.3346527189602506,
+      "intervals": 15
+    },
+    {
+      "month": "2024-06",
+      "base_return_pct": -0.39018012837407356,
+      "stress_return_pct": -0.6570056828019699,
+      "intervals": 25
+    },
+    {
+      "month": "2024-07",
+      "base_return_pct": -3.397757566279469,
+      "stress_return_pct": -4.178092731005512,
+      "intervals": 58
+    },
+    {
+      "month": "2024-08",
+      "base_return_pct": 3.6383194072003855,
+      "stress_return_pct": 2.845727679305665,
+      "intervals": 65
+    },
+    {
+      "month": "2024-09",
+      "base_return_pct": 0.09245426401571777,
+      "stress_return_pct": -0.267316603208978,
+      "intervals": 28
+    },
+    {
+      "month": "2024-10",
+      "base_return_pct": -0.23753499551090185,
+      "stress_return_pct": -0.795071437732231,
+      "intervals": 42
+    },
+    {
+      "month": "2024-11",
+      "base_return_pct": -0.49262896756797625,
+      "stress_return_pct": -1.4728802132527252,
+      "intervals": 81
+    },
+    {
+      "month": "2024-12",
+      "base_return_pct": -5.653471451777481,
+      "stress_return_pct": -6.351662081564868,
+      "intervals": 56
+    }
+  ],
+  "checks": {
+    "absolute_return_positive": false,
+    "cagr_to_strict_mdd_min": false,
+    "strict_mdd_max": false,
+    "mean_exposure_weighted_gross_edge_min": false,
+    "stress_absolute_return_positive": false,
+    "stress_cagr_to_strict_mdd_min": false,
+    "each_calendar_half_positive": false,
+    "weekly_cluster_signflip_one_sided_p_max": false,
+    "aggregate_net_signed_episode_min": true,
+    "mean_abs_net_position_cap": true,
+    "max_abs_net_position_cap": true
+  },
+  "waived_cost_gates_applied_as_rejections": false,
+  "passed": false,
+  "advance_to_next_stage": false,
+  "later_stage_outcomes_opened": false,
+  "live_capital_authorized": false,
+  "order_submission_enabled": false,
+  "status": "terminal_reject_no_repair",
+  "decision": "terminal_reject_no_repair",
+  "manifest_hash": "f304b6bf4166f36955170bdfff74586eee03dfae4e79abbb4a54467f691270df",
+  "publication_redaction": {
+    "raw_artifact_sha256": "a79c54063821a85569fedf6902590832a600a106b7d659567313c7afc59ff453",
+    "raw_manifest_hash": "4ec8d35c28a060da9ac42ecf9c27a0ac237bd6a5c50df58c8cb5cded1264dd4a",
+    "redacted_fields": [
+      "source.database_identity network/database fields",
+      "source.database_environment_source local path"
+    ],
+    "economic_or_gate_fields_changed": false,
+    "economic_payload_sha256_before_and_after": "31c11d4b4cf32a1e08a3ca4ec150d6eda390ad985846884f51b041317a40ce43"
+  },
+  "post_terminal_diagnostics": {
+    "scope": "same already-opened test2024 window only",
+    "market_cache_vs_postgres_1m_to_5m": {
+      "cache_rows": 105409,
+      "postgres_rows": 105409,
+      "timestamps_exact_match": true,
+      "rows_with_all_ohlc_exact": 105406,
+      "differing_rows": 3,
+      "max_absolute_difference": {
+        "open": 47.5,
+        "high": 24.5,
+        "low": 36.80000000000291,
+        "close": 30.10000000000582
+      },
+      "max_relative_difference": {
+        "open": 0.0006759006554101934,
+        "high": 0.0003519381737999986,
+        "low": 0.000529776917850069,
+        "close": 0.0004332811764520436
+      },
+      "cache_extract_sha256": "4eaf3a757711ea30ad740551dd63e62c920a46f5fc53aad9312e87ba2bed2050",
+      "postgres_extract_sha256": "f9272f4cd4c9cdcc95535afdc5f0029babd2bdc8f273684baeb5589f6c6c0392"
+    },
+    "postgres_market_replay": {
+      "primary_metrics_exactly_equal_to_authoritative_cache_replay": true,
+      "primary_metrics_sha256": "66ff40253f894e6c00d12980e2c5b2d986a839048c8110755fc2755eff2d32eb",
+      "funding_extract_sha256": "ee289cb5c5a95983c5aa1f2e24d0ed718dba1b6fc372d891b62b24567e239948",
+      "conclusion": "the 2024 terminal failure is not caused by the three small cache/DB OHLC differences"
+    },
+    "later_stage_rows_opened": 0,
+    "zero_cost_replay": {
+      "scope": "same already-opened test2024 clock, market, and funding only",
+      "cost_each_notional_side_bp": 0,
+      "absolute_return_pct": -9.010524336204206,
+      "cagr_pct": -8.992916479035939,
+      "strict_mdd_pct": 13.954419789752325,
+      "cagr_to_strict_mdd": -0.6444493296410679,
+      "final_equity": 90989.47566379579,
+      "total_fees": 0.0,
+      "total_funding": 191.83767996753025,
+      "mean_gross_underlying_bp": -11.32039469524367,
+      "mean_exposure_weighted_gross_edge_bp": -8.216061505570645,
+      "conclusion": "2024 remains negative even with zero execution cost; failure is not fee-only"
+    }
+  }
+}

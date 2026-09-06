@@ -1,0 +1,50 @@
+{
+  "protocol_version": "hvcafrr_8_sources_v1",
+  "queries": {
+    "paths": "WITH five AS (SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS bar_start,symbol,(array_agg(open ORDER BY ts))[1] AS first_open,(array_agg(close ORDER BY ts DESC))[1] AS last_close,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS minute_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2) SELECT date_bin('8 hours',bar_start,TIMESTAMPTZ '1970-01-01 06:00:00+00') AS block_start,symbol,sum(ln(last_close/first_open)) AS displacement,sum(abs(ln(last_close/first_open))) AS path_variation,sum(minute_squared_return) AS minute_squared_return,sum(minute_rows) AS source_rows,count(*) AS five_minute_bars,min(bar_start) AS first_bar,max(bar_start) AS last_bar,bool_and(minute_rows=5 AND distinct_rows=5 AND first_ts=bar_start AND last_ts=bar_start+INTERVAL '4 minutes' AND coherent) AS coherent FROM five GROUP BY 1,2 ORDER BY 1,2",
+    "calibration_opens": "SELECT ts,open FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end AND extract(minute FROM ts)=5 AND extract(hour FROM ts)::int=ANY(:hours) ORDER BY ts"
+  },
+  "query_sha256": {
+    "paths": "e7a040a49542d05eb0b085f8ea550398a6e625f8aca9529cd7eb46d40d5d1008",
+    "calibration_opens": "a8295956b048dc5c36766fba44d478f14342f2982823eea5aa2b45ee8a38fa5c"
+  },
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "paths": 27475,
+    "calibration_opens": 519
+  },
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_frozen_response_ridge_relay_support.py",
+    "sha256": "020f50999bec138c146ed3f1fc0ed146ec15fd96364f6f0fd88ddf7249f14bbd"
+  },
+  "model": {
+    "path": "data/high_volatility_cross_alt_frozen_response_ridge_relay_sources_2023_2026/frozen_model.json",
+    "sha256": "a6cfebc7796ca444b4fee501c5d00f9af9b0e63d166fa093cb0ba3c980f8f026",
+    "manifest_hash": "d4637c5a93c07ae7f7860bd4ddc4b3dda6b61f9b8b3ae65a6180a785638ad473",
+    "calibration_rows": 518
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_frozen_response_ridge_relay_sources_2023_2026/decision_states.csv.gz",
+    "sha256": "34911271cfbf5491809f5bea462950ac87cedaf00d438f6d5e3d2a4ffbb60b1e",
+    "rows": 3924,
+    "valid_rows": 3921
+  },
+  "calibration_labels_opened": true,
+  "oos_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "4f32dc94764d1ea406dc773c6f205f1ab05d90531afbe89bd7bb632aa53898a6"
+}

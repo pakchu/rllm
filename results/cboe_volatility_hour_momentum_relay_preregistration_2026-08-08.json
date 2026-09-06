@@ -1,0 +1,104 @@
+{
+  "protocol_version": "cboe_volatility_hour_momentum_relay_v1",
+  "policy_id": "CVHMR-6",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A large completed BTC 09:00-10:00 ET move while the prior Cboe VVIX/VIX relative-convexity rank is elevated identifies volatility-backed US-open price discovery that should continue for six hours.",
+    "long": "relative_convexity_rank>=0.60, completed_hour_abs_return>=strict-prior 720h q75, and hour return>0",
+    "short": "same gates and hour return<0",
+    "side": "sign(completed 09:00-10:00 ET BTC hour return)",
+    "why_distinct": "CVHMR is volatility-conditioned US-open hourly momentum; VOMR used an overnight session-tail rank and OLIAH used within-hour absorption rather than continuation.",
+    "why_low_gross9_overlap_is_plausible": "official Cboe state plus next-session 10:05 ET confirmation timing is absent from Gross9"
+  },
+  "features": {
+    "relative_convexity": "log(VVIX/VIX)",
+    "relative_convexity_rank": "strict-prior midrank over 252 valid Cboe observations, minimum 126",
+    "hour_tail": "abs return of each completed hourly BTC row compared with strict-prior rolling 720 valid hours q75, minimum 672; current appended after threshold",
+    "gates": {
+      "relative_convexity_min": 0.6,
+      "hour_abs_q75_min": true
+    },
+    "decision_hour": "next exact Cboe source-date [09:00,10:00) America/New_York BTC return",
+    "missing_or_zero": "ineligible; no imputation"
+  },
+  "clock": {
+    "entry": "next exact Cboe source date 10:05 America/New_York",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_forbidden_as_signal_inputs": true
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true
+  },
+  "controls": [
+    "no_relative_convexity_gate",
+    "no_hour_tail",
+    "vix_level_gate",
+    "one_session_stale_volatility",
+    "direction_flip"
+  ],
+  "source_bindings": {
+    "data/cboe_volatility_surface_2021_2026/cboe_volatility_surface_2021-01-01_2026-08-07.csv.gz": "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0",
+    "data/cboe_volatility_surface_2021_2026/manifest.json": "ec1dd33efcee29b75c80294fb594969cd1b12a9343fc40f888525db4400bc936",
+    "data/options_led_intrahour_absorption_sources_2023_2026/btc_intrahour_path.csv.gz": "7413b1dde7148efbc30eccd077e4f7430d57be87836bbd4551df9f6f85609579",
+    "data/options_led_intrahour_absorption_sources_2023_2026/manifest.json": "1ca33578613d084801c02fce5f15213daa6c5a419ad621b056648b2f01e276e2"
+  },
+  "research_boundary": {
+    "candidate_incidence_opened": false,
+    "post_entry_outcomes_opened": false,
+    "gross9_rows_opened": false,
+    "grid": false,
+    "repair_of_vomr": false,
+    "promoted_vomr_control": false,
+    "future_can_rank_repair_or_reselect": false
+  },
+  "stopping_rule": "terminal first failure; no repair",
+  "manifest_hash": "962bcf444ed3a6a2ddb3621c864c60e4d02ada9297f2527e5ee54880f98e5eaf"
+}

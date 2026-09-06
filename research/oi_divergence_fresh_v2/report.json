@@ -1,0 +1,122 @@
+{
+  "registration": {
+    "design": {
+      "version": 2,
+      "candidate_config": "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+      "candidate_config_sha256": "6533650bb6800308762dc02f310dbfe7dbd59c8a217d55305f6c5388eb2a480b",
+      "old_oi_cache_sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192",
+      "source": "authoritative open_interest_binance BTCUSDT5m plus DB market/funding seam",
+      "signal_window": [
+        "2026-06-01T00:00:00Z",
+        "2026-08-03T13:40:00Z"
+      ],
+      "evaluation_window": [
+        "2026-06-01T00:00:00Z",
+        "2026-08-03T21:45:00Z"
+      ],
+      "candidate_changes": "none; additionally require current OI availability",
+      "costs": [
+        0.0,
+        0.0006,
+        0.001
+      ],
+      "execution": "frozen stride6, next5m open, nonoverlap, fixed8h hold, realized funding",
+      "decision": "one-shot report, no live promotion",
+      "correction": "hold_bars_5m->hold_bars and stride_bars_5m->stride_bars aliases only"
+    },
+    "code_sha256": "a3ae1cad879643e75ad0157a089d17c91273cec083c633d7c17a8a77f02e269c",
+    "v1_sha256": "0c14f0e8e48ac449cccd9776abc3e5c1b447203f7542f11ca5fe173158234116",
+    "failure_sha256": "656f82ed0d7ca302fc1b2f5b292ab0e1f0355b4ec1be3a6cfaa7eb1bf1b1dbbf"
+  },
+  "source_receipt": {
+    "row_counts": {
+      "btcusdt_1m": 183485,
+      "btckrw_1m": 183143,
+      "usdkrw_1m": 125592,
+      "forex_1m": 781546,
+      "premium_1m": 183485,
+      "funding": 1721
+    },
+    "funding_aliases": {
+      "policy": {
+        "alias_grouping": "sort by raw funding_time; group only adjacent rows whose timestamp delta from the previous row is <=100ms",
+        "max_cluster_span_ms": 100,
+        "canonical_timestamp": "latest raw timestamp in the accepted near-alias cluster; no snapping to cadence",
+        "required_exact_equal_columns": [
+          "funding_rate",
+          "mark_price"
+        ],
+        "reject": [
+          "exact_duplicate_timestamp",
+          "malformed_timestamp",
+          "nonfinite_funding_rate_or_mark_price",
+          "unequal_values_within_near_alias_cluster",
+          "cluster_span_gt_100ms"
+        ],
+        "preserve_events_separated_by_at_least": "1min"
+      },
+      "raw_rows": 2000,
+      "canonical_rows": 1721,
+      "alias_clusters": 279,
+      "alias_rows_removed": 279,
+      "max_cluster_span_ms": 16.0,
+      "cluster_size_histogram": {
+        "1": 1442,
+        "2": 279
+      },
+      "selected_timestamp": "latest_raw_timestamp",
+      "passed": true,
+      "reason": "pass",
+      "raw_hash": "ac6f2dd77da6126e015f432fd97e0aa3a5d6e20376808ccbd45d39b454f2e5ad",
+      "canonical_hash": "5c510c67a7d93f2ed2a1bdfe058481e8ec273abc75b951158df0483815512bb8"
+    }
+  },
+  "oi": {
+    "rows": 27236,
+    "first": "2026-05-01 00:00:00",
+    "last": "2026-08-03 13:35:00",
+    "sha256": "9a3a1478bb726a21d5e34e1a402c7b8b00479db4b438ad3ce147ff1d5871f362"
+  },
+  "signal_candidates": 13,
+  "scheduled_nonoverlap_trades": 8,
+  "schedule_hash": "ba8c29edff98bf7c81602d87ed5f3f8ed9a78920775a91cae540939bf7e2afbb",
+  "reports": {
+    "0.0": {
+      "absolute_return_pct": 7.996751296449012,
+      "cagr_pct": 55.222823977906366,
+      "strict_mdd_pct": 5.245508678605737,
+      "cagr_to_strict_mdd": 10.52763942668467,
+      "trades": 8,
+      "longs": 8,
+      "shorts": 0,
+      "mean_net_bps": 97.59696365603935,
+      "mean_gross_bps": 97.81286107017756,
+      "win_rate": 0.75
+    },
+    "0.0006": {
+      "absolute_return_pct": 6.96463490580872,
+      "cagr_pct": 46.93309084500348,
+      "strict_mdd_pct": 5.2455086786057254,
+      "cagr_to_strict_mdd": 8.947290667237722,
+      "trades": 8,
+      "longs": 8,
+      "shorts": 0,
+      "mean_net_bps": 85.48348243455767,
+      "mean_gross_bps": 97.81286107017756,
+      "win_rate": 0.75
+    },
+    "0.001": {
+      "absolute_return_pct": 6.2817026037638835,
+      "cagr_pct": 41.6514482190492,
+      "strict_mdd_pct": 5.245508678605737,
+      "cagr_to_strict_mdd": 7.940402117515934,
+      "trades": 8,
+      "longs": 8,
+      "shorts": 0,
+      "mean_net_bps": 77.41186732569099,
+      "mean_gross_bps": 97.81286107017756,
+      "win_rate": 0.75
+    }
+  },
+  "live_enabled": false
+}

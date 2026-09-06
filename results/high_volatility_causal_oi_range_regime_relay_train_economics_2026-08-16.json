@@ -1,0 +1,145 @@
+{
+  "protocol_version": "hvcorr_24_strict_staged_economics_v1",
+  "policy_id": "HVCORR-24",
+  "candidate": "HVCORR-24",
+  "stage": "train",
+  "window": [
+    "2023-07-01T00:00:00Z",
+    "2024-01-01T00:00:00Z"
+  ],
+  "predecessor": null,
+  "frozen_bindings": {
+    "preregistration": {
+      "path": "results/high_volatility_causal_oi_range_regime_relay_preregistration_2026-08-16.json",
+      "sha256": "ed1d3e65ef4fefaf82b1bc36beb4deffc158b2d5faf4db7bba70007f270beb28"
+    },
+    "source_support": {
+      "path": "results/high_volatility_causal_oi_range_regime_relay_support_2026-08-16.json",
+      "sha256": "5d594a2c21e37cff71a1340b10e35584830b1ca6c46aa2080a2278fcb66a74ac"
+    },
+    "gross9_novelty": {
+      "path": "results/high_volatility_causal_oi_range_regime_relay_gross9_novelty_2026-08-16.json",
+      "sha256": "bb448172cf84ae9f45ad7fbdd9874936c8b1f8da30fe20eb5eb5f1a9aafd4ecd",
+      "manifest_hash": "b9603842e2177069d0debcf5840b60c5402a1bc4d4ccaa14d615b34968df61be"
+    },
+    "candidate_clock": {
+      "path": "data/high_volatility_causal_oi_range_regime_relay_clocks_2020_2026.csv.gz",
+      "sha256": "20372bf662aa9ab99800b59562f04e8923e6dd7f1fa574e7a2122fcd85dfd38d",
+      "rows": 70
+    }
+  },
+  "selection": {
+    "single_candidate_only": true,
+    "candidate": "HVCORR-24",
+    "ranking_performed": false,
+    "bonferroni_applied": false,
+    "train_gate_passed": false,
+    "failure_is_terminal": true,
+    "substitution_authorized": false
+  },
+  "frozen_train_winner": null,
+  "substitution_authorized": false,
+  "accounting": {
+    "quantity": "side*0.5*pre_entry_equity/entry_open, fixed through exit",
+    "gross_exposure": 0.5,
+    "same_open_transition": "exit and exit cost first, then next entry and entry cost",
+    "funding": "cash=-fixed_quantity*settlement_mark*rate for entry<=time<exit",
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "strict_mdd": "global peak, every held 5m favorable then adverse OHLC, funding cash, virtual adverse exit cost, actual exit cost",
+    "cagr": "full calendar including idle time",
+    "mean_gross_move": "mean signed underlying entry-open to exit-open move",
+    "weekly_signflip": "one-sided UTC-week cluster sign-flip Monte Carlo",
+    "calendar_halves": "each exact calendar half evaluated independently at base cost"
+  },
+  "source": {
+    "mode": "hash_bound_gzip_physical_prefix",
+    "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "funding_marks_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+  },
+  "physical_rows_opened": {
+    "market": 52993,
+    "funding": 552,
+    "candidate_clock": 14
+  },
+  "requested_stage_outcomes_opened": "train",
+  "later_stage_outcomes_opened": false,
+  "primary": {
+    "base": {
+      "absolute_return_pct": -3.5640899591622754,
+      "cagr_pct": -6.950696216237784,
+      "strict_mdd_pct": 5.953629099980318,
+      "cagr_to_strict_mdd": -1.1674721584958596,
+      "final_equity": 0.9643591004083772,
+      "trades": 14,
+      "longs": 7,
+      "shorts": 7,
+      "mean_gross_underlying_bp": -40.43750196431463,
+      "mean_net_bp": -25.661261908344535,
+      "win_rate": 0.2857142857142857
+    },
+    "stress": {
+      "absolute_return_pct": -4.104755521457159,
+      "cagr_pct": -7.983397047644281,
+      "strict_mdd_pct": 6.29184260944573,
+      "cagr_to_strict_mdd": -1.2688488163481835,
+      "final_equity": 0.9589524447854284,
+      "trades": 14,
+      "longs": 7,
+      "shorts": 7,
+      "mean_gross_underlying_bp": -40.43750196431463,
+      "mean_net_bp": -29.665914531825578,
+      "win_rate": 0.2857142857142857
+    },
+    "cluster_signflip": {
+      "method": "one_sided_UTC_week_cluster_signflip_monte_carlo",
+      "clusters": 12,
+      "draws": 100000,
+      "seed": 20260808,
+      "observed_log_effect": -0.03629154293944106,
+      "pvalue": 0.93230067699323
+    },
+    "calendar_halves": {
+      "first": {
+        "absolute_return_pct": -1.1126165274054745,
+        "cagr_pct": -4.3447550243420725,
+        "strict_mdd_pct": 2.91360381608482,
+        "cagr_to_strict_mdd": -1.491196229341975,
+        "final_equity": 0.9888738347259453,
+        "trades": 5,
+        "longs": 3,
+        "shorts": 2,
+        "mean_gross_underlying_bp": -31.90196802414902,
+        "mean_net_bp": -22.261303099789576,
+        "win_rate": 0.2
+      },
+      "second": {
+        "absolute_return_pct": -2.479055816494713,
+        "cagr_pct": -9.485643606409887,
+        "strict_mdd_pct": 5.953629099980306,
+        "cagr_to_strict_mdd": -1.5932540383547347,
+        "final_equity": 0.9752094418350529,
+        "trades": 9,
+        "longs": 4,
+        "shorts": 5,
+        "mean_gross_underlying_bp": -45.17946526440664,
+        "mean_net_bp": -27.550127913096915,
+        "win_rate": 0.3333333333333333
+      }
+    }
+  },
+  "checks": {
+    "absolute_return_positive": false,
+    "cagr_to_strict_mdd_min_3": false,
+    "strict_mdd_max_15": true,
+    "mean_gross_move_min_20bp": false,
+    "cluster_signflip_p_max_0_1": false,
+    "stress_absolute_return_positive": false,
+    "stress_cagr_to_strict_mdd_min_2_5": false,
+    "each_calendar_half_positive": false
+  },
+  "passed": false,
+  "advance_to_next_stage": false,
+  "decision": "terminal_reject_no_substitution",
+  "manifest_hash": "b579253f022a18096d3969514ab65eaac2e669d812a8efba1f947861cc605411"
+}

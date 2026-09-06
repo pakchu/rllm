@@ -1,0 +1,148 @@
+{
+  "protocol_version": "high_volatility_causal_oi_range_regime_relay_v1",
+  "policy_id": "HVCORR-24",
+  "as_of_date": "2026-08-16",
+  "singleton": true,
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "candidate_family": [
+    "HVCORR-24"
+  ],
+  "candidate_family_size": 1,
+  "mechanism": {
+    "claim": "When BTC crosses the midpoint of its completed seven-day auction range while open interest expands over the same completed eight-hour cycle and realized variation is causally elevated, newly built leverage confirms a value-regime migration that persists for twenty-four hours.",
+    "side": "long on a strict upward prior-range-midpoint crossing; short on a strict downward crossing",
+    "why_distinct": "HVCORR requires exact endpoint OI expansion to confirm a transition through the fixed midpoint of a trailing external high-low range. It uses no funding value or rank and is not HVCFBR's range escape, HVCFRR's funding-tail regime, an OI-return attribution statistic, fitted channel, or prior control.",
+    "why_suited_to_volatile_regimes": "the completed intervening eight-hour BTC realized variation must be in its causal upper 40 percent",
+    "why_low_gross9_overlap_is_plausible": "fixed eight-hour range-midpoint transitions confirmed by exact endpoint OI expansion are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision": "exact 00:00, 08:00, or 16:00 UTC boundary D",
+    "open_interest": "finite positive BTCUSDT period=5m sum_open_interest observations at D-8h and D, each exchange-timestamped no later than D",
+    "oi_expansion": "strict positive log(OI[D]/OI[D-8h])",
+    "completed_cycle": "exact coherent BTCUSDT one-minute OHLC aggregation over [P,S)",
+    "prior_range": "maximum high and minimum low of the 21 uninterrupted completed eight-hour cycles ending at P; the current [P,S) cycle is excluded",
+    "range_midpoint": "arithmetic midpoint of the prior range high and low",
+    "regime_cross": "last close at D-8h at or below midpoint and last close before D strictly above maps long; last close at D-8h at or above midpoint and current close strictly below maps short; exactly one direction required",
+    "realized_variation": "sqrt(sum squared one-minute log(close/open) returns over exactly 480 coherent BTCUSDT bars [D-8h,D))",
+    "variation_rank": "strict-prior midrank over at most 270 source-valid cycles; current excluded; minimum 180; rank>=0.60",
+    "eligible": "22 uninterrupted coherent cycles including current, two exact OI endpoints with strict expansion, one strict range-midpoint crossing, and variation rank pass at D; no funding, divergence, premium, alt, or post-decision condition",
+    "no_imputation": true
+  },
+  "clock": {
+    "decisions": "exact 00/08/16 UTC boundaries",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact held settlements only after source and Gross9 pass"
+  },
+  "policy": {
+    "history_cycles": 270,
+    "minimum_history_cycles": 180,
+    "prior_range_cycles": 21,
+    "variation_rank_min": 0.6,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "open_interest": "Postgres open_interest_binance BTCUSDT period=5m exact endpoint observations",
+    "bars": "Postgres bars_binance BTCUSDT exact coherent 1m OHLC",
+    "window": [
+      "2020-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source support and Gross9 pass"
+  },
+  "research_boundary": {
+    "prior_HVFADR_source_incidence_and_failure_known": true,
+    "prior_HVFADR_outcomes_opened": false,
+    "same_mechanism_as_HVFADR": false,
+    "prior_HVCFDR_source_incidence_and_failure_known": true,
+    "prior_HVCFDR_outcomes_opened": false,
+    "same_mechanism_as_HVCFDR": false,
+    "prior_HVCFIR_source_incidence_and_failure_known": true,
+    "prior_HVCFIR_outcomes_opened": false,
+    "same_mechanism_as_HVCFIR": false,
+    "prior_HVCFZR_source_incidence_and_failure_known": true,
+    "prior_HVCFZR_outcomes_opened": false,
+    "same_mechanism_as_HVCFZR": false,
+    "prior_HVCFLR_source_incidence_and_failure_known": true,
+    "prior_HVCFLR_outcomes_opened": false,
+    "same_mechanism_as_HVCFLR": false,
+    "prior_HVCFMR_source_novelty_and_train_failure_known": true,
+    "same_mechanism_as_HVCFMR": false,
+    "prior_HVCFBR_source_incidence_and_failure_known": true,
+    "prior_HVCFBR_outcomes_opened": false,
+    "same_mechanism_as_HVCFBR": false,
+    "prior_HVCFRR_source_incidence_and_failure_known": true,
+    "prior_HVCFRR_outcomes_opened": false,
+    "same_mechanism_as_HVCFRR": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence"
+  },
+  "stopping_rule": "terminal first failure; no OI endpoint or expansion rule, prior-range length, midpoint-cross definition, variation history, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "5b94a27e3c3b96d9b0addd57cf4b954988e21d302e4171174c259267e3565fa6"
+}

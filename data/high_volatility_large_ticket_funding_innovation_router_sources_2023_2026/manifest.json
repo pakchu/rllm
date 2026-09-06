@@ -1,0 +1,44 @@
+{
+  "protocol_version": "hvltfir_8_sources_v1",
+  "queries": {
+    "hourly_ticket_inputs": "SELECT\n  date_trunc('hour', ts) AS source_hour,\n  (array_agg(open ORDER BY ts))[1] AS first_open,\n  (array_agg(close ORDER BY ts DESC))[1] AS last_close,\n  count(*) AS source_rows,\n  count(DISTINCT ts) AS distinct_timestamps,\n  min(ts) AS first_ts,\n  max(ts) AS last_ts,\n  bool_and(\n    open IS NOT NULL AND high IS NOT NULL AND low IS NOT NULL AND close IS NOT NULL\n    AND quote_asset_volume IS NOT NULL AND number_of_trades IS NOT NULL\n    AND open > 0 AND high > 0 AND low > 0 AND close > 0\n    AND high >= open AND high >= close AND low <= open AND low <= close AND high >= low\n    AND quote_asset_volume >= 0 AND number_of_trades > 0\n  ) AS coherent,\n  sum(quote_asset_volume) AS turnover_sum,\n  sum(quote_asset_volume * quote_asset_volume) AS turnover_square_sum,\n  sum(number_of_trades) AS execution_sum,\n  sum(number_of_trades::numeric * number_of_trades::numeric) AS execution_square_sum,\n  sum(power(ln(close / open), 2)) AS squared_return_sum\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1\nORDER BY 1",
+    "funding": "SELECT funding_time, min(funding_rate) AS funding_rate, count(*) AS source_rows\nFROM funding_rates_binance\nWHERE symbol='BTCUSDT' AND funding_time>=:start AND funding_time<:end\nGROUP BY funding_time ORDER BY funding_time"
+  },
+  "query_sha256": {
+    "hourly_ticket_inputs": "e2fbe51d448204d101e6a421d86bce059b67b25870c791f6db0d9238939e0b27",
+    "funding": "8d07e0fcf236e48eff2c4a4f51ed4b007fc5886da46d5622c73d7d8d03b69754"
+  },
+  "tables": [
+    "bars_binance",
+    "funding_rates_binance"
+  ],
+  "symbol": "BTCUSDT",
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "hourly": 29232,
+    "funding": 3934
+  },
+  "builder": {
+    "path": "training/build_high_volatility_large_ticket_funding_innovation_router_support.py",
+    "sha256": "e1045941677861e2111a59effbc811807435f6d86a0640cb6b5ed2e016d234fc"
+  },
+  "dependency": {
+    "path": "training/build_high_volatility_large_ticket_temporal_clustering_relay_support.py",
+    "sha256": "16b089c57d08152f53f3f1f4e73b55c9535077c524a8d3aeeca564b6026a9785"
+  },
+  "panel": {
+    "path": "data/high_volatility_large_ticket_funding_innovation_router_sources_2023_2026/hourly_states.csv.gz",
+    "sha256": "2801c497a75aa0a55d634936984273f6981fe93656a94a5bb0cee3b866e2f8a5",
+    "rows": 29232,
+    "valid_rows": 21065
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "held_interval_funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "f8165f342d6105ff3d290afedd60a46ace1986f34f94cc5aec4ec376dc0e12f1"
+}

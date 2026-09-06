@@ -1,0 +1,189 @@
+"""Outcome-blind preregistration for HVAANV-24."""
+from __future__ import annotations
+
+import argparse
+import copy
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+if __package__ in (None, ""):
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from training import preregister_high_volatility_energy_technology_spillover_relay as template
+
+
+DEFAULT_OUTPUT = Path(
+    "results/high_volatility_active_address_network_value_relay_preregistration_2026-08-12.json"
+)
+ENDPOINT = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
+METRICS = ("AdrActCnt", "CapMrktCurUSD", "AssetEODCompletionTime")
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = copy.deepcopy(template.build())
+    core.pop("manifest_hash")
+    core.update(
+        protocol_version="high_volatility_active_address_network_value_relay_v1",
+        policy_id="HVAANV-24",
+        as_of_date="2026-08-12",
+        mechanism={
+            "claim": (
+                "Peer-reviewed cryptoasset evidence defines active-addresses-to-network-value as a value metric and "
+                "finds returns increasing with that ratio. During elevated causal BTC variation, a high strictly "
+                "prior rank of Bitcoin AANV30 maps long and a low rank maps short."
+            ),
+            "side": "AANV30 rank>=0.80 maps long; rank<=0.20 maps short; the interior is ineligible",
+            "external_support": {
+                "paper": "Liebi (2022), Is there a value premium in cryptoasset markets?, Economic Modelling 109, 105777",
+                "doi": "10.1016/j.econmod.2022.105777",
+                "reported_fact": (
+                    "The paper defines active addresses-to-network value as a valuation metric and reports that "
+                    "high-ratio cryptoassets earn 3.7 percentage points higher average weekly returns than low-ratio "
+                    "cryptoassets of comparable size."
+                ),
+                "inference_disclosure": (
+                    "Applying the cross-sectional AANV30 value premium to BTC through its own trailing time-series "
+                    "rank, daily decision, volatility gate and 24-hour hold is a preregistered adaptation."
+                ),
+            },
+            "why_distinct": (
+                "Exact scans found no CapMrktCurUSD, active-address-to-network-value, AANV or market-cap-normalized "
+                "active-address high-volatility candidate. Existing address clocks use topology, funded-address "
+                "reservoirs or funding divergence, not the paper's valuation ratio."
+            ),
+            "why_suited_to_volatile_regimes": (
+                "Extreme fundamental valuation ranks are admitted only when completed 24-hour BTC variation is in "
+                "its upper 35%, targeting July-like volatile states."
+            ),
+            "why_low_gross9_overlap_is_plausible": (
+                "A conservative next-day Coin Metrics fundamental-value clock is absent from Gross9 market clocks."
+            ),
+        },
+        features={
+            "source_day": "Coin Metrics UTC daily observation D at current frozen download vintage",
+            "active_addresses_30d": "arithmetic mean of exact positive AdrActCnt values on D-29 through D",
+            "network_value": "exact positive CapMrktCurUSD on D",
+            "aanv30": "active_addresses_30d / network_value; positive finite values only",
+            "availability": (
+                "D is eligible only if AssetEODCompletionTime is finite, falls after D+1 00:00 UTC and no later than "
+                "the fixed D+1 12:00 UTC decision; late rows are rejected"
+            ),
+            "aanv30_rank": (
+                "strict-prior midrank versus at most 270 previous source-valid AANV30 decisions; minimum 180; current "
+                "excluded; rank>=0.80 long, <=0.20 short"
+            ),
+            "btc_variation": (
+                "sqrt(sum squared log(close/open)) over 1,440 exact BTCUSDT 1m bars in [decision-24h,decision)"
+            ),
+            "btc_variation_rank": (
+                "strict-prior midrank versus at most 270 previous source-valid decisions; minimum 180; current "
+                "excluded; rank>=0.65"
+            ),
+            "missing": "missing, duplicate, revised-schema, nonpositive, late-completion or BTC-bar drift rejects; no imputation",
+        },
+        clock={
+            "decision": "12:00 UTC on source day D+1 after frozen completion-time validation",
+            "entry": "exact BTCUSDT five-minute open 5 minutes after decision",
+            "hold": "24 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+            "no_imputation": True,
+        },
+        policy={
+            "active_address_average_days": 30,
+            "aanv_prior_days": 270,
+            "aanv_prior_minimum": 180,
+            "aanv_long_midrank_min": 0.80,
+            "aanv_short_midrank_max": 0.20,
+            "variation_prior_days": 270,
+            "variation_prior_minimum": 180,
+            "variation_midrank_min": 0.65,
+            "decision_utc_hour": 12,
+            "entry_delay_minutes": 5,
+            "hold_hours": 24,
+            "gross_exposure": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        source_plan={
+            "coin_metrics": {
+                "endpoint": ENDPOINT,
+                "asset": "btc",
+                "metrics": list(METRICS),
+                "frequency": "1d",
+                "start_time": "2022-01-01",
+                "end_time_inclusive": "2026-07-29",
+                "page_size": 10000,
+                "current_vintage_not_historical_revision_archive": True,
+                "read_after_preregistration": True,
+                "read_only": True,
+            },
+            "btc_1m": {
+                "table": "bars_binance", "symbol": "BTCUSDT", "interval": "1m",
+                "columns": ["ts", "open", "close"], "read_only": True,
+            },
+            "execution_price": "sealed until source support and Gross9 novelty pass",
+        },
+        diagnostic_controls={
+            "names": [
+                "no_btc_volatility_gate", "aanv_direction_flip", "one_day_stale_aanv",
+                "single_day_active_address_to_value", "same_clock_forced_long",
+            ],
+            "diagnostic_controls_cannot_be_promoted": True,
+        },
+        research_boundary={
+            "paper_and_metric_definitions_opened": True,
+            "source_contract_sample_rows_opened": 5,
+            "sample_rows_used_to_set_formula_side_or_threshold": False,
+            "full_historical_source_opened": False,
+            "candidate_source_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "repository_aanv_candidate_found": False,
+            "prior_event_sets_reused": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": (
+                "peer-reviewed value-premium direction, exact AANV30 definition, free availability-aware source, "
+                "high-variation targeting and repository absence"
+            ),
+        },
+        stopping_rule=(
+            "terminal first-failure sequence: source contract/support, Gross9 novelty, train/test/eval/final strict "
+            "economics, then RV20 q90 audit; no metric, vintage, window, rank, threshold, side, hold, clock, subset, "
+            "source, or control repair"
+        ),
+    )
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(value: dict[str, Any]) -> None:
+    core = {key: item for key, item in value.items() if key != "manifest_hash"}
+    if value != build() or value.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("HVAANV preregistration drift")
+    if value["outcomes_opened"] is not False or value["source_incidence_opened"] is not False:
+        raise RuntimeError("HVAANV boundary drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    validate(result)
+    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
+    print(args.output)

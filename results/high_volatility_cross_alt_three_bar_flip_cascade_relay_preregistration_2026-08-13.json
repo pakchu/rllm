@@ -1,0 +1,167 @@
+{
+  "protocol_version": "high_volatility_cross_alt_three_bar_flip_cascade_relay_v1",
+  "policy_id": "HVCAFC-6",
+  "slug": "high_volatility_cross_alt_three_bar_flip_cascade_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "At fixed four-hour decisions, a simultaneous three-bar microstate in which at least four alts print two same-sign five-minute returns followed by an opposite-sign return identifies a coordinated repricing cascade. During locally elevated BTC variation, BTC follows the new flip direction for six hours.",
+    "side": "strict common sign of the latest flipped alt returns",
+    "why_distinct": "The prior synchronized-flip relay compares half-hour majority states between broad clock blocks. HVCAFC uses only the exact last three completed five-minute return signs, requires a two-bar persistent state followed by an opposite latest bar, and counts the direction of those atomic flips. It uses no half-hour aggregation, channel, variance, skew, current BTC direction, post-entry fit, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "BTC completed 24-hour realized variation ranks in the upper 35 percent against the 20 strictly prior scheduled source-valid decisions, adapting causally to local July-like volatility",
+    "why_low_gross9_overlap_is_plausible": "four-hour scheduled entries at xx:35 UTC with a sparse flip-cascade gate are absent from Gross9 primitive clocks"
+  },
+  "features": {
+    "bars": "exact five-minute OHLC aggregated from five consecutive bars_binance one-minute rows; all seven symbols complete, finite, positive, coherent; no imputation",
+    "decision_times": "every calendar day at exact 00:30,04:30,08:30,12:30,16:30,20:30 UTC",
+    "return_sign": "strict sign of each completed five-minute alt log(close/open) return; zero invalid for that alt microstate",
+    "three_bar_flip": "sign[t-2]==sign[t-1] and sign[t]==-sign[t-1]",
+    "cascade_gate": "at least four alts have a three_bar_flip and at least four latest flip signs share one strict direction while fewer than four share the opposite direction",
+    "btc_realized_variation": "sqrt(sum squared exact BTC five-minute log(close/open) returns over [D-24h,D))",
+    "variation_rank": "strict-prior midrank over 20 prior jointly source-valid scheduled decisions, minimum 15, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact daily 00:30,04:30,08:30,12:30,16:30,20:30 UTC",
+    "entry": "exact BTCUSDT perpetual decision+5m open",
+    "side": "common latest flip sign",
+    "hold": "6 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "minimum_flip_alts": 4,
+    "variation_bars": 288,
+    "variation_prior_decisions": 20,
+    "variation_minimum_decisions": 15,
+    "variation_rank_min": 0.65,
+    "decision_hours_utc": [
+      0,
+      4,
+      8,
+      12,
+      16,
+      20
+    ],
+    "decision_minute": 30,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "three_alt_cascade",
+      "two_bar_flip",
+      "one_decision_stale_cascade",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "market": {
+      "table": "bars_binance",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "ADAUSDT",
+        "DOGEUSDT"
+      ],
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ]
+    },
+    "read_after_preregistration_commit": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_cross_alt_family_outcomes_known": true,
+    "repository_exact_three_bar_flip_cascade_event_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent atomic three-bar cross-alt flip-cascade mechanism"
+  },
+  "stopping_rule": "terminal first failure; no universe, aggregation, sign law, three-bar state, cascade breadth, local-volatility history, local-volatility gate, direction, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "aaed4e65a321121772eb86f33d74b1f461c0d3a3568050144531ff8c6a16f301"
+}

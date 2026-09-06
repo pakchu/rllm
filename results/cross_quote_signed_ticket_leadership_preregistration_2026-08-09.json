@@ -1,0 +1,130 @@
+{
+  "protocol_version": "cross_quote_signed_ticket_leadership_v1",
+  "policy_id": "CQSTL-8",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When the USDC and FDUSD BTC spot books agree on the sign of signed BTC flow per execution, their joint ticket magnitude is unusually large, and the dominant USDT book has weaker signed-ticket magnitude, alternative stablecoin books are leading price discovery. In a high-variation BTC regime, follow the alternative-book direction for eight hours.",
+    "side": "common strict sign of USDC and FDUSD signed BTC per execution",
+    "why_distinct": "Existing stablecoin relays use volume-normalized flow consensus, ordered quote diffusion, quote participation, or USDT impulse plus derivatives state. CQSTL uses signed BTC per execution and strict alternative-book ticket leadership; STCSR used spot-versus-perpetual transaction-count share and BTC price direction. No prior event set or diagnostic control is reused.",
+    "why_suited_to_volatile_regimes": "BTC completed prior-24h realized variation must rank in its causal upper 35%.",
+    "why_low_gross9_overlap_is_plausible": "three fixed daily boundaries conditioned on cross-quote execution-ticket topology are absent from Gross9 primitives."
+  },
+  "features": {
+    "source_panel": "hash-bound official Binance Spot hourly panel for BTCUSDT, BTCUSDC, and BTCFDUSD; price fields absent",
+    "block": "exact eight completed consecutive UTC hourly rows [D-8h,D) per symbol at D hour 00, 08, or 16",
+    "block_valid": "all 8 rows source_complete, exact consecutive hours, finite signed_taker_flow_btc, integer trade_count, and aggregate trade_count>=80 for each book; no imputation",
+    "signed_ticket": "sum(signed_taker_flow_btc)/sum(trade_count) independently per quote book",
+    "alternative_consensus": "USDC and FDUSD signed_ticket are strict nonzero and have the same sign",
+    "alternative_sponsor_magnitude": "mean(abs(USDC signed_ticket),abs(FDUSD signed_ticket))",
+    "sponsor_rank": "strict-prior midrank of alternative_sponsor_magnitude over at most 90 prior valid blocks, minimum 60, current excluded; rank>=0.65",
+    "usdt_subordination": "abs(USDT signed_ticket) is strictly less than alternative_sponsor_magnitude; USDT sign is unrestricted",
+    "btc_realized_variation": "sqrt(sum squared completed-hour BTC log returns over 24 hours ending at D)",
+    "volatility_rank": "strict-prior midrank over at most 90 valid decision blocks, minimum 60, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact D at UTC hour 00, 08, or 16 after all block and BTC-variation rows complete",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "common strict USDC/FDUSD signed-ticket sign",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes"
+  },
+  "policy": {
+    "block_hours": 8,
+    "aggregate_trade_count_min": 80,
+    "prior_blocks": 90,
+    "prior_min_blocks": 60,
+    "sponsor_rank_min": 0.65,
+    "realized_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "quote_flow": {
+      "path": "data/binance_stablecoin_quote_flow_btc_2023_2026_aug/BTC_stablecoin_quote_flow_1h_2023-07-01_2026-07-31T23.csv.gz",
+      "sha256": "44374b9a2298ae4b64f0c1e7208665b1c08c8221045308694311123deae1c805"
+    },
+    "completed_btc": "hash-bound completed-hour BTC source through 2026-08-01 for pre-entry variation only",
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_sponsor_tail",
+      "no_usdt_subordination",
+      "one_block_stale_alternative_ticket",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_stablecoin_family_outcomes_known": true,
+    "prior_stablecoin_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_cqstl_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cross-quote signed-ticket leadership mechanism"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no symbols, block, trade floor, ticket definition, rank, subordination, side, hold, clock, volatility, or subset repair.",
+  "manifest_hash": "ea0ad6f2735c3f669c156f51c85b034ec36023fe1e4a610ed56f9ed2caa7839b"
+}

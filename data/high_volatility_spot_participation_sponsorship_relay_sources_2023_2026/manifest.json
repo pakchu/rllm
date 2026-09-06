@@ -1,0 +1,25 @@
+{
+  "protocol_version": "hvspsr_12_sources_v1",
+  "queries": {
+    "spot_daily": "\nSELECT date_trunc('day',ts) AS source_day,\n       count(*) AS spot_source_rows, count(DISTINCT ts) AS spot_distinct_timestamps,\n       min(ts) AS spot_first_ts, max(ts) AS spot_last_ts,\n       (array_agg(open ORDER BY ts))[1] AS spot_day_open,\n       (array_agg(close ORDER BY ts DESC))[1] AS spot_day_close,\n       sum(quote_asset_volume) AS spot_quote_volume,\n       bool_and(open>0 AND close>0 AND high>=greatest(open,close,low)\n                AND low<=least(open,close,high) AND quote_asset_volume>=0) AS spot_coherent\nFROM bars_binance_spot\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1\n",
+    "perpetual_daily": "\nSELECT date_trunc('day',ts) AS source_day,\n       count(*) AS perp_source_rows, count(DISTINCT ts) AS perp_distinct_timestamps,\n       min(ts) AS perp_first_ts, max(ts) AS perp_last_ts,\n       (array_agg(open ORDER BY ts))[1] AS perp_day_open,\n       (array_agg(close ORDER BY ts DESC))[1] AS perp_day_close,\n       sum(quote_asset_volume) AS perp_quote_volume,\n       sqrt(sum(power(ln(close/open),2))) AS btc_realized_variation,\n       bool_and(open>0 AND close>0 AND high>=greatest(open,close,low)\n                AND low<=least(open,close,high) AND quote_asset_volume>=0) AS perp_coherent\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1\n"
+  },
+  "tables": [
+    "bars_binance_spot",
+    "bars_binance"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "features": {
+    "path": "data/high_volatility_spot_participation_sponsorship_relay_sources_2023_2026/daily_preentry_features.csv.gz",
+    "sha256": "9449f4bcdde3be8c2790d64a9122c55de058203bdd46c30fa7bd339cb4b87551",
+    "rows": 1308,
+    "valid_rows": 28
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "4715ebd84eec09a34e895b6a8226ff05f80ca1b20c386a1e13a07c51e6b1c5cd"
+}

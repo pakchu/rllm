@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvcabbd_6_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,symbol,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol IN ('BTCUSDT','ADAUSDT','BNBUSDT','DOGEUSDT','ETHUSDT','SOLUSDT','XRPUSDT') AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,symbol ORDER BY 1,symbol",
+  "query_sha256": "b36f9012173a6b9a37d5b4582c591dd258fbb19fae25a050e28acd9933bad642",
+  "window": [
+    "2023-05-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 2395008,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_broad_barrier_discovery_relay_support.py",
+    "sha256": "efb21ea98dff631b85fe8eb0f626725b5bac29c8a2fd8e2431458b48dd583da2"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_broad_barrier_discovery_relay_sources_2023_2026/five_minute_barrier_states.csv.gz",
+    "sha256": "883de352963d0daa284dbbdb398d3a3817ed99dea392d1d1a2723e82bbcbc886",
+    "rows": 342144,
+    "valid_rows": 335809
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "e41e592626374143321bdf35f2771ce1dedb20f4109cec000f9e235c36404e6d"
+}

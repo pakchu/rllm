@@ -1,0 +1,94 @@
+{
+  "architecture": "two_action_specialist_lifecycle_residual_router",
+  "artifacts": {
+    "preregistration": {
+      "path": "results/pposm_lifecycle_specialist_sft_rlvr_preregistration_2026-09-02.json",
+      "sha256": "ec1632d7f905e124e5399038a7ac1776b533e229953823774fa42769bc3e0bdb"
+    },
+    "skip_adapter": {
+      "path": "checkpoints/pposm_lifecycle_skip_specialist_sft_rlvr_2026-09-02/adapter_model.safetensors",
+      "sha256": "a673ba3f4b69b8a34196b5328bc4d1a29972629fb4e3929291083cf7e73b7e14"
+    },
+    "skip_train_scores": {
+      "path": "results/pposm_lifecycle_residual_skip_train_scores_2026-09-02.jsonl",
+      "sha256": "81c6e048de5f94b96f3ee1cc0deb8c4cbf5893b29fcf0966d3aad33ec021cbe2"
+    },
+    "threshold_failure": {
+      "path": "results/pposm_lifecycle_specialist_train_pair_threshold_failure_2026-09-02.json",
+      "sha256": "d690f50aaea88425765127a0c8d8f0a8be4780b654eafe4e600f874510d07115"
+    },
+    "tp12_adapter": {
+      "path": "checkpoints/pposm_lifecycle_tp12_specialist_sft_rlvr_2026-09-02/adapter_model.safetensors",
+      "sha256": "4445d14c633b48e7bc65824b7605604686191989671cb3152d555dfeafb33f81"
+    },
+    "tp12_train_scores": {
+      "path": "results/pposm_lifecycle_residual_tp12_train_scores_2026-09-02.jsonl",
+      "sha256": "ad8d2e4d2bc1be080b767a489fe354671401858eba0fb53925c075597a678e6a"
+    }
+  },
+  "as_of": "2026-09-02",
+  "checks": {
+    "independent_adapters": true,
+    "mean_logprob_and_source_hashes_bound": true,
+    "oos_prompts_generated": false,
+    "oos_rerank_or_repair": false,
+    "oos_scores_opened": false,
+    "train_threshold_pair_feasible": false
+  },
+  "negative_result": "Independent action specialists did not express a train-feasible lifecycle route: the best pair remained TP12-dominant and failed stress-MDD and absolute ratio gates.",
+  "next_materially_different_reward": "Add exact target correctness as a second RLVR verifier alongside lifecycle utility, preregistered and selected solely on pre-2024 train replay.",
+  "protocol": "pposm_lifecycle_two_specialist_train_verdict_v1",
+  "status": "fail_train_pair_threshold_no_oos_opened",
+  "train_stage": {
+    "best_infeasible": {
+      "best_thresholds_by_ranking_even_if_infeasible": {
+        "SKIP": 0.6083984375,
+        "TP12": 1.937835693359375
+      },
+      "deltas": {
+        "base_6bp": {
+          "absolute_return_pct": 48.05454502321453,
+          "cagr_to_strict_mdd": 0.6822804438459213,
+          "log_equity": 0.2258202294943239,
+          "strict_mdd_pct": 0.4537057614472424,
+          "trades": -10.0
+        },
+        "stress_10bp": {
+          "absolute_return_pct": 47.047711180766925,
+          "cagr_to_strict_mdd": 0.6227095267134604,
+          "log_equity": 0.2298218301479391,
+          "strict_mdd_pct": 0.7398572110821622,
+          "trades": -10.0
+        }
+      },
+      "failed_gates": [
+        "materiality",
+        "stress_mdd_worsening_le_0_01pp",
+        "base_ratio_ge_3"
+      ],
+      "materiality": {
+        "difference_rate_vs_always_tp4": 0.21428571428571427,
+        "max_action_share": 0.7857142857142857,
+        "non_default_count": 99,
+        "non_default_counts": {
+          "SKIP": 3,
+          "TP12": 96
+        },
+        "passes": false,
+        "route_counts": {
+          "SKIP": 3,
+          "TP12": 96,
+          "TP4": 363
+        },
+        "signals": 462
+      },
+      "route_stream_sha256": "47cdc2ecef73565d92da36757116a173aa25b82a785069e8fbc39c45a0d9fc9b"
+    },
+    "grid": {
+      "SKIP": 11,
+      "TP12": 50
+    },
+    "pairs": 550
+  },
+  "verdict_hash": "623d87f594fa0ae10dd5d242a8efb9b762b846c0dbb045250c9bdfb5dd0f3ff0"
+}

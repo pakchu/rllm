@@ -1,0 +1,31 @@
+{
+  "protocol_version": "wcafer_24_sources_v1",
+  "query": "SELECT date_trunc('week',ts-interval '4 days')+interval '4 days' AS week_start,\n       count(*) AS row_count,\n       count(DISTINCT ts) AS distinct_ts,\n       min(ts) AS min_ts,\n       max(ts) AS max_ts,\n       bool_and(ts=date_trunc('minute',ts)) AS minute_aligned,\n       bool_and(open IS NOT NULL AND high IS NOT NULL AND low IS NOT NULL AND close IS NOT NULL\n                AND open>0 AND high>0 AND low>0 AND close>0\n                AND high>=greatest(open,low,close)\n                AND low<=least(open,high,close)) AS ohlc_valid,\n       bool_and(quote_asset_volume IS NOT NULL AND taker_buy_quote IS NOT NULL\n                AND quote_asset_volume>=0 AND taker_buy_quote>=0\n                AND taker_buy_quote<=quote_asset_volume) AS flow_valid,\n       sum(2*taker_buy_quote-quote_asset_volume)\n         / nullif(sum(quote_asset_volume),0) AS flow_imbalance,\n       sqrt(sum(power(ln(close/open),2))) AS realized_variation\nFROM bars_binance\nWHERE symbol=:symbol AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1",
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "builder": {
+    "path": "training/build_weekly_cross_alt_flow_exhaustion_reversal_support.py",
+    "sha256": "1f821079ee34f1777bca44b15127b2fc33726206a56391608f117ef049cf62c7"
+  },
+  "features": {
+    "path": "data/weekly_cross_alt_flow_exhaustion_reversal_sources_2023_2026/weekly_cross_alt_flow_exhaustion_reversal_preentry_features.csv.gz",
+    "sha256": "85dc5bae51bcdf11b34f96e2277a7060ba5019a3a08c6d58ab454dfa87379ac4",
+    "rows": 186
+  },
+  "candidate_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "f29c59983d60148fc73afb22fd535755e4642c8050a5b9c6754db28c1836137f"
+}

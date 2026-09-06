@@ -1,0 +1,151 @@
+{
+  "protocol_version": "high_volatility_intraday_variance_dispersion_relay_v1",
+  "policy_id": "HVIVDR-8",
+  "as_of_date": "2026-08-12",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated BTC variation, a fresh upper-tail onset in dispersion of sixteen completed half-hour realized variances means volatility is arriving in clustered intraday waves rather than one isolated minute or a uniform high-noise regime. Follow the completed eight-hour displacement for eight hours.",
+    "side": "strict sign of completed eight-hour return",
+    "why_distinct": "HVACR measures lag-one dependence of absolute minute returns; HVRQC measures concentration in individual fourth-power shocks; FHVAR compares only two fixed two-hour halves; DVBCR measures daily backloading. HVIVDR measures scale-free cross-subwindow dispersion of sixteen nonoverlapping half-hour realized variances and reuses no event/control.",
+    "volatile_market_target": "both total variation and subwindow variance dispersion must enter independent causal upper tails",
+    "why_low_gross9_overlap_is_plausible": "three daily variance-dispersion onsets are absent from Gross9"
+  },
+  "features": {
+    "decision_grid": "exact 00:00/08:00/16:00 UTC boundaries D",
+    "block": "480 exact coherent BTCUSDT one-minute rows [D-8h,D)",
+    "minute_return": "log(close/open) for each completed minute",
+    "subwindow_variance": "sum squared minute returns in each of sixteen fixed consecutive 30-minute subwindows",
+    "total_variation": "sum of all sixteen subwindow variances, finite strict positive",
+    "variance_dispersion": "coefficient of variation: population standard deviation of sixteen subwindow variances divided by their strict-positive mean",
+    "dispersion_rank": "strict-prior midrank over at most 270 valid blocks, minimum 180, current excluded; rank>=0.75",
+    "variation_rank": "same 270/180 strict-prior midrank for total_variation; rank>=0.65",
+    "completed_return": "log(last close/first open), finite strict nonzero",
+    "eligible_state": "both rank gates pass",
+    "onset": "eligible now and immediately prior exact source-valid block ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "entry": "D+5m BTCUSDT open",
+    "side": "sign completed_return",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not an input; exact settlements only after novelty"
+  },
+  "policy": {
+    "subwindows": 16,
+    "subwindow_minutes": 30,
+    "prior_blocks": 270,
+    "minimum_prior_blocks": 180,
+    "dispersion_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_dispersion_tail",
+      "no_variation_gate",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_volatility_geometry_outcomes_known": true,
+    "exact_variance_dispersion_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent scale-free dispersion across sixteen fixed realized-variance subwindows"
+  },
+  "stopping_rule": "terminal first failure; no subwindow, dispersion, rank, onset, side, clock, hold, subset, threshold, or control repair",
+  "manifest_hash": "872e8b8ddca14cf8b79b2ad124866f23eca05b12cae8639c889f86a3a7d81f15"
+}

@@ -1,0 +1,52 @@
+{
+  "protocol_version": "pposm_rlvr_margin_calibration_v1",
+  "status": "preregistered_before_train_or_oos_margin_scoring",
+  "as_of": "2026-08-19",
+  "model": {
+    "adapter": "checkpoints/pposm_gate_sft_economic_rlvr_s64_2026-08-19",
+    "sha256": "68752abd464657cba99cb6829bd8c9b94724df6ed2d78e022c6199ded685d959"
+  },
+  "score": "mean token logprob(TRADE)-mean token logprob(NO_TRADE)",
+  "threshold_candidates": [
+    "-inf",
+    "train_q0.0",
+    "train_q0.1",
+    "train_q0.2",
+    "train_q0.3",
+    "train_q0.4",
+    "train_q0.5",
+    "train_q0.6",
+    "train_q0.7",
+    "train_q0.8",
+    "train_q0.9"
+  ],
+  "selection_data": "pre2024 90 rows only",
+  "selection_gates": {
+    "total_selected_min": 60,
+    "each_period": [
+      "2020H2",
+      "2021",
+      "2022",
+      "2023"
+    ],
+    "each_period_selected_min": 5,
+    "each_period_return_positive": true
+  },
+  "ranking": [
+    "pre2024 CAGR/MDD descending",
+    "pre2024 absolute return descending",
+    "lower threshold"
+  ],
+  "oos_contract": "score only after threshold artifact frozen; identity-aligned no-replacement veto; no reranking",
+  "promotion_gates": {
+    "vetoed_trades_min": 1,
+    "selected_trades_min": 30,
+    "every_window_base_and_stress_positive": true,
+    "combined_mdd_max": 15,
+    "combined_ratio_min": 3.0,
+    "combined_weekly_p_max": 0.2,
+    "baseline_return_retention_min": 0.9
+  },
+  "stopping_rule": "Exact threshold passes or model remains non-material shadow; no OOS threshold tuning.",
+  "manifest_hash": "5d5e1180ff61cd3958265995c3227bbcace059b1884e25dfea1cfaec87e7ca05"
+}

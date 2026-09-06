@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvcacm_8_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,symbol,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "bc4a439d8c3bf2a17a584850e7ba26d3bb52f66fdff92eb8e3bb26ac34897bce",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 2636928,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_channel_position_migration_relay_support.py",
+    "sha256": "ad68202171a3fcb8afbb01796f7deddf1e5c50bfc13d2d22c63703350bdaa153"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_channel_position_migration_relay_sources_2023_2026/scheduled_channel_migration_states.csv.gz",
+    "sha256": "b34324759427a6ded3c99d2e7a3c1b46187e57cbb56f8eaa1c5a932aeed401d3",
+    "rows": 2616,
+    "valid_rows": 2614
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "265f86ea65d543a3aa401d5791ad346e491e1a20432fdf00e2fccd374947a0af"
+}

@@ -1,0 +1,4 @@
+import hashlib,json
+from training import evaluate_cboe_term_regime_overnight_btc_relay_economics as e
+def test_cvtbr_train_economics_frozen_terminal():
+ p=e.OUTPUTS["train"];assert hashlib.sha256(p.read_bytes()).hexdigest()=="82458bb1e1469e12f9b6ddf5a54a5cc82abd963255a3ea4a5db4f09421ae45a6";d=json.loads(p.read_text());core={k:v for k,v in d.items() if k!="manifest_hash"};assert d["manifest_hash"]==e.canonical_hash(core) and d["passed"] is False and d["decision"]=="terminal_reject_no_repair";assert d["advance_to_next_stage"] is False and d["later_stage_outcomes_opened"] is False;assert d["primary"]["base"]["absolute_return_pct"]>0 and d["primary"]["base"]["mean_gross_underlying_bp"]>=20;assert d["primary"]["stress"]["absolute_return_pct"]<0 and d["checks"]["each_calendar_half_positive"] is False

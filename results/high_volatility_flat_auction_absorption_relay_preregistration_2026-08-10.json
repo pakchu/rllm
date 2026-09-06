@@ -1,0 +1,152 @@
+{
+  "protocol_version": "high_volatility_flat_auction_absorption_relay_v1",
+  "policy_id": "HVFAAR-8",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "High quote turnover on exact zero-body minutes represents inventory absorption without completed directional price concession. When that turnover share enters its upper tail during elevated BTC variation and the full block agrees with the final two hours, follow the accepted direction for eight hours.",
+    "side": "strict sign of the completed final-two-hour return, equal to the full-block return sign",
+    "why_distinct": "HVFAAR conditions on exact price-stasis minutes and measures their share of block quote turnover. Small-ticket, count-memory, directional-ticket, VWAP, wick, range-turnover, and passive-flow candidates use different objects; none measures turnover completed with zero candle body.",
+    "why_suited_to_volatile_regimes": "elevated path variation combined with high turnover at unchanged one-minute opens and closes isolates absorption inside an otherwise volatile auction",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily stasis-turnover onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 03:00/11:00/19:00 UTC boundaries",
+    "block": "480 exact coherent bars_binance BTCUSDT one-minute rows [D-8h,D)",
+    "flat_minute": "exact close==open on the stored source values",
+    "flat_support": "at least five flat minutes and strict-positive total block quote turnover",
+    "flat_turnover_share": "sum quote_asset_volume on flat minutes divided by total block quote_asset_volume; finite in [0,1] and strict positive",
+    "flat_share_rank": "strict-prior midrank over at most 270 earlier source-valid blocks, minimum 180, current excluded; rank>=0.75",
+    "realized_variation": "sum squared one-minute log(close/open) returns, finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank, current excluded; rank>=0.65",
+    "block_return": "log(last close/first open), finite strict nonzero",
+    "final_two_hour_return": "log(last close/first open) over final 120 completed minutes, finite strict nonzero and same sign as block_return",
+    "eligible_state": "flat-share and variation gates pass with directional agreement",
+    "onset": "eligible now and immediately previous exact source-valid block ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed eight-hour boundary",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "minimum_flat_minutes": 5,
+    "flat_share_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_flat_share_tail",
+      "no_variation_gate",
+      "flat_minute_count_share",
+      "one_boundary_stale_geometry",
+      "direction_flip"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_stasis_turnover_and_related_candidate_outcomes_known": true,
+    "repository_flat_auction_turnover_share_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "turnover-bearing exact price stasis as absorption"
+  },
+  "stopping_rule": "Terminal first failure; no flat definition, support, share, rank, side, hold, clock, subset, or control repair.",
+  "manifest_hash": "87d453dc46d54e8de8e5ea8aeab1e05533c0a170c2c125fdb92b2429f7f89190"
+}

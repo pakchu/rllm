@@ -1,0 +1,154 @@
+{
+  "protocol_version": "high_volatility_choppiness_index_release_relay_v1",
+  "policy_id": "HVCIR-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated realized variation, a canonical fourteen-period Choppiness Index crossing below 38.2 on completed four-hour BTC auctions marks release from range-like price action; follow the sign of the completed fourteen-bar displacement for twenty-four hours.",
+    "side": "long when the release bar close is strictly above the close fourteen completed bars earlier; short when strictly below",
+    "why_distinct": "Breakout candidates trade price crossing a range boundary, ADX trades directional-movement strength, and Aroon trades extrema recency. HVCIR uses the logarithmic ratio of summed true range to the completed-window high-low span as a regime-release event, with direction supplied only by fixed-horizon displacement; it uses no boundary crossing, OI, flow, volume, funding, fitted outcome, prior event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed trailing twenty-four-hour realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "sparse four-hour path-efficiency regime releases are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact four-hour UTC boundary",
+    "source_bar": "exact aggregation of 240 coherent BTCUSDT one-minute rows [T-4h,T)",
+    "true_range": "max(high-low, abs(high-prior completed close), abs(low-prior completed close))",
+    "choppiness_index": "100*log10(sum latest 14 true ranges/(latest 14 highest high-lowest low))/log10(14), finite with strict positive range",
+    "release": "current completed-bar Choppiness Index <38.2 and immediately prior completed-bar value >=38.2",
+    "direction": "sign(current completed close minus completed close fourteen bars earlier), strict nonzero",
+    "variation": "sqrt(sum squared completed five-minute open-to-close log returns over [T-24h,T)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 180 earlier valid decisions, minimum 120, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "four-hour boundary after completed source bar",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "choppiness_periods": 14,
+    "release_threshold": 38.2,
+    "direction_lag_bars": 14,
+    "variation_hours": 24,
+    "variation_history_decisions": 180,
+    "minimum_variation_history_decisions": 120,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "one_bar_stale_release",
+      "direction_flip",
+      "range_midpoint_direction"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2020-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "canonical_choppiness_definition_read": true,
+    "repository_choppiness_candidate_found": false,
+    "prior_breakout_adx_aroon_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "canonical path-efficiency release under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no Choppiness period, threshold, direction, variation, side, hold, clock, subset, control, or other repair.",
+  "external_basis": {
+    "origin": "canonical Choppiness Index convention attributed to E. W. Dreiss",
+    "fixed_definition": "14 completed periods; 100*log10(sum(TR,14)/(highest high-lowest low,14))/log10(14); release on strict crossing below 38.2",
+    "selection_use": "standard published period, lower Fibonacci threshold, and trend-following interpretation only; no incidence or outcomes"
+  },
+  "manifest_hash": "5c951dd451c8f85a2bd4dd62692d5ed75d467d1ac342478a4b54a127890132c8"
+}

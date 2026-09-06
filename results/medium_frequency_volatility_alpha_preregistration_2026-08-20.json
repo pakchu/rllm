@@ -1,0 +1,77 @@
+{
+  "protocol_version": "medium_frequency_volatility_alpha_preregistration_v1",
+  "status": "preregistered_before_selection",
+  "as_of": "2026-08-20",
+  "objective": "non-options standalone BTC alpha with average >=3 completed trades/week in every calendar evaluation window",
+  "implementation": {
+    "path": "training/search_medium_frequency_volatility_alpha.py",
+    "sha256": "50aa208a1698f24b6bb73002dc097686dc9ab5c6b10743ad34ac9cc009bb3ac3"
+  },
+  "sources": {
+    "market": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "funding": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz"
+  },
+  "grid": {
+    "side_mode": [
+      "trend",
+      "contrarian"
+    ],
+    "return_hours": [
+      24,
+      72
+    ],
+    "vol_gate": [
+      "none",
+      "q50",
+      "q70"
+    ],
+    "range_gate": [
+      "none",
+      "middle",
+      "extreme"
+    ],
+    "hold_hours": [
+      4,
+      8
+    ],
+    "tp": [
+      null,
+      0.02,
+      0.04
+    ],
+    "cells": 216
+  },
+  "clock": "completed 00:00/08:00/16:00 UTC; next 5m open; sequential non-overlap",
+  "threshold_fit": "2020-2022 only",
+  "selection_windows": [
+    "2020H2",
+    "2021",
+    "2022",
+    "2023"
+  ],
+  "selection_gates": {
+    "avg_trades_per_week_each": 3.0,
+    "base_stress_positive_each": true,
+    "mdd_each_max": 20,
+    "combined_ratio_min": 1.5
+  },
+  "eval_windows": [
+    "2024",
+    "2025",
+    "2026H1"
+  ],
+  "eval_gates": {
+    "avg_trades_per_week_each": 3.0,
+    "base_stress_positive_each": true,
+    "mdd_each_max": 20,
+    "combined_p_max": 0.2
+  },
+  "costs": {
+    "base_per_side": 0.0006,
+    "stress_per_side": 0.001,
+    "leverage": 0.5,
+    "exact_funding": true
+  },
+  "stopping_rule": "If no train passer or frozen OOS fail, reject family without reranking or threshold repair.",
+  "manifest_hash": "812afa461de34072dfd6fafcbbce10b4b69078cd6b193f4df828ad52e0bcc1b4"
+}

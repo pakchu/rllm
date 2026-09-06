@@ -1,0 +1,81 @@
+{
+  "protocol_version": "hvcavois_8_source_support_v1",
+  "policy_id": "HVCAVOIS-8",
+  "preregistration": {
+    "path": "results/high_volatility_cross_structure_action_vote_oi_sponsorship_preregistration_2026-08-16.json",
+    "sha256": "15699ae93b1d2cd8e44435f3376f977302c0ef63d44e8205feb20155abe38530",
+    "manifest_hash": "66422d8c2e45d5ea8b3af0c05020ba225d238a387b392962b3ad6f86fc639e2b"
+  },
+  "completed_preentry_sources_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "held_interval_funding_values_opened": false,
+  "gross9_rows_opened": false,
+  "source": {
+    "query": "SELECT ts,sum_open_interest FROM open_interest_binance WHERE symbol=:symbol AND period='5m' AND ts>=:start AND ts<:end AND extract(minute FROM ts)=0 AND extract(second FROM ts)=0 AND extract(hour FROM ts) IN (0,8,16) ORDER BY ts",
+    "path": "data/high_volatility_cross_structure_action_vote_oi_sponsorship_sources_2023_2026/open_interest.csv.gz",
+    "sha256": "093d281dcf2afe3b9fc96d22345967a5b02328d5d55679c6bd1e6ebc8aa2cce6",
+    "rows": 3140
+  },
+  "clock": {
+    "path": "data/high_volatility_cross_structure_action_vote_oi_sponsorship_clocks_2023_2026.csv.gz",
+    "sha256": "c6eb5d01ddc845db48ee113796bf5439b02ef056fc74b40bda1c7388798d6c6c",
+    "rows": 45
+  },
+  "controls": {
+    "no_oi_sponsorship_gate": {
+      "path": "data/high_volatility_cross_structure_action_vote_oi_sponsorship_controls_2023_2026/no_oi_sponsorship_gate.csv.gz",
+      "sha256": "faa679a49e2cf74b2346884cd9465037ff5d68ce6a758b0ce8139351112b4e7e",
+      "rows": 117,
+      "promotion_authorized": false
+    }
+  },
+  "support": {
+    "train": {
+      "events": 10,
+      "longs": 2,
+      "shorts": 8,
+      "minority_side_share": 0.2,
+      "max_month_share": 0.5
+    },
+    "test": {
+      "events": 16,
+      "longs": 6,
+      "shorts": 10,
+      "minority_side_share": 0.375,
+      "max_month_share": 0.25
+    },
+    "eval": {
+      "events": 15,
+      "longs": 8,
+      "shorts": 7,
+      "minority_side_share": 0.4666666666666667,
+      "max_month_share": 0.26666666666666666
+    },
+    "final": {
+      "events": 4,
+      "longs": 2,
+      "shorts": 2,
+      "minority_side_share": 0.5,
+      "max_month_share": 0.5
+    }
+  },
+  "support_checks": {
+    "train_minimum_events": true,
+    "train_side_balance": true,
+    "train_month_concentration": false,
+    "test_minimum_events": true,
+    "test_side_balance": true,
+    "test_month_concentration": true,
+    "eval_minimum_events": true,
+    "eval_side_balance": true,
+    "eval_month_concentration": true,
+    "final_minimum_events": false,
+    "final_side_balance": true,
+    "final_month_concentration": false
+  },
+  "support_passed": false,
+  "advance_to_gross9_novelty": false,
+  "advance_to_economic_outcomes": false,
+  "decision": "terminal_source_support_reject",
+  "manifest_hash": "597c5fdb8d4748163acbedca4160e588c597ee63cbca8b9fbc308101a36da400"
+}

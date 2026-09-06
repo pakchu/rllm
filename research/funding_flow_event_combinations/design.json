@@ -1,0 +1,67 @@
+{
+  "design": {
+    "version": 1,
+    "selection": "2021--2023 six half-years using inherited robust rank",
+    "reports": "2024, 2025, 2026H1 and combined; report-only exposed history",
+    "source": "BTCUSDT 5m market plus realized Binance funding events",
+    "causality": "funding event known by completed UTC hour T; execute exact T+5m open",
+    "mechanisms": [
+      "crowded funding plus same-direction price/flow reversal",
+      "funding shock contradicted by aggressive flow",
+      "funding sign flip confirmed by aggressive flow",
+      "adverse funding relief within established trend",
+      "funding acceleration exhaustion at price displacement"
+    ],
+    "level_thresholds": [
+      0.0001,
+      0.0002,
+      0.0004
+    ],
+    "delta_thresholds": [
+      8e-05,
+      0.00015,
+      0.0003
+    ],
+    "flow_thresholds": [
+      0.01,
+      0.02,
+      0.04
+    ],
+    "hold_hours": [
+      8,
+      16,
+      24
+    ],
+    "side_modes": [
+      "both",
+      "long",
+      "short"
+    ],
+    "sizing": [
+      "raw",
+      "20pct annual volatility target clipped 0.1--1.0"
+    ],
+    "portfolio": "two distinct paths per family; cross-family pairs at 25/50/75 percent",
+    "costs_per_side": [
+      0.0,
+      0.0006,
+      0.001
+    ],
+    "risk": "overlap allowed; signed same-symbol sleeves net before 1x cap, costs and funding",
+    "gates_removed": [
+      "fee ratio",
+      "trade frequency",
+      "position overlap"
+    ],
+    "limitations": [
+      "2024+ history already exposed",
+      "hourly event visibility is a conservative settlement-time proxy, not exchange message latency",
+      "no capacity, liquidation or tick-order model"
+    ]
+  },
+  "code_sha256": "6cc7ea9a6f6695b476e1511729ac0c8f0ab135c6c93ebc2a0d2557ae7720c725",
+  "engine_sha256": "8578a2aa3e888bc6ae226b4963d0cc0d6e828b8cd9bc8eeb9f2c915afd0c6088",
+  "rank_sha256": "d02fa0f2b412eaecaec2d8d98bdd12c41e74278d1c1170de5cbb9d6eaf00ad03",
+  "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+  "funding_sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+}

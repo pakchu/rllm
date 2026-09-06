@@ -1,0 +1,155 @@
+{
+  "protocol_version": "high_volatility_cumulative_volume_delta_signal_crossover_relay_v1",
+  "policy_id": "HVCVD-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated realized variation, a completed four-hour Cumulative Volume Delta crossover of its fixed twenty-period exponential signal identifies a reversal in persistent aggressive buyer-versus-seller pressure; follow the new relation for twenty-four hours.",
+    "side": "long when CVD crosses strictly above its EMA(20); short on the strict reverse crossover",
+    "why_distinct": "CVD accumulates directly observed taker-buy quote notional minus inferred taker-sell quote notional. It is not OBV, price-volume trend, normalized same-day intrinsic flow, close-location weighting, rolling money flow, raw price momentum, prior candidate repair, OI, funding, fitted outcome, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed trailing twenty-four-hour realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "sparse continuous aggressive-notional path reversals are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact four-hour UTC boundary",
+    "source_bar": "exact aggregation of 240 coherent BTCUSDT one-minute rows [T-4h,T), including quote_asset_volume and taker_buy_quote",
+    "aggressive_quote_delta": "sum(2*taker_buy_quote-quote_asset_volume) over the completed block, finite; each source row requires 0<=taker_buy_quote<=quote_asset_volume",
+    "cvd": "causal cumulative aggressive_quote_delta, reset across source gaps",
+    "signal": "causal EMA(20) of CVD with alpha=2/21, emitted after full warmup",
+    "event": "current finite nonzero CVD-signal sign differs from immediately prior finite nonzero sign",
+    "variation": "sqrt(sum squared completed one-minute open-to-close log returns over [T-24h,T)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 180 earlier valid decisions, minimum 120, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "four-hour boundary after completed source bar",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "signal_periods": 20,
+    "variation_hours": 24,
+    "variation_history_decisions": 180,
+    "minimum_variation_history_decisions": 120,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "delta_zero_cross",
+      "one_bar_stale_cross",
+      "direction_flip"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote"
+      ],
+      "window": [
+        "2020-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "canonical_cvd_definition_read": true,
+    "repository_continuous_cvd_signal_candidate_found": false,
+    "prior_intrinsic_daily_cumulative_flow_candidates_known": true,
+    "prior_volume_indicator_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "canonical continuous CVD with preregistered EMA(20) signal crossover under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no signal period, CVD formula, variation, side, hold, clock, subset, control, or other repair.",
+  "external_basis": {
+    "origin": "canonical Cumulative Volume Delta convention",
+    "fixed_definition": "bar delta=taker buy volume-taker sell volume; CVD is its causal cumulative sum; fixed causal EMA(20) signal crossover",
+    "selection_use": "published aggressive-volume delta construction and one preregistered twenty-period signal only; no incidence or outcomes"
+  },
+  "manifest_hash": "34f2fc827d0741d3bbd19ca8e76d7c0dbfe68dfcd891673238ecd3cf4011be92"
+}

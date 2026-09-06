@@ -1,0 +1,150 @@
+{
+  "protocol_version": "cross_alt_funding_level_concordance_reversal_v1",
+  "policy_id": "CAFLCR-8",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "At a completed common funding settlement, same-sign funding-level residuals across at least four of six liquid alt perpetuals and BTC identify market-wide leveraged crowding rather than an idiosyncratic contract imbalance. When the cross-alt residual magnitude and BTC variation are elevated, fade the common crowding direction for one funding cycle.",
+    "side": "negative strict common sign of the alt majority and BTC funding residual",
+    "why_distinct": "CAFACR used settlement-to-settlement funding acceleration and required the alt majority to contradict BTC. HVEFR used only one BTC funding-level residual. CAFLCR uses contemporaneous level-residual breadth confirmed by BTC at an exact common settlement; it is neither a threshold, side, clock, hold, subset, source substitution, nor diagnostic-control repair of either terminal candidate.",
+    "volatile_market_target": "cross-alt funding residual magnitude and completed prior-24h BTC variation must both be causal upper-tail states; RV20 q90 remains only a post-stage audit",
+    "why_low_gross9_overlap_is_plausible": "only broad common-settlement residual concordance events are eligible"
+  },
+  "features": {
+    "universe": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "settlement": "an exact funding_time shared by all seven funding_rates_binance symbols with one finite funding_rate and positive finite mark_price per symbol",
+    "funding_residual": "current rate minus the symbol's median over at most 90 strictly prior valid settlements, minimum 60, current excluded; strict zero is ineligible for breadth",
+    "alt_breadth": "at least four of six alt residuals share one strict sign",
+    "btc_confirmation": "BTC residual has the same strict sign as the alt majority",
+    "crowding_magnitude": "median absolute residual across the six alts",
+    "crowding_rank": "strict-prior midrank over at most 270 prior common valid settlements, minimum 180, current excluded; rank>=0.70",
+    "btc_variation": "sqrt(sum squared BTCUSDT one-minute log(close/open)) over exact 24 elapsed hours ending at funding_time",
+    "btc_variation_rank": "strict-prior midrank over at most 270 prior common valid settlements, minimum 180, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact common funding_time after all seven settlement rows and prior BTC path exist",
+    "entry": "exact decision+5m BTCUSDT open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_accounting": "signal settlement is causally complete and excluded from held funding cash; exact settlements with entry<=time<exit are applied only after novelty",
+    "oi_premium_rv20": "not signal inputs; RV20 q90 only after all economic stages pass"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "funding": {
+      "table": "funding_rates_binance",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "DOGEUSDT",
+        "ADAUSDT"
+      ],
+      "columns": [
+        "symbol",
+        "funding_time",
+        "funding_rate",
+        "mark_price"
+      ],
+      "read_only": true
+    },
+    "btc": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_crowding_rank",
+      "no_variation_gate",
+      "alt_only_breadth",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "database_metadata_only_opened_before_preregistration": true,
+    "funding_or_btc_values_used_to_select_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent broad funding-level crowding mechanism plus volatile-market focus"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, strict economics; no residual, breadth, confirmation, rank, variation, side, hold, clock, universe, subset, or control repair",
+  "manifest_hash": "8f1a25280ab9d64b3159cd1250a1c46092927baf5c4283d93d9655473bba589f"
+}

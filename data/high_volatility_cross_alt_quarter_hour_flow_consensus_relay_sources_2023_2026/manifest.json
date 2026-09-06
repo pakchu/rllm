@@ -1,0 +1,36 @@
+{
+  "protocol_version": "hvcaqf_6_sources_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS bar_time,symbol,(array_agg(open ORDER BY ts))[1] AS bar_open,(array_agg(close ORDER BY ts DESC))[1] AS bar_close,sum(quote_asset_volume) AS quote_turnover,sum(2*taker_buy_quote-quote_asset_volume) AS signed_taker_quote,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high) AND quote_asset_volume>=0 AND taker_buy_quote>=0 AND taker_buy_quote<=quote_asset_volume) AS coherent FROM bars_binance WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "2f6cd941f1344fdb25245e90ef33a13922fbf13c1026069a6f6c42b3e7aefa82",
+  "tables": [
+    "bars_binance"
+  ],
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 2636928,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_quarter_hour_flow_consensus_relay_support.py",
+    "sha256": "cccc4c6c6d01f2715e0d18e8c32f62153a504df7b39c09d3f46f4728086ac4d8"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_quarter_hour_flow_consensus_relay_sources_2023_2026/quarter_hour_states.csv.gz",
+    "sha256": "c9e46e7ebde75d63d4ce0d784bff22c8688cd9369788ecc70138026a4419b17f",
+    "rows": 125472,
+    "valid_rows": 104197
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "0886898f72354fff6f9735acd2ffa7827b6bf42fb72173a99e62b5ec32fd1dab"
+}

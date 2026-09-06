@@ -1,0 +1,183 @@
+{
+  "protocol_version": "high_volatility_microstructure_ridge_relay_v1",
+  "policy_id": "HVMRR-6",
+  "as_of_date": "2026-08-09",
+  "oos_outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "pretraining_outcomes_authorized_after_preregistration": true,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In high-realized-volatility BTC blocks, the continuation-versus-reversal balance depends jointly on normalized price path, path efficiency, aggressive-flow sponsorship, late participation, and cash-versus-perpetual basis repricing. A single ridge trained only before 2023H2 can estimate the six-hour direction without selecting an OOS rule family.",
+    "side": "strict sign of the frozen ridge prediction",
+    "why_distinct": "HVMRR combines ten pre-entry price, flow, basis, and clock features through one preregistered linear shrinkage model. Prior high-volatility singletons froze one hand-written gate and direction; causal expert work selected among discrete expert policies. HVMRR has one model, no OOS adaptation, and promotes no prior control.",
+    "why_suited_to_volatile_regimes": "only blocks whose causal realized-variation rank is at least 0.65 can trade",
+    "why_low_gross9_overlap_is_plausible": "a sparse fixed-eight-hour multivariate microstructure score is absent from Gross9"
+  },
+  "training_contract": {
+    "feature_source_start": "2020-10-01T00:00:00Z",
+    "label_start": "2021-01-01T00:00:00Z",
+    "label_end_exclusive": "2023-07-01T00:00:00Z",
+    "label": "BTCUSDT log(exit_open/entry_open), entry=decision+5m and exit=entry+6h",
+    "training_rows": "all source-valid fixed 00:00/08:00/16:00 UTC decisions with finite features and complete pre-2023H2 label; no support or outcome filtering",
+    "standardization": "population mean and population standard deviation computed on training rows only; reject any zero or nonfinite scale",
+    "estimator": "sklearn.linear_model.Ridge(alpha=10.0, fit_intercept=True, solver='svd')",
+    "sample_weight": "none",
+    "hyperparameter_grid": false,
+    "feature_selection": false,
+    "refit_after_2023_06_30": false,
+    "prediction_strength_threshold": "strict empirical 0.80 quantile of absolute fitted predictions among training rows with variation_rank>=0.65",
+    "model_artifact_must_be_frozen_before_oos_incidence": true
+  },
+  "feature_contract": {
+    "ordered_features": [
+      "normalized_full_return",
+      "normalized_late_return",
+      "variation_rank",
+      "path_efficiency",
+      "full_taker_imbalance",
+      "late_taker_imbalance",
+      "late_quote_volume_share",
+      "normalized_cash_basis_change",
+      "decision_hour_sin",
+      "decision_hour_cos"
+    ],
+    "block": "480 exact aligned BTCUSDT perpetual and spot minute rows in [decision-8h,decision); finite positive coherent OHLC; perpetual quote_asset_volume and taker_buy_quote finite, nonnegative, taker<=quote, positive total and late quote volume; no imputation",
+    "full_return": "log(perpetual close at decision-1m / open at decision-8h)",
+    "late_return": "log(perpetual close at decision-1m / open at decision-2h)",
+    "realized_variation": "sum squared perpetual 1m close-to-close log returns inside the block",
+    "variation_rank": "strict-prior midrank among at most 270 source-valid fixed blocks, minimum 180, current excluded",
+    "normalized_returns": "return/sqrt(realized_variation)",
+    "path_efficiency": "abs(full_return)/sum(abs(perpetual 1m close-to-close log returns)); zero denominator invalid",
+    "taker_imbalances": "(2*sum(taker_buy_quote)-sum(quote_asset_volume))/sum(quote_asset_volume), separately full block and final two hours",
+    "late_quote_volume_share": "final-two-hour quote volume / full-block quote volume",
+    "cash_basis_change": "log(perpetual/spot) at final close minus log(perpetual/spot) at final-two-hour opening boundary, divided by sqrt(realized_variation)",
+    "clock_encoding": "sin and cos of 2*pi*decision_UTC_hour/24",
+    "no_imputation": true
+  },
+  "oos_clock": {
+    "decisions": "exact 00:00,08:00,16:00 UTC from 2023-07-01 onward",
+    "eligibility": "source valid, variation_rank>=0.65, finite frozen-model prediction, abs(prediction)>=frozen training q80, prediction!=0",
+    "entry": "exact decision+5m BTCUSDT open",
+    "side": "sign of frozen prediction",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_observations": 270,
+    "minimum_history_observations": 180,
+    "variation_rank_min": 0.65,
+    "ridge_alpha": 10.0,
+    "prediction_strength_quantile": 0.8,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "perpetual": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote"
+      ]
+    },
+    "spot": {
+      "table": "bars_binance_spot",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ]
+    },
+    "window": [
+      "2020-10-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "oos_execution_price": "sealed until source-support and Gross9 novelty pass; pretraining labels explicitly authorized only before 2023-07-01"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_prediction_strength_gate",
+      "one_boundary_stale_features",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_rule_and_model_family_outcomes_known": true,
+    "prior_event_sets_or_controls_promoted": false,
+    "oos_outcomes_used_to_fit_select_or_threshold_hvmrr": false,
+    "oos_candidate_incidence_opened": false,
+    "oos_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "single pre-2023H2 multivariate microstructure ridge specified before its pretraining labels are opened"
+  },
+  "stopping_rule": "Freeze preregistration, then model, then OOS source support, Gross9 novelty, and strict sequential economics; terminal first failure with no feature, model, alpha, threshold, side, hold, clock, or subset repair.",
+  "manifest_hash": "a1223362587ccb506125126eec784e7c37179c957c561b4b84c1205aced67d96"
+}

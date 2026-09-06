@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvdfcr_12_economic_evaluator_freeze_v1",
+  "policy_id": "HVDFICR-12",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_daily_flow_impact_capacity_reversal_economics.py",
+    "sha256": "6ad83a7edfbb1105a0573572605f5928c7cecd68144819e3dbe1c28b76a497d2"
+  },
+  "authorization": {
+    "path": "results/high_volatility_daily_flow_impact_capacity_reversal_gross9_novelty_2026-08-13.json",
+    "sha256": "0981bccee9b0f45a97a4f8b5933dea091b3b40f5bd04ee275f5f2abce7e943d5"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "7e6fd29acc8dc87e10b0dc4db9f78b359fc028cbd30fb8542811f8595595a55a"
+}

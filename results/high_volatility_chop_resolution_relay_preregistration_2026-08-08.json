@@ -1,0 +1,105 @@
+{
+  "protocol_version": "high_volatility_chop_resolution_relay_v1",
+  "policy_id": "HVCRR-6",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "mechanism": {
+    "claim": "At a fixed eight-hour UTC boundary in an already elevated BVOL-and-DVOL regime, six hours of large but directionally inefficient BTC close-path movement stores two-sided risk; a final two-hour close outside that path should mark resolution whose direction relays for six hours.",
+    "side": "direction of the final close outside the first-six-hour close path",
+    "why_distinct": "HVCRR uses high implied-volatility levels, an eight-hour fixed block, first-six-hour path efficiency, and a last-two-hour range escape. It does not use CVVIB's joint volatility expansion/late ignition, any within-hour absorption, funding direction, or stablecoin flow.",
+    "why_low_gross9_overlap_is_plausible": "fixed eight-hour high-volatility chop-resolution geometry is absent from Gross9 and decisions occur only three times daily"
+  },
+  "clock": {
+    "decision": "exact UTC 00:00/08:00/16:00 boundary D after eight consecutive completed source-valid hours [D-8h,D)",
+    "volatile_regime": "BVOL close and DVOL close at D are each >= own strict-prior 720h q60 with 672 observations",
+    "chop_path": "first six hours use the initial open plus six hourly closes; normalized range is nonzero; efficiency=absolute initial-to-sixth-close return divided by normalized range <= strict-prior 270-block q40 with 252 observations",
+    "resolution": "absolute return over the final two hours >= strict-prior 270-block q60 with 252 observations and final close is strictly above the first-six-hour maximum or below its minimum",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "+1 above range, -1 below range",
+    "hold": "6 elapsed hours",
+    "reservation": "blocks are nonoverlapping; global half-open, exit first on equal open",
+    "funding": "not a signal input; exact settlements only for later PnL",
+    "oi": "not a signal input",
+    "no_imputation": true
+  },
+  "policy": {
+    "block_hours": 8,
+    "chop_hours": 6,
+    "resolution_hours": 2,
+    "prior_blocks": 270,
+    "prior_min_blocks": 252,
+    "chop_efficiency_quantile": 0.4,
+    "resolution_absolute_return_quantile": 0.6,
+    "volatility_level_prior_hours": 720,
+    "volatility_level_min_hours": 672,
+    "volatility_level_quantile": 0.6,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "volatility": "reuse hash-bound OCDR-12C BVOL/DVOL snapshot through 2026-08-01",
+    "completed_price_path": "reuse hash-bound OLIAH completed-hour intrahour snapshot through 2026-08-01",
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_candidate_incidence_known": true,
+    "prior_candidate_outcomes_used_for_hvcrr": false,
+    "hvcrr_candidate_incidence_opened": false,
+    "hvcrr_post_entry_return_or_pnl_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false
+  },
+  "manifest_hash": "681b34571d26ea3a54be107419843b7cc8a7453a1e87bf41c02c996e06315b4e"
+}

@@ -1,0 +1,4 @@
+import hashlib,json
+from training import evaluate_cboe_volatility_acceleration_curve_relay_economics as economics
+def test_cvacr_train_economics_is_frozen_terminal():
+ p=economics.OUTPUTS["train"];assert hashlib.sha256(p.read_bytes()).hexdigest()=="e3b768054f91741a246beebada7c698b15214aa65d8bee60bd45048912466843";d=json.loads(p.read_text());core={k:v for k,v in d.items() if k!="manifest_hash"};assert d["manifest_hash"]==economics.canonical_hash(core);assert d["stage"]=="train" and d["passed"] is False and d["decision"]=="terminal_reject_no_repair";assert d["advance_to_next_stage"] is False and d["later_stage_outcomes_opened"] is False;assert d["primary"]["base"]["absolute_return_pct"]<0 and d["primary"]["base"]["mean_gross_underlying_bp"]<0;assert d["checks"]["strict_mdd_max_15"] is True and d["checks"]["absolute_return_positive"] is False

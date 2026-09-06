@@ -1,0 +1,118 @@
+{
+  "registration": {
+    "design": {
+      "version": 1,
+      "candidate": "0.25*premium_flow_divergence__reb24__vol20 + 0.75*discount_recovery__reb24__raw",
+      "historical_identity": "mix_55_61_0.25",
+      "source": "fixed cache plus authoritative DB market/premium/funding extension",
+      "fresh_window": [
+        "2026-06-01T00:00:00Z",
+        "2026-09-05T10:05:00Z"
+      ],
+      "costs": [
+        0.0,
+        0.0006,
+        0.001
+      ],
+      "execution": "completed hourly features; exact next 5m open at T+5m; rebalance net units; charge every actual notional change; liquidate window end",
+      "risk": "net cap1, overlap allowed, positions offset",
+      "decision": "one-shot report, no live promotion"
+    },
+    "code_sha256": "8166e3ff789081eb986e43ace2011c33518d4c8dc26957515cbaca4af3cbd430",
+    "basis_selection_sha256": "c0000b570095698b298d7413fdebe0744438abcee3926439cda89cdc2ea378b1",
+    "cache_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+  },
+  "source_receipt": {
+    "row_counts": {
+      "btcusdt_1m": 183485,
+      "btckrw_1m": 183143,
+      "usdkrw_1m": 125592,
+      "forex_1m": 781546,
+      "premium_1m": 183485,
+      "funding": 1721
+    },
+    "funding_aliases": {
+      "policy": {
+        "alias_grouping": "sort by raw funding_time; group only adjacent rows whose timestamp delta from the previous row is <=100ms",
+        "max_cluster_span_ms": 100,
+        "canonical_timestamp": "latest raw timestamp in the accepted near-alias cluster; no snapping to cadence",
+        "required_exact_equal_columns": [
+          "funding_rate",
+          "mark_price"
+        ],
+        "reject": [
+          "exact_duplicate_timestamp",
+          "malformed_timestamp",
+          "nonfinite_funding_rate_or_mark_price",
+          "unequal_values_within_near_alias_cluster",
+          "cluster_span_gt_100ms"
+        ],
+        "preserve_events_separated_by_at_least": "1min"
+      },
+      "raw_rows": 2000,
+      "canonical_rows": 1721,
+      "alias_clusters": 279,
+      "alias_rows_removed": 279,
+      "max_cluster_span_ms": 16.0,
+      "cluster_size_histogram": {
+        "1": 1442,
+        "2": 279
+      },
+      "selected_timestamp": "latest_raw_timestamp",
+      "passed": true,
+      "reason": "pass",
+      "raw_hash": "ac6f2dd77da6126e015f432fd97e0aa3a5d6e20376808ccbd45d39b454f2e5ad",
+      "canonical_hash": "5c510c67a7d93f2ed2a1bdfe058481e8ec273abc75b951158df0483815512bb8"
+    }
+  },
+  "engine_receipt": {
+    "missing_mark_proxy_events": 4198,
+    "funding_events": 7319,
+    "market_end": "2026-09-05 10:00:00"
+  },
+  "premium_event_rows": 84098,
+  "premium_available": 1.0,
+  "component_nonzero_decisions": {
+    "divergence": 242,
+    "recovery": 1
+  },
+  "reports": {
+    "0.0": {
+      "return_pct": -0.2972680446917009,
+      "cagr_pct": -1.1219477333545114,
+      "mdd_pct": 1.3340514854487173,
+      "calmar": -0.8410078213564124,
+      "sharpe": -0.578339605801079,
+      "entry_episodes": 8,
+      "rebalance_orders": 224,
+      "turnover": 2.7541335386655725,
+      "fees_pct_initial": 0.0,
+      "funding_pct_initial": 0.004105414958800019
+    },
+    "0.0006": {
+      "return_pct": -0.4618785905861955,
+      "cagr_pct": -1.7392188519406715,
+      "mdd_pct": 1.4275267579450523,
+      "calmar": -1.2183441341893337,
+      "sharpe": -0.9057608644487988,
+      "entry_episodes": 8,
+      "rebalance_orders": 224,
+      "turnover": 2.7541503999615253,
+      "fees_pct_initial": 0.1657111927662249,
+      "funding_pct_initial": 0.004103211443694249
+    },
+    "0.001": {
+      "return_pct": -0.5714802407189579,
+      "cagr_pct": -2.148636500756562,
+      "mdd_pct": 1.4898024226813522,
+      "calmar": -1.4422291627700792,
+      "sharpe": -1.1233830690547915,
+      "entry_episodes": 8,
+      "rebalance_orders": 224,
+      "turnover": 2.75417879603614,
+      "fees_pct_initial": 0.2760456241079215,
+      "funding_pct_initial": 0.004101742502550008
+    }
+  },
+  "live_enabled": false
+}

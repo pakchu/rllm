@@ -1,0 +1,52 @@
+{
+  "protocol_version": "ovepr_24_economic_evaluator_freeze_v5",
+  "policy_id": "OVEPR-24",
+  "status": "frozen_before_first_V5_candidate_metric_execution",
+  "outcomes_opened": false,
+  "v4_terminal_evidence": {
+    "path": "results/options_led_volatility_expansion_premium_relay_train_economic_attempt_terminal_failure_v4_2026-08-08.json",
+    "sha256": "9c6a5d71212f00974930fcedbec176c60b7f9a70fc7a83fbc1d49be2bd8558d4",
+    "economic_metrics_computed": false,
+    "candidate_pass_fail_observed": false,
+    "disposition": "TERMINAL_FAILURE_NO_RETRY_UNDER_V4"
+  },
+  "v4_evaluator_freeze": {
+    "path": "results/options_led_volatility_expansion_premium_relay_economic_evaluator_freeze_v4_2026-08-08.json",
+    "sha256": "fc9a245ade957f84f1e65114d10bc8fada95a0e7020cda918854e118f848ccb3"
+  },
+  "evaluator": {
+    "path": "training/evaluate_options_led_volatility_expansion_premium_relay_economics_v5.py",
+    "sha256": "979da56879efac6217670379c13b9b75209053185e7c8160910372ada0fc1249"
+  },
+  "regression_tests": {
+    "path": "tests/test_evaluate_options_led_volatility_expansion_premium_relay_economics_v5.py",
+    "sha256": "ba83c031aca9f9af370674299b4b49538f6a5c201e28001f30d27c3cb3e35f4a",
+    "passed": true,
+    "direct_cli_verified": true,
+    "millisecond_funding_posted_half_open": true,
+    "bounded_reporting_offset_validated": true
+  },
+  "infrastructure_changes_from_v4_only": [
+    "allow <=1s timestamp reporting offset around nominal 8h cadence",
+    "post each exact half-open funding event to its containing 5m accounting bar"
+  ],
+  "candidate_contract_change_from_v4": false,
+  "stage_sequence": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "future_can_rank_repair_or_reselect": false,
+  "economic_contract_preserved": "fixed quantity and exact entry<=event<exit settlement-mark funding cash",
+  "source_contract_inherited_exactly_from_v4": true,
+  "predecessors": {
+    "preregistration_sha256": "180e6be7f6889024896303be511a07b3a95b44dc225f4566a2edab7127022dd6",
+    "source_support_sha256": "afbf8157c2c85aec0470563cdfba1b45afe18472a617633d2140b6ec6c1c15a7",
+    "gross9_novelty_sha256": "b6a5128aa259907df36b39d484f7d7bc3f142134b0d68e5cb22a0ef64ddfdd03",
+    "primary_clock_sha256": "b79bd105784db59980a83d1e1e75e3334e954f76e0f06a6d44eca1dc017e6bf1"
+  },
+  "no_alpha_threshold_hold_direction_source_or_stage_gate_changes": true,
+  "manifest_hash": "426e625ccb46bb6e730a1c78350148bf2d3e0d4a2839edd01cff8bb47e5a5cd4"
+}

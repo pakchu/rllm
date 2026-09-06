@@ -1,0 +1,85 @@
+{
+  "protocol_version": "gross9_qtr_compression_terminal_summary_v1",
+  "policy_id": "G9QTR-COMPRESS-8",
+  "as_of_date": "2026-09-03",
+  "objective": "standalone/replacement/compression absolute OOS validation with near-6h overlap disclosure only",
+  "artifacts": {
+    "preregistration": {
+      "path": "results/gross9_qtr_compression_shadow_preregistration_2026-09-02.json",
+      "sha256": "5f39997e01883b80ddb54241eb089582aeee90c93e8b02d912b579ccc05e9085",
+      "manifest_hash": "89975c10a6c3e02174850ccfdca2f5ba65eff483cd587090a5b78b133d3ced2f"
+    },
+    "train_authorization": {
+      "path": "results/gross9_qtr_compression_train_economics_2026-09-02.json",
+      "sha256": "f789f73f11e92c4135b4f98f03d42aa8ba5dc26fcccf42255cd9c3a658447b95",
+      "manifest_hash": "0af602432c5dcc61619629e42ccfbf769af944a344bf48b7e1d5bafad6e744ad"
+    },
+    "test2024_terminal": {
+      "path": "results/gross9_qtr_compression_test_economics_2026-09-02.json",
+      "sha256": "7d24dc03a9f1351d9addbf7b196454eb6f869629fd2e7b3d2064ee6919b2a938",
+      "manifest_hash": "27c82023d8c69969822a105e8d24423c868a8d7b7bdfaf3617f353bc8bf07f2e"
+    }
+  },
+  "trade_counts": {
+    "train": {
+      "sleeve_intervals": 150,
+      "net_transitions": 230,
+      "signed_episodes": 96,
+      "long_intervals": 62,
+      "short_intervals": 88
+    },
+    "test2024": {
+      "sleeve_intervals": 348,
+      "net_transitions": 507,
+      "signed_episodes": 204,
+      "long_intervals": 171,
+      "short_intervals": 177
+    }
+  },
+  "economics": {
+    "train": {
+      "return_pct": 9.754788657006053,
+      "cagr_pct": 20.293677079178664,
+      "strict_mdd_pct": 1.9308384459892247,
+      "cagr_to_strict_mdd": 10.510292625119977,
+      "weekly_p": 0.003299967000329997
+    },
+    "test2024": {
+      "return_pct": -8.613449289573127,
+      "cagr_pct": -8.596580197694937,
+      "strict_mdd_pct": 10.371036748138884,
+      "cagr_to_strict_mdd": -0.8289026841253475,
+      "stress_return_pct": -11.586354845533064,
+      "weekly_p": 0.975490245097549,
+      "failed_checks": [
+        "absolute_return_positive",
+        "cagr_to_strict_mdd_min_3",
+        "mean_exposure_weighted_gross_edge_min_20bp",
+        "stress_absolute_return_positive",
+        "stress_cagr_to_strict_mdd_min_2_5",
+        "each_calendar_half_positive",
+        "oos_cluster_signflip_p_max_0_1"
+      ]
+    }
+  },
+  "sequence": {
+    "train_passed": true,
+    "test2024_passed": false,
+    "eval2025_opened": false,
+    "final2026_opened": false,
+    "stop_on_first_failure_honored": true
+  },
+  "operational_status": {
+    "live_capital_authorized": false,
+    "order_submission_enabled": false,
+    "forward_shadow_authorized": false,
+    "archive_for_research_only": true
+  },
+  "supersedes_for_authorization": {
+    "path": "results/gross9_qtr_distill_shadow_readiness_2026-09-02.json",
+    "sha256": "05a4080ffa041a885ad15a6601339b1f1f5ecd1e21e95d7961a5432dc4832f91",
+    "reason": "test2024 economic failure overrides earlier train-only forward-shadow readiness"
+  },
+  "decision": "terminal_reject_no_repair",
+  "manifest_hash": "13ff4d2cca1739bea3f7f8a9e26b606fedba4b4f89001ab89eeea0076758f313"
+}

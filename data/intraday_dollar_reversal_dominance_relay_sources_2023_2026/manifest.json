@@ -1,0 +1,46 @@
+{
+  "protocol_version": "idrdr_12_intraday_dollar_source_v1",
+  "query": "SELECT date_trunc('day',ts) AS source_day,(array_agg(open ORDER BY ts))[1] AS session_open,max(high) AS session_high,min(low) AS session_low,(array_agg(close ORDER BY ts DESC))[1] AS session_close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts FROM bars_polygon WHERE symbol=:symbol AND interval='1m' AND ts>=:start AND ts<:end AND extract(isodow from ts) BETWEEN 1 AND 5 AND extract(hour from ts)>=:start_hour AND extract(hour from ts)<:end_hour GROUP BY 1 ORDER BY 1",
+  "table": "bars_polygon",
+  "symbols": [
+    "EURUSD",
+    "GBPUSD",
+    "USDAUD",
+    "USDCAD",
+    "USDCHF",
+    "USDJPY"
+  ],
+  "subsessions": {
+    "early": [
+      13,
+      17
+    ],
+    "late": [
+      17,
+      21
+    ]
+  },
+  "canonical_dollar_multipliers": {
+    "EURUSD": -1.0,
+    "GBPUSD": -1.0,
+    "USDAUD": 1.0,
+    "USDCAD": 1.0,
+    "USDCHF": 1.0,
+    "USDJPY": 1.0
+  },
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/intraday_dollar_reversal_dominance_relay_sources_2023_2026/intraday_dollar_reversal_sessions.csv.gz",
+    "sha256": "b6c22707eaacd7a71df5f7eccca5398bb0c59f3692893495f910067fa8d8b19d",
+    "rows": 929,
+    "valid_rows": 903
+  },
+  "manifest_hash": "a5959b041b9113066cf92873ab40b6800ab0760293f6245531d42015e5244b50"
+}

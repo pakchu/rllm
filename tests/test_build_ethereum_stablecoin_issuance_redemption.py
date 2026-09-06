@@ -374,8 +374,10 @@ def test_independent_rpc_host_is_required() -> None:
         builder._transport_hosts(cfg)
 
 
+@pytest.mark.parametrize("status", [408, 429])
 def test_json_rpc_client_retries_only_transient_http_error(
     monkeypatch: pytest.MonkeyPatch,
+    status: int,
 ) -> None:
     attempts = 0
 
@@ -388,8 +390,8 @@ def test_json_rpc_client_retries_only_transient_http_error(
             headers["Retry-After"] = "0"
             raise urllib.error.HTTPError(
                 request.full_url,
-                429,
-                "rate limited",
+                status,
+                "transient request failure",
                 headers,
                 None,
             )

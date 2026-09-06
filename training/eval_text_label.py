@@ -11,14 +11,21 @@ from typing import Any
 from training.train_text_sft import RECOMMENDED_TEXT_CAUSAL_LM_MODEL, load_jsonl, resolve_text_causal_lm_alias
 from utils import disable_transformers_allocator_warmup
 
-VALID_VALUES = {"gate": ("NO_TRADE", "TRADE"), "side": ("LONG", "SHORT"), "decision": ("ABSTAIN", "TRADE")}
+VALID_VALUES = {
+    "gate": ("NO_TRADE", "TRADE"),
+    "side": ("LONG", "SHORT"),
+    "decision": ("ABSTAIN", "TRADE"),
+    "pair": ("A", "B"),
+    "ordinal": ("Q0", "Q1", "Q2", "Q3", "Q4"),
+    "pposm_state": ("SKIP", "TP4", "TP12"),
+}
 
 
 def parse_label(text: str, *, key: str) -> str:
     key = str(key).strip().lower()
     vals = VALID_VALUES[key]
     raw = str(text).strip().upper()
-    raw = re.sub(r"[^A-Z_]+", " ", raw)
+    raw = re.sub(r"[^A-Z0-9_]+", " ", raw)
     tokens = raw.split()
     for val in vals:
         if val in tokens or raw.startswith(val):
@@ -210,7 +217,11 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Evaluate plain-label text adapter")
     p.add_argument("--eval-jsonl", required=True)
     p.add_argument("--output", required=True)
-    p.add_argument("--key", choices=["gate", "side", "decision"], required=True)
+    p.add_argument(
+        "--key",
+        choices=["gate", "side", "decision", "pair", "ordinal", "pposm_state"],
+        required=True,
+    )
     p.add_argument("--model-name", default=RECOMMENDED_TEXT_CAUSAL_LM_MODEL)
     p.add_argument("--adapter-dir", default="")
     p.add_argument("--max-samples", type=int, default=0)

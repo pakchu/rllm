@@ -1,0 +1,106 @@
+"""Outcome-blind preregistration for HVCAPO-8."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+POLICY_ID = "HVCAPO-8"
+SLUG = "high_volatility_cross_alt_path_ordered_excursion_dominance_relay"
+ALTS = ("ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT")
+DEFAULT_OUTPUT = Path(f"results/{SLUG}_preregistration_2026-08-13.json")
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": f"{SLUG}_v1",
+        "policy_id": POLICY_ID,
+        "slug": SLUG,
+        "as_of_date": "2026-08-13",
+        "singleton": True,
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "mechanism": {
+            "claim": "At three fixed daily decisions, simultaneous own-history extremes in path-ordered maximum drawup-versus-drawdown asymmetry across at least four liquid alt perpetuals identify broad directional price discovery rather than endpoint noise. During elevated BTC variation, BTC follows the asymmetry-weighted common excursion direction for eight hours.",
+            "side": "strict sign of the selected-alt absolute-excursion-asymmetry-weighted consensus",
+            "why_distinct": "The single-BTC drawup/drawdown candidate measures BTC itself, range traversal records only absolute-extreme order, and cross-alt channel migration compares two normalized channel endpoints. HVCAPO computes each alt path's maximum peak-from-prior-trough and trough-from-prior-peak, selects own-history absolute-asymmetry tails, and transfers only broad alt consensus into BTC. It uses no BTC return direction, endpoint displacement, volume, flow, funding, OI, premium, reused event set, promoted control, or fitted outcome.",
+            "why_suited_to_volatile_regimes": "BTC completed twenty-four-hour realized variation must rank in its causal upper 35 percent, while selected alt paths must exhibit historically extreme ordered-excursion asymmetry.",
+            "why_low_gross9_overlap_is_plausible": "05:05, 13:05 and 21:05 UTC entries conditioned on cross-alt path-ordered excursion consensus are absent from Gross9 primitive clocks.",
+        },
+        "features": {
+            "bars": "exact five-minute OHLC aggregated from five consecutive bars_binance one-minute rows; all seven symbols complete, finite, positive, coherent; no imputation",
+            "decision_times": "every calendar day at exact 05:00, 13:00 and 21:00 UTC",
+            "alt_path": "96 completed five-minute log closes ending at decision for each alt",
+            "maximum_drawup": "maximum over path index j of log_close[j] minus minimum log_close observed through j, finite nonnegative",
+            "maximum_drawdown": "maximum over path index j of maximum log_close observed through j minus log_close[j], finite nonnegative",
+            "excursion_asymmetry": "(maximum_drawup-maximum_drawdown)/(maximum_drawup+maximum_drawdown), finite strict nonzero with positive denominator",
+            "asymmetry_rank": "for each alt independently, strict-prior midrank of absolute asymmetry over at most 120 prior jointly valid scheduled decisions, minimum 60, current excluded; selected when rank>=0.70",
+            "score": "sum(abs(asymmetry)*sign(asymmetry) over selected alts)/sum(abs(asymmetry) over selected alts)",
+            "consensus_gate": "at least four selected alts, abs(score)>=0.50, and at least three selected asymmetry signs equal score sign",
+            "btc_realized_variation": "sqrt(sum squared exact BTC five-minute log(close/open) returns over [D-24h,D))",
+            "variation_rank": "strict-prior midrank over 20 prior jointly source-valid scheduled decisions, minimum 15, current excluded; rank>=0.65",
+            "no_imputation": True,
+        },
+        "clock": {
+            "decision": "exact daily 05:00, 13:00 or 21:00 UTC",
+            "entry": "exact BTCUSDT perpetual decision+5m open",
+            "side": "score sign",
+            "hold": "8 elapsed hours",
+            "reservation": "global chronological half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding": "not signal input; exact settlements only after novelty",
+        },
+        "policy": {
+            "path_bars": 96, "asymmetry_prior_decisions": 120, "asymmetry_minimum_decisions": 60, "asymmetry_rank_min": 0.70,
+            "minimum_selected_alts": 4, "score_absolute_min": 0.50, "minimum_agreeing_alts": 3,
+            "variation_bars": 288, "variation_prior_decisions": 20, "variation_minimum_decisions": 15, "variation_rank_min": 0.65,
+            "decision_hours_utc": [5, 13, 21], "decision_minute": 0, "entry_delay_minutes": 5, "hold_hours": 8,
+            "leverage": 0.5, "base_cost_per_notional_side": 0.0006, "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {"minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8}, "minority_side_share_min": 0.2, "max_month_share": 0.45},
+        "novelty_gates": {"exact_entry_jaccard_max": 0.1, "candidate_near_6h_share_max": 0.35, "occupied_5m_bar_jaccard_max": 0.25, "absolute_signed_exposure_pearson_max": 0.35, "must_pass_before_economics": True},
+        "economic_gates": {"absolute_return_positive": True, "cagr_to_strict_mdd_min": 3.0, "strict_mdd_max_pct": 15.0, "mean_gross_underlying_min_bp": 20.0, "weekly_signflip_one_sided_p_max": 0.1, "stress_absolute_return_positive": True, "stress_cagr_to_strict_mdd_min": 2.5, "each_calendar_half_positive": True, "stop_on_first_failure": True, "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"},
+        "post_stage_volatility_audit": {"prerequisite": "unchanged all-stage pass", "rv20_q90_entry_filter": False, "minimum_q90_trades": 8, "candidate_q90_absolute_return_positive": True, "identical_clock_forced_long_residual_positive": True},
+        "diagnostic_controls": {"names": ["no_variation_gate", "no_asymmetry_tail", "three_alt_consensus", "equal_weighted_score", "one_decision_stale_consensus", "direction_flip", "forced_long"], "cannot_be_promoted": True},
+        "source_plan": {"market": {"table": "bars_binance", "symbols": ["BTCUSDT", *ALTS], "interval": "1m", "columns": ["ts", "symbol", "open", "high", "low", "close"], "window": ["2023-01-01T00:00:00Z", "2026-08-01T00:00:00Z"]}, "read_after_preregistration_commit": True, "execution_prices": "sealed until source and novelty pass"},
+        "research_boundary": {"prior_single_asset_drawup_drawdown_and_cross_alt_path_outcomes_known": True, "repository_exact_cross_alt_path_ordered_excursion_consensus_found": False, "prior_event_sets_or_controls_reused": False, "candidate_incidence_opened": False, "postentry_return_or_pnl_opened": False, "gross9_rows_opened": False, "candidate_count": 1, "grid": False, "repair_of_prior_candidate": False, "promoted_prior_control": False, "selection_basis": "independent cross-alt path-ordered excursion dominance mechanism selected by outcome-blind primitive-gap audit"},
+        "stopping_rule": "terminal first failure; no universe, path, excursion definition, history, rank, consensus, variation gate, direction, clock, hold, subset, comparator, or control repair",
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(value: dict[str, Any]) -> None:
+    core = {key: item for key, item in value.items() if key != "manifest_hash"}
+    if value.get("manifest_hash") != canonical_hash(core) or value != build():
+        raise RuntimeError("HVCAPO prereg drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    payload = build()
+    validate(payload)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode()
+    if args.output.exists() and args.output.read_bytes() != encoded:
+        raise RuntimeError(f"refusing overwrite {args.output}")
+    args.output.write_bytes(encoded)
+    print(args.output)

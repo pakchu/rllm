@@ -1,0 +1,117 @@
+{
+  "protocol_version": "high_volatility_credit_transition_variation_phase_router_v1",
+  "policy_id": "HVCQVAR-24",
+  "as_of_date": "2026-08-18",
+  "singleton": true,
+  "candidate_family": [
+    "HVCQVAR-24"
+  ],
+  "candidate_family_size": 1,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A corporate-credit polarity transition transmits in its new direction when completed BTC seven-day variation is expanding versus the prior source-valid session, but represents a normalization fade when that variation is contracting. Route the credit transition by the causal variation phase for twenty-four hours.",
+    "side": "credit-transition sign multiplied by strict sign of current minus previous completed BTC variation",
+    "why_distinct": "HVCQTR trades credit polarity transitions with a fixed side and failed test. HVCQVAR is a cross-domain router that combines the same predecision transition object with the independently completed BTC variation phase. It uses no HVCREDIT event set/control, equity return, Treasury price, crypto direction, OI, funding, premium, options, fitted outcome, or promoted control.",
+    "why_low_gross9_overlap_is_plausible": "external credit transitions routed by crypto volatility phase are absent from Gross9"
+  },
+  "features": {
+    "source": {
+      "path": "data/high_volatility_credit_risk_appetite_relay_sources_2022_2026/daily_credit_states.csv.gz",
+      "sha256": "88d227fff477484ce40e2da8578368cd3345b6fc62c4e6d99a4325b4aed67e59"
+    },
+    "relative_credit_return": "log(HYG close/open)-log(LQD close/open), finite strict nonzero",
+    "previous": "immediately prior source-valid shared cash session in frozen chronological order",
+    "transition": "current and previous relative returns have strict opposite signs",
+    "availability": "current session date 23:00 UTC",
+    "variation_gate": "frozen causal BTC variation_rank>=0.65",
+    "variation_phase": "strict sign of current btc_variation minus immediately previous source-valid btc_variation; zero is cash",
+    "no_imputation": true
+  },
+  "policy": {
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "clock": {
+    "entry": "decision+5m exact BTCUSDT open",
+    "hold": "24 elapsed hours",
+    "reservation": "chronological half-open nonoverlap; exit first on equal entry",
+    "funding": "not signal input; exact settlements after Gross9"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "level_not_transition",
+      "one_session_stale_transition",
+      "previous_side",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_HVCQTR_train_pass_test_failure_known": true,
+    "HVCQTR_transition_definition_reused": true,
+    "exact_transition_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "selection_basis": "credit transition conditioned by independent BTC variation phase"
+  },
+  "stopping_rule": "source, Gross9, train/test/eval/final; terminal first failure; no assets, return, previous-session law, transition, variation phase, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "851102bca64f0d02409c5a4977e6880114ce48a4dbdd5b5542230921893206c1"
+}

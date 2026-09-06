@@ -1,0 +1,152 @@
+{
+  "protocol_version": "high_volatility_dual_half_signed_volume_persistence_relay_v1",
+  "policy_id": "HVDHSVPR-8",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When quote turnover attached to up versus down minute candles has the same strong polarity in both halves of a volatile completed BTC block, participation is persistently sponsoring one direction rather than reflecting one isolated shock. Follow that direction for eight hours.",
+    "side": "common strict sign of first-half and second-half signed quote-turnover balances",
+    "why_distinct": "Aggressive-flow candidates use taker fields; range-participation weights signed range energy; return-volume covariance uses continuous return magnitude; dominant-volume candidates select one bar. HVDHSVPR uses candle-sign-assigned quote turnover separately in two fixed halves, ranks the weaker half, and uses no taker flow, endpoint return, range weight, funding, OI, cross-asset, prior event, fitted outcome, or control.",
+    "why_suited_to_volatile_regimes": "completed realized variation must rank in its causal upper 35% while both halves independently show same-side turnover sponsorship",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily dual-half signed-volume clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 02:00/10:00/18:00 UTC boundaries",
+    "block": "480 exact coherent bars_binance BTCUSDT one-minute rows [D-8h,D)",
+    "minute_return": "log(close/open), finite; sign zero retained with zero signed contribution",
+    "half_balance": "for each fixed 240-minute half, sum(quote_asset_volume*sign(minute_return))/sum(quote_asset_volume), requiring finite nonnegative turnover and strict positive denominator",
+    "dual_half_persistence": "both balances strict nonzero with the same sign",
+    "weak_half_strength": "minimum absolute half balance",
+    "strength_rank": "strict-prior midrank of weak_half_strength over at most 270 earlier source-valid blocks, minimum 180, current excluded; rank>=0.55",
+    "realized_variation": "sqrt(sum squared minute returns), finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank, current excluded; rank>=0.65",
+    "eligible_state": "dual-half persistence plus strength and variation gates",
+    "event_clock": "every eligible fixed boundary; no onset filter",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed eight-hour boundary",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "strength_rank_min": 0.55,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_weak_half_rank",
+      "no_variation_gate",
+      "full_block_signed_volume",
+      "equal_weight_half_sign_breadth",
+      "one_block_stale_participation",
+      "direction_flip",
+      "same_clock_forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_aggressive_flow_range_participation_volume_covariance_and_dominant_volume_outcomes_known": true,
+    "repository_dual_half_signed_volume_persistence_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "same-side quote-turnover sponsorship in both fixed halves"
+  },
+  "stopping_rule": "Terminal first failure; no volume field, half split, sign rule, rank, side, hold, clock, subset, threshold, or control repair.",
+  "manifest_hash": "4183c97841ed5a675154c37c62dd8e37eb24277e7cbff963648640acf2b43dbb"
+}

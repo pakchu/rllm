@@ -1,0 +1,165 @@
+"""Write the outcome-blind TRTSR-24 preregistration."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_OUTPUT = Path("results/treasury_real_term_spread_relay_preregistration_2026-08-09.json")
+
+
+def canonical_hash(value: Any) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(encoded.encode()).hexdigest()
+
+
+def payload() -> dict[str, Any]:
+    core = {
+        "protocol_version": "treasury_real_term_spread_relay_v1",
+        "policy_id": "TRTSR-24",
+        "as_of_date": "2026-08-09",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": (
+                "A large daily change in the official five-year minus ten-year Treasury real-yield "
+                "spread measures a repricing of near-horizon real discount pressure relative to the "
+                "long horizon. During high BTC variation, spread widening maps short BTC and spread "
+                "narrowing maps long BTC for the next day."
+            ),
+            "side": "opposite strict sign of the standardized daily change in 5y-minus-10y real yield",
+            "why_distinct": (
+                "TPYSR used same-direction shocks in nominal 2y and 10y yields and failed only source "
+                "dispersion. TRTSR uses an unopened TIPS real-yield source and a relative curve-slope "
+                "change, not a nominal level shock, tenor substitution, threshold repair, or prior control."
+            ),
+            "why_suited_to_volatile_regimes": (
+                "the completed pre-entry BTC 24-hour realized variation must rank in its causal upper 35%."
+            ),
+            "why_low_gross9_overlap_is_plausible": (
+                "one sparse D+1 sovereign real-term-structure clock is absent from Gross9 primitives."
+            ),
+        },
+        "features": {
+            "source": "official US Treasury Daily Treasury Par Real Yield Curve Rates XML feed",
+            "source_url_template": (
+                "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?"
+                "data=daily_treasury_real_yield_curve&field_tdr_date_value={year}"
+            ),
+            "observation": "official 5-year and 10-year par real yields for Treasury observation date D",
+            "availability": "conservatively D+1 00:00 UTC; no same-date use",
+            "valid_transition": (
+                "current and previous official observations finite and separated by 1 to 5 calendar days"
+            ),
+            "real_term_spread": "real_yield_5y minus real_yield_10y",
+            "spread_change": "current real-term spread minus previous valid observation's spread; strict nonzero",
+            "standardization": (
+                "spread change standardized against at most 90 strictly prior valid spread changes, "
+                "minimum 60, current excluded, sample std positive"
+            ),
+            "magnitude_rank": (
+                "strict-prior midrank of absolute standardized spread change over at most 90 valid "
+                "standardized changes, minimum 60, current excluded; rank>=0.70"
+            ),
+            "btc_realized_variation": (
+                "sqrt(sum squared exact completed hourly BTC log returns over [decision-24h,decision))"
+            ),
+            "volatility_rank": (
+                "strict-prior midrank over at most 90 valid Treasury decisions, minimum 60, current "
+                "excluded; rank>=0.65"
+            ),
+            "no_imputation": True,
+        },
+        "clock": {
+            "decision": "exact D+1 00:00 UTC",
+            "entry": "exact D+1 00:05 UTC BTCUSDT open",
+            "hold": "24 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.20,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.10,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.10,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, "
+                "every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "diagnostic_controls": {
+            "names": [
+                "five_year_level_change", "ten_year_level_change", "no_magnitude_tail",
+                "no_volatility_gate", "one_observation_stale_spread_change", "direction_flip",
+            ],
+            "diagnostic_controls_cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "treasury": (
+                "download and hash-bind official annual real-yield XML feeds for 2023-2026 only "
+                "after this preregistration commit"
+            ),
+            "completed_btc": "hash-bound completed-hour BTC source through 2026-08-01",
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "prior_macro_and_fx_outcomes_known": True,
+            "prior_nominal_treasury_source_support_known": True,
+            "real_yield_source_rows_opened": False,
+            "prior_candidate_outcomes_used_to_set_trtsr_rule": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": "independent sovereign real-term-structure repricing",
+        },
+        "stopping_rule": (
+            "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no "
+            "tenor, rank, side, hold, availability, volatility, or subset repair."
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(payload(), indent=2, allow_nan=False) + "\n")
+    print(args.output)
+
+
+if __name__ == "__main__":
+    main()

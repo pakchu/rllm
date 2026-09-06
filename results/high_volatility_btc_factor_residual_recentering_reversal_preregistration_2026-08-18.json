@@ -1,0 +1,132 @@
+{
+  "protocol_version": "high_volatility_btc_factor_residual_recentering_reversal_v1",
+  "policy_id": "HVBFRRCR-8",
+  "as_of_date": "2026-08-18",
+  "singleton": true,
+  "candidate_family": [
+    "HVBFRRCR-8"
+  ],
+  "candidate_family_size": 1,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A BTC-specific displacement that was a robust cross-sectional outlier and then remains same-signed but contracts at the next sampled auction is already recentering toward the broad crypto factor; trade the remaining convergence during elevated BTC variation.",
+    "side": "opposite strict sign of the current BTC-minus-six-alt-median residual",
+    "why_distinct": "HVBFRR fits daily OLS and follows a current residual; HVBDRR follows a current residual tail plus contemporaneous dispersion. HVBFRRCR uses two consecutive frozen sampled auctions, requires a prior robust two-MAD BTC outlier and an already-completed same-sign magnitude contraction, and trades convergence without fitted beta, outcome fit, OI, funding, premium, options, or promoted control.",
+    "why_suited_to_volatile_regimes": "current causal BTC realized-variation rank must be at least 0.65",
+    "why_low_gross9_overlap_is_plausible": "irregular two-auction cross-sectional residual recentering clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "source": {
+      "path": "data/cross_alt_breadth_underreaction_relay_sources_2023_2026/cross_alt_breadth_underreaction_relay_preentry_features.csv.gz",
+      "sha256": "8270b0318d11d16b6b384e64bfaac77ef4bbc4a701dd347c2ababbb093061eae"
+    },
+    "universe": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "decision_grid": "exact 04:00, 12:00, and 20:00 UTC frozen source decisions",
+    "previous_decision": "immediately previous source-valid decision exactly eight elapsed hours earlier",
+    "alt_factor": "cross-sectional median of the six finite alt block returns independently at previous and current decisions",
+    "btc_factor_residual": "BTC block return minus contemporaneous six-alt median",
+    "alt_mad": "median absolute deviation of six alt returns about their contemporaneous median; finite strict positive",
+    "prior_outlier": "absolute previous residual divided by previous alt MAD is at least 2.0",
+    "recentering": "previous and current residuals are strict nonzero with equal sign and absolute current residual strictly below absolute previous residual",
+    "variation_gate": "current frozen causal variation_rank>=0.65",
+    "no_imputation": true
+  },
+  "policy": {
+    "prior_standardized_residual_min": 2.0,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "clock": {
+    "entry": "current decision+5m exact BTCUSDT open",
+    "hold": "8 elapsed hours",
+    "reservation": "sampled opportunities are half-open and nonoverlapping; exit first on equal entry",
+    "funding": "not a signal input; exact held settlements only after source and Gross9 pass"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_prior_outlier",
+      "no_recentering",
+      "no_variation_gate",
+      "continuation_side",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_HVBFRR_source_failure_known": true,
+    "prior_HVBDRR_train_failure_known": true,
+    "repository_two_auction_btc_factor_residual_recentering_found": false,
+    "source_header_and_three_sample_rows_opened_before_preregistration": true,
+    "full_candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "selection_basis": "robust cross-sectional overshoot followed by completed residual contraction"
+  },
+  "stopping_rule": "source, Gross9, train/test/eval/final; terminal first failure; no universe, factor, MAD, outlier threshold, recentering, variation, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "4b3000dff8814c586d2fd53974902ba4e8bcd3725ca081e0205ebbb04d30c8a6"
+}

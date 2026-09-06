@@ -1,0 +1,1427 @@
+{
+  "registration": {
+    "design": {
+      "version": 1,
+      "window": [
+        "2026-06-01T00:00:00Z",
+        "2026-09-05T00:00:00Z"
+      ],
+      "asof": "2026-09-05T10:04:00Z",
+      "weights": {
+        "june_selected_80_20": [
+          0.8,
+          0.2,
+          0.0
+        ],
+        "retrospective_60_40": [
+          0.6,
+          0.4,
+          0.0
+        ],
+        "fixed_50_50": [
+          0.5,
+          0.5,
+          0.0
+        ],
+        "macro_only": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "oi_only": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "regional_only": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "selection": "none; prior weights frozen, report all",
+      "oi_source": "official Binance daily metrics, observation timestamp +5min; historical DB/cache not overwritten",
+      "execution": "same frozen OI gates, next5m entry,8h hold; common sleeve-local net ledger with event risk override",
+      "costs": [
+        0.0,
+        0.0006,
+        0.001
+      ],
+      "caveat": "source/timing revision: replays earlier windows as well, not identical to prior DB-OI run; exposed historical diagnostics, no live promotion"
+    },
+    "hashes": {
+      "/tmp/rllm-alpha-combinations/training/evaluate_added_alpha_september.py": "96cc03b1808266930a80297c61d5d7d3b63553e5c37eac721ed8a14ed2787d28",
+      "/tmp/rllm-alpha-combinations/training/optimize_added_alpha_portfolio.py": "5fcb85605ec29ebfbd9a76329a3b65a2e4a39d5238011e12ddeaf16620ac9dfa",
+      "/tmp/rllm-alpha-combinations/training/evaluate_oi_divergence_fresh.py": "0c14f0e8e48ac449cccd9776abc3e5c1b447203f7542f11ca5fe173158234116",
+      "/tmp/rllm-alpha-combinations/training/evaluate_oi_llm_selector.py": "fd9475769b688a26b5ecf7f17fc7c128292baf27634658bcd26806cf5c751fd5",
+      "/tmp/rllm-alpha-combinations/training/search_inventory_purge_reclaim_alpha.py": "5d8d4df7ea79790afb919bbb481d11de33ecba5768f6e26feb1f7667cd947d65",
+      "/tmp/rllm-alpha-combinations/training/evaluate_macro_flow_fixed_fresh.py": "8cbc458341920e867d1926d5203fcbbe26eee5e8274f5b6d805dd9eb3b0604be",
+      "/tmp/rllm-alpha-combinations/training/search_macro_flow_alpha_combinations.py": "ca40643ac976c8b437318272a55fae4a164b72cebdb1414fb0d66178d2a7e570",
+      "/tmp/rllm-alpha-combinations/training/evaluate_regional_trend_fresh.py": "bf8c688c5629e89af74e20c1febf726718bb6d67e31a394985e66fc15ab7df62",
+      "/tmp/rllm-alpha-combinations/training/search_meaningful_alpha_combinations.py": "8578a2aa3e888bc6ae226b4963d0cc0d6e828b8cd9bc8eeb9f2c915afd0c6088",
+      "/home/pakchu/rllm/data/binance_um_metrics_BTCUSDT_2026-05-01_2026-09-04_extension.csv.gz": "27793a01c9d7663e7a474d8600410b0774f60ce8cdb012606502b22acb199e9a",
+      "/tmp/rllm-alpha-combinations/configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json": "6533650bb6800308762dc02f310dbfe7dbd59c8a217d55305f6c5388eb2a480b",
+      "/home/pakchu/rllm/data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192",
+      "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+    }
+  },
+  "receipt": {
+    "db": {
+      "row_counts": {
+        "btcusdt_1m": 183485,
+        "btckrw_1m": 183143,
+        "usdkrw_1m": 125592,
+        "forex_1m": 781546,
+        "premium_1m": 183485,
+        "funding": 1721
+      },
+      "funding_aliases": {
+        "policy": {
+          "alias_grouping": "sort by raw funding_time; group only adjacent rows whose timestamp delta from the previous row is <=100ms",
+          "max_cluster_span_ms": 100,
+          "canonical_timestamp": "latest raw timestamp in the accepted near-alias cluster; no snapping to cadence",
+          "required_exact_equal_columns": [
+            "funding_rate",
+            "mark_price"
+          ],
+          "reject": [
+            "exact_duplicate_timestamp",
+            "malformed_timestamp",
+            "nonfinite_funding_rate_or_mark_price",
+            "unequal_values_within_near_alias_cluster",
+            "cluster_span_gt_100ms"
+          ],
+          "preserve_events_separated_by_at_least": "1min"
+        },
+        "raw_rows": 2000,
+        "canonical_rows": 1721,
+        "alias_clusters": 279,
+        "alias_rows_removed": 279,
+        "max_cluster_span_ms": 16.0,
+        "cluster_size_histogram": {
+          "1": 1442,
+          "2": 279
+        },
+        "selected_timestamp": "latest_raw_timestamp",
+        "passed": true,
+        "reason": "pass",
+        "raw_hash": "ac6f2dd77da6126e015f432fd97e0aa3a5d6e20376808ccbd45d39b454f2e5ad",
+        "canonical_hash": "5c510c67a7d93f2ed2a1bdfe058481e8ec273abc75b951158df0483815512bb8"
+      }
+    },
+    "engine": {
+      "missing_mark_proxy_events": 4198,
+      "funding_events": 7319,
+      "market_end": "2026-09-05 10:00:00"
+    },
+    "archive_rows": 36573,
+    "archive_last_available": "2026-09-05 00:00:00",
+    "oi_availability": 0.9999638310185185,
+    "market_end": "2026-09-05T00:00:00.000000000",
+    "oi_trades": [
+      {
+        "entry": "2026-06-02 14:30:00",
+        "exit": "2026-06-02 22:30:00"
+      },
+      {
+        "entry": "2026-06-04 00:30:00",
+        "exit": "2026-06-04 08:30:00"
+      },
+      {
+        "entry": "2026-06-04 09:30:00",
+        "exit": "2026-06-04 17:30:00"
+      },
+      {
+        "entry": "2026-06-05 14:00:00",
+        "exit": "2026-06-05 22:00:00"
+      },
+      {
+        "entry": "2026-06-08 05:00:00",
+        "exit": "2026-06-08 13:00:00"
+      },
+      {
+        "entry": "2026-06-24 18:30:00",
+        "exit": "2026-06-25 02:30:00"
+      },
+      {
+        "entry": "2026-06-25 14:00:00",
+        "exit": "2026-06-25 22:00:00"
+      },
+      {
+        "entry": "2026-07-07 02:00:00",
+        "exit": "2026-07-07 10:00:00"
+      },
+      {
+        "entry": "2026-09-04 00:30:00",
+        "exit": "2026-09-04 08:30:00"
+      }
+    ],
+    "market_hash": "fe790dbc6835c8a09c5c94fcf6a7a81eb6d64dd9c36d85cadc8e353e654aedbb",
+    "funding_hash": "3fb8c59a46794a0869105ad1a315a1747c7c1d7b1e19dbae443d49a68ecf30e6"
+  },
+  "reports": {
+    "common_to_september": {
+      "0.0": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": 7.2628134082125095,
+          "cagr_pct": 30.571871667201258,
+          "mdd_pct": 3.147013215740224,
+          "calmar": 9.714567296473936,
+          "entry_episodes": 36,
+          "orders_including_liquidation": 809,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.02501873626842855,
+          "turnover": 21.925592813789695,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": 7.415184004412301,
+          "cagr_pct": 31.278979470942403,
+          "mdd_pct": 2.420438958063875,
+          "calmar": 12.922854082617585,
+          "entry_episodes": 36,
+          "orders_including_liquidation": 809,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.024853362737622252,
+          "turnover": 20.955323419067486,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": 7.484737331751412,
+          "cagr_pct": 31.602692925611862,
+          "mdd_pct": 2.3097060483838416,
+          "calmar": 13.682560578531215,
+          "entry_episodes": 36,
+          "orders_including_liquidation": 809,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.024796897309534178,
+          "turnover": 20.46739132547937,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 7.092747254195175,
+          "cagr_pct": 29.785963951641147,
+          "mdd_pct": 3.869083192653955,
+          "calmar": 7.6984552847543695,
+          "entry_episodes": 29,
+          "orders_including_liquidation": 791,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.02525132691115474,
+          "turnover": 22.888320238605136,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 7.766293380790712,
+          "cagr_pct": 32.91911988207416,
+          "mdd_pct": 4.56867562232397,
+          "calmar": 7.205396618928494,
+          "entry_episodes": 9,
+          "orders_including_liquidation": 18,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.0247928672947319,
+          "turnover": 18.00023745235801,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 0.8207692440804326,
+          "cagr_pct": 3.158891350818682,
+          "mdd_pct": 4.465800700281974,
+          "calmar": 0.7073516179571622,
+          "entry_episodes": 8,
+          "orders_including_liquidation": 224,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.03937417246418262,
+          "turnover": 8.175862854353104,
+          "net_cap_events": 0
+        }
+      },
+      "0.0006": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": 5.860922011609593,
+          "cagr_pct": 24.19711364867929,
+          "mdd_pct": 3.2555286845401876,
+          "calmar": 7.432621854504379,
+          "entry_episodes": 36,
+          "orders_including_liquidation": 810,
+          "fees_pct_initial": 1.359399362057133,
+          "funding_pct_initial": 0.02471691909709785,
+          "turnover": 21.92629957255853,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": 6.073627021977113,
+          "cagr_pct": 25.149243132084532,
+          "mdd_pct": 2.5315293924480065,
+          "calmar": 9.934406926938754,
+          "entry_episodes": 36,
+          "orders_including_liquidation": 810,
+          "fees_pct_initial": 1.3022004174922543,
+          "funding_pct_initial": 0.024604605403434524,
+          "turnover": 20.956464584304154,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": 6.173794254356091,
+          "cagr_pct": 25.5994794647306,
+          "mdd_pct": 2.369091673574475,
+          "calmar": 10.805609487498733,
+          "entry_episodes": 36,
+          "orders_including_liquidation": 810,
+          "fees_pct_initial": 1.272323973217509,
+          "funding_pct_initial": 0.024571979510553527,
+          "turnover": 20.4689329440371,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 5.631728644965106,
+          "cagr_pct": 23.177165705823953,
+          "mdd_pct": 3.9751952586101202,
+          "calmar": 5.830447109641495,
+          "entry_episodes": 29,
+          "orders_including_liquidation": 792,
+          "fees_pct_initial": 1.4131977282650034,
+          "funding_pct_initial": 0.024889591516101348,
+          "turnover": 22.889336736829662,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 6.612690766920437,
+          "cagr_pct": 27.586343578122772,
+          "mdd_pct": 4.685871832825461,
+          "calmar": 5.887131479968139,
+          "entry_episodes": 9,
+          "orders_including_liquidation": 18,
+          "fees_pct_initial": 1.1102452621204042,
+          "funding_pct_initial": 0.024658335398021414,
+          "turnover": 18.005596587124327,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 0.3274953656444257,
+          "cagr_pct": 1.2517512787129315,
+          "mdd_pct": 4.764848194789106,
+          "calmar": 0.2627053848393032,
+          "entry_episodes": 8,
+          "orders_including_liquidation": 224,
+          "fees_pct_initial": 0.48528324606658113,
+          "funding_pct_initial": 0.039223388975848775,
+          "turnover": 8.175658876109448,
+          "net_cap_events": 0
+        }
+      },
+      "0.001": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": 4.936280956586847,
+          "cagr_pct": 20.120084400952145,
+          "mdd_pct": 3.3278104335075387,
+          "calmar": 6.046042826948353,
+          "entry_episodes": 36,
+          "orders_including_liquidation": 810,
+          "fees_pct_initial": 2.2558941892200215,
+          "funding_pct_initial": 0.02451748422482264,
+          "turnover": 21.926969512624733,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": 5.188348770692008,
+          "cagr_pct": 21.221595683967465,
+          "mdd_pct": 2.605533317597286,
+          "calmar": 8.144818391168045,
+          "entry_episodes": 36,
+          "orders_including_liquidation": 810,
+          "fees_pct_initial": 2.161390259065011,
+          "funding_pct_initial": 0.024440184331934702,
+          "turnover": 20.957226563310375,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": 5.3084629589303045,
+          "cagr_pct": 21.749093943542874,
+          "mdd_pct": 2.4202785311302155,
+          "calmar": 8.98619463165115,
+          "entry_episodes": 36,
+          "orders_including_liquidation": 810,
+          "fees_pct_initial": 2.1120435547582983,
+          "funding_pct_initial": 0.024423276965075538,
+          "turnover": 20.46996192234013,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 4.6684358774559565,
+          "cagr_pct": 18.957732293051286,
+          "mdd_pct": 4.045875579979907,
+          "calmar": 4.685693348272819,
+          "entry_episodes": 29,
+          "orders_including_liquidation": 792,
+          "fees_pct_initial": 2.344823465040035,
+          "funding_pct_initial": 0.024650562691329845,
+          "turnover": 22.890566729744336,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 5.849733506990806,
+          "cagr_pct": 24.14717894255507,
+          "mdd_pct": 4.764000584743444,
+          "calmar": 5.068676737758097,
+          "entry_episodes": 9,
+          "orders_including_liquidation": 18,
+          "fees_pct_initial": 1.8443966335854025,
+          "funding_pct_initial": 0.024569205523723582,
+          "turnover": 18.00917289132177,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": -9.76054201351495e-05,
+          "cagr_pct": -0.00037135761362661057,
+          "mdd_pct": 4.9637497406348485,
+          "calmar": -7.48139275811103e-05,
+          "entry_episodes": 8,
+          "orders_including_liquidation": 224,
+          "fees_pct_initial": 0.8075715670666431,
+          "funding_pct_initial": 0.039123166207682206,
+          "turnover": 8.175688047948347,
+          "net_cap_events": 0
+        }
+      }
+    },
+    "july_to_september": {
+      "0.0": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": 3.250745522127718,
+          "cagr_pct": 19.367530885214524,
+          "mdd_pct": 3.14701321574008,
+          "calmar": 6.154257881201774,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 670,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.025586946587165912,
+          "turnover": 16.402411378213237,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": 2.141300946751312,
+          "cagr_pct": 12.440120238095043,
+          "mdd_pct": 2.4204389580638863,
+          "calmar": 5.139613290659442,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 670,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.021991102813389438,
+          "turnover": 13.305440483291804,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": 1.5884120069252328,
+          "cagr_pct": 9.112942580425386,
+          "mdd_pct": 2.0717954820081985,
+          "calmar": 4.398572474727177,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 670,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.02025117034116862,
+          "turnover": 11.756057635822376,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 4.364996182473391,
+          "cagr_pct": 26.673068427510405,
+          "mdd_pct": 3.869083192653977,
+          "calmar": 6.893898915937798,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 666,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.029339072727545858,
+          "turnover": 19.49699699842709,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.1572151277540188,
+          "cagr_pct": -6.238397513509253,
+          "mdd_pct": 1.860750307963266,
+          "calmar": -3.352624737887405,
+          "entry_episodes": 2,
+          "orders_including_liquidation": 4,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.012121618521954895,
+          "turnover": 4.00012251173732,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 0.865228769589721,
+          "cagr_pct": 4.883139481965104,
+          "mdd_pct": 3.3051973804653523,
+          "calmar": 1.4774123659984224,
+          "entry_episodes": 5,
+          "orders_including_liquidation": 149,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.04497313926639218,
+          "turnover": 5.754498817338155,
+          "net_cap_events": 0
+        }
+      },
+      "0.0006": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": 2.239405661408078,
+          "cagr_pct": 13.039085699721365,
+          "mdd_pct": 3.255528684539921,
+          "calmar": 4.005212966373872,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 671,
+          "fees_pct_initial": 0.9884064130630055,
+          "funding_pct_initial": 0.02537912595695455,
+          "turnover": 16.40284200558527,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": 1.3289125154859915,
+          "cagr_pct": 7.579384628049035,
+          "mdd_pct": 2.531529392448162,
+          "calmar": 2.9939943224278553,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 671,
+          "fees_pct_initial": 0.7991487835394128,
+          "funding_pct_initial": 0.02185559612278465,
+          "turnover": 13.305847785488899,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": 0.8741041522084991,
+          "cagr_pct": 4.934223401151194,
+          "mdd_pct": 2.167898420324721,
+          "calmar": 2.2760399449030073,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 671,
+          "fees_pct_initial": 0.7049374007556558,
+          "funding_pct_initial": 0.020146096704363188,
+          "turnover": 11.7565072962338,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 3.1509570111168506,
+          "cagr_pct": 18.73048848888743,
+          "mdd_pct": 3.9751952586103534,
+          "calmar": 4.7118411223491,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 667,
+          "fees_pct_initial": 1.1787962807346775,
+          "funding_pct_initial": 0.029043257984660363,
+          "turnover": 19.49784643301109,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.39499502007997,
+          "cagr_pct": -7.479858890374558,
+          "mdd_pct": 1.9796310920011218,
+          "calmar": -3.778410493044691,
+          "entry_episodes": 2,
+          "orders_including_liquidation": 4,
+          "fees_pct_initial": 0.23803482727045594,
+          "funding_pct_initial": 0.012113904168411281,
+          "turnover": 4.001330326918112,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 0.5175550716566057,
+          "cagr_pct": 2.898008604607183,
+          "mdd_pct": 3.455596315353504,
+          "calmar": 0.8386421156114467,
+          "entry_episodes": 5,
+          "orders_including_liquidation": 149,
+          "fees_pct_initial": 0.34092517829992836,
+          "funding_pct_initial": 0.044882766239112984,
+          "turnover": 5.754228569776816,
+          "net_cap_events": 0
+        }
+      },
+      "0.001": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": 1.5704994898368074,
+          "cagr_pct": 9.006513232410484,
+          "mdd_pct": 3.327810433507994,
+          "calmar": 2.7064381858182696,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 671,
+          "fees_pct_initial": 1.6420876686560295,
+          "funding_pct_initial": 0.025241388562777797,
+          "turnover": 16.40332782495855,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": 0.7907965713364495,
+          "cagr_pct": 4.455532476159085,
+          "mdd_pct": 2.605533317597286,
+          "calmar": 1.7100270589776188,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 671,
+          "fees_pct_initial": 1.3284673574419656,
+          "funding_pct_initial": 0.021765687175073822,
+          "turnover": 13.306120339155173,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": 0.4005884703132123,
+          "cagr_pct": 2.237121025075983,
+          "mdd_pct": 2.24280940517253,
+          "calmar": 0.9974637255919171,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 671,
+          "fees_pct_initial": 1.1722237175744044,
+          "funding_pct_initial": 0.020076338846468197,
+          "turnover": 11.756807951765758,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 2.349124360547572,
+          "cagr_pct": 13.712052903543492,
+          "mdd_pct": 4.045875579980174,
+          "calmar": 3.3891434950183728,
+          "entry_episodes": 24,
+          "orders_including_liquidation": 667,
+          "fees_pct_initial": 1.9572523588317399,
+          "funding_pct_initial": 0.028847403108827052,
+          "turnover": 19.498965029485156,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.5533558651597779,
+          "cagr_pct": -8.29917277876351,
+          "mdd_pct": 2.058884577937392,
+          "calmar": -4.030907253226254,
+          "entry_episodes": 2,
+          "orders_including_liquidation": 4,
+          "fees_pct_initial": 0.3965656289800452,
+          "funding_pct_initial": 0.012108761266048878,
+          "turnover": 4.002136347780574,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 0.2863762184826868,
+          "cagr_pct": 1.595155973610729,
+          "mdd_pct": 3.5557606962197896,
+          "calmar": 0.448611734559802,
+          "entry_episodes": 5,
+          "orders_including_liquidation": 149,
+          "fees_pct_initial": 0.5676156138369547,
+          "funding_pct_initial": 0.04482263123390144,
+          "turnover": 5.7542134662646385,
+          "net_cap_events": 0
+        }
+      }
+    },
+    "extension_since_aug4": {
+      "0.0": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": 4.3423512130219555,
+          "cagr_pct": 62.446611216540205,
+          "mdd_pct": 3.1470132157400132,
+          "calmar": 19.84313599453888,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 373,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.023166064955664957,
+          "turnover": 10.255246240332514,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": 3.192829682127196,
+          "cagr_pct": 43.151694092509985,
+          "mdd_pct": 2.4204389580640195,
+          "calmar": 17.82804476384099,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 373,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.018769647605332358,
+          "turnover": 8.197600769115038,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": 2.620697410028061,
+          "cagr_pct": 34.34965517451409,
+          "mdd_pct": 2.0717954820082207,
+          "calmar": 16.579655411362555,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 373,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.016627062473876117,
+          "turnover": 7.167245087980666,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 5.498841971916368,
+          "cagr_pct": 84.22586980407192,
+          "mdd_pct": 3.869083192654077,
+          "calmar": 21.76894773521152,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 371,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.02771273779982144,
+          "turnover": 12.308815889257321,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -0.21344906298467192,
+          "cagr_pct": -2.4094233585527647,
+          "mdd_pct": 1.1561558834211394,
+          "calmar": -2.0839952406963724,
+          "entry_episodes": 1,
+          "orders_including_liquidation": 2,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.006458987166368736,
+          "turnover": 2.0000647280330437,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 3.802575738468028,
+          "cagr_pct": 53.10896141747374,
+          "mdd_pct": 1.5646384622879372,
+          "calmar": 33.94327999569539,
+          "entry_episodes": 2,
+          "orders_including_liquidation": 74,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.033281012434617445,
+          "turnover": 2.1911885546871694,
+          "net_cap_events": 0
+        }
+      },
+      "0.0006": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": 3.702190236752134,
+          "cagr_pct": 51.427379959309725,
+          "mdd_pct": 3.255528684539699,
+          "calmar": 15.79693651711168,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 373,
+          "fees_pct_initial": 0.6304835837807551,
+          "funding_pct_initial": 0.023050203624389386,
+          "turnover": 10.255587205254098,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": 2.6864323388181566,
+          "cagr_pct": 35.33522430077283,
+          "mdd_pct": 2.5315293924480953,
+          "calmar": 13.958054133672208,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 373,
+          "fees_pct_initial": 0.5012651290587934,
+          "funding_pct_initial": 0.018697436252507468,
+          "turnover": 8.197875229245145,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": 2.180253984681979,
+          "cagr_pct": 27.913172564429,
+          "mdd_pct": 2.167898420324732,
+          "calmar": 12.875682874591446,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 373,
+          "fees_pct_initial": 0.43705211395319704,
+          "funding_pct_initial": 0.016572933018801087,
+          "turnover": 7.1675191036291785,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 4.722415821676651,
+          "cagr_pct": 69.32997490428204,
+          "mdd_pct": 3.9751952586103756,
+          "calmar": 17.440646407019006,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 371,
+          "fees_pct_initial": 0.7607858090743107,
+          "funding_pct_initial": 0.027543046918170645,
+          "turnover": 12.309543843250351,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -0.333324868939211,
+          "cagr_pct": -3.7392430324855397,
+          "mdd_pct": 1.1568476144442452,
+          "calmar": -3.232269303059322,
+          "entry_episodes": 1,
+          "orders_including_liquidation": 2,
+          "fees_pct_initial": 0.119875805954509,
+          "funding_pct_initial": 0.006458987166368736,
+          "turnover": 2.0006664121694975,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 3.666269941085565,
+          "cagr_pct": 50.82977598607024,
+          "mdd_pct": 1.5652327555641499,
+          "calmar": 32.474260333090136,
+          "entry_episodes": 2,
+          "orders_including_liquidation": 74,
+          "fees_pct_initial": 0.13470332278947686,
+          "funding_pct_initial": 0.033258987106811605,
+          "turnover": 2.1912406008476903,
+          "net_cap_events": 0
+        }
+      },
+      "0.001": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": 3.2774645656632018,
+          "cagr_pct": 44.49753006665325,
+          "mdd_pct": 3.327810433507916,
+          "calmar": 13.371413713535194,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 373,
+          "fees_pct_initial": 1.04875742042596,
+          "funding_pct_initial": 0.022973139343353502,
+          "turnover": 10.255934257103563,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": 2.350135731509062,
+          "cagr_pct": 30.361662368684495,
+          "mdd_pct": 2.605533317597275,
+          "calmar": 11.652763049939765,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 373,
+          "fees_pct_initial": 0.8341392571832793,
+          "funding_pct_initial": 0.018649387991394064,
+          "turnover": 8.198058160854814,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": 1.8876092943905798,
+          "cagr_pct": 23.793501669071038,
+          "mdd_pct": 2.242809405172652,
+          "calmar": 10.60879342408474,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 373,
+          "fees_pct_initial": 0.7274349465233888,
+          "funding_pct_initial": 0.016536908477402693,
+          "turnover": 7.167701785274907,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": 4.207737728789707,
+          "cagr_pct": 60.0705182942725,
+          "mdd_pct": 4.045875579979985,
+          "calmar": 14.847346910892815,
+          "entry_episodes": 13,
+          "orders_including_liquidation": 371,
+          "fees_pct_initial": 1.2650391494250184,
+          "funding_pct_initial": 0.027430212653278302,
+          "turnover": 12.310349091876304,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -0.4132420729088704,
+          "cagr_pct": -4.616581814838582,
+          "mdd_pct": 1.157309228492509,
+          "calmar": -3.989065066777409,
+          "entry_episodes": 1,
+          "orders_including_liquidation": 2,
+          "fees_pct_initial": 0.19979300992418172,
+          "funding_pct_initial": 0.006458987166368736,
+          "turnover": 2.0010679373111593,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 3.5754746660337844,
+          "cagr_pct": 49.32880111672444,
+          "mdd_pct": 1.5656289887385322,
+          "calmar": 31.507337607787868,
+          "entry_episodes": 2,
+          "orders_including_liquidation": 74,
+          "fees_pct_initial": 0.22443056850701198,
+          "funding_pct_initial": 0.033244308645725515,
+          "turnover": 2.191275303475536,
+          "net_cap_events": 0
+        }
+      }
+    },
+    "september_only": {
+      "0.0": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.8544751514666502,
+          "cagr_pct": -81.90014076801071,
+          "mdd_pct": 3.147013215739991,
+          "calmar": -26.024720950767488,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 76,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": -0.014415047941504925,
+          "turnover": 2.4711502046064386,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.4449519404108435,
+          "cagr_pct": -73.5270592681354,
+          "mdd_pct": 2.4204389580641417,
+          "calmar": -30.37757222637917,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 76,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": -0.009218162431903563,
+          "turnover": 2.348936240556049,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.2400056308128238,
+          "cagr_pct": -67.99758730066573,
+          "mdd_pct": 2.0717954820080764,
+          "calmar": -32.82060796597521,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 76,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": -0.006614315211145231,
+          "turnover": 2.288941056080922,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -2.263502166671072,
+          "cagr_pct": -87.63884405545767,
+          "mdd_pct": 3.8690831926541214,
+          "calmar": -22.65106220043281,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 74,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": -0.01959752553315012,
+          "turnover": 2.5963320759376667,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -0.21344906298467192,
+          "cagr_pct": -17.725912681636867,
+          "mdd_pct": 1.1561558834211394,
+          "calmar": -15.331767053059277,
+          "entry_episodes": 1,
+          "orders_including_liquidation": 2,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.006458987166368736,
+          "turnover": 2.0000647280330437,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "mdd_pct": 0.0,
+          "calmar": 0.0,
+          "entry_episodes": 0,
+          "orders_including_liquidation": 0,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.0,
+          "turnover": 0.0,
+          "net_cap_events": 0
+        }
+      },
+      "0.0006": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.999904227435878,
+          "cagr_pct": -84.19225972217023,
+          "mdd_pct": 3.2555286845399434,
+          "calmar": -25.86131712553714,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 76,
+          "fees_pct_initial": 0.14730663718947953,
+          "funding_pct_initial": -0.014410239758830986,
+          "turnover": 2.4711131171662672,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.5837915069748854,
+          "cagr_pct": -76.72462821411325,
+          "mdd_pct": 2.531529392448195,
+          "calmar": -30.307618960692487,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 76,
+          "fees_pct_initial": 0.14001462987813923,
+          "funding_pct_initial": -0.009217142916003574,
+          "turnover": 2.3489975227040225,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.3756001087315894,
+          "cagr_pct": -71.77082945251874,
+          "mdd_pct": 2.167898420324732,
+          "calmar": -33.10617729117036,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 76,
+          "fees_pct_initial": 0.1364771015422947,
+          "funding_pct_initial": -0.006614543022957092,
+          "turnover": 2.2890668476478804,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -2.415651515200834,
+          "cagr_pct": -89.27798296431942,
+          "mdd_pct": 3.9751952586101424,
+          "calmar": -22.45876671616224,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 74,
+          "fees_pct_initial": 0.15488764273699068,
+          "funding_pct_initial": -0.01958720251520209,
+          "turnover": 2.5962374716754084,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -0.333324868939211,
+          "cagr_pct": -26.278497108238486,
+          "mdd_pct": 1.1568476144442452,
+          "calmar": -22.715608158005143,
+          "entry_episodes": 1,
+          "orders_including_liquidation": 2,
+          "fees_pct_initial": 0.119875805954509,
+          "funding_pct_initial": 0.006458987166368736,
+          "turnover": 2.0006664121694975,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "mdd_pct": 0.0,
+          "calmar": 0.0,
+          "entry_episodes": 0,
+          "orders_including_liquidation": 0,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.0,
+          "turnover": 0.0,
+          "net_cap_events": 0
+        }
+      },
+      "0.001": {
+        "june_selected_80_20": {
+          "weights": {
+            "macro_flow": 0.8,
+            "oi_pullback": 0.2,
+            "regional_trend": 0.0
+          },
+          "return_pct": -2.0967519430514114,
+          "cagr_pct": -85.55690661618424,
+          "mdd_pct": 3.327810433507561,
+          "calmar": -25.709669563721516,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 76,
+          "fees_pct_initial": 0.24540526778208102,
+          "funding_pct_initial": -0.014407033565463797,
+          "turnover": 2.4710883024515327,
+          "net_cap_events": 0
+        },
+        "retrospective_60_40": {
+          "weights": {
+            "macro_flow": 0.6,
+            "oi_pullback": 0.4,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.676261665729828,
+          "cagr_pct": -78.6391495664641,
+          "mdd_pct": 2.6055333175973527,
+          "calmar": -30.181594315201398,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 76,
+          "fees_pct_initial": 0.2332677454003109,
+          "funding_pct_initial": -0.009216462115944069,
+          "turnover": 2.34903834992927,
+          "net_cap_events": 0
+        },
+        "fixed_50_50": {
+          "weights": {
+            "macro_flow": 0.5,
+            "oi_pullback": 0.5,
+            "regional_trend": 0.0
+          },
+          "return_pct": -1.4659172523257546,
+          "cagr_pct": -74.03637776435066,
+          "mdd_pct": 2.2428094051725633,
+          "calmar": -33.01055256572471,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 76,
+          "fees_pct_initial": 0.2273823791899411,
+          "funding_pct_initial": -0.006614693873088041,
+          "turnover": 2.289150721547404,
+          "net_cap_events": 0
+        },
+        "macro_only": {
+          "weights": {
+            "macro_flow": 1.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -2.516970909677907,
+          "cagr_pct": -90.24829100323095,
+          "mdd_pct": 4.045875579980085,
+          "calmar": -22.306244771786872,
+          "entry_episodes": 3,
+          "orders_including_liquidation": 74,
+          "fees_pct_initial": 0.25803125062792936,
+          "funding_pct_initial": -0.019580321325394615,
+          "turnover": 2.5961742595286132,
+          "net_cap_events": 0
+        },
+        "oi_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 1.0,
+            "regional_trend": 0.0
+          },
+          "return_pct": -0.4132420729088704,
+          "cagr_pct": -31.48541130262583,
+          "mdd_pct": 1.157309228492509,
+          "calmar": -27.205703132289184,
+          "entry_episodes": 1,
+          "orders_including_liquidation": 2,
+          "fees_pct_initial": 0.19979300992418172,
+          "funding_pct_initial": 0.006458987166368736,
+          "turnover": 2.0010679373111593,
+          "net_cap_events": 0
+        },
+        "regional_only": {
+          "weights": {
+            "macro_flow": 0.0,
+            "oi_pullback": 0.0,
+            "regional_trend": 1.0
+          },
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "mdd_pct": 0.0,
+          "calmar": 0.0,
+          "entry_episodes": 0,
+          "orders_including_liquidation": 0,
+          "fees_pct_initial": 0.0,
+          "funding_pct_initial": 0.0,
+          "turnover": 0.0,
+          "net_cap_events": 0
+        }
+      }
+    }
+  },
+  "live_enabled": false,
+  "notes": [
+    "September only covers Sep1-Sep5 00:00UTC, not the whole month.",
+    "Independent window resets initialize known positions from cash; not chained returns.",
+    "OI archive has five-minute publication proxy delay; not live-arrival parity.",
+    "Long/short net cap overrides sleeve holds only at active execution events."
+  ]
+}

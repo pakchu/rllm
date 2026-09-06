@@ -1,0 +1,161 @@
+{
+  "protocol_version": "high_volatility_basis_regime_transition_relay_v1",
+  "policy_id": "HVBSRT-8",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A completed hourly Binance perpetual-versus-spot basis residual crossing its causal seven-day center identifies a change in which venue is paying for immediacy. During elevated BTC variation, an unusually large crossing should relay in the new leveraged-demand direction for eight hours.",
+    "side": "strict sign of the new hourly mean log-basis residual",
+    "external_basis": {
+      "perpetual_mechanics": "He, Manela, Ross and von Wachter, Fundamentals of Perpetual Futures (arXiv:2212.06888)",
+      "claim_used": "funding and arbitrage tether perpetuals to spot while demand shocks create basis deviations",
+      "adaptation": "causal hourly basis-center crossing and BTC high-variation gate are transparent unfitted implementation choices"
+    },
+    "why_distinct": "HVCBR ranks the final-two-hour basis change at three daily boundaries and trades convergence. HVCBFC ranks lagged spot-return to next-basis-change correlation and follows the eight-hour spot return. Premium candidates use the exchange premium-index candle. HVBSRT uses the sign transition of the directly aligned one-hour mean cash-perpetual price basis relative to its own strictly prior seven-day median, with no endpoint basis change, lead correlation, premium-index input, prior event set or promoted control.",
+    "why_suited_to_volatile_regimes": "completed prior-24h BTC variation must occupy its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "fresh endogenous cash-perpetual basis regime transitions with eight-hour reservation are absent from Gross9"
+  },
+  "features": {
+    "decision_grid": "every exact UTC hour H",
+    "aligned_hour": "60 exact timestamp-aligned coherent BTCUSDT bars_binance and bars_binance_spot one-minute rows [H-1h,H)",
+    "minute_log_basis": "log(perpetual close/spot close), finite",
+    "hourly_basis": "arithmetic mean of 60 minute log bases, finite strict nonzero",
+    "causal_center": "median hourly basis over the 168 exact source-valid hours ending strictly before [H-1h,H); minimum 144; current hour excluded",
+    "basis_residual": "hourly_basis minus causal center, finite strict nonzero",
+    "transition": "current residual sign differs from immediately previous consecutive source-valid hourly residual sign; missing previous rejects",
+    "residual_magnitude_rank": "strict-prior midrank of absolute residual over at most 2160 earlier source-valid hours, minimum 1440, current excluded; rank>=0.75",
+    "btc_variation": "sqrt(sum squared exact perpetual one-minute open-to-close log returns over [H-24h,H)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 2160 earlier source-valid hours, minimum 1440, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "H after all completed source rows",
+    "entry": "exact BTCUSDT perpetual H+5m open",
+    "side": "new basis-residual sign",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty",
+    "rv20": "q90 only after unchanged all-stage pass"
+  },
+  "policy": {
+    "center_hours": 168,
+    "minimum_center_hours": 144,
+    "history_hours": 2160,
+    "minimum_history_hours": 1440,
+    "residual_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable-then-adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_residual_tail",
+      "no_variation_gate",
+      "raw_basis_zero_cross",
+      "one_hour_stale_transition",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "tables": [
+      "bars_binance",
+      "bars_binance_spot"
+    ],
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "perpetual_basis_mechanics_read": true,
+    "repository_exact_causal_basis_center_transition_found": false,
+    "prior_cash_basis_family_outcomes_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent basis-regime transition mechanism"
+  },
+  "stopping_rule": "terminal first failure; no source, center, transition, history, rank, variation, side, delay, hold, clock, subset, threshold, comparator, or control repair",
+  "manifest_hash": "bc3dc04a988c8099ed01bbd5298039155a02295f688dba2c5ba14a812d2c17b4"
+}

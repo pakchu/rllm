@@ -1,0 +1,33 @@
+{
+  "protocol_version": "hvappr_24_sources_v1",
+  "airnow_url_template": "https://files.airnowtech.org/airnow/{year}/{yyyymmdd}/HourlyData_{yyyymmddhh}.dat",
+  "airnow_window": [
+    "2023-04-30T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "relative_byte_range": [
+    0.48,
+    0.68
+  ],
+  "btc_query": "SELECT\n  date_trunc('day', ts - interval '1 hour') + interval '1 day 1 hour' AS decision_time,\n  count(*) AS source_rows,\n  count(DISTINCT ts) AS distinct_timestamps,\n  min(ts) AS first_ts,\n  max(ts) AS last_ts,\n  bool_and(open > 0 AND close > 0) AS positive_prices,\n  sqrt(sum(power(ln(close / open), 2))) AS realized_variation\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1",
+  "builder": {
+    "path": "training/build_high_volatility_air_pollution_penalty_rotation_relay_support.py",
+    "sha256": "39974432516ba5fe134e241bde4f49a9a22050248ab924ece752cb34841b807c"
+  },
+  "outputs": {
+    "aqi": {
+      "path": "data/high_volatility_air_pollution_penalty_rotation_relay_sources_2023_2026/nyc_pm25_daily_aqi.csv.gz",
+      "sha256": "0102875090adb5ad6b7f0d0ada6dc161625584b874ae6d5034f7831bb26de262",
+      "rows": 1189,
+      "missing_days": 15
+    },
+    "features": {
+      "path": "data/high_volatility_air_pollution_penalty_rotation_relay_sources_2023_2026/daily_preentry_states.csv.gz",
+      "sha256": "c1ee1718706f5aba9390fef1fd2a72e4845cc3436526b983c8ab9489ff8fd55f",
+      "rows": 1189
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "197bfe18267bac7099052d2ed56a4450506a31358a02d49914caee0d877ecef1"
+}

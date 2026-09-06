@@ -1,0 +1,111 @@
+{
+  "protocol_version": "high_volatility_peak_candle_range_relay_v1",
+  "policy_id": "HVPHR-24",
+  "as_of_date": "2026-08-09",
+  "oos_outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In a high-volatility state, the full range of the particular five-minute candle that established the trailing six-hour high measures whether price discovery at the peak was forceful or fragile. An upper-tail peak-candle range relays long, while a lower-tail range relays short for twenty-four hours.",
+    "side": "upper calibrated peak-candle-range tail long; lower tail short",
+    "why_distinct": "HVPHR attributes the rolling high to one causal candle and uses that candle's full range relative to current close. It is not a Donchian reclaim, current wick, range position, realized-variance allocation, model output, flow, OI, funding, calendar, terminal candidate repair, or diagnostic-control promotion.",
+    "why_low_gross9_overlap_is_plausible": "tail onsets depend on the identity and geometry of an endogenous peak-setting candle"
+  },
+  "causal_features": {
+    "decision": "each completed xx:55 UTC 5m bar",
+    "lookback": "72 completed five-minute bars including the decision bar",
+    "peak_row": "last row attaining the maximum high in the lookback; deterministic last occurrence tie break",
+    "peak_candle_range": "(high[peak_row]-low[peak_row])/close[decision]",
+    "range_vol": "(maximum high-minimum low)/midpoint over 144 completed five-minute bars including the decision bar",
+    "calibration": "2023H1 source-only q15/q85 of peak_candle_range and q60 of range_vol across complete hourly anchors; no calibration labels or post-entry prices",
+    "eligibility": "range_vol>=q60 and peak_candle_range<=q15 or >=q85; first row of a consecutive same-tail run only",
+    "missing": "inactive; no interpolation or forward fill",
+    "grid": false
+  },
+  "oos_clock": {
+    "domain_start": "2023-07-01T00:00:00Z",
+    "entry": "next exact-hour 5m open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "first_peak_tie_break",
+      "current_candle_range",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "source_plan": {
+    "historical": "hash-bound 5m market through 2026-06-01",
+    "live_extension": "read-only Postgres completed bars through 2026-08-01",
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "source_bindings": {
+    "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+  },
+  "research_boundary": {
+    "prior_univariate_peak_candle_forward_spread_diagnostics_known": true,
+    "prior_diagnostics_are_not_a_strict_strategy_replay": true,
+    "exact_hvphr_policy_clock_and_strict_economics_known": false,
+    "oos_candidate_incidence_opened": false,
+    "oos_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "freeze singleton and calibration contract, then open source incidence, Gross9 novelty, and stage outcomes sequentially; terminal first failure without tail, tie-break, side, volatility, or hold repair",
+  "manifest_hash": "f3b66dcef52b042d2cd777025429e3cff4dd9809b91720b58141cc173149c6df"
+}

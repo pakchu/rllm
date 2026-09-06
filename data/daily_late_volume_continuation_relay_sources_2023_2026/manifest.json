@@ -1,0 +1,21 @@
+{
+  "protocol_version": "dlvcr_12_daily_btc_source_v1",
+  "query": "WITH x AS (SELECT ts,open,high,low,close,quote_asset_volume,date_trunc('day',ts) AS source_day,lag(close) OVER (PARTITION BY date_trunc('day',ts) ORDER BY ts) AS prior_close FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end) SELECT source_day,(array_agg(open ORDER BY ts))[1] AS daily_open,(array_agg(open ORDER BY ts) FILTER (WHERE ts>=source_day+interval '18 hours'))[1] AS late_open,(array_agg(close ORDER BY ts DESC))[1] AS daily_close,sum(quote_asset_volume) AS daily_quote_volume,sum(quote_asset_volume) FILTER (WHERE ts>=source_day+interval '18 hours') AS late_quote_volume,sum(power(ln(close/prior_close),2)) FILTER (WHERE prior_close IS NOT NULL) AS realized_variation,count(*) AS source_rows,count(DISTINCT ts) AS distinct_timestamps,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close) AND low<=least(open,close) AND high>=low AND quote_asset_volume>=0) AS coherent FROM x GROUP BY source_day ORDER BY source_day",
+  "table": "bars_binance",
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/daily_late_volume_continuation_relay_sources_2023_2026/btc_daily_auction.csv.gz",
+    "sha256": "ba5492922c984d9dd7de3912cd272335d92bd48faa0245feb0dc6d55b3c0309d",
+    "rows": 1308,
+    "valid_rows": 1308
+  },
+  "manifest_hash": "7cf49d6463bd631ccbb732ee2e4b8d0bd60c7fe6c9930234a52aedced464e6a1"
+}

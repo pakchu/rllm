@@ -1,0 +1,162 @@
+{
+  "protocol_version": "high_volatility_cross_alt_directional_coherence_relay_v1",
+  "policy_id": "HVCADCR-8",
+  "slug": "high_volatility_cross_alt_directional_coherence_relay",
+  "as_of_date": "2026-08-12",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "When six liquid alt perpetuals convert an unusually large share of their total absolute completed returns into one common cross-sectional displacement, crypto risk is repricing coherently rather than through isolated winners and losers. During elevated BTC variation, propagate the direction of the aggregate alt displacement into BTC for eight elapsed hours at a fresh upper-tail coherence state.",
+    "side": "strict sign of the sum of six completed alt returns; BTC return direction is never an input",
+    "why_distinct": "Cross-alt breadth counts signs and discards magnitudes; return dispersion measures spread and discards aggregate direction; tail asymmetry uses median-centered cubes; market-mode candidates estimate time-series return correlations; variation compression compares per-symbol path energy. HVCADCR uses the scale-free L1 directional efficiency of the current six-return cross-section, no fitted outcome, prior event set, control, volume, flow, OI, funding or premium.",
+    "why_suited_to_volatile_regimes": "BTC completed trailing twenty-four-hour realized variation must occupy its causal upper 35% while alt directional coherence enters its upper 15%",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily cross-sectional directional-efficiency onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 03:00, 11:00 and 19:00 UTC boundaries D",
+    "source_block": "480 exact coherent bars_binance one-minute rows [D-8h,D) for each of six alts and BTC",
+    "alt_return": "log(last completed close/first completed open), independently finite and strict nonzero",
+    "aggregate_alt_return": "sum of six alt returns, finite strict nonzero",
+    "gross_cross_sectional_displacement": "sum of absolute six alt returns, finite strict positive",
+    "directional_coherence": "abs(aggregate_alt_return)/gross_cross_sectional_displacement, finite in (0,1]",
+    "coherence_rank": "strict-prior midrank over at most 270 earlier jointly source-valid decisions, minimum 180, current excluded; rank>=0.85",
+    "btc_realized_variation": "sqrt(sum squared exact BTC one-minute open-to-close log returns over [D-24h,D)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "eligible_state": "coherence and variation ranks pass",
+    "onset": "eligible now and immediately preceding exact source-valid boundary ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after all seven completed paths are available",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "sign(aggregate_alt_return)",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes",
+    "rv20": "q90 audit only after unchanged all-stage pass"
+  },
+  "policy": {
+    "block_minutes": 480,
+    "history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "coherence_rank_min": 0.85,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval and final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_coherence_gate",
+      "no_variation_gate",
+      "sign_breadth_instead_of_l1_coherence",
+      "one_block_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "symbols": [
+      "BTCUSDT",
+      "ADAUSDT",
+      "BNBUSDT",
+      "DOGEUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "symbol",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_cross_alt_breadth_dispersion_tail_market_mode_and_variation_outcomes_known": true,
+    "repository_cross_alt_l1_directional_coherence_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent scale-free directional efficiency of the current alt return cross-section"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, train/test/eval/final strict economics, then RV20 q90 audit; no universe, block, functional, history, rank, variation, side, hold, clock, subset, threshold, source, or control repair",
+  "manifest_hash": "221caa469ab758e8b824c67c3a4bf0aa606c83935b6f99aee6658d89c8e10fc4"
+}

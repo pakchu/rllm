@@ -1,0 +1,136 @@
+{
+  "protocol_version": "daily_range_close_momentum_relay_v1",
+  "policy_id": "DRCMR-12",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A completed UTC BTC day whose high-low log range is unusually large and whose close finishes in an extreme end of that range with an agreeing body represents directional price discovery rather than unresolved two-sided volatility. That auction direction should relay for twelve hours.",
+    "side": "long when close location is at least 0.80 and close>open; short when close location is at most 0.20 and close<open",
+    "why_distinct": "DRCMR uses one completed UTC daily auction's range and close location. HVDPR used dual implied-volatility levels plus fixed eight-hour return halves and path efficiency; HVTPR used a three-hour trend and separate one-hour pullback. DRCMR does not reuse either event set or control.",
+    "why_suited_to_volatile_regimes": "completed daily log range must be in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "one 00:05 UTC daily decisive-close clock is absent from Gross9"
+  },
+  "features": {
+    "daily_bar": "1440 exact BTCUSDT bars_binance interval=1m rows in completed UTC day",
+    "daily_source_valid": "1440 distinct minute timestamps from 00:00 through 23:59, finite positive coherent OHLC; no imputation",
+    "log_range": "log(daily_high/daily_low), strictly positive",
+    "range_rank": "strict-prior midrank against at most 90 valid days, minimum 60, current excluded; rank>=0.65",
+    "close_location": "(daily_close-daily_low)/(daily_high-daily_low)",
+    "decisive_close": "close_location>=0.80 with close>open or close_location<=0.20 with close<open",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact D 00:00 UTC after prior UTC day is complete",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "decisive completed-day close-location direction",
+    "hold": "12 elapsed hours",
+    "reservation": "fixed daily decisions; global half-open, exit first on equal open",
+    "funding_oi_premium_implied_vol": "not signal inputs; exact funding only for later PnL"
+  },
+  "policy": {
+    "prior_days": 90,
+    "prior_min_days": 60,
+    "daily_range_rank_min": 0.65,
+    "upper_close_location_min": 0.8,
+    "lower_close_location_max": 0.2,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "daily_btc": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "materialize_after_preregistration": true
+    },
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_range_gate",
+      "no_close_location_gate",
+      "one_day_stale_geometry",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_price_geometry_candidate_incidence_known": true,
+    "prior_price_geometry_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_drcmr_direction_threshold_hold_or_clock": false,
+    "drcmr_candidate_incidence_opened": false,
+    "drcmr_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent completed-daily-auction price-discovery mechanism"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no threshold, side, hold, clock, range, or subset repair.",
+  "manifest_hash": "1e83070346be60e5378137c4dd6505da1933a3aefbb62ee6dfe54b494b9a96dd"
+}

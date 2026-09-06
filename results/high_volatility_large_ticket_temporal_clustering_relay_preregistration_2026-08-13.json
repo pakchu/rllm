@@ -1,0 +1,160 @@
+{
+  "protocol_version": "high_volatility_large_ticket_temporal_clustering_relay_v1",
+  "policy_id": "HVLTTC-8",
+  "slug": "high_volatility_large_ticket_temporal_clustering_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "When quote turnover is much more temporally concentrated than execution count inside a completed volatile BTC block, a few minutes contain unusually large tickets rather than merely many prints. If the full block and final hour agree, follow that sponsored direction for eight hours at the fresh clustering onset.",
+    "side": "common strict sign of completed six-hour and final-hour returns",
+    "why_distinct": "Unsigned turnover HHI does not remove the timing concentration of execution counts; ticket elasticity estimates a contemporaneous log slope; directional ticket candidates partition minutes by return sign. HVLTTC subtracts the execution-count share HHI from the quote-turnover share HHI across the same 360 minutes, uses no sign partition, fitted outcome, cross-asset input, prior event set, or promoted control, and triggers on an hourly onset rather than a fixed three-daily block.",
+    "why_suited_to_volatile_regimes": "completed BTC path variation must occupy its causal upper 35 percent while large-ticket temporal clustering occupies its upper 20 percent",
+    "why_low_gross9_overlap_is_plausible": "hourly false-to-true large-ticket clustering onsets are not Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact UTC hour D",
+    "block": "360 exact unique coherent bars_binance BTCUSDT interval=1m rows [D-6h,D)",
+    "minute_quote_turnover": "finite nonnegative quote_asset_volume; block total strict positive",
+    "minute_execution_count": "finite strictly positive integer number_of_trades; block total strict positive",
+    "turnover_hhi": "sum squared minute quote-turnover shares across 360 minutes",
+    "execution_hhi": "sum squared minute execution-count shares across 360 minutes",
+    "large_ticket_clustering": "turnover_hhi minus execution_hhi, finite and strict positive",
+    "clustering_rank": "strict-prior midrank over at most 2160 earlier source-valid hourly decisions, minimum 1440, current excluded; rank>=0.80",
+    "minute_return": "log(close/open), finite",
+    "realized_variation": "sqrt(sum squared 360 minute returns), finite strict positive",
+    "variation_rank": "strict-prior midrank over the same 2160/1440 source-valid history, current excluded; rank>=0.65",
+    "block_return": "log(last close/first open), finite strict nonzero",
+    "final_hour_return": "log(last close/open at D-1h), finite strict nonzero",
+    "direction_confirmation": "block and final-hour returns have one strict sign",
+    "eligible_state": "both rank gates and direction confirmation pass",
+    "onset": "eligible now and immediately preceding exact source-valid hourly decision ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after the completed six-hour source path",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "common completed-return sign",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "window_minutes": 360,
+    "history_hours": 2160,
+    "minimum_history_hours": 1440,
+    "clustering_rank_min": 0.8,
+    "variation_rank_min": 0.65,
+    "onset_required": true,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_clustering_tail",
+      "no_variation_gate",
+      "turnover_hhi_only",
+      "one_hour_stale_clustering",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close",
+      "quote_asset_volume",
+      "number_of_trades"
+    ],
+    "window": [
+      "2023-04-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration_commit": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_ticket_turnover_concentration_and_elasticity_results_known": true,
+    "repository_exact_turnover_minus_execution_hhi_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_results_used_to_set_formula_ranks_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent large-ticket temporal clustering mechanism"
+  },
+  "stopping_rule": "terminal first failure; no source, window, HHI formula, rank, direction, onset, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "170963a8511b0027cfd1c423d0809746636cc17503d9c288fc71785bf6e0b51d"
+}

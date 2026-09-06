@@ -1,0 +1,390 @@
+{
+  "protocol_version": "rllm_alpha_formula_gate_training_v1",
+  "as_of": "2026-08-19",
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "adapter_dir": "checkpoints/rllm_alpha_formula_gate_qwen25_1p5b_lora_s128_2026-08-19",
+  "dataset": {
+    "results_dir": "results",
+    "preregistrations": 637,
+    "rows": 1388,
+    "train_rows": 1164,
+    "eval_rows": 224,
+    "train_groups": 523,
+    "eval_groups": 101,
+    "group_overlap": [],
+    "targets": {
+      "TRADE": 766,
+      "NO_TRADE": 622
+    },
+    "stages": {
+      "source": 624,
+      "gross9": 398,
+      "train": 348,
+      "test": 18
+    },
+    "tasks": {
+      "alpha_formula_gate_source": 624,
+      "alpha_formula_gate_gross9": 398,
+      "alpha_formula_gate_train": 348,
+      "alpha_formula_gate_test": 18
+    },
+    "skipped": {
+      "missing_eval": 18,
+      "missing_gross9": 221,
+      "missing_source": 13,
+      "missing_test": 330,
+      "missing_train": 50,
+      "sealed_after_failure_gross9": 5
+    },
+    "eval_percent": 15,
+    "leakage_guard": {
+      "group_overlap_zero": true,
+      "future_stage_evidence_in_prompt": false,
+      "terminal_first_failure_order_enforced": true
+    },
+    "sha256": {
+      "train": "09fdd923870c9f5c9e3ed34dffb49c2bd32691e35b51d8cbbb6067c7b20be841",
+      "eval": "79465a4832227dc590b9b750a512dec6ed859441fe018de7ac089c857cff14a6"
+    }
+  },
+  "training": {
+    "max_steps": 128,
+    "effective_examples": 1024,
+    "train_runtime_seconds": 295.9,
+    "train_loss": 0.1207,
+    "epoch": 1.0,
+    "completion_only_loss": true,
+    "label_leak_removed": true,
+    "prompt_uses_raw_metrics_not_pass_flags": true
+  },
+  "heldout": {
+    "samples": 224,
+    "accuracy": 0.8303571428571429,
+    "majority_baseline": 0.5491071428571429,
+    "trade_precision": 0.8148148148148148,
+    "trade_recall": 0.8943089430894309,
+    "per_stage": {
+      "gross9": {
+        "TRADE->TRADE": 56,
+        "NO_TRADE->TRADE": 7
+      },
+      "source": {
+        "NO_TRADE->NO_TRADE": 20,
+        "TRADE->TRADE": 54,
+        "NO_TRADE->TRADE": 18,
+        "TRADE->NO_TRADE": 9
+      },
+      "test": {
+        "NO_TRADE->NO_TRADE": 4
+      },
+      "train": {
+        "NO_TRADE->NO_TRADE": 52,
+        "TRADE->NO_TRADE": 4
+      }
+    },
+    "errors": [
+      {
+        "policy_id": "HVAVDCR-6",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_alt_variation_dispersion_compression_relay_support_2026-08-10.json"
+      },
+      {
+        "policy_id": "HVAO-24",
+        "stage": "source",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_awesome_oscillator_zero_cross_relay_support_2026-08-11.json"
+      },
+      {
+        "policy_id": "HVBFRRCR-8",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_btc_factor_residual_recentering_reversal_support_2026-08-18.json"
+      },
+      {
+        "policy_id": "HVCLES-8",
+        "stage": "gross9",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_cash_led_excursion_sponsorship_relay_gross9_novelty_2026-08-13.json"
+      },
+      {
+        "policy_id": "HVCELVFD-8",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_caspc_ehlers_funding_disagreement_support_2026-08-16.json"
+      },
+      {
+        "policy_id": "HVCATEIR-8",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_causal_average_ticket_efficiency_inventory_relay_support_2026-08-16.json"
+      },
+      {
+        "policy_id": "HVCFIR-8",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_causal_funding_impulse_relay_support_2026-08-16.json"
+      },
+      {
+        "policy_id": "HVCMF-24",
+        "stage": "source",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_chaikin_money_flow_zero_cross_relay_support_2026-08-11.json"
+      },
+      {
+        "policy_id": "HVCREDIT-24",
+        "stage": "gross9",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_credit_risk_appetite_relay_gross9_novelty_2026-08-11.json"
+      },
+      {
+        "policy_id": "HVCAFPT-8",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_cross_alt_flow_price_transmission_relay_support_2026-08-13.json"
+      },
+      {
+        "policy_id": "HVCASFR-8",
+        "stage": "gross9",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_cross_alt_synchronized_flip_relay_gross9_novelty_2026-08-12.json"
+      },
+      {
+        "policy_id": "HVCELSR-24",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_crypto_equity_leadership_spread_relay_support_2026-08-13.json"
+      },
+      {
+        "policy_id": "HVDIMIO-8",
+        "stage": "train",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_dcs_imi_active_override_train_economics_2026-08-16.json"
+      },
+      {
+        "policy_id": "HVDEMOICR-24",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_demarker_oi_contraction_reentry_relay_support_2026-08-16.json"
+      },
+      {
+        "policy_id": "HVDCSATQA-8",
+        "stage": "source",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_directional_change_scarcity_ticket_quote_acceleration_relay_support_2026-08-16.json"
+      },
+      {
+        "policy_id": "HVDCSATQA-8",
+        "stage": "train",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_directional_change_scarcity_ticket_quote_acceleration_relay_train_economics_2026-08-16.json"
+      },
+      {
+        "policy_id": "HVECC-24",
+        "stage": "source",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_ehlers_cyber_cycle_trigger_crossover_relay_support_2026-08-11.json"
+      },
+      {
+        "policy_id": "HVELRSIPSC-24",
+        "stage": "train",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_ehlers_laguerre_rsi_premium_sponsorship_reentry_relay_train_economics_2026-08-16.json"
+      },
+      {
+        "policy_id": "HVFAER-8",
+        "stage": "source",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_failed_auction_escape_reversal_relay_support_2026-08-11.json"
+      },
+      {
+        "policy_id": "HVFMI-8",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_flow_mutual_information_relay_support_2026-08-10.json"
+      },
+      {
+        "policy_id": "HVFADR-8",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_funding_acceleration_divergence_relay_support_2026-08-13.json"
+      },
+      {
+        "policy_id": "HVMVRV-24",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_mvrv_valuation_dislocation_relay_support_2026-08-13.json"
+      },
+      {
+        "policy_id": "HVOIPSCR-8",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_oi_price_sign_concordance_relay_support_2026-08-12.json"
+      },
+      {
+        "policy_id": "HVPFOICR-8",
+        "stage": "gross9",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_price_flow_open_interest_concordance_router_gross9_novelty_2026-08-16.json"
+      },
+      {
+        "policy_id": "HVRTR-12",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_range_traversal_relay_support_2026-08-09.json"
+      },
+      {
+        "policy_id": "HVRDBR-6",
+        "stage": "gross9",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_record_discovery_breadth_relay_gross9_novelty_2026-08-09.json"
+      },
+      {
+        "policy_id": "HVRC-B20-2-24",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_regression_channel_breakout_relay_support_2026-08-11.json"
+      },
+      {
+        "policy_id": "HVRBR-12",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_renewal_breakout_relay_support_2026-08-09.json"
+      },
+      {
+        "policy_id": "HVRVSC-8",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_return_volume_spectral_coherence_relay_support_2026-08-13.json"
+      },
+      {
+        "policy_id": "HVRNRR-6",
+        "stage": "gross9",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_round_number_rejection_reversal_gross9_novelty_2026-08-10.json"
+      },
+      {
+        "policy_id": "HVSIR-6",
+        "stage": "gross9",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_semivariance_imbalance_reversal_gross9_novelty_2026-08-09.json"
+      },
+      {
+        "policy_id": "HVSMAM-24",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_sha256_miner_allocation_migration_relay_support_2026-08-10.json"
+      },
+      {
+        "policy_id": "HVSAUDAR-8",
+        "stage": "source",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_spot_underwater_autocorrelation_router_support_2026-08-18.json"
+      },
+      {
+        "policy_id": "HVSOF-8",
+        "stage": "source",
+        "target": "NO_TRADE",
+        "prediction": "TRADE",
+        "artifact": "results/high_volatility_state_ordered_filter_support_2026-08-14.json"
+      },
+      {
+        "policy_id": "HVTIFP-8",
+        "stage": "source",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_taker_imbalance_flow_persistence_support_2026-08-13.json"
+      },
+      {
+        "policy_id": "HVVAR-8",
+        "stage": "source",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_value_area_rejection_relay_support_2026-08-13.json"
+      },
+      {
+        "policy_id": "HVWMR-72",
+        "stage": "source",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_weekly_momentum_relay_support_2026-08-09.json"
+      },
+      {
+        "policy_id": "HVWMR-72",
+        "stage": "train",
+        "target": "TRADE",
+        "prediction": "NO_TRADE",
+        "artifact": "results/high_volatility_weekly_momentum_relay_train_economics_2026-08-09.json"
+      }
+    ]
+  },
+  "generation32": {
+    "num_samples": 32,
+    "accuracy": 0.78125,
+    "confusion": {
+      "target=NO_TRADE|pred=NO_TRADE": 12,
+      "target=NO_TRADE|pred=TRADE": 4,
+      "target=TRADE|pred=NO_TRADE": 3,
+      "target=TRADE|pred=TRADE": 13
+    }
+  },
+  "artifacts": {
+    "checkpoints/rllm_alpha_formula_gate_qwen25_1p5b_lora_s128_2026-08-19/README.md": {
+      "bytes": 1572,
+      "sha256": "9623f3fc47b1e08846928966911e74ce6eff2f2befa83c7fd6b36967c213c624"
+    },
+    "checkpoints/rllm_alpha_formula_gate_qwen25_1p5b_lora_s128_2026-08-19/adapter_config.json": {
+      "bytes": 1057,
+      "sha256": "b91e2772620a29abe6dbb84103c84fd038f25408f8a43bd56f2ba7d8d57b6875"
+    },
+    "checkpoints/rllm_alpha_formula_gate_qwen25_1p5b_lora_s128_2026-08-19/adapter_model.safetensors": {
+      "bytes": 73911112,
+      "sha256": "279c3e40189dff14634d2a94e05a86b85861148a2617c261742caaf032f1ed58"
+    },
+    "checkpoints/rllm_alpha_formula_gate_qwen25_1p5b_lora_s128_2026-08-19/sft_summary.json": {
+      "bytes": 1320,
+      "sha256": "5145fc997387bdeb626cf51732251fe98a2b929d1c146a89f3af9d5567e97073"
+    },
+    "data/rllm_alpha_formula_gate_train_2026-08-19.jsonl": {
+      "bytes": 7033160,
+      "sha256": "09fdd923870c9f5c9e3ed34dffb49c2bd32691e35b51d8cbbb6067c7b20be841"
+    },
+    "data/rllm_alpha_formula_gate_eval_2026-08-19.jsonl": {
+      "bytes": 1345162,
+      "sha256": "79465a4832227dc590b9b750a512dec6ed859441fe018de7ac089c857cff14a6"
+    }
+  }
+}

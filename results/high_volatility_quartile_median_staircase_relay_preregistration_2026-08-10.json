@@ -1,0 +1,150 @@
+{
+  "protocol_version": "high_volatility_quartile_median_staircase_relay_v1",
+  "policy_id": "HVQMSR-8",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "In a volatile completed BTC block, four strictly ordered two-hour median price levels show persistent relocation of the accepted-price distribution rather than one endpoint jump. Follow the staircase direction for eight hours when the first-to-fourth median migration is historically large.",
+    "side": "long for strictly increasing segment medians and short for strictly decreasing segment medians",
+    "why_distinct": "Two-half directional acceleration uses endpoint returns, time-price trend fit uses one OLS line, temporal rank concordance ranks all levels, and median-breadth contradiction summarizes return signs. HVQMSR requires strict ordering of four disjoint robust price-location medians and ranks their migration span, with no volume, flow, funding, OI, cross-asset, prior event, fitted outcome, or control.",
+    "why_suited_to_volatile_regimes": "completed realized variation must rank in its causal upper 35% while robust accepted-price migration enters its upper 30%",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily four-segment median staircases are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 01:00/09:00/17:00 UTC boundaries",
+    "block": "480 exact coherent bars_binance BTCUSDT one-minute rows [D-8h,D)",
+    "segments": "four disjoint consecutive 120-minute segments",
+    "segment_level": "median log one-minute close within each segment",
+    "staircase": "all four segment levels strictly increasing or all strictly decreasing",
+    "migration_span": "absolute fourth-segment median minus first-segment median, finite strict positive",
+    "migration_rank": "strict-prior midrank of migration_span over at most 270 earlier source-valid blocks, minimum 180, current excluded; rank>=0.70",
+    "realized_variation": "sqrt(sum squared one-minute log(close/open) returns), finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank over every source-valid block, current excluded; rank>=0.65",
+    "eligible_state": "staircase, migration, and variation gates pass",
+    "onset": "eligible now and immediately previous exact source-valid decision block ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed eight-hour boundary",
+    "entry": "exact BTCUSDT D+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "migration_rank_min": 0.7,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_migration_tail",
+      "no_variation_gate",
+      "endpoint_displacement",
+      "one_block_stale_staircase",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2022-10-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_half_return_trend_rank_and_median_breadth_outcomes_known": true,
+    "repository_quartile_median_staircase_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "strictly ordered robust accepted-price locations across four disjoint sub-auctions"
+  },
+  "stopping_rule": "Terminal first failure; no segment count, median operator, order, rank, onset, side, hold, clock, subset, threshold, or control repair.",
+  "manifest_hash": "bff5243168f1440ef5798dba42903a8ed91b77ac41b4ec01399e2f58c19059b6"
+}

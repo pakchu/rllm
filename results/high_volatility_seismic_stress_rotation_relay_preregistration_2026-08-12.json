@@ -1,0 +1,172 @@
+{
+  "protocol_version": "high_volatility_seismic_stress_rotation_relay_v1",
+  "policy_id": "HVSSR-24",
+  "as_of_date": "2026-08-12",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Published event-study evidence reports that environmental crises negatively affect established cryptocurrencies after an initial response. During elevated causal BTC variation, short after an unusually large increase in completed global significant-earthquake stress and long after an unusually large decrease.",
+    "side": "increase in global daily seismic-stress proxy maps short; decrease maps long",
+    "external_support": {
+      "directional_study": "Investigating the impact of global events on cryptocurrency performance: a big data event study approach, Journal of International Money and Finance 157 (2025), 103375",
+      "directional_study_doi": "https://doi.org/10.1016/j.jimonfin.2025.103375",
+      "reported_fact": "Environmental crises negatively affect established cryptocurrencies after an initial positive response.",
+      "official_source": "USGS Advanced National Seismic System Comprehensive Earthquake Catalog",
+      "official_api_documentation": "https://earthquake.usgs.gov/fdsnws/event/1/",
+      "official_catalog_documentation": "https://earthquake.usgs.gov/data/comcat/index.php",
+      "inference_disclosure": "Using global magnitude-five-or-greater seismic energy as the objective environmental-crisis intensity measure is a preregistered cross-literature inference, not a claimed replication of the event-study classification.",
+      "implementation_choices_not_claimed_as_replication": [
+        "global earthquake events with magnitude at least 5.0",
+        "causally reconstructed event-product versions available by D+2 12:00 UTC",
+        "daily sum of 10^(1.5*magnitude) as a monotone seismic-stress proxy",
+        "strict-prior absolute stress-change rank of 0.65",
+        "causal prior-24-hour BTC variation rank of 0.65",
+        "24-hour BTC hold beginning five minutes after decision"
+      ]
+    },
+    "why_distinct": "Exact repository scans found no earthquake, seismic, or USGS candidate. The source is a physical global hazard clock and uses no market direction, flow, funding, OI, premium, air pollution, weather, lunar phase, geomagnetic value, prior event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "The physical stress change is admitted only when completed prior-24-hour BTC realized variation ranks in its causal upper 35%, targeting July-like volatile conditions.",
+    "why_low_gross9_overlap_is_plausible": "Sparse physical-hazard entries are absent from Gross9 primitives and independent of its market-state clocks."
+  },
+  "features": {
+    "event_universe": "global USGS ComCat earthquake events with magnitude >=5.0 and origin time in UTC day D",
+    "causal_event_version": "for decision D+2 12:00 UTC, include only events first published by that time and use the latest origin/magnitude product version whose updateTime is <= decision; deleted and superseded product histories must be requested",
+    "daily_seismic_stress": "sum 10^(1.5*magnitude) across the causal event versions for UTC day D",
+    "stress_change": "daily seismic stress D minus D-1; zero is ineligible",
+    "stress_change_rank": "strict-prior midrank of absolute stress change versus at most 180 prior complete changes; minimum 60; current excluded; rank >=0.65",
+    "side": "positive stress change maps -1; negative maps +1",
+    "btc_variation": "sqrt(sum squared log(close/open)) over 1,440 exact BTCUSDT 1m bars in [decision-24h,decision)",
+    "btc_variation_rank": "strict-prior midrank versus at most 180 prior complete decisions; minimum 60; current excluded; rank >=0.65",
+    "missing": "inaccessible event version history, ambiguous publication/update time, malformed catalog product, missing/duplicate/nonpositive BTC bars, or warmup makes the decision ineligible or rejects as frozen; no imputation"
+  },
+  "clock": {
+    "decision": "12:00 UTC on D+2 for completed UTC seismic day D",
+    "entry": "exact BTCUSDT 12:05 UTC five-minute open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+    "no_imputation": true
+  },
+  "policy": {
+    "minimum_magnitude": 5.0,
+    "source_lag_hours_after_day_end": 36,
+    "stress_prior_days": 180,
+    "stress_prior_minimum": 60,
+    "stress_change_midrank_min": 0.65,
+    "variation_prior_days": 180,
+    "variation_prior_minimum": 60,
+    "variation_midrank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "gross_exposure": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "usgs": {
+      "url": "https://earthquake.usgs.gov/fdsnws/event/1/query",
+      "format": "geojson",
+      "eventtype": "earthquake",
+      "include_deleted": true,
+      "include_superseded_products": true,
+      "download_after_preregistration": true,
+      "read_only_snapshot": true
+    },
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_btc_volatility_gate",
+      "seismic_direction_flip",
+      "one_day_stale_seismic_stress",
+      "stress_rise_only",
+      "stress_fall_only",
+      "same_clock_forced_long"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "post_stage_volatility_audit": {
+    "rv20_q90_entry_filter": false,
+    "opened_only_after_all_train_test_eval_final_economic_gates_pass": true,
+    "cannot_repair_or_promote": true
+  },
+  "research_boundary": {
+    "usgs_api_schema_read_before_preregistration": true,
+    "earthquake_event_values_or_candidate_incidence_opened": false,
+    "source_values_used_to_select_rule": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "repository_seismic_candidate_found": false,
+    "cross_literature_inference_disclosed": true,
+    "prior_event_sets_reused": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "published environmental-crisis sign, official physical-event archive, causal product-version rule, and exact repository absence"
+  },
+  "stopping_rule": "terminal first-failure sequence: source-version support, incidence support, Gross9 novelty, train/test/eval/final strict economics, then RV20 q90 audit; no event type, magnitude, lag, stress transform, threshold, side, hold, clock, subset, source, or control repair",
+  "manifest_hash": "21b4ade7ebb730e08a3a6dbdc0bd17acb7fa3837e25e2debed965f8e67d69256"
+}

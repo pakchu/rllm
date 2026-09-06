@@ -1,0 +1,43 @@
+{
+  "protocol_version": "hvlpsr_8_source_and_pretraining_v1",
+  "preregistration": {
+    "path": "results/high_volatility_leverage_premium_state_ridge_relay_preregistration_2026-08-10.json",
+    "sha256": "4c393fa82a306f52c0fe42e7e2dab5cf5af47d95209b4745ddf1e7d8f04069d3",
+    "manifest_hash": "a3fba682a02cdebccd2aa1edbc939588443f7b65cc79f6ef99bbaf36bffc2346"
+  },
+  "queries": {
+    "bars": "\nSELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "premium": "\nSELECT ts,open,high,low,close\nFROM bars_binance_premium\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "open_interest": "\nSELECT ts,sum_open_interest\nFROM open_interest_binance\nWHERE symbol='BTCUSDT' AND period='5m' AND source='open_interest_hist'\n  AND ts>=:start AND ts<:end\nORDER BY ts\n"
+  },
+  "tables": [
+    "bars_binance",
+    "bars_binance_premium",
+    "open_interest_binance"
+  ],
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2020-09-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "pretraining_label_window": [
+    "2021-01-01T00:00:00+00:00",
+    "2023-01-01T00:00:00+00:00"
+  ],
+  "oos_incidence_opened": false,
+  "oos_outcomes_opened": false,
+  "no_imputation": true,
+  "feature_panel": {
+    "path": "data/high_volatility_leverage_premium_state_ridge_relay_sources_2020_2026/eight_hour_feature_panel.csv.gz",
+    "sha256": "83116f484221baf944fc2f2cdc8220b21e67ae818305979dc6b33bf66b0a4f1a",
+    "rows": 6480,
+    "valid_rows": 5551
+  },
+  "pretraining_rows": {
+    "path": "data/high_volatility_leverage_premium_state_ridge_relay_sources_2020_2026/pre2023_training_rows.csv.gz",
+    "sha256": "49bb7e288f05a2e3b09c370e657e50725372126d941e6c2331bb9275794edfe7",
+    "rows": 2100
+  },
+  "manifest_hash": "a8a11c56443839abd61f32fb334296339f99f7fc9937013c6b8fc4292e5b8851"
+}

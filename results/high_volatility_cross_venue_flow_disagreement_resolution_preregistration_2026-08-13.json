@@ -1,0 +1,160 @@
+{
+  "protocol_version": "high_volatility_cross_venue_flow_disagreement_resolution_v1",
+  "policy_id": "HVFDR-8",
+  "slug": "high_volatility_cross_venue_flow_disagreement_resolution",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "When simultaneous BTC spot and perpetual aggressive quote-flow imbalances have opposite signs and their absolute divergence is causally extreme, cash and leverage are demanding opposite directions. During elevated BTC variation, follow the spot aggressive-flow direction for eight hours as cash inventory resolves the disagreement.",
+    "side": "strict sign of completed spot normalized taker imbalance",
+    "why_distinct": "Spot-flow leadership uses a two-hour spot imbalance magnitude and same-direction price confirmation at fixed eight-hour boundaries. Leverage-to-cash handoff uses ordered four-hour dominance transfer. Cash participation uses unsigned turnover shares. HVFDR uses one irregular five-minute opposite-sign flow disagreement tail, no price-return direction, flow leadership ratio, volume level, basis, funding, OI, fitted outcome, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "causal trailing perpetual 24-hour realized variation must occupy its upper 35 percent",
+    "why_low_gross9_overlap_is_plausible": "irregular cross-venue aggressive-flow disagreement onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact UTC five-minute boundary D",
+    "market_bars": "five exact coherent native one-minute BTCUSDT perpetual and spot rows [D-5m,D)",
+    "normalized_imbalance": "(2*sum(taker_buy_quote)-sum(quote_asset_volume))/sum(quote_asset_volume) separately by venue; denominator strict positive",
+    "flow_disagreement": "spot and perpetual imbalances have opposite strict signs",
+    "absolute_divergence": "absolute value of spot imbalance minus perpetual imbalance",
+    "divergence_rank": "strict-prior midrank over at most 8640 jointly valid decisions, minimum 6048, current excluded; rank>=0.995",
+    "btc_realized_variation": "sqrt(sum squared exact perpetual one-minute log(close/open) returns over [D-24h,D))",
+    "variation_rank": "strict-prior midrank over at most 8640 jointly valid decisions, minimum 6048, current excluded; rank>=0.65",
+    "onset": "full directional disagreement true now and false at immediately prior exact source-valid decision; missing prior cannot trigger",
+    "price_direction_not_used": true,
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after both completed bars and causal ranks are available",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "same as spot aggressive-flow direction",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "history_decisions": 8640,
+    "minimum_history_decisions": 6048,
+    "divergence_rank_min": 0.995,
+    "variation_bars": 288,
+    "variation_rank_min": 0.65,
+    "onset_required": true,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "rank_0_99",
+      "same_sign_flow",
+      "one_bar_stale_disagreement",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "perpetual": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m"
+    },
+    "spot": {
+      "table": "bars_binance_spot",
+      "symbol": "BTCUSDT",
+      "interval": "1m"
+    },
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close",
+      "quote_asset_volume",
+      "taker_buy_quote"
+    ],
+    "window": [
+      "2023-05-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration_commit": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "adjacent_spot_flow_handoff_and_participation_outcomes_known": true,
+    "repository_exact_opposite_sign_five_minute_cross_venue_flow_tail_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cash-versus-leverage aggressive-demand disagreement resolution"
+  },
+  "stopping_rule": "terminal first failure; no venue, bar, flow normalization, disagreement, rank history, rank threshold, variation, onset, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "7fd0a71fd26d2c69e3d9f4f22021874c7478831431ce7b71ea1bbcad685817c7"
+}

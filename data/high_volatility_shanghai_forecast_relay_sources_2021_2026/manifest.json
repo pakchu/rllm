@@ -1,0 +1,37 @@
+{
+  "protocol_version": "hvsfr_24_sources_v1",
+  "sse_url": "https://query1.finance.yahoo.com/v8/finance/chart/000001.SS",
+  "source_window": [
+    "2021-01-01T00:00:00+00:00",
+    "2026-08-02T00:00:00+00:00"
+  ],
+  "btc_query": "\nSELECT ts,open,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+  "btc_window": [
+    "2021-01-03T07:00:00+00:00",
+    "2026-08-01T07:01:00+00:00"
+  ],
+  "btc_rows": 2931841,
+  "builder": {
+    "path": "training/build_high_volatility_shanghai_forecast_relay_support.py",
+    "sha256": "9fa5888a1deefa67b873ec0ec9a5c113bb9c2d134bdfed709070e9e73db5d839"
+  },
+  "outputs": {
+    "raw_sse": {
+      "path": "data/high_volatility_shanghai_forecast_relay_sources_2021_2026/000001_ss_yahoo_chart.json",
+      "sha256": "35d8ee8fcbbb0973876d7107ce530b1a54fa6c475168cc3d06ed7757ea1c4b12"
+    },
+    "sse_panel": {
+      "path": "data/high_volatility_shanghai_forecast_relay_sources_2021_2026/shanghai_composite_sessions.csv.gz",
+      "sha256": "925a3138974f429c65e32d267dbd440fe067df7418287475631749d1228f3eea",
+      "rows": 1351
+    },
+    "features": {
+      "path": "data/high_volatility_shanghai_forecast_relay_sources_2021_2026/hvsfr_preentry_features.csv.gz",
+      "sha256": "e13d8358acaf57e6554536052c65a710c9bf53b134acac6369a312ede90ebcd0",
+      "rows": 1351
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "b0aed8e267d0be5341c81518a3d1539d91db9c0cbca305017197969d03e55709"
+}

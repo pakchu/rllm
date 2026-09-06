@@ -1,0 +1,170 @@
+{
+  "protocol_version": "high_volatility_fx_safehaven_cyclical_barbell_relay_v1",
+  "policy_id": "HVFXBR-8",
+  "slug": "high_volatility_fx_safehaven_cyclical_barbell_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A synchronized London-to-New-York handoff in which JPY and CHF weaken while MXN and AUD strengthen identifies a global risk-on repricing; the exact opposite identifies risk-off. In elevated BTC variation, follow this cross-sectional FX barbell direction in BTC for eight hours.",
+    "side": "same as canonical FX risk direction: long for safe-haven weakness plus cyclical strength, short for the reverse",
+    "why_distinct": "Dollar breadth measures a common USD direction across major pairs. This candidate instead cancels the common dollar factor by requiring opposite canonical signs between two safe-haven and two cyclical currencies during a different fixed session. Directed FX propagation and synchronization use temporal or broad co-movement structures, not this predeclared safe-haven/cyclical barbell. It uses no BTC return direction, fitted outcome, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "causal trailing BTC 24-hour realized variation must occupy its upper 35 percent",
+    "why_low_gross9_overlap_is_plausible": "one fixed weekday cross-sectional FX barbell decision at 13:00 UTC is absent from Gross9 primitives"
+  },
+  "features": {
+    "fx_session": "exact observed bars_polygon one-minute rows during weekday [07:00,13:00) UTC",
+    "session_valid": "per pair at least 330 distinct minutes, first no later than 07:05, last no earlier than 12:55, finite positive OHLC; no imputation",
+    "canonical_risk_returns": {
+      "USDJPY": "session log return",
+      "USDCHF": "session log return",
+      "USDMXN": "negative session log return",
+      "USDAUD": "negative session log return"
+    },
+    "pair_zscores": "each canonical return standardized against at most 90 strictly prior valid sessions, minimum 60, current excluded; prior sample std strict positive",
+    "qualifying_pair": "absolute z-score at least 0.5",
+    "barbell_gate": "at least three of four qualifying pair z-scores share one strict sign and no qualifying pair has the opposite sign",
+    "btc_realized_variation": "sqrt(sum squared exact BTC one-minute log(close/open) returns over [D-24h,D))",
+    "variation_rank": "strict-prior midrank over at most 90 prior valid weekday decisions, minimum 60, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact weekday D 13:00 UTC after the FX session and BTC variation are complete",
+    "entry": "exact BTCUSDT perpetual D 13:05 UTC open",
+    "side": "same as canonical FX risk direction",
+    "hold": "8 elapsed hours",
+    "reservation": "fixed weekday decisions; global chronological half-open, exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "session_start_utc": "07:00",
+    "session_end_utc": "13:00",
+    "minimum_session_minutes": 330,
+    "prior_sessions": 90,
+    "minimum_prior_sessions": 60,
+    "pair_absolute_z_min": 0.5,
+    "minimum_agreeing_pairs": 3,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "two_of_four_barbell",
+      "common_dollar_direction",
+      "one_session_stale_barbell",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "fx": {
+      "table": "bars_polygon",
+      "symbols": [
+        "USDJPY",
+        "USDCHF",
+        "USDMXN",
+        "USDAUD"
+      ],
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ]
+    },
+    "btc": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "completed_variation_only": true
+    },
+    "read_after_preregistration_commit": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_fx_family_outcomes_known": true,
+    "repository_exact_safehaven_cyclical_barbell_event_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cross-sectional FX risk-factor cancellation mechanism"
+  },
+  "stopping_rule": "terminal first failure; no pair universe, session, validity, standardization, z threshold, breadth, variation, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "f6635639ce06eb01a0fa3ee8ba256ceaaa4e1c03ddd2e3fcae92e5e533ddfed7"
+}

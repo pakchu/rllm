@@ -1,0 +1,37 @@
+{
+  "protocol_version": "hvssim_24_source_materialization_v1",
+  "preregistration": {
+    "path": "results/high_volatility_sha256_settlement_intensity_migration_relay_preregistration_2026-08-10.json",
+    "sha256": "c5d0c02e1748cf7f9e5ff3cc824bf0165ef73f474c1fe59b5c5c13b193a6cdd0",
+    "manifest_hash": "9417551d9631a8c08761bb25f83f6a723ab5f4b4db336280d79e7c7fc21a96d4"
+  },
+  "transport": {
+    "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc%2Cbch&metrics=TxCnt%2CAdrActCnt%2CAssetEODCompletionTime&frequency=1d&start_time=2023-01-01&end_time=2026-07-31&page_size=10000",
+    "pages": [
+      {
+        "url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc%2Cbch&metrics=TxCnt%2CAdrActCnt%2CAssetEODCompletionTime&frequency=1d&start_time=2023-01-01&end_time=2026-07-31&page_size=10000",
+        "rows": 2616,
+        "response_sha256": "0c7743eed13669f5cb42fda7b95bd698de985f7eb016eb05541f104afde50deb"
+      }
+    ],
+    "page_count": 1,
+    "raw_rows": 2616
+  },
+  "pair_panel": {
+    "path": "data/high_volatility_sha256_settlement_intensity_migration_relay_sources_2023_2026/btc_bch_settlement_intensity_daily.csv.gz",
+    "sha256": "919c241b94ca183e72e5a74e472b9b3d30667c71f6039292857509f9c8e13045",
+    "rows": 1308
+  },
+  "bars_query": "\nSELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+  "bars_rows": 1883520,
+  "feature_panel": {
+    "path": "data/high_volatility_sha256_settlement_intensity_migration_relay_sources_2023_2026/daily_feature_panel.csv.gz",
+    "sha256": "244c39b448494ffc117f1788b16207453d6e17b1cbb9235d09dd3d86e51541ed",
+    "rows": 1308,
+    "valid_rows": 1308
+  },
+  "no_imputation": true,
+  "oos_postentry_return_pnl_execution_price_opened": false,
+  "gross9_rows_opened": false,
+  "manifest_hash": "d0f8e1ecc0f6524775120a18d994c4ddadb299887f13421e9695a20f05cba461"
+}

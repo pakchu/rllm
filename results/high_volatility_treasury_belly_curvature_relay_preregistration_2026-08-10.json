@@ -1,0 +1,151 @@
+{
+  "protocol_version": "high_volatility_treasury_belly_curvature_relay_v1",
+  "policy_id": "HVTBCR-24",
+  "as_of_date": "2026-08-10",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A daily change in the official 2s5s10s Treasury butterfly isolates belly repricing from level and end-point slope moves. Rising belly curvature is intermediate-horizon discount-rate tightening and maps short BTC; falling curvature maps long BTC for one day when completed BTC variation is elevated.",
+    "side": "negative strict sign of the daily change in 2*5y-2y-10y",
+    "why_distinct": "TPYSR used the same-sign 2y/10y level factor and HVTCTR used only opposite-sign 2y/10y twists. HVTBCR introduces the official 5y belly and the three-point curvature factor; it reuses no event set or diagnostic control.",
+    "literature_context": {
+      "yield_curve_factors": "Litterman and Scheinkman (1991), Common Factors Affecting Bond Returns, DOI 10.3905/jfi.1991.692347: level, steepness and curvature are distinct factors",
+      "bitcoin_monetary_policy": "Kang, Ratti and Vespignani (2023), Monetary policy and Bitcoin, DOI 10.1016/j.jimonfin.2023.102880",
+      "implementation_is_not_a_published_replication": true
+    },
+    "why_suited_to_volatile_regimes": "completed seven-day BTC realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "a sparse next-day official sovereign-belly curvature clock is absent from Gross9"
+  },
+  "features": {
+    "source": "hash-bound official US Treasury Daily Treasury Par Yield Curve Rates XML",
+    "transition": "consecutive valid Treasury observations one to five calendar days apart",
+    "curvature": "2*yield_5y-yield_2y-yield_10y",
+    "curvature_change": "current curvature minus immediately previous valid curvature",
+    "eligible": "finite nonzero curvature_change",
+    "direction": "-sign(curvature_change)",
+    "availability": "source day D plus one calendar day at 12:00 UTC",
+    "btc_variation": "sqrt(sum squared exact completed 5m BTC close/open log returns over seven elapsed days ending at decision)",
+    "variation_rank": "strict-prior midrank over at most 270 daily 12:00 UTC states, minimum 180; current excluded; rank>=0.65",
+    "missing_duplicate_nonpositive": "ineligible; no imputation"
+  },
+  "clock": {
+    "decision": "D+1 12:00 UTC",
+    "entry": "decision+5m exact BTCUSDT open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "variation_history_days": 270,
+    "minimum_history_days": 180,
+    "variation_rank_min": 0.65,
+    "availability_delay_hours": 36,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval and final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "curvature_level",
+      "one_observation_stale_curvature_change",
+      "direction_flip",
+      "same_clock_forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "treasury_xml": {
+      "data/treasury_parallel_yield_shock_relay_sources_2023_2026/official_xml/daily_treasury_yield_curve_2023.xml": "9260f47cc662f161931792254e25bcfe35588731f8abce85307b2ecff7033c81",
+      "data/treasury_parallel_yield_shock_relay_sources_2023_2026/official_xml/daily_treasury_yield_curve_2024.xml": "3d77ebdb32fba00bf4f2211af3ea8924f275518c00f2faa53698b9336d180c36",
+      "data/treasury_parallel_yield_shock_relay_sources_2023_2026/official_xml/daily_treasury_yield_curve_2025.xml": "ac0a8ea1a70b6a22e05aa52513188076b2eddfde5e340bd17db71b48cb3df5a5",
+      "data/treasury_parallel_yield_shock_relay_sources_2023_2026/official_xml/daily_treasury_yield_curve_2026.xml": "4ef6e46360173d960a9f01c3dd6690b914e86b3d52635e4e877b48f377434c3a"
+    },
+    "treasury_manifest": {
+      "path": "data/treasury_parallel_yield_shock_relay_sources_2023_2026/manifest.json",
+      "sha256": "fb6db916c42724cc3b74e8aef262d422c651537fd9d835f379b233ce2c80b9fd"
+    },
+    "historical_market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "live_extension": "read-only Postgres BTCUSDT 1m through 2026-08-01",
+    "execution_prices": "sealed until source support and novelty pass"
+  },
+  "research_boundary": {
+    "prior_treasury_level_and_twist_source_results_known": true,
+    "prior_treasury_outcomes_used": false,
+    "prior_event_sets_or_controls_reused": false,
+    "exact_candidate_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent three-maturity Treasury curvature factor"
+  },
+  "stopping_rule": "terminal first failure; no source, maturity, curvature, side, variation, delay, clock, hold, subset, threshold, comparator or control repair",
+  "manifest_hash": "37f527e05728db19206ddff082bc35e7c0e155e27ede58e446786694b3c011e0"
+}

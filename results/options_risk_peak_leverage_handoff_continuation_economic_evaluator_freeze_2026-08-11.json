@@ -1,0 +1,32 @@
+{
+  "protocol_version": "orplhc_6_economic_evaluator_freeze_v1",
+  "policy_id": "ORPLHC-6",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_options_risk_peak_leverage_handoff_continuation_economics.py",
+    "sha256": "48d0ecd02419789c81a88b871108ae715be4f505dd1072ab3987a88f24f987f5"
+  },
+  "authorization": {
+    "path": "results/options_risk_peak_leverage_handoff_continuation_gross9_novelty_2026-08-11.json",
+    "sha256": "422c7eed49486ec4573958abe8877769c12477a52e254bcbca618766b927b9d2"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "246d3f1fae0be73be673f2d51d70040f9bf83887314c0d473cc4b2850311b28e"
+}

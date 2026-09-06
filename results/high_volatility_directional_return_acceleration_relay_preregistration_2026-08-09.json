@@ -1,0 +1,147 @@
+{
+  "protocol_version": "high_volatility_directional_return_acceleration_relay_v1",
+  "policy_id": "HVDRA-8",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When both halves of a completed high-variation eight-hour BTC auction move in the same direction and the second half travels farther than the first, directional displacement is accelerating rather than merely persisting. Follow the confirmed direction for eight hours.",
+    "side": "common strict sign of first-half and second-half open-to-close log returns",
+    "why_distinct": "Directional persistence measures full-block sign continuity or path efficiency, temporal variance ignition measures unsigned variance placement, and impact candidates use turnover. HVDRA uses only the strict two-half signed displacement inequality abs(R2)>abs(R1), reuses no event set or control, and is not a threshold or direction repair.",
+    "volatile_market_target": "completed-block realized-variation causal rank must be at least 0.65",
+    "why_low_gross9_overlap_is_plausible": "conditional 00:05/08:05/16:05 UTC accelerating two-half clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact UTC 00:00, 08:00, and 16:00 boundaries",
+    "block": "96 exact coherent BTCUSDT perpetual five-minute aggregates in [D-8h,D), each from five unique 1m rows",
+    "halves": "first 48 and final 48 completed 5m bars",
+    "half_return": "log(last half close/first half open), finite and strict nonzero",
+    "directional_agreement": "both half returns have one common strict sign",
+    "acceleration_ratio": "abs(second-half return)/abs(first-half return), finite and strictly greater than 1",
+    "realized_variation": "sqrt(sum squared five-minute log(close/open) returns), strict positive",
+    "variation_rank": "strict-prior midrank over at most 270 earlier source-valid blocks, minimum 252; current excluded",
+    "eligibility": "directional agreement, acceleration ratio>1, and variation rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact block boundary after all source bars complete",
+    "entry": "exact BTCUSDT decision+5m open",
+    "side": "common half-return sign",
+    "hold": "8 elapsed hours",
+    "reservation": "fixed blocks and holds are nonoverlapping; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium_rv20": "not signal inputs; funding only after novelty; RV20 q90 only after all economics pass"
+  },
+  "policy": {
+    "block_hours": 8,
+    "bars_5m": 96,
+    "half_bars": 48,
+    "history_blocks": 270,
+    "minimum_history_blocks": 252,
+    "acceleration_ratio_strict_min": 1.0,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_acceleration_gate",
+      "no_variation_gate",
+      "net_block_return_side",
+      "one_block_stale_features",
+      "direction_flip",
+      "same_clock_forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "related_directional_path_outcomes_known": true,
+    "two_half_acceleration_used_to_select_rule": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent two-half signed displacement acceleration mechanism"
+  },
+  "stopping_rule": "terminal first failure; no block, half definition, acceleration inequality, rank, history, side, timing, hold, subset, comparator, or control repair",
+  "manifest_hash": "756f1cf34df590ab7ce73ffe8405791193aa97864e479f7014b4a030fe91c83b"
+}

@@ -1,0 +1,208 @@
+"""Outcome-blind preregistration for HVTICC-8."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+POLICY_ID = "HVTICC-8"
+SLUG = "high_volatility_taker_imbalance_concentration_continuation"
+DEFAULT_OUTPUT = Path(f"results/{SLUG}_preregistration_2026-08-13.json")
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "high_volatility_taker_imbalance_concentration_continuation_v1",
+        "policy_id": POLICY_ID,
+        "slug": SLUG,
+        "as_of_date": "2026-08-13",
+        "singleton": True,
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "mechanism": {
+            "claim": (
+                "Volatile BTC auctions can contain diffuse two-sided flow or a few concentrated directional "
+                "aggressive-flow bursts. A high absolute signed HHI of completed five-minute taker imbalances "
+                "identifies the latter state; follow the concentrated side for eight hours."
+            ),
+            "side": "strict sign of signed taker-imbalance concentration",
+            "why_distinct": (
+                "HVTIFP measures lag-one dependence among normalized imbalances and HVTISI measures one aggregate "
+                "imbalance against its same-slot history. HVTICC instead measures sign-weighted cross-bin "
+                "concentration of dollar taker imbalance. It uses no serial correlation, seasonal baseline, price "
+                "direction, funding, OI, premium, cross-asset input, fitted outcome, prior event set, or promoted control."
+            ),
+            "why_suited_to_volatile_regimes": (
+                "completed BTC eight-hour variation must occupy its causal upper 35 percent while absolute signed "
+                "flow concentration occupies its causal upper quartile"
+            ),
+            "why_low_gross9_overlap_is_plausible": (
+                "offset signed flow-concentration onsets are absent from Gross9 structural primitives"
+            ),
+        },
+        "features": {
+            "decision_grid": "exact 03:00, 11:00 and 19:00 UTC boundaries D",
+            "source_window": "480 exact unique coherent bars_binance BTCUSDT interval=1m rows [D-8h,D)",
+            "five_minute_bins": "96 exact consecutive five-minute groups, each containing five exact minute rows",
+            "signed_dollar_imbalance": "f_i=2*sum(taker_buy_quote_i)-sum(quote_asset_volume_i)",
+            "signed_concentration": (
+                "sum(f_i*abs(f_i))/square(sum(abs(f_i))); finite strict nonzero with strict positive denominator"
+            ),
+            "interpretation": (
+                "a scale-free signed HHI: magnitude rises when one directional side dominates a few five-minute bins"
+            ),
+            "concentration_rank": (
+                "strict-prior midrank of abs(signed_concentration) over at most 270 earlier source-valid decisions, "
+                "minimum 180, current excluded; rank>=0.75"
+            ),
+            "btc_returns": "95 close-to-close natural-log returns from 96 exact five-minute closes",
+            "realized_variation": "sqrt(sum squared btc_returns), finite strict positive",
+            "variation_rank": (
+                "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded; "
+                "rank>=0.65"
+            ),
+            "onset": (
+                "eligible now and immediately preceding scheduled source-valid decision ineligible; missing or invalid "
+                "predecessor cannot trigger"
+            ),
+            "no_imputation": True,
+        },
+        "clock": {
+            "decision": "D after all flow and price minutes complete",
+            "entry": "exact BTCUSDT perpetual D+5m open",
+            "side": "sign(signed_concentration)",
+            "hold": "8 elapsed hours",
+            "reservation": "global chronological half-open; exit first on equal entry",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding": "not signal input; exact held settlements only after novelty",
+        },
+        "policy": {
+            "window_minutes": 480,
+            "five_minute_bins": 96,
+            "rank_history": 270,
+            "rank_minimum": 180,
+            "concentration_rank_min": 0.75,
+            "variation_rank_min": 0.65,
+            "decision_hours_utc": [3, 11, 19],
+            "entry_delay_minutes": 5,
+            "hold_hours": 8,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.2,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.1,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.1,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, "
+                "global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged all-stage pass",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_concentration_tail",
+                "no_variation_gate",
+                "aggregate_net_flow_tail",
+                "one_decision_stale_concentration",
+                "direction_flip",
+                "forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "bars": {
+                "table": "bars_binance",
+                "symbol": "BTCUSDT",
+                "interval": "1m",
+                "columns": ["ts", "open", "high", "low", "close", "quote_asset_volume", "taker_buy_quote"],
+            },
+            "window": ["2023-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+            "read_after_preregistration": True,
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "database_schema_and_coverage_metadata_only_opened_before_preregistration": True,
+            "prior_flow_persistence_and_seasonal_innovation_outcomes_known": True,
+            "repository_signed_taker_concentration_candidate_found": False,
+            "prior_event_sets_or_controls_reused": False,
+            "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": "independent temporal concentration of aggressive dollar-flow imbalance",
+        },
+        "stopping_rule": (
+            "terminal first failure; no aggregation, signed-HHI formula, rank, onset, variation, side, clock, hold, "
+            "subset, threshold, comparator, or control repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(value: dict[str, Any]) -> None:
+    core = {key: item for key, item in value.items() if key != "manifest_hash"}
+    if value.get("manifest_hash") != canonical_hash(core) or value != build():
+        raise RuntimeError("HVTICC preregistration drift")
+    if value["outcomes_opened"] or value["source_incidence_opened"] or value["gross9_rows_opened"]:
+        raise RuntimeError("HVTICC evidence boundary opened")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    payload = build()
+    validate(payload)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode()
+    if args.output.exists() and args.output.read_bytes() != encoded:
+        raise RuntimeError(f"refusing overwrite {args.output}")
+    args.output.write_bytes(encoded)
+    print(args.output)

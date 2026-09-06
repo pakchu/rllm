@@ -1,0 +1,125 @@
+{
+  "protocol_version": "high_volatility_spot_underwater_causal_sign_adapter_v1",
+  "policy_id": "HVSAUDCA-8",
+  "as_of_date": "2026-08-18",
+  "singleton": true,
+  "candidate_family": [
+    "HVSAUDCA-8"
+  ],
+  "candidate_family_size": 1,
+  "source_incidence_opened": false,
+  "current_candidate_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "base_artifacts": {
+    "preregistration": {
+      "path": "results/high_volatility_spot_adverse_underwater_duration_relay_preregistration_2026-08-18.json",
+      "sha256": "6f65fe4632da0c714cf971a95d1be98fb28bb8ef2a4926188656ff58af676446"
+    },
+    "support": {
+      "path": "results/high_volatility_spot_adverse_underwater_duration_relay_support_2026-08-18.json",
+      "sha256": "1fc578d0c95d12c4f9cea7da4ee0f712fc0546573c2e334011eb19e2ee55b27a"
+    },
+    "gross9": {
+      "path": "results/high_volatility_spot_adverse_underwater_duration_relay_gross9_novelty_2026-08-18.json",
+      "sha256": "77a222777e6baf434260657baf9b1768745b42f0ac02bcc6b9ae321b028edc6c"
+    },
+    "clock": {
+      "path": "data/high_volatility_spot_adverse_underwater_duration_relay_clocks_2023_2026.csv.gz",
+      "sha256": "2a7a893cdc2026227c00ba0a7622f35277c149498cd8413dd21e2d286eaf38d9"
+    }
+  },
+  "mechanism": {
+    "claim": "The predictive sign of spot directional-underwater events can change across volatile regimes. Use only fully matured prior base-event directional returns to causally decide whether the current immutable spot-duration side should be followed or inverted.",
+    "side": "base side multiplied by strict sign of the arithmetic mean of the latest at most 12 fully matured base-event gross log returns",
+    "why_distinct": "HVOER rotates generic 4h/12h experts only on winner changes. HVSAUDCA adapts the sign of a sparse path-duration event family at every eligible event using its own causally matured event labels, without future labels, stage resets, costs, funding, OI, premium, options, fitted thresholds, or promoted controls.",
+    "why_low_gross9_overlap_is_plausible": "immutable sparse HVSAUD event times retain passed Gross9 clock geometry while causal sign adaptation changes exposure"
+  },
+  "causal_label": {
+    "value": "immutable base side times log(perpetual exit_open/entry_open)",
+    "maturity": "label may enter memory only when base exit_time<=current decision_time",
+    "memory": "latest at most 12 mature labels in global chronological order",
+    "minimum_labels": 8,
+    "score": "arithmetic mean gross log label; strict nonzero required",
+    "routing": "score>0 keeps base side; score<0 inverts base side; zero or insufficient memory is cash",
+    "forbidden": "current or immature label, costs, funding, equity, PnL, CAGR, MDD, stage reset, future-stage fit"
+  },
+  "policy": {
+    "memory_labels": 12,
+    "minimum_mature_labels": 8,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "clock": {
+    "event_times": "immutable HVSAUD-8 decisions, entries, exits",
+    "entry": "immutable D+5m",
+    "hold": "8 elapsed hours",
+    "funding": "not signal input; exact settlements after Gross9"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "label_prices": "bars_binance BTCUSDT exact five-minute opens at base entry/exit timestamps, read after preregistration",
+    "current_candidate_execution_prices": "sealed until source and Gross9 pass"
+  },
+  "research_boundary": {
+    "base_train_pass_test_failure_known": true,
+    "base_event_level_trade_returns_opened": false,
+    "exact_adapter_incidence_or_outcomes_known": false,
+    "mature_counterfactual_labels_explicitly_authorized": true,
+    "current_candidate_postentry_return_or_pnl_opened": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory causal online adaptation; not fresh confirmatory evidence",
+    "selection_basis": "regime-robust causal sign adaptation with fixed event memory"
+  },
+  "stopping_rule": "source including mature-label causality, Gross9, train/test/eval/final; terminal first failure; no base event, memory, minimum labels, label, maturity, score, tie, side, clock, hold, subset, threshold, or control repair",
+  "manifest_hash": "c96a7b3eaf599b9e5d711e3d38d981065189c8a931eee2f0b8dc4354ea240f75"
+}

@@ -1,0 +1,39 @@
+{
+  "protocol_version": "hvgmr_24_source_contract_failure_v1",
+  "policy_id": "HVGMR-24",
+  "preregistration": {
+    "path": "results/high_volatility_geomagnetic_activity_rotation_relay_preregistration_2026-08-12.json",
+    "sha256": "c56f8fd080fc286ea163c3e5ad6f4c857ffdd7427220320788acf3416b878989",
+    "manifest_hash": "05183dfac1e74d27de0cac88bfdb00d2d6e6a60ef13325f8b832ba406e5f6244"
+  },
+  "source_evaluator": {
+    "path": "training/audit_high_volatility_geomagnetic_activity_rotation_source_contract.py",
+    "sha256": "0825aeda318a442b6691f31f3b84f6ffada759492f453a9b8e0da516cbd03705"
+  },
+  "failure_stage": "source_contract_validation",
+  "probe": {
+    "url": "https://kp.gfz.de/app/json/?start=2023-07-01T00%3A00%3A00Z&end=2023-07-03T23%3A59%3A59Z&index=Kp",
+    "window": [
+      "2023-07-01T00:00:00Z",
+      "2023-07-03T23:59:59Z"
+    ],
+    "rows": 24,
+    "status_counts": {
+      "def": 24
+    },
+    "all_rows_preserve_preregistered_nowcast_status": false
+  },
+  "failure": "preregistered archived nowcast-status Kp contract violated because the GFZ API currently substitutes definitive values for the historical probe",
+  "causal_consequence": "the exact near-real-time Kp values available at the frozen D+1 12:00 decision cannot be reconstructed from this preregistered endpoint",
+  "kp_numeric_values_published": false,
+  "candidate_incidence_opened": false,
+  "btc_rows_opened": false,
+  "postentry_return_pnl_execution_price_opened": false,
+  "gross9_rows_opened": false,
+  "support_passed": false,
+  "advance_to_gross9_novelty": false,
+  "advance_to_economic_outcomes": false,
+  "decision": "terminal_source_contract_reject_no_repair",
+  "repair_authorized": false,
+  "manifest_hash": "6b6283556d4a7281203b2837a0611f80bf9a785a9b55301197e30950abc3642a"
+}

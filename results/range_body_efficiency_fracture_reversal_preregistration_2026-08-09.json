@@ -1,0 +1,136 @@
+{
+  "protocol_version": "range_body_efficiency_fracture_reversal_v1",
+  "policy_id": "RBEFR-8",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "When eight-hour high-low travel becomes extreme relative to realized candle-body movement, the auction has fractured into rejected excursions rather than efficient directional displacement. Fade the completed final two-hour impulse for eight elapsed hours at the onset of that state.",
+    "side": "negative strict sign of the final 24 completed five-minute bars' open-to-close return",
+    "why_distinct": "RBEFR uses the ratio of summed Parkinson-style intrabar range variance to summed candle-body variance. It is not wick-side imbalance, semivariance direction, bipower jump size, variance-ratio serial dependence, close location, funding, flow, or a fitted model.",
+    "volatile_market_target": "large intrabar travel with weak body efficiency is itself a volatile-auction geometry; causal RV20 q90 remains only a later audit",
+    "why_low_gross9_overlap_is_plausible": "top-15% strictly-prior fracture crossings with an eight-hour global reservation"
+  },
+  "features": {
+    "decision_grid": "every exact 2-hour UTC boundary",
+    "window": "exact 96 completed five-minute bars [decision-8h,decision)",
+    "range_variance": "sum(log(high/low)^2)/(4*log(2)) over all 96 bars",
+    "body_variance": "sum(log(close/open)^2) over all 96 bars; strict positive denominator",
+    "fracture": "range_variance/body_variance, finite and strict positive",
+    "fracture_rank": "strict-prior midrank over at most 1080 valid decisions, minimum 720, current excluded",
+    "onset": "current fracture_rank>=0.85 and immediately preceding exact two-hour decision fracture_rank<0.85",
+    "impulse": "log(last close/first open) over final 24 completed bars, strict nonzero",
+    "source_valid": "each five-minute aggregate has exactly five unique coherent finite positive-OHLC one-minute rows; no imputation"
+  },
+  "rv20_stress_slice": {
+    "rv20": "sqrt(365*mean exact daily returns^2 over t-20 through t-1)",
+    "threshold": "numpy linear q90 over 756 strictly prior available RV20 observations",
+    "entry_filter": false,
+    "future_use": "only after all sequential full-calendar stages pass"
+  },
+  "clock": {
+    "decision": "exact 2-hour UTC boundary after all 96 bars complete",
+    "entry": "exact BTCUSDT decision+5m open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not an input; exact realized funding only after novelty"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "persistent_long_vol_comparator": "same accepted clock and 0.5 gross, side forced long",
+    "full_calendar_decomposition": "candidate minus comparator net return",
+    "rv20_q90_decomposition": "same decomposition on causal RV20 q90 decisions",
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "candidate_specific_q90_residual_positive": true,
+    "comparator_cannot_satisfy_candidate_claim": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "raw_range_variance_tail": "strict-prior top-15% raw range-variance crossing, fading the same impulse",
+      "inverse_body_variance_tail": "strict-prior top-15% reciprocal body-variance crossing, fading the same impulse",
+      "one_decision_stale_fracture": "primary formula shifted by one exact two-hour decision",
+      "direction_flip": "positive primary impulse side"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "exact_rbefr_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no estimator, rank, history, onset, impulse, side, clock, hold, RV20, subset, comparator, control, or gate repair",
+  "manifest_hash": "2015c50e2a08828f0c1701c777995cbf46c53dea6887f7f9cc2334245b9133ab"
+}

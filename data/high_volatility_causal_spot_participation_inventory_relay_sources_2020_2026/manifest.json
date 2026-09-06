@@ -1,0 +1,41 @@
+{
+  "protocol_version": "hvcspvr_8_sources_v1",
+  "queries": {
+    "open_interest": "SELECT ts AS decision_time,sum_open_interest FROM open_interest_binance WHERE symbol='BTCUSDT' AND period='5m' AND ts>=:start AND ts<:end AND extract(minute FROM ts)=0 AND extract(second FROM ts)=0 AND extract(hour FROM ts) IN (0,8,16) ORDER BY ts",
+    "bars": "WITH paths AS (SELECT ts,open,high,low,close,quote_asset_volume,'perpetual' AS market FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end UNION ALL SELECT ts,open,high,low,close,quote_asset_volume,'spot' AS market FROM bars_binance_spot WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end) SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,market,sum(ln(close/open)) AS completed_return,sum(quote_asset_volume) AS quote_turnover,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high) AND quote_asset_volume>=0) AS coherent FROM paths GROUP BY 1,2 ORDER BY 1,2"
+  },
+  "query_sha256": {
+    "open_interest": "e69284774dffb4c371fc1ac1137a5853396a3b3c1dd92befdc4957c7b707649e",
+    "bars": "5558ec79018124bd0df8771c2ed3f4934d0e4a02770b3b7e698e376653f8ad15"
+  },
+  "tables": [
+    "open_interest_binance",
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "window": [
+    "2020-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "open_interest": 6234,
+    "bars": 14424
+  },
+  "builder": {
+    "path": "training/build_high_volatility_causal_spot_participation_inventory_relay_support.py",
+    "sha256": "64f2fc2ce01b97163c33cc7b30c338968e16404fe58b1e2f0ef14bfe05a53a94"
+  },
+  "panel": {
+    "path": "data/high_volatility_causal_spot_participation_inventory_relay_sources_2020_2026/settlement_states.csv.gz",
+    "sha256": "883db9702d256b14ebcd41f5d53af5e62aaab672729a551809678dc52e165efa",
+    "rows": 6234,
+    "valid_rows": 82
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "held_interval_funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "03b921045851e3fd3df83ff4b763206d2ec6d3e2b38d82b523422b089eff52c2"
+}

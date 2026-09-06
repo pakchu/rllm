@@ -1,0 +1,140 @@
+{
+  "protocol_version": "lagged_flow_impact_coherence_relay_v1",
+  "policy_id": "LFIC-12",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Aggressive quote flow is informative when its sign and magnitude consistently align with the following five-minute bar's price response rather than merely its own bar. In a tail coherence onset, follow the final hour's aggregate aggressive-flow direction for twelve elapsed hours.",
+    "side": "strict sign of aggregate signed taker quote flow over the final twelve completed five-minute bars",
+    "why_distinct": "LFIC measures one-bar-lagged flow-to-price transmission across 71 ordered pairs. It is not contemporaneous taker positioning, aggressor VWAP contradiction, aggregate flow confirmation, ticket expansion, funding, or a fitted model.",
+    "volatile_market_target": "persistent lagged impact should identify directional price discovery during volatile auctions; causal RV20 q90 is only a later audit",
+    "why_low_gross9_overlap_is_plausible": "joint tail on lagged coherence and recent-flow magnitude, plus onset and twelve-hour reservation"
+  },
+  "features": {
+    "decision_grid": "every exact 4-hour UTC boundary",
+    "window": "exact 72 completed five-minute bars [decision-6h,decision)",
+    "bar_flow": "(2*taker_buy_quote-quote_asset_volume)/quote_asset_volume for each strictly positive-volume bar",
+    "next_bar_return": "log(next bar close/next bar open)",
+    "lagged_pairs": "exactly 71 ordered pairs of bar_flow[i] with next_bar_return[i+1]",
+    "coherence": "sum(x*r)/sqrt(sum(x^2)*sum(r^2)); finite and strictly positive",
+    "coherence_rank": "strict-prior midrank over at most 540 valid decisions, minimum 360, current excluded, rank>=0.80",
+    "recent_flow": "sum(2*taker_buy_quote-quote_asset_volume)/sum(quote_asset_volume) over final 12 bars, strict nonzero",
+    "recent_flow_magnitude_rank": "strict-prior midrank of abs(recent_flow) over at most 540 valid decisions, minimum 360, current excluded, rank>=0.65",
+    "onset": "joint eligible state true and immediately preceding four-hour decision false",
+    "source_valid": "each five-minute aggregate has exactly five unique coherent finite positive-OHLC one-minute rows, finite nonnegative quote/taker quote, taker quote<=quote volume, positive quote volume; no imputation"
+  },
+  "rv20_stress_slice": {
+    "rv20": "sqrt(365*mean exact daily returns^2 over t-20 through t-1)",
+    "threshold": "numpy linear q90 over 756 strictly prior available RV20 observations",
+    "entry_filter": false,
+    "future_use": "only after all sequential full-calendar stages pass"
+  },
+  "clock": {
+    "decision": "exact 4-hour UTC boundary after all 72 bars complete",
+    "entry": "exact BTCUSDT decision+5m open",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not an input; exact realized funding only after novelty"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "persistent_long_vol_comparator": "same accepted clock and 0.5 gross, side forced long",
+    "full_calendar_decomposition": "candidate minus comparator net return",
+    "rv20_q90_decomposition": "same decomposition on causal RV20 q90 decisions",
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "candidate_specific_q90_residual_positive": true,
+    "comparator_cannot_satisfy_candidate_claim": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "contemporaneous_coherence": "same formula pairing flow and return in the same completed bar",
+      "no_flow_magnitude_tail": "positive lagged-coherence tail onset without recent-flow rank",
+      "stale_recent_flow": "primary eligibility but side from the preceding completed hour's aggregate flow",
+      "direction_flip": "negative primary side"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "exact_lfic_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no lag, rank, history, onset, block, side, clock, hold, RV20, subset, comparator, control, or gate repair",
+  "manifest_hash": "f18f721dfd69affd30dacad6499aa8ed8219d7c655b2fefaee496954e8360b5e"
+}

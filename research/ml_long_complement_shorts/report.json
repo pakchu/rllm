@@ -1,0 +1,1605 @@
+{
+  "registration": {
+    "design": {
+      "version": 1,
+      "fit": "2024H1 for2024H2;2024 for2025;2024-2025 for2026. Labels mature strictly before fit cutoff.",
+      "selection": "2024H2 portfolio stress-Calmar +.5 relative MDD reduction; no later reranking",
+      "target": "forward6/12h BTC return conditional on observed positive parent target exposure",
+      "models": [
+        "ridge_alpha100",
+        "hgb_depth3_leaf80_iter100_l2_10"
+      ],
+      "thresholds": "training prediction quantile .1/.2, upper bounded at -.0012",
+      "weights": [
+        0.25,
+        0.5
+      ],
+      "hold": "forecast horizon6/12h",
+      "seed": 20260906,
+      "standalone_profit_gate": false,
+      "live_enabled": false,
+      "caveat": "all data exposed; annual refits are prequential, not same-year tuning"
+    },
+    "code_hash": "69ad2c822831c7ef5ba13e69e9c6fdb4df7d1f5fcb93fc9578669de5e144dccb",
+    "engine_hash": "dbae4fae3df021e34b5046b2827e6b7eb20ff2945bc3db29c8ffdad5e7bf22e1",
+    "rules_code_hash": "6b0a28ff48f6c192c73ff5e2dddafc6d191c93ea246eae9ec5c6c84ca17a83ec",
+    "context_hash": "76df6d180c2da027c84fad7024e8049a36518744d6d93c7a61830cbce9552b5b",
+    "predecessor_report": "dc8596ce1272c67beeff165432ca2be76c913899cb7d0987474c48d9f5260008"
+  },
+  "fit_audit": [
+    {
+      "kind": "ridge",
+      "horizon": 6,
+      "year": 2024,
+      "fit_rows": 1516,
+      "max_label_maturity": "2024-06-26 18:05:00",
+      "cutoff": "2024-07-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.0024755800022603558,
+        "0.2": -0.0012
+      }
+    },
+    {
+      "kind": "ridge",
+      "horizon": 6,
+      "year": 2025,
+      "fit_rows": 3806,
+      "max_label_maturity": "2024-12-29 16:05:00",
+      "cutoff": "2025-01-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.0022770056866253828,
+        "0.2": -0.0012
+      }
+    },
+    {
+      "kind": "ridge",
+      "horizon": 6,
+      "year": 2026,
+      "fit_rows": 7007,
+      "max_label_maturity": "2025-12-27 06:05:00",
+      "cutoff": "2026-01-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.0019764454153397442,
+        "0.2": -0.0012
+      }
+    },
+    {
+      "kind": "ridge",
+      "horizon": 12,
+      "year": 2024,
+      "fit_rows": 1516,
+      "max_label_maturity": "2024-06-27 00:05:00",
+      "cutoff": "2024-07-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.004980858358419415,
+        "0.2": -0.0018136080289204827
+      }
+    },
+    {
+      "kind": "ridge",
+      "horizon": 12,
+      "year": 2025,
+      "fit_rows": 3806,
+      "max_label_maturity": "2024-12-29 22:05:00",
+      "cutoff": "2025-01-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.004289256716016104,
+        "0.2": -0.0014641785690797482
+      }
+    },
+    {
+      "kind": "ridge",
+      "horizon": 12,
+      "year": 2026,
+      "fit_rows": 7007,
+      "max_label_maturity": "2025-12-27 12:05:00",
+      "cutoff": "2026-01-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.0030172167419860647,
+        "0.2": -0.0012
+      }
+    },
+    {
+      "kind": "hgb",
+      "horizon": 6,
+      "year": 2024,
+      "fit_rows": 1516,
+      "max_label_maturity": "2024-06-26 18:05:00",
+      "cutoff": "2024-07-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.0050637413095001,
+        "0.2": -0.002742477713587219
+      }
+    },
+    {
+      "kind": "hgb",
+      "horizon": 6,
+      "year": 2025,
+      "fit_rows": 3806,
+      "max_label_maturity": "2024-12-29 16:05:00",
+      "cutoff": "2025-01-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.0031061601602395683,
+        "0.2": -0.0016243300495267787
+      }
+    },
+    {
+      "kind": "hgb",
+      "horizon": 6,
+      "year": 2026,
+      "fit_rows": 7007,
+      "max_label_maturity": "2025-12-27 06:05:00",
+      "cutoff": "2026-01-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.002158585491246034,
+        "0.2": -0.0012
+      }
+    },
+    {
+      "kind": "hgb",
+      "horizon": 12,
+      "year": 2024,
+      "fit_rows": 1516,
+      "max_label_maturity": "2024-06-27 00:05:00",
+      "cutoff": "2024-07-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.009547965407450443,
+        "0.2": -0.004874950121361897
+      }
+    },
+    {
+      "kind": "hgb",
+      "horizon": 12,
+      "year": 2025,
+      "fit_rows": 3806,
+      "max_label_maturity": "2024-12-29 22:05:00",
+      "cutoff": "2025-01-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.0058561361225280585,
+        "0.2": -0.002566140335889937
+      }
+    },
+    {
+      "kind": "hgb",
+      "horizon": 12,
+      "year": 2026,
+      "fit_rows": 7007,
+      "max_label_maturity": "2025-12-27 12:05:00",
+      "cutoff": "2026-01-01 00:00:00",
+      "thresholds": {
+        "0.1": -0.00359410625738486,
+        "0.2": -0.0016274189600455373
+      }
+    }
+  ],
+  "count": 17,
+  "selection_freeze": {
+    "selection": "2024H2",
+    "top": [
+      {
+        "spec": {
+          "name": "ridge_h12_q0.1_w0.5",
+          "kind": "ridge",
+          "hold": 12,
+          "q": 0.1,
+          "coefficient": 0.5
+        },
+        "score": 0.0599047306165722,
+        "metrics": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 66.67761196740032,
+          "cagr_pct": 175.70106178242835,
+          "mdd_pct": 18.024472780277435,
+          "calmar": 9.747916841966234,
+          "entry_episodes": 103,
+          "hedge_entries": 38,
+          "hedge_hours": 444.7499999999687,
+          "orders": 1970,
+          "turnover": 212.33070134090198,
+          "fees_pct_initial": 26.479426332866385,
+          "funding_pct_initial": 1.39288118326838,
+          "max_open_net_exposure": 3.8227124764924274,
+          "mean_open_net_exposure": 0.48718383615541144,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      },
+      {
+        "spec": {
+          "name": "hgb_h6_q0.2_w0.25",
+          "kind": "hgb",
+          "hold": 6,
+          "q": 0.2,
+          "coefficient": 0.25
+        },
+        "score": 0.027757258435875787,
+        "metrics": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 67.87598824045213,
+          "cagr_pct": 179.64983242598427,
+          "mdd_pct": 18.70854331612586,
+          "calmar": 9.602555869282181,
+          "entry_episodes": 127,
+          "hedge_entries": 74,
+          "hedge_hours": 579.6666666666508,
+          "orders": 2021,
+          "turnover": 228.94237868050084,
+          "fees_pct_initial": 28.53148342202494,
+          "funding_pct_initial": 1.3949622073200096,
+          "max_open_net_exposure": 3.590590617285148,
+          "mean_open_net_exposure": 0.49312467640723895,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      },
+      {
+        "spec": {
+          "name": "hgb_h12_q0.2_w0.25",
+          "kind": "hgb",
+          "hold": 12,
+          "q": 0.2,
+          "coefficient": 0.25
+        },
+        "score": 0.012532604617252197,
+        "metrics": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 66.06909379119989,
+          "cagr_pct": 173.70660109312718,
+          "mdd_pct": 18.478887526286446,
+          "calmar": 9.400273736502124,
+          "entry_episodes": 117,
+          "hedge_entries": 45,
+          "hedge_hours": 649.0833333333491,
+          "orders": 2025,
+          "turnover": 217.68804447485937,
+          "fees_pct_initial": 26.91788852221397,
+          "funding_pct_initial": 1.406585585210395,
+          "max_open_net_exposure": 3.6160520389267896,
+          "mean_open_net_exposure": 0.4892652617623204,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      }
+    ],
+    "control": {
+      "weights_notional": {
+        "fresh_kimchi_fx": 1.0,
+        "frozen_annual_rank7": 1.5,
+        "rex_taker_low_range_position": 0.2,
+        "cand_rex_veto_7": 0.8,
+        "markov_transition_long": 1.0,
+        "macro_flow": 1.0,
+        "short_complement": 0.0
+      },
+      "return_pct": 71.92575754230681,
+      "cagr_pct": 193.2004073185912,
+      "mdd_pct": 20.019428232128277,
+      "calmar": 9.650645616768045,
+      "entry_episodes": 99,
+      "hedge_entries": 0,
+      "hedge_hours": 0.0,
+      "orders": 2129,
+      "turnover": 205.60292273020346,
+      "fees_pct_initial": 25.6837904093618,
+      "funding_pct_initial": 1.6168865530321677,
+      "max_open_net_exposure": 3.8282697070371543,
+      "mean_open_net_exposure": 0.5242626006750593,
+      "cap_interventions": 0,
+      "insolvent": false
+    },
+    "report_reranking": false
+  },
+  "reports": {
+    "2024": {
+      "0.0006": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 86.5206636050774,
+          "cagr_pct": 244.67335615064388,
+          "mdd_pct": 19.025904489332788,
+          "calmar": 12.860011795382677,
+          "entry_episodes": 99,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 2129,
+          "turnover": 205.52398148846,
+          "fees_pct_initial": 16.127809805867102,
+          "funding_pct_initial": 1.7229203126562533,
+          "max_open_net_exposure": 3.8218494987726848,
+          "mean_open_net_exposure": 0.5238765092418268,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 81.29902548119871,
+          "cagr_pct": 225.78347433773146,
+          "mdd_pct": 16.970110481908605,
+          "calmar": 13.304773388389744,
+          "entry_episodes": 103,
+          "hedge_entries": 38,
+          "hedge_hours": 444.7499999999687,
+          "orders": 1970,
+          "turnover": 212.24583010321106,
+          "fees_pct_initial": 16.648035630662587,
+          "funding_pct_initial": 1.4895619438873782,
+          "max_open_net_exposure": 3.8152906828835316,
+          "mean_open_net_exposure": 0.4867756826889089,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 83.81928933973315,
+          "cagr_pct": 234.8348614092005,
+          "mdd_pct": 17.58466439266363,
+          "calmar": 13.354526203364692,
+          "entry_episodes": 127,
+          "hedge_entries": 74,
+          "hedge_hours": 579.6666666666508,
+          "orders": 2021,
+          "turnover": 228.8545296833016,
+          "fees_pct_initial": 18.00480703217149,
+          "funding_pct_initial": 1.4987747599003522,
+          "max_open_net_exposure": 3.585938282697017,
+          "mean_open_net_exposure": 0.49272626444216683,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 81.03299232372345,
+          "cagr_pct": 224.83521361550336,
+          "mdd_pct": 17.436492345138166,
+          "calmar": 12.894520822486088,
+          "entry_episodes": 117,
+          "hedge_entries": 45,
+          "hedge_hours": 649.0833333333491,
+          "orders": 2025,
+          "turnover": 217.6051495708214,
+          "fees_pct_initial": 16.944993615517628,
+          "funding_pct_initial": 1.5049407590547372,
+          "max_open_net_exposure": 3.612495400128393,
+          "mean_open_net_exposure": 0.4888696753335833,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      },
+      "0.001": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 71.92575754230681,
+          "cagr_pct": 193.2004073185912,
+          "mdd_pct": 20.019428232128277,
+          "calmar": 9.650645616768045,
+          "entry_episodes": 99,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 2129,
+          "turnover": 205.60292273020346,
+          "fees_pct_initial": 25.6837904093618,
+          "funding_pct_initial": 1.6168865530321677,
+          "max_open_net_exposure": 3.8282697070371543,
+          "mean_open_net_exposure": 0.5242626006750593,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 66.67761196740032,
+          "cagr_pct": 175.70106178242835,
+          "mdd_pct": 18.024472780277435,
+          "calmar": 9.747916841966234,
+          "entry_episodes": 103,
+          "hedge_entries": 38,
+          "hedge_hours": 444.7499999999687,
+          "orders": 1970,
+          "turnover": 212.33070134090198,
+          "fees_pct_initial": 26.479426332866385,
+          "funding_pct_initial": 1.39288118326838,
+          "max_open_net_exposure": 3.8227124764924274,
+          "mean_open_net_exposure": 0.48718383615541144,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 67.87598824045213,
+          "cagr_pct": 179.64983242598427,
+          "mdd_pct": 18.70854331612586,
+          "calmar": 9.602555869282181,
+          "entry_episodes": 127,
+          "hedge_entries": 74,
+          "hedge_hours": 579.6666666666508,
+          "orders": 2021,
+          "turnover": 228.94237868050084,
+          "fees_pct_initial": 28.53148342202494,
+          "funding_pct_initial": 1.3949622073200096,
+          "max_open_net_exposure": 3.590590617285148,
+          "mean_open_net_exposure": 0.49312467640723895,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 66.06909379119989,
+          "cagr_pct": 173.70660109312718,
+          "mdd_pct": 18.478887526286446,
+          "calmar": 9.400273736502124,
+          "entry_episodes": 117,
+          "hedge_entries": 45,
+          "hedge_hours": 649.0833333333491,
+          "orders": 2025,
+          "turnover": 217.68804447485937,
+          "fees_pct_initial": 26.91788852221397,
+          "funding_pct_initial": 1.406585585210395,
+          "max_open_net_exposure": 3.6160520389267896,
+          "mean_open_net_exposure": 0.4892652617623204,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      }
+    },
+    "2025": {
+      "0.0006": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 208.93329431736305,
+          "cagr_pct": 209.17205976545264,
+          "mdd_pct": 15.240749826398027,
+          "calmar": 13.72452550878778,
+          "entry_episodes": 133,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 3120,
+          "turnover": 286.08658221566685,
+          "fees_pct_initial": 36.35782068635676,
+          "funding_pct_initial": 1.140411440315206,
+          "max_open_net_exposure": 4.24597068904798,
+          "mean_open_net_exposure": 0.38083569423064134,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 179.3589628858178,
+          "cagr_pct": 179.55560268354128,
+          "mdd_pct": 15.999184032651604,
+          "calmar": 11.222797507491567,
+          "entry_episodes": 139,
+          "hedge_entries": 72,
+          "hedge_hours": 1150.416666666738,
+          "orders": 2848,
+          "turnover": 294.95144348628753,
+          "fees_pct_initial": 34.38100595148549,
+          "funding_pct_initial": 0.5761493112088039,
+          "max_open_net_exposure": 3.797923988222237,
+          "mean_open_net_exposure": 0.3298519875346599,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 205.9000595989395,
+          "cagr_pct": 206.13441183311062,
+          "mdd_pct": 15.240749826398293,
+          "calmar": 13.525214584656986,
+          "entry_episodes": 166,
+          "hedge_entries": 132,
+          "hedge_hours": 1095.6666666667877,
+          "orders": 3080,
+          "turnover": 328.6460216100821,
+          "fees_pct_initial": 41.52395074989224,
+          "funding_pct_initial": 0.8348630244386406,
+          "max_open_net_exposure": 4.245970689047983,
+          "mean_open_net_exposure": 0.3498826122658591,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 209.53705280413146,
+          "cagr_pct": 209.77669913661526,
+          "mdd_pct": 15.157584740019814,
+          "calmar": 13.839718051039643,
+          "entry_episodes": 152,
+          "hedge_entries": 87,
+          "hedge_hours": 1160.0000000000625,
+          "orders": 3106,
+          "turnover": 298.1544262821835,
+          "fees_pct_initial": 37.836246585698014,
+          "funding_pct_initial": 0.8462320925552343,
+          "max_open_net_exposure": 4.245970689047981,
+          "mean_open_net_exposure": 0.3481399290124238,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      },
+      "0.001": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 175.7175684290018,
+          "cagr_pct": 175.9091655493454,
+          "mdd_pct": 15.428151070420892,
+          "calmar": 11.401830637152717,
+          "entry_episodes": 133,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 3120,
+          "turnover": 286.19690727173844,
+          "fees_pct_initial": 56.76876792465239,
+          "funding_pct_initial": 1.0708574674505489,
+          "max_open_net_exposure": 4.250445899582373,
+          "mean_open_net_exposure": 0.3811089499347136,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 148.46482921107076,
+          "cagr_pct": 148.61976487624204,
+          "mdd_pct": 17.42450864435462,
+          "calmar": 8.52935184054062,
+          "entry_episodes": 139,
+          "hedge_entries": 72,
+          "hedge_hours": 1150.416666666738,
+          "orders": 2848,
+          "turnover": 295.0792601640879,
+          "fees_pct_initial": 53.61462635742572,
+          "funding_pct_initial": 0.5457830100095563,
+          "max_open_net_exposure": 3.801888778389322,
+          "mean_open_net_exposure": 0.3301483738966726,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 168.3835826529113,
+          "cagr_pct": 168.56512409346522,
+          "mdd_pct": 15.359044057319204,
+          "calmar": 10.974974970082016,
+          "entry_episodes": 166,
+          "hedge_entries": 132,
+          "hedge_hours": 1095.6666666667877,
+          "orders": 3080,
+          "turnover": 328.7884379573052,
+          "fees_pct_initial": 64.2041705058797,
+          "funding_pct_initial": 0.7797736880654,
+          "max_open_net_exposure": 4.250445899582372,
+          "mean_open_net_exposure": 0.3501782533538173,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 174.9229431119391,
+          "cagr_pct": 175.11344418832198,
+          "mdd_pct": 16.113296780074982,
+          "calmar": 10.867636001396052,
+          "entry_episodes": 152,
+          "hedge_entries": 87,
+          "hedge_hours": 1160.0000000000625,
+          "orders": 3106,
+          "turnover": 298.2887008419621,
+          "fees_pct_initial": 58.93181193916999,
+          "funding_pct_initial": 0.794477387088204,
+          "max_open_net_exposure": 4.250445899582376,
+          "mean_open_net_exposure": 0.3484240970548276,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      }
+    },
+    "2026H1": {
+      "0.0006": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 100.20490482050963,
+          "cagr_pct": 305.847286015868,
+          "mdd_pct": 18.831316441069823,
+          "calmar": 16.241418223360945,
+          "entry_episodes": 80,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 1769,
+          "turnover": 255.6155726015934,
+          "fees_pct_initial": 23.954522432961188,
+          "funding_pct_initial": -0.6306748888451263,
+          "max_open_net_exposure": 4.025245350415041,
+          "mean_open_net_exposure": 0.68543637518949,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 108.28882851107355,
+          "cagr_pct": 339.5961271517879,
+          "mdd_pct": 18.823148416344427,
+          "calmar": 18.04140941995184,
+          "entry_episodes": 83,
+          "hedge_entries": 13,
+          "hedge_hours": 142.2499999999987,
+          "orders": 1761,
+          "turnover": 255.71359311982513,
+          "fees_pct_initial": 24.85834967261769,
+          "funding_pct_initial": -0.6764746717699593,
+          "max_open_net_exposure": 4.025245350415042,
+          "mean_open_net_exposure": 0.6730227679809125,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 100.8526947205476,
+          "cagr_pct": 308.5015762292133,
+          "mdd_pct": 18.668221767047687,
+          "calmar": 16.52549343364704,
+          "entry_episodes": 107,
+          "hedge_entries": 58,
+          "hedge_hours": 341.58333333332547,
+          "orders": 1700,
+          "turnover": 272.50977272253874,
+          "fees_pct_initial": 25.513811159897852,
+          "funding_pct_initial": -0.6444105010482182,
+          "max_open_net_exposure": 4.0252460604906375,
+          "mean_open_net_exposure": 0.6664523160505103,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 97.20193519283873,
+          "cagr_pct": 293.65675783133327,
+          "mdd_pct": 18.831968148982504,
+          "calmar": 15.593524559311641,
+          "entry_episodes": 94,
+          "hedge_entries": 28,
+          "hedge_hours": 310.16666666666595,
+          "orders": 1675,
+          "turnover": 262.54351495695295,
+          "fees_pct_initial": 24.453836863834226,
+          "funding_pct_initial": -0.6370133451753999,
+          "max_open_net_exposure": 4.025245350415038,
+          "mean_open_net_exposure": 0.6683525285382977,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      },
+      "0.001": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 80.86183793881851,
+          "cagr_pct": 230.60905956853088,
+          "mdd_pct": 19.222598102932043,
+          "calmar": 11.99676850827755,
+          "entry_episodes": 78,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 1769,
+          "turnover": 255.73618325260753,
+          "fees_pct_initial": 37.71261460029995,
+          "funding_pct_initial": -0.5954234800732239,
+          "max_open_net_exposure": 4.029647977551048,
+          "mean_open_net_exposure": 0.6860442120711716,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 88.17731074135735,
+          "cagr_pct": 258.14969897403296,
+          "mdd_pct": 19.214160713126148,
+          "calmar": 13.435387724100698,
+          "entry_episodes": 81,
+          "hedge_entries": 13,
+          "hedge_hours": 142.2499999999987,
+          "orders": 1761,
+          "turnover": 255.84181630574062,
+          "fees_pct_initial": 39.134115906973484,
+          "funding_pct_initial": -0.6397093922390614,
+          "max_open_net_exposure": 4.029647977551047,
+          "mean_open_net_exposure": 0.6736311859281691,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 80.24213046848163,
+          "cagr_pct": 228.3270989256275,
+          "mdd_pct": 19.06235983642466,
+          "calmar": 11.977903097251184,
+          "entry_episodes": 105,
+          "hedge_entries": 58,
+          "hedge_hours": 341.58333333332547,
+          "orders": 1700,
+          "turnover": 272.64859743420453,
+          "fees_pct_initial": 40.01918214948377,
+          "funding_pct_initial": -0.606063912537096,
+          "max_open_net_exposure": 4.029649207874584,
+          "mean_open_net_exposure": 0.6670799733426759,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 77.66154795812778,
+          "cagr_pct": 218.91029094596766,
+          "mdd_pct": 19.223671355568662,
+          "calmar": 11.387538150071126,
+          "entry_episodes": 94,
+          "hedge_entries": 28,
+          "hedge_hours": 310.16666666666595,
+          "orders": 1675,
+          "turnover": 262.6719695396129,
+          "fees_pct_initial": 38.448198774305496,
+          "funding_pct_initial": -0.6010604629174716,
+          "max_open_net_exposure": 4.029647977551046,
+          "mean_open_net_exposure": 0.6689644283499602,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      }
+    }
+  },
+  "long_only_reports": {
+    "2024": {
+      "0.0006": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 86.47309518783686,
+          "cagr_pct": 244.4988875374611,
+          "mdd_pct": 15.826115346204372,
+          "calmar": 15.449077817829759,
+          "entry_episodes": 66,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 1620,
+          "turnover": 156.2622183344757,
+          "fees_pct_initial": 12.946013759113347,
+          "funding_pct_initial": 2.177383313174997,
+          "max_open_net_exposure": 3.7643219148477245,
+          "mean_open_net_exposure": 0.4847011992846906,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 83.59769979840989,
+          "cagr_pct": 234.03409966974976,
+          "mdd_pct": 13.687929404912802,
+          "calmar": 17.09784531660073,
+          "entry_episodes": 74,
+          "hedge_entries": 38,
+          "hedge_hours": 497.9999999999566,
+          "orders": 1467,
+          "turnover": 165.19698887853434,
+          "fees_pct_initial": 13.740071170875934,
+          "funding_pct_initial": 1.899512821775145,
+          "max_open_net_exposure": 3.758010140648923,
+          "mean_open_net_exposure": 0.44325950338309156,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 83.89445141007185,
+          "cagr_pct": 235.10669190358823,
+          "mdd_pct": 15.010717441310394,
+          "calmar": 15.662588601965188,
+          "entry_episodes": 96,
+          "hedge_entries": 74,
+          "hedge_hours": 600.4999999999936,
+          "orders": 1562,
+          "turnover": 181.2801415393562,
+          "fees_pct_initial": 15.030358377028955,
+          "funding_pct_initial": 1.9242893873595162,
+          "max_open_net_exposure": 3.636492974289964,
+          "mean_open_net_exposure": 0.45200636923579957,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 81.66043807238886,
+          "cagr_pct": 227.07390731460316,
+          "mdd_pct": 14.875573181084922,
+          "calmar": 15.26488455606804,
+          "entry_episodes": 87,
+          "hedge_entries": 46,
+          "hedge_hours": 681.6666666666972,
+          "orders": 1581,
+          "turnover": 169.35381654670914,
+          "fees_pct_initial": 13.930697277100348,
+          "funding_pct_initial": 1.92851397849906,
+          "max_open_net_exposure": 3.6200718766858606,
+          "mean_open_net_exposure": 0.44767505266575586,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      },
+      "0.001": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 75.27673880996176,
+          "cagr_pct": 204.65334433347388,
+          "mdd_pct": 16.460704069495424,
+          "calmar": 12.432842694300815,
+          "entry_episodes": 66,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 1620,
+          "turnover": 156.32115773722455,
+          "fees_pct_initial": 20.848197202606443,
+          "funding_pct_initial": 2.0774926834841563,
+          "max_open_net_exposure": 3.769097000984083,
+          "mean_open_net_exposure": 0.4850321006409685,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 71.9730710805207,
+          "cagr_pct": 193.36059912998036,
+          "mdd_pct": 14.375879583962215,
+          "calmar": 13.450349107382213,
+          "entry_episodes": 74,
+          "hedge_entries": 38,
+          "hedge_hours": 497.9999999999566,
+          "orders": 1467,
+          "turnover": 165.26242225737096,
+          "fees_pct_initial": 22.08598318050243,
+          "funding_pct_initial": 1.8068640542469803,
+          "max_open_net_exposure": 3.76377249488878,
+          "mean_open_net_exposure": 0.4436153452349733,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 71.14715254779081,
+          "cagr_pct": 190.5704820828597,
+          "mdd_pct": 15.768333316230354,
+          "calmar": 12.085645214431471,
+          "entry_episodes": 96,
+          "hedge_entries": 74,
+          "hedge_hours": 600.4999999999936,
+          "orders": 1562,
+          "turnover": 181.34618401760815,
+          "fees_pct_initial": 24.074735401326,
+          "funding_pct_initial": 1.8223071672941602,
+          "max_open_net_exposure": 3.641303254339576,
+          "mean_open_net_exposure": 0.4523535525949154,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 69.86827650293195,
+          "cagr_pct": 186.27629158519306,
+          "mdd_pct": 15.568037901466036,
+          "calmar": 11.965303062863914,
+          "entry_episodes": 87,
+          "hedge_entries": 46,
+          "hedge_hours": 681.6666666666972,
+          "orders": 1581,
+          "turnover": 169.4166062626219,
+          "fees_pct_initial": 22.370967145219677,
+          "funding_pct_initial": 1.833607926499445,
+          "max_open_net_exposure": 3.6244065378488854,
+          "mean_open_net_exposure": 0.44801705568081773,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      }
+    },
+    "2025": {
+      "0.0006": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 177.473339694365,
+          "cagr_pct": 177.66736415135824,
+          "mdd_pct": 15.240749826398147,
+          "calmar": 11.657389969332398,
+          "entry_episodes": 79,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 2314,
+          "turnover": 199.92832261531555,
+          "fees_pct_initial": 24.87571465000068,
+          "funding_pct_initial": 1.7970843511701005,
+          "max_open_net_exposure": 4.245963236224204,
+          "mean_open_net_exposure": 0.34895738985615415,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 150.81614856188258,
+          "cagr_pct": 150.97416954689328,
+          "mdd_pct": 15.306632199177528,
+          "calmar": 9.86331725897259,
+          "entry_episodes": 85,
+          "hedge_entries": 72,
+          "hedge_hours": 1162.3333333333937,
+          "orders": 2074,
+          "turnover": 210.18837317867764,
+          "fees_pct_initial": 23.960649016165586,
+          "funding_pct_initial": 1.1989264035124099,
+          "max_open_net_exposure": 3.7979239882222373,
+          "mean_open_net_exposure": 0.2975116251325701,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 176.5295816266898,
+          "cagr_pct": 176.7223003971243,
+          "mdd_pct": 15.240749826398236,
+          "calmar": 11.595380962885873,
+          "entry_episodes": 107,
+          "hedge_entries": 132,
+          "hedge_hours": 1125.3333333334274,
+          "orders": 2368,
+          "turnover": 245.63532037312325,
+          "fees_pct_initial": 30.464086714252105,
+          "funding_pct_initial": 1.5072468297140749,
+          "max_open_net_exposure": 4.245963236224202,
+          "mean_open_net_exposure": 0.316982473449267,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 179.51438813857322,
+          "cagr_pct": 179.711243899825,
+          "mdd_pct": 15.157584740019846,
+          "calmar": 11.8561925915111,
+          "entry_episodes": 94,
+          "hedge_entries": 87,
+          "hedge_hours": 1190.916666666701,
+          "orders": 2390,
+          "turnover": 215.25715388342346,
+          "fees_pct_initial": 26.868872572751773,
+          "funding_pct_initial": 1.521594257465558,
+          "max_open_net_exposure": 4.245963236224207,
+          "mean_open_net_exposure": 0.31516007964517945,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      },
+      "0.001": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 156.3077685643684,
+          "cagr_pct": 156.47305410689856,
+          "mdd_pct": 15.35904405731927,
+          "calmar": 10.18768183247265,
+          "entry_episodes": 79,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 2314,
+          "turnover": 200.00274925028157,
+          "fees_pct_initial": 39.66536201333493,
+          "funding_pct_initial": 1.7109178869549646,
+          "max_open_net_exposure": 4.250436041768032,
+          "mean_open_net_exposure": 0.34918820992602045,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 130.7552195907767,
+          "cagr_pct": 130.88741811940247,
+          "mdd_pct": 16.41022423966849,
+          "calmar": 7.975967677699849,
+          "entry_episodes": 85,
+          "hedge_entries": 72,
+          "hedge_hours": 1162.3333333333937,
+          "orders": 2074,
+          "turnover": 210.27539456793062,
+          "fees_pct_initial": 38.135794186821954,
+          "funding_pct_initial": 1.1408504717708166,
+          "max_open_net_exposure": 3.8018887783893236,
+          "mean_open_net_exposure": 0.2977673839186676,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 150.81739488010425,
+          "cagr_pct": 150.9754175045118,
+          "mdd_pct": 15.35904405731906,
+          "calmar": 9.829740506054954,
+          "entry_episodes": 107,
+          "hedge_entries": 132,
+          "hedge_hours": 1125.3333333334274,
+          "orders": 2368,
+          "turnover": 245.7244424518792,
+          "fees_pct_initial": 48.06675644756916,
+          "funding_pct_initial": 1.421132498108321,
+          "max_open_net_exposure": 4.25043604176803,
+          "mean_open_net_exposure": 0.3172428210770829,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 156.62103017966106,
+          "cagr_pct": 156.7867325679959,
+          "mdd_pct": 15.277460698362844,
+          "calmar": 10.262617306866801,
+          "entry_episodes": 94,
+          "hedge_entries": 87,
+          "hedge_hours": 1190.916666666701,
+          "orders": 2390,
+          "turnover": 215.3409901289394,
+          "fees_pct_initial": 42.6966911860489,
+          "funding_pct_initial": 1.4431425321184304,
+          "max_open_net_exposure": 4.2504360417680305,
+          "mean_open_net_exposure": 0.3154078827575781,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      }
+    },
+    "2026H1": {
+      "0.0006": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 71.6630239399137,
+          "cagr_pct": 197.55505070973146,
+          "mdd_pct": 22.917832898617373,
+          "calmar": 8.62014535072598,
+          "entry_episodes": 41,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 1284,
+          "turnover": 172.01900641715483,
+          "fees_pct_initial": 15.284509355577203,
+          "funding_pct_initial": -0.5299960097600975,
+          "max_open_net_exposure": 4.025245350415039,
+          "mean_open_net_exposure": 0.6517123437163732,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 83.04210582953932,
+          "cagr_pct": 238.70087661003652,
+          "mdd_pct": 22.814314281051516,
+          "calmar": 10.46276796529844,
+          "entry_episodes": 40,
+          "hedge_entries": 13,
+          "hedge_hours": 142.2499999999987,
+          "orders": 1305,
+          "turnover": 175.28161496763937,
+          "fees_pct_initial": 16.443892933041894,
+          "funding_pct_initial": -0.5834167073308003,
+          "max_open_net_exposure": 4.025245350415041,
+          "mean_open_net_exposure": 0.6377204624409871,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 73.2242792070473,
+          "cagr_pct": 203.04138156438754,
+          "mdd_pct": 22.440153865071586,
+          "calmar": 9.048127868696314,
+          "entry_episodes": 61,
+          "hedge_entries": 59,
+          "hedge_hours": 353.16666666665617,
+          "orders": 1261,
+          "turnover": 190.89568878531213,
+          "fees_pct_initial": 16.99364488855703,
+          "funding_pct_initial": -0.5477587981021521,
+          "max_open_net_exposure": 4.025246060490639,
+          "mean_open_net_exposure": 0.6317049538084334,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 70.2760180343599,
+          "cagr_pct": 192.72345131286036,
+          "mdd_pct": 23.155533204397383,
+          "calmar": 8.322997773865167,
+          "entry_episodes": 51,
+          "hedge_entries": 28,
+          "hedge_hours": 323.166666666663,
+          "orders": 1232,
+          "turnover": 180.29683024509904,
+          "fees_pct_initial": 15.98661642897846,
+          "funding_pct_initial": -0.5410824033931282,
+          "max_open_net_exposure": 4.025245350415041,
+          "mean_open_net_exposure": 0.6334859643751042,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      },
+      "0.001": {
+        "no_hedge": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.0
+          },
+          "return_pct": 60.33508004439665,
+          "cagr_pct": 159.26181544803012,
+          "mdd_pct": 23.89918093716187,
+          "calmar": 6.663902661215768,
+          "entry_episodes": 41,
+          "hedge_entries": 0,
+          "hedge_hours": 0.0,
+          "orders": 1284,
+          "turnover": 172.10185110444445,
+          "fees_pct_initial": 24.54165935658619,
+          "funding_pct_initial": -0.5119787410590988,
+          "max_open_net_exposure": 4.029647977551045,
+          "mean_open_net_exposure": 0.6522272927438442,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "ridge_h12_q0.1_w0.5": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.5
+          },
+          "return_pct": 70.7415661894546,
+          "cagr_pct": 194.34072767512376,
+          "mdd_pct": 23.796920334405726,
+          "calmar": 8.16663353678353,
+          "entry_episodes": 40,
+          "hedge_entries": 13,
+          "hedge_hours": 142.2499999999987,
+          "orders": 1305,
+          "turnover": 175.36786809856423,
+          "fees_pct_initial": 26.379748191330844,
+          "funding_pct_initial": -0.5634383312969102,
+          "max_open_net_exposure": 4.02964797755105,
+          "mean_open_net_exposure": 0.6382457990741368,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h6_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 60.58025060609433,
+          "cagr_pct": 160.06243806269427,
+          "mdd_pct": 23.512871325768756,
+          "calmar": 6.807439033925007,
+          "entry_episodes": 61,
+          "hedge_entries": 59,
+          "hedge_hours": 353.16666666665617,
+          "orders": 1261,
+          "turnover": 190.985444612131,
+          "fees_pct_initial": 27.169401173096965,
+          "funding_pct_initial": -0.5268904841434185,
+          "max_open_net_exposure": 4.029649207874584,
+          "mean_open_net_exposure": 0.6322471343988487,
+          "cap_interventions": 0,
+          "insolvent": false
+        },
+        "hgb_h12_q0.2_w0.25": {
+          "weights_notional": {
+            "fresh_kimchi_fx": 1.0,
+            "frozen_annual_rank7": 1.5,
+            "rex_taker_low_range_position": 0.2,
+            "cand_rex_veto_7": 0.8,
+            "markov_transition_long": 1.0,
+            "macro_flow": 1.0,
+            "short_complement": 0.25
+          },
+          "return_pct": 58.514262854593824,
+          "cagr_pct": 153.3547658807461,
+          "mdd_pct": 24.164088640774793,
+          "calmar": 6.346391463817646,
+          "entry_episodes": 51,
+          "hedge_entries": 28,
+          "hedge_hours": 323.166666666663,
+          "orders": 1232,
+          "turnover": 180.38246666181354,
+          "fees_pct_initial": 25.622867237050112,
+          "funding_pct_initial": -0.5220279208716957,
+          "max_open_net_exposure": 4.029647977551049,
+          "mean_open_net_exposure": 0.6340136937002467,
+          "cap_interventions": 0,
+          "insolvent": false
+        }
+      }
+    }
+  },
+  "live_enabled": false
+}

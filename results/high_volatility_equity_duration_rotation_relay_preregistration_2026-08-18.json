@@ -1,0 +1,116 @@
+{
+  "protocol_version": "high_volatility_equity_duration_rotation_relay_v1",
+  "policy_id": "HVERDR-24",
+  "as_of_date": "2026-08-18",
+  "singleton": true,
+  "candidate_family": [
+    "HVERDR-24"
+  ],
+  "candidate_family_size": 1,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "Opposite completed US cash-session returns in SPY and TLT identify a rotation between equity risk appetite and duration demand rather than a common liquidity impulse. During elevated BTC variation, follow the SPY risk-on/off direction for twenty-four hours.",
+    "side": "strict sign of SPY regular-session open-to-close return when TLT has the opposite strict sign",
+    "why_distinct": "HVRPC requires same-sign SPY/TLT consensus; HVERDR uses the mutually exclusive disagreement state. Sector and credit candidates use different assets, while Treasury candidates use yields. It uses no HVRPC event set or controls, crypto direction, OI, funding, premium, options, fitted outcome, or promoted control.",
+    "why_low_gross9_overlap_is_plausible": "external conditional 23:05 UTC equity-duration rotation sessions are absent from Gross9"
+  },
+  "features": {
+    "source": {
+      "path": "data/high_volatility_risk_parity_consensus_relay_sources_2020_2026/daily_consensus_states.csv.gz",
+      "sha256": "35d7a19dcf1840c46aa5625f92e670bdd62b7036e6b05d659c6c0975ae334b50"
+    },
+    "session": "same frozen US cash-session date with finite positive raw unadjusted SPY/TLT opens and closes",
+    "disagreement": "SPY and TLT returns strict nonzero with opposite signs",
+    "availability": "session date at 23:00 UTC after both regular closes",
+    "variation_gate": "frozen causal seven-day BTC variation_rank>=0.65",
+    "no_imputation": true
+  },
+  "policy": {
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "clock": {
+    "decision": "frozen 23:00 UTC session availability",
+    "entry": "23:05 UTC exact BTCUSDT open",
+    "hold": "24 elapsed hours",
+    "reservation": "chronological half-open nonoverlap; exit first on equal entry",
+    "funding": "not signal input; exact settlements after Gross9"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "spy_only",
+      "tlt_direction",
+      "one_session_stale_disagreement",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_HVRPC_train_failure_known": true,
+    "HVRPC_event_set_or_controls_reused": false,
+    "exact_disagreement_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "selection_basis": "mutually exclusive equity-duration rotation state"
+  },
+  "stopping_rule": "source, Gross9, train/test/eval/final; terminal first failure; no source, disagreement, variation, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "4eba290d4eba5974d478c9c5ebdff7375253d1c1301240d962ad2cbfa1c6e5dd"
+}

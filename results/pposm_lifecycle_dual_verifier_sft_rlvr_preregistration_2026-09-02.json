@@ -1,0 +1,118 @@
+{
+  "protocol_version": "pposm_lifecycle_dual_verifier_sft_rlvr_v1",
+  "status": "preregistered_before_dual_verifier_rlvr_and_oos",
+  "as_of": "2026-09-02",
+  "research_boundary": {
+    "selection": "pre-2024 only",
+    "oos_opening_condition": "the retrained dual-verifier adapter and one global train margin threshold must pass every frozen pre-2024 gate",
+    "oos_report_veto_only": [
+      "test_2024",
+      "eval_2025",
+      "holdout_2026h1"
+    ],
+    "oos_rerank_or_repair": false,
+    "known_contamination": "Historical PPOSM OOS windows were exposed previously; research only, never deployment authorization."
+  },
+  "source": {
+    "git_commit": "3ece0db3f2874f8a26c14cc95652ac3addaabb8e",
+    "manifest_freeze_hash": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+    "train_data": {
+      "path": "data/pposm_lifecycle_residual_train_pre2024_2026-09-02.jsonl",
+      "sha256": "64d03c9baa68e8968ffddb66e531561a7724410e4324d9d3a04eeba58f4796f1",
+      "identity_sha256": "d0d2578ee463b2282915933afdcbc168a4178efe584a98886dbabc7099cdf8c2",
+      "rows": 204,
+      "anchors": 102,
+      "targets": {
+        "KEEP": 151,
+        "SWITCH": 53
+      }
+    },
+    "data_summary": {
+      "path": "results/pposm_lifecycle_residual_data_summary_2026-09-02.json",
+      "sha256": "566f06b3f7338d450de8dbf0139b29cec16c6e46ab4f9bc788f6f30287360026"
+    },
+    "frozen_sft_adapter": {
+      "path": "checkpoints/pposm_lifecycle_residual_sft_2026-09-02/adapter_model.safetensors",
+      "sha256": "fe14683978824880a928d530d69e54b04206c6aad9ea7eb7f7ab3727a9629525",
+      "summary_path": "checkpoints/pposm_lifecycle_residual_sft_2026-09-02/sft_summary.json",
+      "summary_sha256": "7ccd3253b6a74e92fd4820efd240b2fbb279391db0cc20b308aa519510296015",
+      "reuse_reason": "reuse the already frozen lifecycle SFT adapter so the only changed estimand is the RLVR verifier composition"
+    }
+  },
+  "architecture": {
+    "name": "shared_lifecycle_residual_dual_verifier_router",
+    "default_action": "TP4",
+    "reference_anchor_only": true,
+    "candidate_actions": [
+      "SKIP",
+      "TP12"
+    ],
+    "labels": [
+      "KEEP",
+      "SWITCH"
+    ],
+    "material_change": "RLVR must satisfy both exact lifecycle target correctness and selected lifecycle economic utility instead of utility alone",
+    "motivation": "all prior lifecycle adapters failed train separation and over-selected SWITCH; this change uses only that pre-2024 train-stage evidence"
+  },
+  "rlvr": {
+    "schema": "pposm_residual_target_utility",
+    "reward_functions_equal_weight": [
+      "exact bare-label format reward",
+      "exact KEEP/SWITCH target reward",
+      "clipped lifecycle residual utility reward"
+    ],
+    "tie_rule": "exact zero SWITCH utility receives the frozen tie-to-KEEP penalty",
+    "sample_mode": "balanced_oversample",
+    "max_samples": 1024,
+    "steps": 64,
+    "learning_rate": 5e-06,
+    "batch": 4,
+    "gradient_accumulation": 4,
+    "generations": 4,
+    "max_prompt_length": 2048,
+    "max_completion_length": 8,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "scale_rewards": "none",
+    "utility_scale": 0.00621237045258739,
+    "seed": 20260903,
+    "require_nonzero_reward_std": true,
+    "require_nonzero_gradient": true
+  },
+  "train_threshold": {
+    "score": "mean KEEP/SWITCH label-logprob including EOS",
+    "grid": "all distinct 204-row margins plus nextafter sentinels",
+    "routing": "strict global margin threshold; dual switch chooses larger raw margin, exact tie SKIP; nonanchors TP4",
+    "materiality": {
+      "difference_min": 0.1,
+      "used_nondefault_min": 10,
+      "single_action_share_max": 0.9
+    },
+    "economics": {
+      "base_return_not_lower": true,
+      "stress_return_higher": true,
+      "base_cagr_mdd_lift_min": 0.05,
+      "stress_mdd_worsening_pp_max": 0.01,
+      "base_mdd_pct_max": 15.0,
+      "base_cagr_mdd_min": 3.0,
+      "trades_min": 40
+    },
+    "ranking": [
+      "max min(base/stress CAGR-MDD delta)",
+      "max min(base/stress log-equity delta)",
+      "higher threshold",
+      "stable route stream"
+    ],
+    "no_feasible_threshold": "fail train stage and do not generate/score OOS prompts"
+  },
+  "oos_protocol_if_train_passes": {
+    "anchors": "always-TP4 shadow anchors only",
+    "nonanchors": "TP4",
+    "threshold": "single frozen train threshold",
+    "execution": "exact next-open, funding, non-overlap, TP/stop/48h cap, 6bp/10bp per side",
+    "no_rerank_or_repair": true
+  },
+  "final_pass_gates": "identical to the original professor-critic rubric",
+  "stopping_rule": "No lifecycle OOS generation or scoring unless this adapter's global threshold passes every pre-2024 gate."
+}

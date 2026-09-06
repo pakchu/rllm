@@ -1,0 +1,117 @@
+{
+  "protocol_version": "high_volatility_energy_commodity_transition_relay_v1",
+  "policy_id": "HVECTR-24",
+  "as_of_date": "2026-08-18",
+  "singleton": true,
+  "candidate_family": [
+    "HVECTR-24"
+  ],
+  "candidate_family_size": 1,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A sign transition in the completed natural-gas-minus-oil return impulse changes the energy-to-Bitcoin spillover regime rather than extending an existing score level. During elevated BTC variation, follow the new published gas-positive/oil-negative direction for twenty-four hours.",
+    "side": "strict sign of current UNG return minus equal-weight USO/BNO return after opposite prior source-valid sign",
+    "why_distinct": "HVECSP trades an absolute z-score tail and failed train. HVECTR trades only raw spillover-score polarity transitions and uses no HVECSP event/control, z threshold, crypto direction, OI, funding, premium, options, fitted outcome, or promoted control.",
+    "why_low_gross9_overlap_is_plausible": "irregular actual cash-close energy-regime transitions are absent from Gross9"
+  },
+  "features": {
+    "source": {
+      "path": "data/high_volatility_energy_commodity_return_spillover_relay_sources_2022_2026/hvecsp_preentry_features.csv.gz",
+      "sha256": "320301d01a587de87496bb6610547ee9f9b5b813ba6846036055c5b19c6f0ff2"
+    },
+    "spillover_score": "UNG log(close/open)-0.5*(USO log(close/open)+BNO log(close/open)), finite strict nonzero",
+    "previous": "immediately prior source-valid common energy session",
+    "transition": "current and previous spillover scores have strict opposite signs",
+    "availability": "five minutes after frozen actual NYSE close, including early close",
+    "variation_gate": "frozen causal BTC variation_rank>=0.65",
+    "no_imputation": true
+  },
+  "policy": {
+    "variation_rank_min": 0.65,
+    "feature_delay_minutes": 5,
+    "entry_delay_minutes_after_feature": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "clock": {
+    "entry": "actual close+10m exact BTCUSDT open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "funding": "not signal input; exact settlements after Gross9"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "level_not_transition",
+      "one_session_stale_transition",
+      "previous_side",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_HVECSP_train_failure_known": true,
+    "HVECSP_event_set_or_controls_reused": false,
+    "exact_transition_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "selection_basis": "energy spillover polarity regime transition"
+  },
+  "stopping_rule": "source, Gross9, train/test/eval/final; terminal first failure; no proxies, weighting, score, previous-session law, transition, variation, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "7c967bb57f54a2897096641e6c5490a7d5dd4626df66f1dc53616dc3d6adfd19"
+}

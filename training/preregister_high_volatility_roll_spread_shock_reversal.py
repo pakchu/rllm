@@ -1,0 +1,121 @@
+"""Outcome-blind preregistration for HVRSSR-8."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+POLICY_ID = "HVRSSR-8"
+SLUG = "high_volatility_roll_spread_shock_reversal"
+DEFAULT_OUTPUT = Path("results/high_volatility_roll_spread_shock_reversal_preregistration_2026-08-10.json")
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "high_volatility_roll_spread_shock_reversal_v1",
+        "policy_id": POLICY_ID, "slug": SLUG, "as_of_date": "2026-08-10",
+        "outcomes_opened": False, "source_incidence_opened": False,
+        "gross9_rows_opened": False, "singleton": True,
+        "mechanism": {
+            "claim": (
+                "Roll's negative adjacent-return covariance estimates effective spread from transaction-price bouncing. "
+                "When that completed eight-hour spread proxy newly enters its own upper tail during elevated BTC "
+                "variation, the completed displacement contains unusually large transitory liquidity cost and is faded."
+            ),
+            "side": "opposite the strict sign of the completed eight-hour BTC return",
+            "why_distinct": (
+                "HVSAR ranked absolute Pearson autocorrelation and used its sign to choose continuation or reversal; "
+                "HVCSER estimated a daily spread from adjacent high-low ranges. HVRSSR admits only negative raw "
+                "close-return covariance, transforms its level into Roll's effective-spread proxy, and fades a new "
+                "upper-tail spread shock on fixed eight-hour boundaries. No prior event set or control is reused."
+            ),
+            "research_context": {
+                "paper": "Roll (1984), A Simple Implicit Measure of the Effective Bid-Ask Spread in an Efficient Market",
+                "supported_scope": "negative serial covariance of transaction-price changes as an implicit spread estimator",
+                "implementation_is_not_a_published_replication": True,
+            },
+            "volatile_market_target": "completed eight-hour realized-variation strict-prior rank >=0.65",
+            "why_low_gross9_overlap_is_plausible": "three daily latent-spread-shock onset opportunities are absent from Gross9 primitives",
+        },
+        "features": {
+            "decision_grid": "exact 00:00, 08:00 and 16:00 UTC boundaries D",
+            "source_window": "480 exact unique coherent bars_binance BTCUSDT interval=1m rows [D-8h,D)",
+            "five_minute_aggregation": "96 exact left-labeled groups of five consecutive rows; OHLC first/max/min/last",
+            "five_minute_returns": "95 close-to-close natural-log returns from the 96 aggregated closes",
+            "roll_covariance": "population covariance between returns[1:] and returns[:-1]; both vectors finite with positive population variance",
+            "roll_spread_proxy": "2*sqrt(-roll_covariance); covariance must be strictly negative",
+            "spread_rank": "strict-prior midrank over at most 270 earlier source-valid blocks, minimum 180; current excluded; rank>=0.80",
+            "realized_variation": "sum squared 95 five-minute close-to-close returns, finite strict positive",
+            "variation_rank": "strict-prior 270/180 midrank across source-valid blocks; current excluded; rank>=0.65",
+            "completed_return": "natural log(last one-minute close/first one-minute open), finite strict nonzero",
+            "eligible_state": "negative covariance, spread-rank and variation-rank gates all pass",
+            "onset": "eligible now and immediately previous exact source-valid block ineligible",
+            "source_valid": "finite positive coherent OHLC, exact timestamps, no duplicate, missing, nearest join, or imputation",
+        },
+        "clock": {
+            "decision": "D after the full source path completes", "entry": "exact BTCUSDT D+5m open",
+            "side": "negative strict sign(completed_return)", "hold": "8 elapsed hours",
+            "reservation": "global half-open; exit first on equal entry", "split_crossing_action": "skip",
+            "gross_exposure": 0.5, "funding": "not a signal input; exact realized funding only after novelty",
+        },
+        "policy": {
+            "window_minutes": 480, "five_minute_bars": 96, "return_observations": 95,
+            "covariance_pairs": 94, "prior_blocks": 270, "minimum_prior_blocks": 180,
+            "spread_rank_min": 0.80, "variation_rank_min": 0.65,
+            "entry_delay_minutes": 5, "hold_hours": 8, "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006, "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {"minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8}, "minority_side_share_min": 0.2, "max_month_share": 0.45},
+        "novelty_gates": {"exact_entry_jaccard_max": 0.1, "candidate_near_6h_share_max": 0.35, "occupied_5m_bar_jaccard_max": 0.25, "absolute_signed_exposure_pearson_max": 0.35, "must_pass_before_economics": True},
+        "economic_gates": {
+            "absolute_return_positive": True, "cagr_to_strict_mdd_min": 3.0, "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0, "weekly_signflip_one_sided_p_max": 0.1,
+            "stress_absolute_return_positive": True, "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True, "stop_on_first_failure": True,
+            "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable then adverse, global HWM, full-calendar CAGR",
+        },
+        "post_stage_volatility_audit": {"prerequisite": "unchanged all-stage pass", "rv20_q90_entry_filter": False, "minimum_q90_trades": 8, "candidate_q90_absolute_return_positive": True, "identical_clock_forced_long_residual_positive": True},
+        "diagnostic_controls": {"names": ["no_spread_tail_gate", "no_variation_gate", "all_negative_covariance", "one_block_stale_geometry", "direction_flip", "forced_long"], "cannot_be_promoted": True},
+        "source_plan": {
+            "table": "bars_binance", "symbol": "BTCUSDT", "interval": "1m",
+            "columns": ["ts", "open", "high", "low", "close"],
+            "query_window": ["2023-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+            "read_after_preregistration": True, "execution_prices": "sealed until source and novelty pass",
+        },
+        "research_boundary": {
+            "prior_serial_dependence_and_spread_proxy_outcomes_known": True,
+            "repository_roll_effective_spread_candidate_found": False, "prior_event_sets_or_controls_reused": False,
+            "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": False,
+            "candidate_incidence_opened": False, "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False, "candidate_count": 1, "grid": False,
+            "repair_of_prior_candidate": False, "promoted_prior_control": False,
+            "selection_basis": "independent Roll effective-spread shock mechanism fixed before incidence",
+        },
+        "stopping_rule": "terminal first failure; no window, estimator, covariance, rank, onset, side, clock, hold, subset, threshold, or control repair",
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(payload: dict[str, Any]) -> None:
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    if payload.get("manifest_hash") != canonical_hash(core) or payload != build():
+        raise RuntimeError("HVRSSR preregistration drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(); parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args(); result = build(); validate(result)
+    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n"); print(args.output)

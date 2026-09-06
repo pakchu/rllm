@@ -1,0 +1,155 @@
+{
+  "protocol_version": "high_volatility_cross_asset_tail_dependence_continuation_relay_v1",
+  "policy_id": "HVCTDC-8",
+  "as_of_date": "2026-08-10",
+  "oos_outcomes_opened": false,
+  "oos_source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "The rolling empirical copula of BTC and six liquid alt perpetuals identifies whether system-wide extreme dependence is stronger in the upper or lower tail. During elevated BTC variation, a completed BTC tail move aligned with the unusually dominant joint tail is followed for eight hours.",
+    "side": "long for unusually upper-dominant dependence plus a current BTC upper-tail block; short for the lower-tail analogue",
+    "why_distinct": "prior cross-alt candidates used contemporaneous breadth, mean returns, residuals, flow, funding, volume, or leadership; no repository candidate estimates rolling empirical upper-versus-lower co-exceedance dependence",
+    "volatile_market_target": "strict-prior prior-24h BTC realized-variation rank >=0.65",
+    "why_low_gross9_overlap_is_plausible": "a sparse copula-asymmetry onset has no primitive or fixed clock in Gross9"
+  },
+  "source_contract": {
+    "table": "bars_binance",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "ADAUSDT",
+      "DOGEUSDT"
+    ],
+    "interval": "1m",
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "row_validity": "unique exact UTC minute; finite positive OHLC; high>=max(open,close), low<=min(open,close), high>=low",
+    "block_validity": "exact 240 rows for every symbol in half-open UTC four-hour block; any missing or invalid row invalidates the whole block",
+    "causal_availability": "block features are available at block end; decision at block end and entry at block end+5m",
+    "transport": "read-only PostgreSQL query with SQL hash, physical row count, normalized panel hash, and no imputation",
+    "revision_boundary": "database snapshot hashes freeze this replay vintage; no historical first-seen revision archive is claimed",
+    "bounded_probe_disclosure": "only table schema and per-symbol min/max/count metadata were opened; no candidate feature, incidence, post-entry outcome, or Gross9 row was read"
+  },
+  "feature_contract": {
+    "block_return": "log(last close / first open) for each exact valid four-hour block",
+    "tail_dependence_history": "at most 270 and at least 180 immediately prior valid joint blocks; current excluded",
+    "empirical_tail_cutoffs": "within the current history, strict empirical midranks with lower<=0.20 and upper>=0.80",
+    "per_alt_upper_dependence": "count(prior BTC upper and alt upper) divided by count(prior BTC upper)",
+    "per_alt_lower_dependence": "count(prior BTC lower and alt lower) divided by count(prior BTC lower)",
+    "tail_asymmetry": "mean six upper-dependences minus mean six lower-dependences; strict nonzero",
+    "asymmetry_magnitude_rank": "strict-prior midrank of abs(tail_asymmetry), at most 270 finite earlier values and minimum 180",
+    "current_btc_tail": "BTC current block-return midrank against the same prior joint history; upper>=0.80 or lower<=0.20",
+    "btc_variation": "sum squared close-to-close BTC log returns over exact 1,440 completed 1m rows ending at block end",
+    "btc_variation_rank": "strict-prior 270/180 midrank across valid joint blocks",
+    "eligible_state": "asymmetry_magnitude_rank>=0.80 and btc_variation_rank>=0.65 and either tail_asymmetry>0 with current_btc_tail>=0.80 or tail_asymmetry<0 with current_btc_tail<=0.20",
+    "onset": "current joint block eligible and immediately previous joint block ineligible",
+    "no_imputation": true
+  },
+  "oos_clock": {
+    "start": "2023-07-01T00:00:00Z",
+    "decision": "completed four-hour block end",
+    "entry": "decision+5m BTCUSDT perpetual open",
+    "side": "strict sign of tail_asymmetry",
+    "hold": "8 elapsed hours",
+    "reservation": "chronological first eligible onset while flat; half-open intervals and exit first on equal time",
+    "funding": "opened only after novelty passes"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "tail_probability": 0.2,
+    "asymmetry_magnitude_rank_min": 0.8,
+    "btc_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45,
+    "complete_joint_block_required": true
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, favorable-then-adverse held 5m path, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged passes every sequential economic stage",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_asymmetry_magnitude_gate",
+      "no_current_tail_confirmation",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_generic_cross_alt_outcomes_known": true,
+    "prior_empirical_tail_dependence_asymmetry_outcomes_known": false,
+    "candidate_specific_incidence_opened": false,
+    "candidate_specific_postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent empirical-copula tail-dependence mechanism fixed before incidence or outcomes"
+  },
+  "stopping_rule": "freeze preregistration, source support, Gross9 novelty, and sequential economics; terminal first failure with no universe, block, history, tail, rank, volatility gate, onset, side, delay, hold, subset, or control repair",
+  "manifest_hash": "1d03f28f69e7d176d8f0f4b2f4c26e29d5f3c157fff28e709d65060915d705a6"
+}

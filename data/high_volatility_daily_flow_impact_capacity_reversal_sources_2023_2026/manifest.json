@@ -1,0 +1,27 @@
+{
+  "protocol_version": "hvdfcr_12_sources_v1",
+  "query": "\nSELECT\n  date_bin('1 hour', ts, TIMESTAMPTZ '1970-01-01 00:00:00+00') AS hour_time,\n  (array_agg(open ORDER BY ts))[1] AS hour_open,\n  (array_agg(close ORDER BY ts DESC))[1] AS hour_close,\n  sum(quote_asset_volume) AS quote_turnover,\n  sum(2*taker_buy_quote-quote_asset_volume) AS signed_taker_quote,\n  sum(power(ln(close/open), 2)) AS minute_squared_return,\n  count(*) AS source_rows,\n  count(DISTINCT ts) AS distinct_rows,\n  min(ts) AS first_ts,\n  max(ts) AS last_ts,\n  bool_and(\n    open>0 AND high>0 AND low>0 AND close>0\n    AND high>=greatest(open,close,low)\n    AND low<=least(open,close,high)\n    AND quote_asset_volume>=0\n    AND taker_buy_quote>=0\n    AND taker_buy_quote<=quote_asset_volume\n  ) AS coherent\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1\nORDER BY 1\n",
+  "query_sha256": "132d55dd6d1e4e8ece6e9e5674ba4dfbb9a39fd3dafd468f4585636a520e4623",
+  "table": "bars_binance",
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 31392,
+  "builder": {
+    "path": "training/build_high_volatility_daily_flow_impact_capacity_reversal_support.py",
+    "sha256": "ba0098fb6ade1f41ecc439588264ea47a08140eec6d2c8d0de2e514f7b155568"
+  },
+  "panel": {
+    "path": "data/high_volatility_daily_flow_impact_capacity_reversal_sources_2023_2026/daily_capacity_states.csv.gz",
+    "sha256": "80f34c9f567d4b55785c09a478f95219514dc2c1028bc6485ad0ce8db19e063a",
+    "rows": 1307,
+    "valid_rows": 1299
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "4e290b54a5468e0233ea98b31796d66f405e262fb2097a91dad0101d7e10b511"
+}

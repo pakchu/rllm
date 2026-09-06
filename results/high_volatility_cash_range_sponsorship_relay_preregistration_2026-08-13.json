@@ -1,0 +1,158 @@
+{
+  "protocol_version": "high_volatility_cash_range_sponsorship_relay_v1",
+  "policy_id": "HVCRS-8",
+  "slug": "high_volatility_cash_range_sponsorship_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "When BTC spot spans an unusually larger normalized five-minute high-low range than the simultaneous perpetual and both markets close in the same direction, cash is leading volatility discovery rather than merely following leveraged marking. During elevated BTC variation, follow the common cash-sponsored direction for eight hours.",
+    "side": "common strict sign of completed spot and perpetual five-minute returns",
+    "why_distinct": "Spot displacement dominance counts multi-hour return-magnitude dominance; first passage uses ordered barriers; temporal variance transfer uses multi-block realized variance; cash-led excursion sponsorship selects directional high/open or open/low excess. HVCRS uses the direction-free log(high/low) range difference of the two actual simultaneous five-minute markets, then requires common close confirmation. It uses no volume, flow, basis, fitted outcome, funding, OI, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "causal trailing perpetual 24-hour realized variation must occupy its upper 35 percent",
+    "why_low_gross9_overlap_is_plausible": "irregular actual-market cash range-dominance onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact UTC five-minute boundary D",
+    "market_bars": "five exact coherent native one-minute BTCUSDT perpetual and spot rows [D-5m,D)",
+    "spot_range": "log(spot five-minute high/low), finite positive",
+    "perpetual_range": "log(perpetual five-minute high/low), finite positive",
+    "cash_range_excess": "spot_range minus perpetual_range",
+    "range_rank": "strict-prior midrank over at most 8640 jointly valid decisions, minimum 6048, current excluded; rank>=0.995",
+    "direction_confirmation": "spot and perpetual log(close/open) returns share one strict nonzero sign",
+    "btc_realized_variation": "sqrt(sum squared exact perpetual one-minute log(close/open) returns over [D-24h,D))",
+    "variation_rank": "strict-prior midrank over at most 8640 jointly valid decisions, minimum 6048, current excluded; rank>=0.65",
+    "onset": "full directional sponsorship true now and false at immediately prior exact source-valid decision; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after both completed bars and causal ranks are available",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "common confirmed return direction",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "history_decisions": 8640,
+    "minimum_history_decisions": 6048,
+    "range_rank_min": 0.995,
+    "variation_bars": 288,
+    "variation_rank_min": 0.65,
+    "onset_required": true,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "rank_0_99",
+      "perpetual_range_sponsorship",
+      "one_bar_stale_range",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "perpetual": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m"
+    },
+    "spot": {
+      "table": "bars_binance_spot",
+      "symbol": "BTCUSDT",
+      "interval": "1m"
+    },
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "window": [
+      "2023-05-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration_commit": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "adjacent_spot_displacement_variance_and_excursion_outcomes_known": true,
+    "repository_exact_simultaneous_cash_range_tail_sponsorship_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent cross-market cash volatility discovery mechanism"
+  },
+  "stopping_rule": "terminal first failure; no market, bar, range, rank history, rank threshold, confirmation, variation, onset, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "01a2ed45ca4a51aaff50ea0e4451bb6ad001a3411c59553e087a41c8111ae472"
+}

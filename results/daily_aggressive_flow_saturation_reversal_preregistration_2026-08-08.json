@@ -1,0 +1,121 @@
+{
+  "protocol_version": "daily_aggressive_flow_saturation_reversal_v1",
+  "policy_id": "DAFSR-12",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "At the fixed UTC day boundary, unusually volatile BTC price discovery accompanied by a large same-direction normalized aggressive taker flow in the dominant Binance BTC/USDT book identifies one-sided flow saturation. The crowded completed-day price direction should reverse for twelve hours.",
+    "side": "opposite sign of the completed BTC 24-hour return",
+    "why_distinct": "DAFSR requires same-direction daily price and dominant-book taker-flow saturation, then trades inventory exhaustion. DSQFCR required USDT+USDC consensus and followed flow; CVBRPCR selected price momentum with a crypto-options beta residual; RV20 used liquidation and OI fields.",
+    "why_suited_to_volatile_regimes": "completed-day realized variation must be in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "one 00:05 UTC daily flow-saturation entry is absent from Gross9"
+  },
+  "features": {
+    "source_day": "exact prior UTC day [D-24h,D), requiring 24 source-complete BTCUSDT hourly flow rows and 24 consecutive completed BTC price hours",
+    "normalized_flow": "sum(signed_taker_flow_btc)/sum(base_volume_btc), positive denominator",
+    "flow_gate": "absolute normalized flow>=0.05",
+    "price_return": "log(last completed-hour close/first completed-hour open), nonzero",
+    "saturation": "flow and price return have the same nonzero sign",
+    "realized_variation": "sqrt(sum of 24 squared completed-hour BTC log returns)",
+    "volatility_rank": "strict-prior midrank against at most 90 valid days, minimum 60; current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact D 00:00 UTC after every source feature is available",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "-sign(price_return)",
+    "hold": "12 elapsed hours",
+    "reservation": "fixed daily decisions; global half-open, exit first on equal open",
+    "funding_oi_implied_vol": "not signal inputs; exact funding only for later PnL"
+  },
+  "policy": {
+    "absolute_normalized_flow_min": 0.05,
+    "prior_days": 90,
+    "prior_min_days": 60,
+    "realized_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "flow": "hash-bound Binance stablecoin quote-flow panel through 2026-07-31",
+    "completed_price": "hash-bound completed-hour BTC through 2026-08-01",
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_flow_magnitude_gate",
+      "flow_only_direction",
+      "price_continuation",
+      "one_day_stale_flow"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_stablecoin_flow_candidate_incidence_known": true,
+    "prior_candidate_outcomes_used_to_define_dafsr": false,
+    "dafsr_candidate_incidence_opened": false,
+    "dafsr_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent daily dominant-book flow-saturation reversal mechanism"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no threshold, side, hold, clock, or subset repair.",
+  "manifest_hash": "b8c339cd4534d94cd6de55e6dce0a7043eb2d843de0fea69cf7954b15ca33f6a"
+}

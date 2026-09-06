@@ -1,0 +1,60 @@
+{
+  "protocol_version": "high_volatility_inverse_linear_funding_transfer_relay_source_rejection_v1",
+  "policy_id": "HVILFT-8",
+  "as_of_date": "2026-08-10",
+  "preregistration": {
+    "path": "results/high_volatility_inverse_linear_funding_transfer_relay_preregistration_2026-08-10.json",
+    "sha256": "ebeb5b82c1bf9345a327ffe141bc3570b264880017b56a5613b9dd942a3f3f31",
+    "manifest_hash": "d72649e6e7711091e9e8a32e0dab879222dfc9ff669ad5c89ecc0b9bb9ead943"
+  },
+  "frozen_evaluator": {
+    "path": "training/build_high_volatility_inverse_linear_funding_transfer_relay_support.py",
+    "sha256": "c6e7c1b3cb37012d34cfa0ae07f8284cbddc2c803e416dd23a9336f6bee32dc9",
+    "commit": "213bb613328267c53f9d47d3cf209264870f0436"
+  },
+  "source_binding": {
+    "url": "https://data.binance.vision/data/futures/cm/monthly/fundingRate/BTCUSD_PERP/BTCUSD_PERP-fundingRate-2023-01.zip",
+    "zip_sha256": "eafdcb42d49f88cc72254706fe2bd4c4726c6c39e268680c4bde8dc23b6d58a2",
+    "checksum_url": "https://data.binance.vision/data/futures/cm/monthly/fundingRate/BTCUSD_PERP/BTCUSD_PERP-fundingRate-2023-01.zip.CHECKSUM",
+    "checksum_response_sha256": "2b3e07b7fac866cea7ac19a4e78edec205cdbe25d659c965b14937ddfb86b65f",
+    "instrument": "BTCUSD_PERP",
+    "month": "2023-01",
+    "first_physical_row_number": 2,
+    "first_physical_row": {
+      "calc_time": "1672531200005",
+      "funding_interval_hours": "8",
+      "last_funding_rate": "-0.00001609"
+    }
+  },
+  "failed_contract": {
+    "requirement": "calc_time must be on an exact five-minute boundary",
+    "observed_calc_time": "2023-01-01T00:00:00.005000+00:00",
+    "required_floor": "2023-01-01T00:00:00+00:00",
+    "offset_milliseconds": 5,
+    "failure_class": "ValueError",
+    "failure_message": "funding archive row value invalid",
+    "first_failure_short_circuit": true
+  },
+  "access_boundary": {
+    "funding_source_values_opened": true,
+    "archives_opened": 1,
+    "source_rows_read_for_seal": 1,
+    "candidate_incidence_derived": false,
+    "postgres_connected": false,
+    "market_rows_loaded": 0,
+    "gross9_rows_opened": false,
+    "return_or_pnl_fields_opened": false,
+    "economic_outcomes_opened": false
+  },
+  "decision": {
+    "pass": false,
+    "status": "terminal_source_contract_rejection",
+    "reason": "the first official COIN-M archive row violates the preregistered exact-boundary row contract",
+    "source_support_authorized": false,
+    "gross9_novelty_authorized": false,
+    "economics_authorized": false,
+    "repair_authorized": false,
+    "next_action": "new independently preregistered alpha only"
+  },
+  "manifest_hash": "db5d23e506e7476add7eae2e65a1e7af136077c41bcd2a7b52c48203129e11db"
+}

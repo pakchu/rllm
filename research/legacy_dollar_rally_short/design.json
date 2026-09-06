@@ -1,0 +1,139 @@
+{
+  "registered_at_utc": "2026-09-06T15:30:32.900416+00:00",
+  "design": {
+    "version": 1,
+    "selection": "audit only frozen top[0] from legacy short_base_alpha_scan_fast2_2026-07-08; no tuning, no replacement",
+    "candidate": {
+      "name": "legacy_dollar_rally_short_top0",
+      "side": "SHORT",
+      "gates": [
+        {
+          "feature": "dxy_momentum",
+          "op": "ge",
+          "threshold": 0.0021818982809893497
+        },
+        {
+          "feature": "htf_1d_return_4",
+          "op": "ge",
+          "threshold": 0.016096783732847175
+        }
+      ],
+      "hold_bars": 144,
+      "hold_hours": 12,
+      "stride_bars": 12,
+      "take_profit": null,
+      "stop_loss": null
+    },
+    "clock": {
+      "feature_rows": "5m market feature frame, features at signal bar depend only on rows <= signal bar",
+      "entry": "signal bar + 1 five-minute bar open",
+      "global_phase": "np.arange(window_size-1, n-hold-entry_delay, stride) over full merged market",
+      "non_overlap": "search_independent_short_candidates.schedule; next entry must be after prior exit"
+    },
+    "accounting": "search_independent_short_candidates.exact over g9_joint_net_ledger; fixed 1x short target on entry, realized funding from blocks(), 6bp/10bp per side",
+    "feature_source": "preprocessing.market_features.build_market_feature_frame(window_size=144) on evaluate_g9_macro_historical.merged_market()",
+    "source_sensitivity": [
+      "original",
+      "require_dxy_available_at_signal",
+      "delay_dxy_gate_1h",
+      "delay_dxy_gate_24h"
+    ],
+    "live_enabled": false
+  },
+  "hashes": {
+    "self": "a2982aed05728b482fe7f91dfc412318ca1c08af7cb423ddace0367f7ba2c907",
+    "legacy_scan": "35b74f5cfb570a1181da4b5665703d5c3df069f12ee5403e34ded6159d42d31a",
+    "evaluate_g9_macro_historical": "4fb1182876e46233b9948d0042b9199d8729049266db89e14aacccfa7d51edf6",
+    "g9_joint_net_ledger": "4e4aba76a6928e6aaea2a958f918beac94a558fd3ab17c552beb6e15f2151b10",
+    "search_independent_short_candidates": "9ac81c99e85bccb6ca73d2c500e822b44bc9e05629fc8ac78966fa0fe2a355bf",
+    "preprocessing_market_features": "f9091ecb080656c69a08ac3b4d07f7316cc2ddcc1fe4efacb9e10e8334d5cafa",
+    "market_cache": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192",
+    "funding_cache": "55c1fadfc4468d7bb1349124e70ed2222601fcf94ace256ae9a41785db8a546e",
+    "spot_cache": "c21ed3f52804a3f879ef5167b6b81ee0fd7dd262f2e9d87ee5c1c25dbad73617",
+    "raw_enriched_cache": "e350aa650cbb64c7ba62a1c9bf55b6d7d427da618c58f8e6ca31d89856f2fa7c"
+  },
+  "legacy_prior": {
+    "as_of": "2026-07-07T16:21:41.535032+00:00",
+    "assumptions": {
+      "side": "SHORT only",
+      "threshold_fit": "train split quantiles only",
+      "ranking_note": "OOS inspected for research; freeze before live-forward validation",
+      "fee_slippage_each_side": 0.0005,
+      "entry_delay_bars": 1
+    },
+    "top0": {
+      "kind": "pair",
+      "gate_ids": [
+        191,
+        312
+      ],
+      "gates": [
+        {
+          "feature": "dxy_momentum",
+          "op": "ge",
+          "q": 0.9,
+          "thr": 0.0021818982809893497
+        },
+        {
+          "feature": "htf_1d_return_4",
+          "op": "ge",
+          "q": 0.6,
+          "thr": 0.016096783732847175
+        }
+      ],
+      "hold": 144,
+      "stride": 12,
+      "stats": {
+        "train": {
+          "return_pct": 9.038650172601903,
+          "cagr_pct": 2.631049951653308,
+          "strict_mdd_pct": 35.98179381407694,
+          "cagr_mdd": 0.0731217005257803,
+          "trades": 211,
+          "win_rate": 0.5071090047393365,
+          "avg_trade_pct": 0.0758414805164814,
+          "median_trade_pct": 0.09247722143985726,
+          "t_like": 0.41656133377415633
+        },
+        "test2024": {
+          "return_pct": 36.51210503258486,
+          "cagr_pct": 36.42506629268929,
+          "strict_mdd_pct": 11.943305231545331,
+          "cagr_mdd": 3.0498313144071165,
+          "trades": 66,
+          "win_rate": 0.6212121212121212,
+          "avg_trade_pct": 0.4965101843673843,
+          "median_trade_pct": 0.25999130918035185,
+          "t_like": 1.8254381258231305
+        },
+        "eval2025": {
+          "return_pct": 4.766893476360634,
+          "cagr_pct": 4.770235136745549,
+          "strict_mdd_pct": 11.062464376301683,
+          "cagr_mdd": 0.43120908456568485,
+          "trades": 47,
+          "win_rate": 0.5106382978723404,
+          "avg_trade_pct": 0.10946781257137729,
+          "median_trade_pct": 0.009176596226456724,
+          "t_like": 0.5173538312245031
+        },
+        "ytd2026": {
+          "return_pct": 6.537328295598788,
+          "cagr_pct": 16.319843836157677,
+          "strict_mdd_pct": 7.682741108108004,
+          "cagr_mdd": 2.12422149939876,
+          "trades": 29,
+          "win_rate": 0.5862068965517241,
+          "avg_trade_pct": 0.2289147608144593,
+          "median_trade_pct": 0.3276934919040686,
+          "t_like": 0.8453244989042157
+        }
+      },
+      "min_oos_ratio": 0.43120908456568485,
+      "max_oos_mdd": 11.943305231545331,
+      "oos_return_sum": 47.81632680454429,
+      "score": 1.3875356206565708
+    },
+    "historical_exposure_warning": "The old record selected/ranked with OOS inspected and used older cost/accounting; these stats are prior exposed evidence, not fresh OOS."
+  }
+}

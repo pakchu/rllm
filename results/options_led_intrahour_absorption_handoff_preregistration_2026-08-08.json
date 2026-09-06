@@ -1,0 +1,103 @@
+{
+  "protocol_version": "options_led_intrahour_absorption_handoff_v1",
+  "policy_id": "OLIAH-6",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "mechanism": {
+    "claim": "during joint implied-volatility expansion, a large first-half BTC shock followed by an opposite second-half move that reclaims the hourly open, while OI contracts, identifies forced inventory clearing and an absorbing flow handoff likely to persist for six hours",
+    "side": "sign of the completed hour second-half return",
+    "why_direction_is_two_sided": "the clock separately admits down-then-up and up-then-down completed-hour reclaims and maps side to the absorbing second-half flow",
+    "why_distinct_from_oifar": "OLIAH uses an intrahour path transition and follows the absorbing leg; it does not fade the completed-hour return or require an OI lower-tail event",
+    "why_distinct_from_ovepr_ocdr_oicer": "OLIAH uses neither premium direction nor funding direction and does not trade a one-hour chase or funding crowding state"
+  },
+  "clock": {
+    "decision": "T after a completed UTC hour",
+    "volatility": "positive normalized BVOL and DVOL bodies with DVOL body strictly larger",
+    "price_source": "60 exact BTCUSDT 1m bars in [T-1h,T), split into exact minute offsets 0..29 and 30..59",
+    "first_half_shock": "absolute first-half return >= strictly-prior 720h q75 with 672 observations",
+    "absorption": "first- and second-half returns have opposite nonzero signs, absolute second-half return >= 1/2 absolute first-half return, and the final close crosses the hour open in the second-half direction",
+    "oi": "raw-time backward-asof observations at T and T-60m, each age<=5m; one-hour OI change strictly negative",
+    "funding": "not a signal input; opened only for later exact PnL accounting",
+    "trigger": "false-to-true onset, prior hour source-valid and consecutive",
+    "entry": "exact BTCUSDT T+5m open, all features available by T",
+    "side": "sign of second-half return",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open, exit first on equal open",
+    "no_imputation": true
+  },
+  "policy": {
+    "prior_hours": 720,
+    "prior_min_hours": 672,
+    "first_half_absolute_return_quantile": 0.75,
+    "minimum_absorption_ratio": 0.5,
+    "oi_asof_max_age_minutes": 5,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.45,
+    "occupied_5m_jaccard_max": 0.3,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "vol_oi_funding": "reuse hash-bound OCDR-12C nonprice snapshot",
+    "intrahour_price": "materialize exact Postgres bars_binance completed-hour minute offsets after this preregistration and the source-support evaluator are committed",
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_candidate_incidence_known": true,
+    "prior_candidate_outcomes_used_for_oliah": false,
+    "oliah_candidate_incidence_opened": false,
+    "oliah_post_entry_return_or_pnl_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false
+  },
+  "manifest_hash": "ba45b8ee99a9809b312d99c38ebf9765174b55cafe3e13cfa7e545433f1793fe"
+}

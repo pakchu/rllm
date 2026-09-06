@@ -1,0 +1,3 @@
+# HVESSR-8 train terminal decision — 2026-08-13
+
+HVESSR-8 is terminally rejected unchanged at the first economic stage. Train return is +3.0343%, full-calendar CAGR 6.1133%, strict MDD 5.1852%, ratio 1.1790, mean gross move 30.9386 bp and weekly-cluster sign-flip p=0.1757. Stress return remains +1.7238% but stress ratio is 0.6630; both calendar halves are positive. The ratio, p-value and stress-ratio gates fail. A second execution reproduced the report byte-identically. Test/eval/final and RV20 remain unopened; no seasonal-reference, threshold, side, onset, clock, hold, subset or control repair is authorized.

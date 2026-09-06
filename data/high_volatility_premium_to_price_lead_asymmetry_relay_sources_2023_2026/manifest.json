@@ -1,0 +1,35 @@
+{
+  "protocol_version": "hvppla_8_sources_v1",
+  "queries": {
+    "btc_ohlc": "SELECT ts,open,high,low,close,count(*) OVER (PARTITION BY ts) AS duplicate_count\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts",
+    "premium_ohlc": "SELECT ts,open,high,low,close,count(*) OVER (PARTITION BY ts) AS duplicate_count\nFROM bars_binance_premium\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts"
+  },
+  "query_sha256": {
+    "btc_ohlc": "4b24e62a9c96550d40ff143dc57868c13532d6a39e03f51613b5ba9ecc257f5b",
+    "premium_ohlc": "bdcb7063265c44ee7ab895624f5f699c42fb3cf718ddc45f81eb4e06f3f581d9"
+  },
+  "tables": [
+    "bars_binance",
+    "bars_binance_premium"
+  ],
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "btc": 1753920,
+    "premium": 1753904
+  },
+  "features": {
+    "path": "data/high_volatility_premium_to_price_lead_asymmetry_relay_sources_2023_2026/eight_hour_preentry_features.csv.gz",
+    "sha256": "b0d5c5deee2e8a1a0a491a2fc60d516965540ffa8eb66f262e988b790462c033",
+    "rows": 3651,
+    "valid_rows": 3649
+  },
+  "completed_preentry_sources_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "gross9_rows_opened": false,
+  "funding_values_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "6bf9700449a80aacb63241005a0272d99ccc22066a6679ce182b7aa80a4f94c9"
+}

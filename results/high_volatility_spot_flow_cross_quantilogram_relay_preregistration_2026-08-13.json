@@ -1,0 +1,185 @@
+{
+  "protocol_version": "high_volatility_spot_flow_cross_quantilogram_relay_v1",
+  "policy_id": "HVSFCQ-8",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A positive lag-one cross-quantilogram from extreme Binance spot aggressive-flow minutes to same-tail next-minute perpetual returns identifies nonlinear cash-to-leverage price discovery in the active direction. During elevated BTC variation, follow that direction when final-hour spot flow and both venue returns confirm it.",
+    "side": "strict sign of completed final-hour normalized spot aggressive quote flow",
+    "external_basis": {
+      "paper": "Han, Linton, Oka and Whang (2016), The cross-quantilogram: Measuring quantile dependence and testing directional predictability between time series, Journal of Econometrics 193, 251-270",
+      "doi": "10.1016/j.jeconom.2016.03.001",
+      "used_fact": "the cross-quantilogram measures directional predictability between quantile-hit processes without requiring finite higher moments or a linear conditional-mean model",
+      "adaptation_disclosure": "the spot-flow predictor, perpetual-return response, within-block quartiles, causal ranks, confirmation, clock and hold are preregistered BTC adaptations"
+    },
+    "why_distinct": "Spot-flow leadership compares two-hour aggregate spot and perpetual imbalance magnitudes; flow disagreement uses one five-minute opposite-sign imbalance; spot-return leadership uses linear correlation or categorical sign transitions. HVSFCQ instead estimates separate lagged upper- and lower-tail hit correlations from minute spot flow to next-minute perpetual return and selects the tail only from current completed spot-flow direction. It reuses no event or control and uses no funding, OI, premium, fitted post-entry outcome, or future data.",
+    "why_suited_to_volatile_regimes": "completed perpetual variation and active-direction tail predictability must occupy causal upper tails",
+    "why_low_gross9_overlap_is_plausible": "02:05/10:05/18:05 UTC cash-to-leverage tail-predictability onsets are absent from Gross9 clocks"
+  },
+  "features": {
+    "decision_grid": "exact 02:00/10:00/18:00 UTC boundaries D",
+    "block": "480 exact aligned unique coherent BTCUSDT one-minute rows from bars_binance_spot and bars_binance over [D-8h,D); no imputation",
+    "spot_flow": "(2*taker_buy_quote-quote_asset_volume)/quote_asset_volume each minute; denominator strict positive, finite and in [-1,1]",
+    "perpetual_return": "log(close/open) each minute, finite",
+    "predictor_response_pairs": "479 pairs (spot_flow_t, perpetual_return_t+1), t=0..478; the final spot-flow minute is excluded",
+    "within_block_quartiles": "linear-interpolation q25 and q75 separately for the 479 predictor values and 479 response values; each q25 strictly below q75",
+    "lower_hits": "centered indicators 1(spot_flow_t<spot_q25)-0.25 and 1(perpetual_return_t+1<return_q25)-0.25",
+    "upper_hits": "centered indicators 1(spot_flow_t>spot_q75)-0.25 and 1(perpetual_return_t+1>return_q75)-0.25",
+    "cross_quantilogram": "sum(predictor_hit*response_hit)/sqrt(sum predictor_hit^2*sum response_hit^2), separately lower and upper; denominators strict positive",
+    "final_hour_spot_flow": "(2*sum taker_buy_quote-sum quote_asset_volume)/sum quote_asset_volume over [D-1h,D), strict nonzero",
+    "active_score": "upper cross-quantilogram for positive final-hour flow, lower for negative final-hour flow",
+    "active_score_rank": "strict-prior midrank against the matching-tail score history over at most 270 source-valid decisions, minimum 180, current excluded; active score strict positive and rank>=0.75",
+    "direction_confirmation": "final-hour spot and perpetual log returns both have the strict sign of final-hour spot flow",
+    "perpetual_variation": "sqrt(sum squared 480 perpetual minute returns), finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank, current excluded; rank>=0.65",
+    "onset": "eligible now and immediately preceding scheduled jointly source-valid decision ineligible; missing or invalid prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed aligned eight-hour boundary D",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "strict sign of completed final-hour spot aggressive flow",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty"
+  },
+  "policy": {
+    "tail_probability": 0.25,
+    "lag_minutes": 1,
+    "prior_decisions": 270,
+    "minimum_prior_decisions": 180,
+    "active_score_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "decision_hours_utc": [
+      2,
+      10,
+      18
+    ],
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval and final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "source_plan": {
+    "spot": {
+      "table": "bars_binance_spot",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote"
+      ]
+    },
+    "perpetual": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ]
+    },
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration_commit": true,
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_cross_quantilogram_tail",
+      "no_variation_gate",
+      "same_minute_cross_quantilogram",
+      "one_decision_stale_dependence",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_spot_flow_leadership_disagreement_and_return_transmission_outcomes_known": true,
+    "repository_exact_spot_flow_to_next_perpetual_return_cross_quantilogram_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "reversal_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent published tail-directional-dependence primitive and complete causal source audit; no prior outcome selected its tails, lag, direction, rank, clock, confirmation, or hold"
+  },
+  "stopping_rule": "terminal first failure; no venue, flow definition, return, lag, tail probability, hit process, score, history, rank, variation, confirmation, onset, side, clock, hold, subset, source, or control repair",
+  "manifest_hash": "b6510cbf630bc75e1aa43fd55fa8a3862d11f814c8d2bc1cfe463de638258340"
+}

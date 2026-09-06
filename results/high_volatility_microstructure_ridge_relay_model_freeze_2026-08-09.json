@@ -1,0 +1,89 @@
+{
+  "protocol_version": "hvmrr_6_model_freeze_v1",
+  "policy_id": "HVMRR-6",
+  "preregistration": {
+    "path": "results/high_volatility_microstructure_ridge_relay_preregistration_2026-08-09.json",
+    "sha256": "7d0d76391471c6589ab389fc9b7e475adb1f44c7f7c4ebf4405a89f5a9b99380",
+    "manifest_hash": "a1223362587ccb506125126eec784e7c37179c957c561b4b84c1205aced67d96"
+  },
+  "source_manifest": {
+    "path": "data/high_volatility_microstructure_ridge_relay_sources_2020_2026/manifest.json",
+    "sha256": "af00832a40ad5ad7d0d34a906bccf2df09461d8fb00feb10ceb217503d0a84af",
+    "manifest_hash": "6aa64b119e8bf8b7ce2dc94862a4c9b6479e0ff88cb9994540e884fb135d5b0c"
+  },
+  "feature_panel": {
+    "path": "data/high_volatility_microstructure_ridge_relay_sources_2020_2026/eight_hour_feature_panel.csv.gz",
+    "sha256": "408a3944c876da76de82aefdc4093b3180e38fae34c5fa07ac21988613c43137",
+    "rows": 6390,
+    "valid_rows": 6375
+  },
+  "pretraining_rows": {
+    "path": "data/high_volatility_microstructure_ridge_relay_sources_2020_2026/pre2023h2_training_rows.csv.gz",
+    "sha256": "6e27cff7e6a5de216381ad9b34d1b1417c93900945934a33b6127e52bb863ba3",
+    "rows": 2724
+  },
+  "estimator": {
+    "class": "sklearn.linear_model.Ridge",
+    "alpha": 10.0,
+    "fit_intercept": true,
+    "solver": "svd"
+  },
+  "feature_order": [
+    "normalized_full_return",
+    "normalized_late_return",
+    "variation_rank",
+    "path_efficiency",
+    "full_taker_imbalance",
+    "late_taker_imbalance",
+    "late_quote_volume_share",
+    "normalized_cash_basis_change",
+    "decision_hour_sin",
+    "decision_hour_cos"
+  ],
+  "mean": [
+    0.025915494853051786,
+    0.0041102521317467776,
+    0.4685620275194431,
+    0.043457862979256356,
+    -0.0033512729455835,
+    -0.0023351103014150384,
+    0.260436478982401,
+    -0.0012586825908712216,
+    -0.0009537724711281254,
+    0.0016519823788545512
+  ],
+  "scale": [
+    0.8362089788545739,
+    0.4801896607832737,
+    0.3026243461738841,
+    0.035436206649580713,
+    0.03090998772228132,
+    0.052311049124645556,
+    0.11221677596560951,
+    0.014542656929159582,
+    0.7065218320254838,
+    0.7076886760035427
+  ],
+  "coefficient": [
+    -0.00028401535225484664,
+    -0.00033761708769869625,
+    0.00010287022053791407,
+    -0.000449717192604878,
+    0.000585393024629269,
+    0.0002457704226616538,
+    6.211640944854388e-05,
+    0.00013322822987819197,
+    4.290817603671982e-05,
+    -0.00019295670036546635
+  ],
+  "intercept": -5.310988359931907e-05,
+  "prediction_strength_threshold": 0.0009743008286605152,
+  "training_rows": 2724,
+  "training_high_volatility_rows": 871,
+  "training_label_mean": -5.3109883599319075e-05,
+  "training_label_std": 0.018550688947853295,
+  "oos_incidence_opened": false,
+  "oos_outcomes_opened": false,
+  "refit_authorized": false,
+  "manifest_hash": "a1f9e30fe9e4e831ccf1b9f5644aab5b1abc3a842b34918630c4b50a1a9d4051"
+}

@@ -1,0 +1,170 @@
+{
+  "protocol_version": "high_volatility_dcs_imi_active_override_v1",
+  "policy_id": "HVDIMIO-8",
+  "as_of_date": "2026-08-16",
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "combined_incidence_opened": false,
+  "combined_outcomes_opened": false,
+  "action_ids": [
+    "HVDCS-8",
+    "HVIMI-24"
+  ],
+  "component_ids": [
+    "HVDCS-8",
+    "HVIMI-24"
+  ],
+  "candidate_family": [
+    "HVDIMIO-8"
+  ],
+  "candidate_family_size": 1,
+  "single_candidate_only": true,
+  "familywise_multiplicity": "none; independent singleton family; no Bonferroni adjustment",
+  "component_artifacts": {
+    "HVDCS-8": {
+      "preregistration": {
+        "path": "results/high_volatility_directional_change_scarcity_relay_preregistration_2026-08-10.json",
+        "sha256": "746594b628f0ee377de6847479d8a84bf58ae4f1a06ab2cb23dc30986b89e325"
+      },
+      "support": {
+        "path": "results/high_volatility_directional_change_scarcity_relay_support_2026-08-10.json",
+        "sha256": "f0dc6e4a24792caba7a1967280158d8aed55de27a0c297146b2ed20b0c94d8dc"
+      },
+      "gross9": {
+        "path": "results/high_volatility_directional_change_scarcity_relay_gross9_novelty_2026-08-10.json",
+        "sha256": "0aa717adc52752a6c10cea752f9482a12b4eaf27ff12699999dfd48ac9e90232"
+      },
+      "clock": {
+        "path": "data/high_volatility_directional_change_scarcity_relay_clocks_2023_2026.csv.gz",
+        "sha256": "055d86ba9bcb9f619a3362a242febceb28d2f1b07ebef74d5d70b7393dc542fc"
+      }
+    },
+    "HVIMI-24": {
+      "preregistration": {
+        "path": "results/high_volatility_intraday_momentum_index_reentry_relay_preregistration_2026-08-11.json",
+        "sha256": "f6446d3e6585fe56eaaab1ff6897e6e2659c3ba2c6bff255dd423cfee58fb1f7"
+      },
+      "support": {
+        "path": "results/high_volatility_intraday_momentum_index_reentry_relay_support_2026-08-11.json",
+        "sha256": "a96128d56f7c125dca5c0c8c865b7cd8b728423a9aa64e88d1434a5b2d85c47c"
+      },
+      "gross9": {
+        "path": "results/high_volatility_intraday_momentum_index_reentry_relay_gross9_novelty_2026-08-11.json",
+        "sha256": "791de02675ba9fc98c234cb65f6ffc5ee53e70d70adeaaa64665dcc419105883"
+      },
+      "clock": {
+        "path": "data/high_volatility_intraday_momentum_index_reentry_relay_clocks_2023_2026.csv.gz",
+        "sha256": "133f92a81a6f665a5a895eb1adbcd700b5a7a7736470edc8244b7ce750519cc2"
+      }
+    }
+  },
+  "component_gate_status": {
+    "HVDCS-8": {
+      "source_support_passed": true,
+      "gross9_novelty_passed": true,
+      "primary_clock_immutable": true
+    },
+    "HVIMI-24": {
+      "source_support_passed": true,
+      "gross9_novelty_passed": true,
+      "primary_clock_immutable": true
+    }
+  },
+  "construction": {
+    "operator": "high-volatility oscillator-family active-position opposite-side override",
+    "decision_join": "each HVDCS-8 entry E joined to the unique frozen HVIMI-24 position satisfying state_entry<=E<state_exit, if any",
+    "timestamp_tolerance": "none",
+    "primary_action": "HVDCS-8",
+    "override_action": "HVIMI-24",
+    "routing_rule": "emit each frozen HVDCS-8 side unless a causally entered HVIMI-24 position is active at the HVDCS entry and has the opposite frozen side, then emit HVIMI-24",
+    "conflict_rule": "opposite active HVIMI-24 overrides the primary direction; same-side or no active HVIMI-24 leaves HVDCS-8 unchanged",
+    "emitted_side": "the frozen HVDCS-8 side unless opposite active HVIMI-24 overrides it",
+    "entry": "feature_available_time + 5 minutes",
+    "hold": "8 elapsed hours",
+    "weights": "none",
+    "priority": "none; HVDCS-8 is the fixed primary and HVIMI-24 is only an opposite-side override",
+    "alternatives": "none",
+    "additional_or_tuned_thresholds": "none",
+    "component_formula_threshold_clock_mutability": "immutable",
+    "independent_from_HVCAV_8": true,
+    "HVCAV_subset_or_quorum_repair": "none"
+  },
+  "clock": {
+    "decisions": "exact HVDCS-8 boundaries 00/08/16 UTC",
+    "entry": "exact feature-available D+5m entry",
+    "hold": "8 elapsed hours",
+    "component_clocks": "untouched exact frozen primary clocks",
+    "timestamp_tolerance": "none",
+    "funding": "not a signal input; exact held settlements only after source and Gross9 pass"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "operator_activation_gate": {
+    "minimum_opposite_overrides_train": 1,
+    "minimum_opposite_overrides_full": 3,
+    "must_pass_before_gross9": true
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "research_boundary": {
+    "all_component_prior_outcomes_known": true,
+    "component_selection_used_prior_train_outcomes": true,
+    "component_selection_basis": "HVIMI-24 and HVDCS-8 independently passed all frozen train economics gates; HVDCS-8 is primary and the causally active-position opposite override is fixed before combined incidence or outcomes",
+    "component_test_eval_final_outcomes_used": false,
+    "prior_HVCAV_incidence_known": true,
+    "prior_HVCAV_outcomes_known": true,
+    "archived_component_later_stage_artifacts_exist": true,
+    "archived_component_later_stage_outcomes_used_for_selection": false,
+    "known_component_or_HVCAV_evidence_used_to_alter_components": true,
+    "known_HVCAV_evidence_used_for_subset_or_quorum_repair": false,
+    "combined_incidence_opened": false,
+    "combined_postentry_returns_or_pnl_opened": false,
+    "economics_artifacts_read_during_validation": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence"
+  },
+  "stopping_rule": "Evaluate the single frozen candidate through source support, Gross9 novelty, and train/test/eval/final economics; stop on first failure with no substitution, threshold, weight, priority, alternative, component, direction, entry, side, hold, clock, subset, quorum, veto, confirmation, or HVCAV repair.",
+  "manifest_hash": "b7dc34300908eb1b191e95ecfd31f6299fc16d26c825dc58639adebfd4bfa186"
+}

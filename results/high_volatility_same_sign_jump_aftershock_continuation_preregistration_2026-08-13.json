@@ -1,0 +1,168 @@
+{
+  "protocol_version": "high_volatility_same_sign_jump_aftershock_continuation_v1",
+  "policy_id": "HVSJAC-8",
+  "slug": "high_volatility_same_sign_jump_aftershock_continuation",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "Several robust-scale BTC jumps arriving within short completed intervals are an aftershock cascade rather than one isolated discontinuity. When the cascade's signed jump mass is nonzero during elevated realized variation, follow its net direction for eight hours at a fresh upper-tail excitation onset.",
+    "side": "strict sign of the sum of completed jump returns",
+    "why_distinct": "HVBJR acts on one five-minute return relative to strictly-prior bipower variation and fades it. Absolute-return clustering uses lag-one correlation across every return magnitude. Cojump candidates compare assets. HVSJAC defines multiple within-block jumps from one median absolute-return scale, measures only inter-jump gap concentration, and takes direction only from their signed mass; it uses no prior event set, control, volume, flow, funding, OI, premium, cross-asset input, or fitted outcome.",
+    "why_suited_to_volatile_regimes": "completed eight-hour BTC variation must occupy its causal upper 35 percent and short-gap jump excitation its upper quartile",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily multi-jump aftershock onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 02:00, 10:00 and 18:00 UTC boundaries D",
+    "source_window": "480 exact unique coherent bars_binance BTCUSDT interval=1m rows [D-8h,D)",
+    "five_minute_aggregation": "96 exact epoch-aligned groups of five rows; OHLC first/max/min/last",
+    "returns": "95 close-to-close natural-log returns from the 96 five-minute closes",
+    "robust_scale": "median(abs(return))/0.6744897501960817, finite strict positive",
+    "jump": "abs(return)>=3*robust_scale; equality is a jump",
+    "minimum_jumps": 4,
+    "inter_jump_gaps": "integer differences between consecutive jump indices",
+    "aftershock_excitation": "fraction of inter-jump gaps<=3 five-minute bars, finite in [0,1]",
+    "excitation_rank": "strict-prior midrank over at most 270 earlier source-valid decisions, minimum 180, current excluded; rank>=0.75",
+    "signed_jump_mass": "sum of returns classified as jumps, finite strict nonzero",
+    "realized_variation": "sqrt(sum squared 95 returns), finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank, current excluded; rank>=0.65",
+    "onset": "eligible now and immediately preceding scheduled source-valid decision ineligible; missing or invalid predecessor cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after the full path completes",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "sign(signed_jump_mass)",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact held settlements only after novelty"
+  },
+  "policy": {
+    "window_minutes": 480,
+    "aggregation_minutes": 5,
+    "normal_consistency_constant": 0.6744897501960817,
+    "jump_scale_multiple": 3.0,
+    "minimum_jumps": 4,
+    "aftershock_gap_bars_max": 3,
+    "history_decisions": 270,
+    "minimum_history_decisions": 180,
+    "excitation_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "decision_hours_utc": [
+      2,
+      10,
+      18
+    ],
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_excitation_gate",
+      "no_variation_gate",
+      "jump_count_tail",
+      "one_decision_stale_excitation",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ]
+    },
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "database_schema_and_coverage_metadata_only_opened_before_preregistration": true,
+    "prior_single_jump_absolute_clustering_and_cojump_family_outcomes_known": true,
+    "repository_same_sign_multi_jump_aftershock_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_scale_jump_count_gap_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent within-block jump-arrival excitation mechanism"
+  },
+  "stopping_rule": "terminal first failure; no aggregation, robust scale, jump multiple, minimum count, gap, excitation, history, rank, onset, variation, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "9440c8e20bda8707e14c2e32ab651985396a336c1d667a5c3ce9df64e23a6d00"
+}

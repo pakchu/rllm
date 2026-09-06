@@ -1,0 +1,103 @@
+{
+  "protocol_version": "funding_settlement_volatility_cooling_continuation_relay_v1",
+  "policy_id": "FSVCCR-6",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "mechanism": {
+    "claim": "An unusually large realized funding cash transfer following a large eight-hour BTC move marks crowded but established inventory. If the completed post-settlement hour continues the move at no more than half its magnitude while both BVOL and DVOL contract, risk premium is normalizing without price rejection and the trend should relay for six hours.",
+    "side": "sign of the completed pre-settlement eight-hour BTC return",
+    "why_distinct": "FSVCCR is anchored to actual funding cash settlements, uses absolute funding crowding, post-settlement same-direction continuation, and joint volatility cooling. FSVUR tied trend sign to funding and required post-settlement reversal; JVCTR was an unrestricted hourly 3h/1h onset.",
+    "why_low_gross9_overlap_is_plausible": "actual settlement plus post-cash-transfer cross-venue volatility cooling is absent from Gross9 and occurs at most three times daily"
+  },
+  "clock": {
+    "event": "actual Binance BTCUSDT USD-M funding settlement S",
+    "funding_extreme": "absolute settled rate >= strict-prior 270-settlement q60 with 252 observations",
+    "pre_settlement_trend": "nonzero absolute BTC return from S-8h open to S open >= strict-prior 270-settlement q60 with 252 observations",
+    "post_settlement_continuation": "completed BTC return over [S,S+1h) is nonzero, same sign as pre-settlement trend, and absolute magnitude <=0.5 times absolute trend",
+    "volatility_cooling": "normalized BVOL and DVOL bodies over [S,S+1h) are both strictly negative",
+    "decision": "S+1h after funding, price, BVOL and DVOL are observed",
+    "entry": "exact BTCUSDT S+1h+5m open",
+    "side": "sign of pre-settlement trend",
+    "hold": "6 elapsed hours",
+    "reservation": "settlements are eight hours apart; global half-open, exit first on equal open",
+    "oi": "not a signal input",
+    "no_imputation": true
+  },
+  "policy": {
+    "prior_settlements": 270,
+    "prior_min_settlements": 252,
+    "absolute_funding_quantile": 0.6,
+    "absolute_pre_settlement_return_quantile": 0.6,
+    "maximum_continuation_ratio": 0.5,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "funding": "exact realized Binance BTCUSDT settlement rate and timestamp",
+    "volatility": "reuse hash-bound OCDR-12C BVOL/DVOL snapshot",
+    "completed_price": "reuse hash-bound OLIAH completed-hour snapshot",
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "prior_candidate_incidence_known": true,
+    "prior_candidate_outcomes_used_for_fsvccr": false,
+    "fsvccr_candidate_incidence_opened": false,
+    "fsvccr_post_entry_return_or_pnl_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "manifest_hash": "68d7b87e3f407e6cb08d0677df21246a72e5f4b3ed7b22bd4863cad5f74ca13d"
+}

@@ -1,0 +1,6 @@
+import hashlib,json
+from training import evaluate_cross_asset_volatility_breadth_relay_economics as economics
+def test_cavbr_train_failure_is_terminal_and_later_stages_are_sealed():
+ p=economics.OUTPUTS["train"];assert hashlib.sha256(p.read_bytes()).hexdigest()=="609c6b04509de04bd0e0185dff191df4561e2de285a8c7acf9787e46b9790aa9";r=json.loads(p.read_text());assert r["policy_id"]=="CAVBR-12";assert r["stage"]=="train";assert r["passed"] is False;assert r["advance_to_next_stage"] is False;assert r["decision"]=="terminal_reject_no_repair";assert r["later_stage_outcomes_opened"] is False;assert r["primary"]["base"]["trades"]==26;assert r["primary"]["base"]["absolute_return_pct"]>0;assert r["primary"]["stress"]["absolute_return_pct"]>0;assert r["checks"]["cagr_to_strict_mdd_min_3"] is False;assert r["checks"]["cluster_signflip_p_max_0_1"] is False;assert r["checks"]["each_calendar_half_positive"] is False;assert not economics.OUTPUTS["test"].exists();assert not economics.OUTPUTS["eval"].exists();assert not economics.OUTPUTS["final"].exists()
+def test_cavbr_train_report_is_hash_bound():
+ r=json.loads(economics.OUTPUTS["train"].read_text());assert r["manifest_hash"]==economics.canonical_hash({k:v for k,v in r.items() if k!="manifest_hash"});assert r["novelty_authorization"]["sha256"]==economics.NOVELTY_SHA

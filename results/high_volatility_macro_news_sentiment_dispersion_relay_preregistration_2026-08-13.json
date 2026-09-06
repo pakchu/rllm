@@ -1,0 +1,153 @@
+{
+  "protocol_version": "high_volatility_macro_news_sentiment_dispersion_relay_v1",
+  "policy_id": "HVMNSD-24",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A week-over-week increase in the dispersion of the official SF Fed Daily News Sentiment Index marks fragmented macro narratives and a risk-off state, while declining dispersion marks narrative convergence. During elevated completed BTC variation, trade against the strict sign of the completed dispersion change for one day.",
+    "side": "negative strict sign of log(current seven-day population standard deviation / prior seven-day population standard deviation)",
+    "why_distinct": "HVNSR uses an extreme signed seven-day change in the level of news tone. HVMNSD instead uses the change in within-week cross-day dispersion, a second-moment disagreement proxy, has no sentiment-shock tail, and does not reuse or promote an HVNSR control.",
+    "why_suited_to_volatile_regimes": "macro-narrative fragmentation should matter most when BTC's independently measured completed variation is already elevated",
+    "why_low_gross9_overlap_is_plausible": "a delayed official macro-news dispersion clock is absent from Gross9"
+  },
+  "features": {
+    "source": "Federal Reserve Bank of San Francisco Daily News Sentiment Index XLSX",
+    "source_url": "https://www.frbsf.org/wp-content/uploads/news_sentiment_data.xlsx",
+    "observation": "finite official daily news sentiment for every exact calendar day D-13 through D; no interpolation or imputation",
+    "availability": "D+8 00:00 UTC, deliberately later than the weekly update covering D; the frozen official history is used under this conservative embargo",
+    "current_dispersion": "population standard deviation of the seven exact observations D-6:D",
+    "prior_dispersion": "population standard deviation of the seven exact observations D-13:D-7",
+    "dispersion_change": "log(current_dispersion/prior_dispersion), requiring both dispersions strictly positive and the change strictly nonzero",
+    "btc_variation": "sqrt(sum squared exact completed 5m BTC log returns over UTC day D+7, ending at decision)",
+    "btc_variation_rank": "strict-prior midrank over at most 270 source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D+8 00:00 UTC",
+    "entry": "decision+5m BTCUSDT open",
+    "hold": "24 elapsed hours",
+    "side": "negative dispersion-change sign; rising dispersion short",
+    "reservation": "daily nonoverlapping; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements after novelty"
+  },
+  "policy": {
+    "dispersion_window_days": 7,
+    "dispersion_estimator": "population_standard_deviation_ddof_0",
+    "variation_history_days": 270,
+    "minimum_history_days": 180,
+    "btc_variation_rank_min": 0.65,
+    "publication_delay_days": 8,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes all stages",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "no_btc_variation_gate": "dispersion-change direction on every valid day",
+      "one_week_stale_dispersion": "dispersion change ending D-7 with current BTC variation",
+      "direction_flip": "positive primary dispersion-change sign",
+      "same_clock_forced_long": "side +1 on the primary clock",
+      "signed_tone_change": "sign of sentiment[D]-sentiment[D-7] on the primary clock; diagnostic attribution only and not eligible for promotion"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "news_sentiment": {
+      "url": "https://www.frbsf.org/wp-content/uploads/news_sentiment_data.xlsx",
+      "raw_path": "data/frbsf_daily_news_sentiment_1980_2026_aug.xlsx",
+      "raw_sha256": "f9b13dfa907d1cba3e411aac5564f773bae9c249e215c09e721137218e65d85d",
+      "derived_path": "data/frbsf_daily_news_sentiment_1980_2026_aug.csv",
+      "derived_sha256": "4ed53d522d650028d6aaace39a5c800ab88295bcf5f170c70497c494ffcd809e",
+      "manifest_path": "data/frbsf_daily_news_sentiment_1980_2026_aug_manifest.json",
+      "manifest_sha256": "255a7fa7df461616dc34f3b9ce660cb582b80f1479bf60642ced7e1011ea86d1",
+      "read_only_snapshot": true,
+      "already_frozen_before_candidate_selection": true
+    },
+    "historical_market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "live_extension": "read-only Postgres BTCUSDT 1m through 2026-08-01",
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "official_page": "https://www.frbsf.org/research-and-insights/data-and-indicators/daily-news-sentiment-index/",
+    "paper": "Measuring News Sentiment, Journal of Econometrics 228(2), 2022",
+    "prior_macro_outcomes_known": true,
+    "hvnsr_signed_tone_outcome_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "exact_candidate_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent official macro-news second-moment mechanism chosen to provide dense daily high-variation clocks without altering a failed candidate",
+    "revision_limit": "no real-time vintage archive is claimed; causal use rests on the frozen official snapshot plus the preregistered conservative D+8 embargo"
+  },
+  "stopping_rule": "terminal first failure; no source, publication delay, dispersion estimator, window, variation, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "58420894a3ab1e44eb39c370a594e63358a15afc3dea5d399d0b2fd95823323e"
+}

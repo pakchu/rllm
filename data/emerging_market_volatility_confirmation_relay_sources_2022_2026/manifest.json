@@ -1,0 +1,36 @@
+{
+  "protocol_version": "emvcr_8_sources_v1",
+  "cboe_urls": {
+    "VXEEM": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VXEEM_History.csv",
+    "VIX": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
+  },
+  "cboe_window": [
+    "2022-01-01",
+    "2026-08-01"
+  ],
+  "btc_query": "\nSELECT ts,open,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+  "btc_window": [
+    "2022-12-29T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "btc_rows": 1887840,
+  "builder": {
+    "path": "training/build_emerging_market_volatility_confirmation_relay_support.py",
+    "sha256": "31d21bee9e3ce375b238bf90a03fee68feec3169f67ac09f15105e4fbd96e734"
+  },
+  "outputs": {
+    "cboe": {
+      "path": "data/emerging_market_volatility_confirmation_relay_sources_2022_2026/cboe_vxeem_vix_panel.csv.gz",
+      "sha256": "7d332f56676bd40c2b7bc816b432ffa2e31c113dbf4f5605fbe8eb4d0dca18ea",
+      "rows": 1148
+    },
+    "features": {
+      "path": "data/emerging_market_volatility_confirmation_relay_sources_2022_2026/emvcr_preentry_features.csv.gz",
+      "sha256": "31b47522771c736e0db2a0a6dd4f7a2c2aa337ac3e1f70a95ab14d0ef6a2f3c0",
+      "rows": 1147
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "cbf3b0bffab6986c18468369c555d45703f33daea1c4f4583b6a57dc000a9c78"
+}

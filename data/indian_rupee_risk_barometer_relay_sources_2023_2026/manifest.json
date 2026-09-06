@@ -1,0 +1,33 @@
+{
+  "protocol_version": "irbr_12_sources_v1",
+  "queries": {
+    "btc": "SELECT ts,open,close FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY ts",
+    "fx": "SELECT ts,open,high,low,close FROM bars_polygon WHERE symbol='USDINR' AND interval='1m' AND ts>=:start AND ts<:end ORDER BY ts"
+  },
+  "windows": {
+    "btc": [
+      "2022-12-29T00:00:00+00:00",
+      "2026-08-01T00:00:00+00:00"
+    ],
+    "fx": [
+      "2022-01-01T00:00:00+00:00",
+      "2026-08-01T00:00:00+00:00"
+    ]
+  },
+  "rows": {
+    "btc": 1887840,
+    "fx": 1279824,
+    "features": 847
+  },
+  "builder": {
+    "path": "training/build_indian_rupee_risk_barometer_relay_support.py",
+    "sha256": "a968483436b8460d8c30f0233c6d60b4130e2f66f843abcd70ed64af2f9536ec"
+  },
+  "feature_output": {
+    "path": "data/indian_rupee_risk_barometer_relay_sources_2023_2026/irbr_preentry_features.csv.gz",
+    "sha256": "304e40e480fd7ba4cdcbfe8b5af066fb68ef5863d8a4564d7d76dafcb9d1441a"
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "377f4c226b96e4a74a802863df9833594d6bf58c5f38fe7b0d6310187059099c"
+}

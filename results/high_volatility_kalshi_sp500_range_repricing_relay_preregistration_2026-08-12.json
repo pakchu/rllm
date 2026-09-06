@@ -1,0 +1,175 @@
+{
+  "protocol_version": "high_volatility_kalshi_sp500_range_repricing_relay_v1",
+  "policy_id": "HVKSRR-24",
+  "as_of_date": "2026-08-12",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "Prices across Kalshi's mutually exclusive daily S&P 500 closing-range contracts aggregate traders' changing beliefs about the same-day U.S. equity close. During elevated causal BTC variation, follow the direction of the normalized probability-weighted ladder-rank change from three hours to two hours before the official strike time for one day.",
+    "side": "strictly positive normalized implied-rank change maps long BTC; strictly negative maps short; exact zero is ineligible",
+    "external_support": {
+      "prediction_market_study": "Prediction Markets, Journal of Economic Perspectives 2004",
+      "study_url": "https://www.aeaweb.org/articles?id=10.1257/0895330041371321",
+      "reported_fact": "The cited review describes prediction-market prices as aggregating dispersed information and often producing useful forecasts.",
+      "inference_disclosure": "Transmitting an S&P closing-distribution repricing direction to next-day BTC direction is a preregistered cross-asset risk-appetite inference, not a direct estimate reported by that study."
+    },
+    "why_distinct": "Exact repository scans found no Kalshi, prediction-market, or event-contract price source. The signal uses no Binance direction, flow, funding, OI, premium, conventional S&P cash/futures return, macro release value, lottery sale, DOI count, prior event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "Only decisions whose completed prior-24-hour BTC variation ranks in the upper 35% are admitted.",
+    "why_low_gross9_overlap_is_plausible": "An external regulated event-contract probability ladder and its official equity-close clock are absent from Gross9 primitives."
+  },
+  "features": {
+    "authority": "Kalshi public Trade API events, nested markets, and event candlesticks",
+    "series_lineage": "query series_ticker=KXINX; retain only official event rows whose own series_ticker and event-ticker prefix are exactly KXINX or legacy INX",
+    "eligible_event": "finite official strike_date in [2022-01-01,2026-08-01), mutually_exclusive true, one less tail, one greater tail, and at least three between markets forming one strictly ordered contiguous non-overlapping S&P range ladder; duplicate event or market ticker rejects",
+    "quote_state": "for every ladder market, carry only that market's latest causally completed 60-minute candle ending no later than the anchor; both yes-bid and yes-ask closes must be present, finite, 0<=bid<=ask<=1; no trade-price fallback",
+    "implied_rank": "midpoint each yes quote, normalize all positive midpoint mass to one, multiply by fixed ascending ladder rank 0..N-1, sum, and divide by N-1",
+    "repricing": "implied_rank at strike_date-2h minus implied_rank at strike_date-3h; both anchors require the identical complete ladder; strict nonzero",
+    "side": "strict sign of repricing",
+    "btc_variation": "sqrt(sum squared log(close/open)) over 1,440 exact BTCUSDT 1m bars in [decision-24h,decision)",
+    "btc_variation_rank": "strict-prior midrank versus at most 270 prior source-valid decisions; minimum 180; current excluded; rank >=0.65",
+    "missing": "HTTP/cursor/schema drift, incomplete pagination, malformed ladder, missing quote side, nonpositive quote mass, or missing/duplicate/nonpositive BTC bars rejects as frozen; no imputation"
+  },
+  "clock": {
+    "decision": "official event strike_date minus exactly two elapsed hours, after the corresponding completed 60-minute candle",
+    "entry": "exact BTCUSDT five-minute open 5 minutes after decision",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+    "no_imputation": true
+  },
+  "policy": {
+    "query_series_ticker": "KXINX",
+    "accepted_event_series": [
+      "INX",
+      "KXINX"
+    ],
+    "accepted_event_prefixes": [
+      "INX-",
+      "KXINX-"
+    ],
+    "anchor_hours_before_strike": [
+      3,
+      2
+    ],
+    "candlestick_minutes": 60,
+    "minimum_between_markets": 3,
+    "variation_prior_days": 270,
+    "variation_prior_minimum": 180,
+    "variation_midrank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "gross_exposure": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "kalshi": {
+      "api_base": "https://external-api.kalshi.com/trade-api/v2",
+      "events_endpoint": "/events?series_ticker=KXINX&limit=200",
+      "event_endpoint": "/events/{event_ticker}?with_nested_markets=true",
+      "candles_endpoint": "/series/{series_ticker}/events/{event_ticker}/candlesticks",
+      "event_start": "2022-01-01T00:00:00Z",
+      "event_end_exclusive": "2026-08-01T00:00:00Z",
+      "cursor_to_exhaustion": true,
+      "download_after_preregistration": true,
+      "read_only_snapshot": true
+    },
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_btc_volatility_gate",
+      "repricing_direction_flip",
+      "one_event_stale_repricing",
+      "one_hour_anchor_shift",
+      "same_clock_forced_long"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "post_stage_volatility_audit": {
+    "rv20_q90_entry_filter": false,
+    "opened_only_after_all_train_test_eval_final_economic_gates_pass": true,
+    "cannot_repair_or_promote": true
+  },
+  "research_boundary": {
+    "excluded_post_final_feasibility_probe": "2026-08-11 KXINX event metadata, ladder schema, and candle schema only",
+    "event_lineage_metadata_probe": "event tickers and count envelope only; no retained market price, BTC price, return, funding, or Gross9 row",
+    "probe_not_used_to_choose_side_hold_rank_or_source_gate": true,
+    "full_historical_candidate_incidence_opened": false,
+    "source_values_used_to_fit_rule": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "repository_kalshi_candidate_found": false,
+    "cross_asset_inference_disclosed": true,
+    "prior_event_sets_reused": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "official public event-contract history, immutable event strike clocks, published prediction-market information aggregation, dense daily lineage, and exact repository absence"
+  },
+  "stopping_rule": "terminal first-failure sequence: source contract/support, Gross9 novelty, train/test/eval/final strict economics, then RV20 q90 audit; no series, event lineage, ladder, quote rule, anchor, variation threshold, side, hold, clock, subset, source, or control repair",
+  "manifest_hash": "139071e9ae10ec718c45525ec50053f9fffa04b402faa44cc87fb977c2aa38d5"
+}

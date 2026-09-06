@@ -1,0 +1,3 @@
+# HVVSSR-8 source terminal decision — 2026-08-13
+
+HVVSSR-8 is terminally rejected unchanged at source support. Train/test/eval/final contain 37/69/56/22 events and all minimum-count and side-balance checks pass. The final split has 10 of 22 events in its largest month, a 0.45455 share above the frozen 0.45 maximum; every other month-concentration check passes. A second execution reproduced every source, clock, control and report artifact byte-identically. Gross9 rows, economic outcomes, funding and RV20 remain unopened; no seasonal reference, threshold, onset, side, clock, hold, subset or control repair is authorized.

@@ -1,0 +1,29 @@
+{
+  "protocol_version": "hvbsrt_8_sources_v1",
+  "query": "SELECT date_bin('1 hour',p.ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS hour_time,avg(ln(p.close/s.close)) AS hourly_basis,sum(power(ln(p.close/p.open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT p.ts) AS distinct_rows,min(p.ts) AS first_ts,max(p.ts) AS last_ts,bool_and(p.open>0 AND p.high>0 AND p.low>0 AND p.close>0 AND p.high>=greatest(p.open,p.close,p.low) AND p.low<=least(p.open,p.close,p.high) AND s.open>0 AND s.high>0 AND s.low>0 AND s.close>0 AND s.high>=greatest(s.open,s.close,s.low) AND s.low<=least(s.open,s.close,s.high)) AS coherent FROM bars_binance p JOIN bars_binance_spot s ON s.ts=p.ts AND s.symbol='BTCUSDT' AND s.interval='1m' WHERE p.symbol='BTCUSDT' AND p.interval='1m' AND p.ts>=:start AND p.ts<:end GROUP BY 1 ORDER BY 1",
+  "query_sha256": "91d4030fe14fc308064534b054d89f61f7ee94d6a49c982e0fcad35fc9f38a3d",
+  "tables": [
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 31391,
+  "builder": {
+    "path": "training/build_high_volatility_basis_regime_transition_relay_support.py",
+    "sha256": "bf85881569633ef4ed00b3f339361f76bff376db07198ad74e30998d2ee46b4b"
+  },
+  "panel": {
+    "path": "data/high_volatility_basis_regime_transition_relay_sources_2023_2026/hourly_basis_states.csv.gz",
+    "sha256": "723868dfecd06ca21d2bfd09ff0b09ab33df45074b81a17fe9f76e2adc48ff87",
+    "rows": 31392,
+    "valid_rows": 31245
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "5170588db0a68354808dc3498a9cb24c2678fc1c650a569dad263dc388c33181"
+}

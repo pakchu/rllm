@@ -1,0 +1,32 @@
+{
+  "protocol_version": "cftcmsps_168_economic_evaluator_freeze_v1",
+  "policy_id": "CFTCMSPS-168",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_cftc_micro_standard_positioning_segmentation_relay_economics.py",
+    "sha256": "cbfcefd6e1a42ab7d1e6d76300e49c03460add2cae6a2c235fe9edb358a6c1af"
+  },
+  "authorization": {
+    "path": "results/cftc_micro_standard_positioning_segmentation_relay_gross9_novelty_2026-08-11.json",
+    "sha256": "e6085d5ad2a376e79fd97e3f24a10172d8add445ca103def34a8ea7a3cd3123e"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "352d1b18b29cbc788638ac772d80dc16eeee044d373c4eea806b52f14050e4ba"
+}

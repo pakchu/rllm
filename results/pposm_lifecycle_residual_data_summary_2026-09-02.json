@@ -1,0 +1,70 @@
+{
+  "candidate_actions": [
+    "SKIP",
+    "TP12"
+  ],
+  "candidate_targets": {
+    "SKIP=KEEP": 77,
+    "SKIP=SWITCH": 25,
+    "TP12=KEEP": 74,
+    "TP12=SWITCH": 28
+  },
+  "causality": {
+    "base_cost_bps_per_side": 6,
+    "default_mode_train_only": true,
+    "future_outcome_in_prompt": false,
+    "oos_rows_written": false,
+    "single_replacement_full_lifecycle_replay": true,
+    "stress_cost_bps_per_side": 10,
+    "train_signal_time_pre2024_only": true,
+    "utilities_are_offline_train_labels_only": true
+  },
+  "config": {
+    "manifest": "results/pullback_premium_overheat_state_machine_manifest_2026-07-15.json",
+    "summary_output": "results/pposm_lifecycle_residual_data_summary_2026-09-02.json",
+    "train_output": "data/pposm_lifecycle_residual_train_pre2024_2026-09-02.jsonl"
+  },
+  "default_action": "TP4",
+  "identity_sha256": "d0d2578ee463b2282915933afdcbc168a4178efe584a98886dbabc7099cdf8c2",
+  "labels": [
+    "KEEP",
+    "SWITCH"
+  ],
+  "lifecycle_changed_pairs": 154,
+  "manifest_freeze_hash": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+  "median_nonzero_absolute_switch_utility": 0.00621237045258739,
+  "output_sha256": {
+    "train": "64d03c9baa68e8968ffddb66e531561a7724410e4324d9d3a04eeba58f4796f1"
+  },
+  "protocol": "pposm_train_only_lifecycle_residual_action_v1",
+  "reference_anchor_pairs": 204,
+  "reference_anchors": 102,
+  "rows": {
+    "oos": 0,
+    "total": 204,
+    "train": 204
+  },
+  "signals": {
+    "oos": 0,
+    "train": 102
+  },
+  "targets": {
+    "KEEP": 151,
+    "SWITCH": 53
+  },
+  "utility_contract": {
+    "failed_gate_utility": "-(abs(risk_adjusted_delta) + log-equity/MDD violation + 1e-12)",
+    "positive_gate": [
+      "base log-equity delta >= -1e-12",
+      "stress log-equity delta > 1e-12",
+      "stress strict-MDD delta <= 0.0001 fraction plus 1e-12"
+    ],
+    "risk_adjusted_delta": "0.5 * (base CAGR/MDD delta + stress CAGR/MDD delta)",
+    "target": "SWITCH iff lifecycle residual utility > 0; otherwise KEEP"
+  },
+  "window": {
+    "end_exclusive": "2024-01-01",
+    "name": "pre_2024",
+    "start": "2020-07-01"
+  }
+}

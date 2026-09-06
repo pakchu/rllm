@@ -1,0 +1,116 @@
+{
+  "anchor_signals": 102,
+  "best_diagnostics": {
+    "best_threshold_by_ranking_even_if_infeasible": 1.2034912109375,
+    "deltas": {
+      "base_6bp": {
+        "absolute_return_pct": 42.2922619731209,
+        "cagr_to_strict_mdd": 0.5961161650461766,
+        "log_equity": 0.20128294944738145,
+        "strict_mdd_pct": 0.4537057614472655,
+        "trades": -9.0
+      },
+      "stress_10bp": {
+        "absolute_return_pct": 41.40425613101051,
+        "cagr_to_strict_mdd": 0.5386699624234086,
+        "log_equity": 0.20488439003563574,
+        "strict_mdd_pct": 0.7398572110821959,
+        "trades": -9.0
+      }
+    },
+    "failed_gates": [
+      "materiality",
+      "stress_mdd_worsening_le_0_01pp",
+      "base_ratio_ge_3"
+    ],
+    "materiality": {
+      "difference_rate_vs_always_tp4": 0.21861471861471862,
+      "max_action_share": 0.7813852813852814,
+      "non_default_count": 101,
+      "non_default_counts": {
+        "SKIP": 2,
+        "TP12": 99
+      },
+      "passes": false,
+      "route_counts": {
+        "SKIP": 2,
+        "TP12": 99,
+        "TP4": 361
+      },
+      "signals": 462
+    },
+    "route_stream_sha256": "a23ec240953bb485d41ba7daf5d194886ebcd312a067d1728b4e42cad2d69299"
+  },
+  "candidate_actions": [
+    "SKIP",
+    "TP12"
+  ],
+  "candidate_thresholds": 37,
+  "control_economics": {
+    "base_6bp": {
+      "absolute_return_pct": 89.67626803061623,
+      "cagr_pct": 20.058653693555705,
+      "cagr_to_strict_mdd": 2.0212400128353694,
+      "longs": 102,
+      "mean_gross_bps": 144.1006380612376,
+      "mean_net_bps": 64.22022720931254,
+      "shorts": 0,
+      "strict_mdd_pct": 9.923934597661999,
+      "trades": 102,
+      "win_rate": 0.6764705882352942
+    },
+    "stress_10bp": {
+      "absolute_return_pct": 82.0902493673193,
+      "cagr_pct": 18.667361229252187,
+      "cagr_to_strict_mdd": 1.8742382806220248,
+      "longs": 102,
+      "mean_gross_bps": 144.1006380612376,
+      "mean_net_bps": 60.19373386003951,
+      "shorts": 0,
+      "strict_mdd_pct": 9.959972230989134,
+      "trades": 102,
+      "win_rate": 0.6568627450980392
+    }
+  },
+  "default_action": "TP4",
+  "full_pre2024_signals": 462,
+  "future_can_rank_repair_or_reselect": false,
+  "inputs": {
+    "data_summary": {
+      "identity_sha256": "d0d2578ee463b2282915933afdcbc168a4178efe584a98886dbabc7099cdf8c2",
+      "oos_rows": 0,
+      "path": "results/pposm_lifecycle_residual_data_summary_2026-09-02.json",
+      "reference_anchor_pairs": 204,
+      "reference_anchors": 102,
+      "sha256": "566f06b3f7338d450de8dbf0139b29cec16c6e46ab4f9bc788f6f30287360026",
+      "train_data_sha256": "64d03c9baa68e8968ffddb66e531561a7724410e4324d9d3a04eeba58f4796f1",
+      "train_rows": 204
+    },
+    "train_data": {
+      "identity_sha256": "d0d2578ee463b2282915933afdcbc168a4178efe584a98886dbabc7099cdf8c2",
+      "path": "data/pposm_lifecycle_residual_train_pre2024_2026-09-02.jsonl",
+      "train_data_rows": 204,
+      "train_data_sha256": "64d03c9baa68e8968ffddb66e531561a7724410e4324d9d3a04eeba58f4796f1"
+    },
+    "train_scores": {
+      "anchors": 102,
+      "identity_sha256": "d0d2578ee463b2282915933afdcbc168a4178efe584a98886dbabc7099cdf8c2",
+      "path": "results/pposm_lifecycle_residual_train_scores_2026-09-02.jsonl",
+      "rows": 204,
+      "sha256": "771066702f54357340cd1a480b4bcc4884ed5c0811a624e4261d14c70cc2b297"
+    }
+  },
+  "manifest_freeze_hash": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+  "non_anchor_policy": "TP4",
+  "protocol": "pposm_lifecycle_train_only_threshold_v1",
+  "ranking_rule": [
+    "maximize min(base/stress CAGR-to-MDD delta)",
+    "maximize min(base/stress log-equity delta)",
+    "higher threshold",
+    "stable route stream sha256"
+  ],
+  "routing_rule": "strict margin > threshold; dual candidate larger margin; exact tie SKIP; nonanchors TP4",
+  "selection_boundary": "pre_2024_train_only_no_oos_inputs",
+  "status": "no_feasible_train_threshold",
+  "threshold_grid": "distinct scored train margins plus nextafter below-min/above-max sentinels"
+}

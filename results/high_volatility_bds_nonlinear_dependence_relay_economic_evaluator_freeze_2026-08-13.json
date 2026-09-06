@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvbds_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVBDS-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_bds_nonlinear_dependence_relay_economics.py",
+    "sha256": "2b5399397a766a68686b37c23d920a8846674e2a1adbad6fe104ec7c80a0747e"
+  },
+  "authorization": {
+    "path": "results/high_volatility_bds_nonlinear_dependence_relay_gross9_novelty_2026-08-13.json",
+    "sha256": "d70cd898edb50c571ae45ec361e83ef911ce39abf1acfe5d9696f0a6a6bc4bfc"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "639688a42ff373c15e44e99e2cf94ed81e7c2b8f569bac9f38dc298e7f4e9106"
+}

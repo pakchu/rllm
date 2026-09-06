@@ -1,0 +1,167 @@
+{
+  "protocol_version": "high_volatility_daily_cross_alt_flow_consensus_relay_v1",
+  "policy_id": "HVDCAFC-12",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A source-complete UTC day in which at least four of six liquid alt perpetuals share unusually strong normalized aggressive quote flow represents broad crypto demand or supply that should propagate into BTC for twelve hours during elevated BTC variation.",
+    "side": "strict majority sign of six alt daily normalized aggressive quote flows; BTC flow and price direction are never inputs",
+    "external_basis": {
+      "paper": "Order Flow and Cryptocurrency Returns: A Machine Learning Approach with Out-of-Sample Validation",
+      "ssrn": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7055779",
+      "reported_result": "daily cryptocurrency order flow has out-of-sample return-predictive power and dominates economic fundamentals",
+      "adaptation": "transparent cross-alt median consensus and causal high-variation gate without fitted model or outcome-selected coefficient"
+    },
+    "why_distinct": "CAFLR uses hourly alt-flow majority only when BTC flow disagrees. CAFAER uses day-over-day flow changes confirmed by BTC and fades them. HVCAQF uses only quarter-hour opening windows and failed structural proximity. HVDCAFC uses one full-day alt-only flow level, excludes BTC flow and price direction, follows consensus, and reuses no event set or control.",
+    "why_suited_to_volatile_regimes": "completed BTC daily variation must occupy its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "one daily alt-only flow consensus clock is sparse and absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact 00:00 UTC boundary D",
+    "source_day": "1,440 exact coherent bars_binance one-minute rows [D-24h,D) independently for each alt and BTC",
+    "normalized_alt_flow": "sum(2*taker_buy_quote-quote_asset_volume)/sum(quote_asset_volume) per alt; positive denominator and finite strict nonzero",
+    "consensus": "at least four of six alt flow signs share one direction; 3-3 rejects",
+    "consensus_strength": "median absolute normalized flow among only direction-confirming alts, finite strict positive",
+    "strength_rank": "strict-prior midrank over at most 180 source-valid days, minimum 120, current excluded; rank>=0.60",
+    "btc_variation": "sqrt(sum squared BTC one-minute open-to-close log returns over completed day), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 180 source-valid days, minimum 120, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "D after completed source day",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "alt daily flow consensus sign",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty",
+    "rv20": "q90 only after unchanged all-stage pass"
+  },
+  "policy": {
+    "history_days": 180,
+    "minimum_history_days": 120,
+    "minimum_consensus_breadth": 4,
+    "strength_rank_min": 0.6,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable-then-adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_strength_tail",
+      "no_variation_gate",
+      "three_of_six_consensus",
+      "one_day_stale_flow",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "symbol",
+      "open",
+      "high",
+      "low",
+      "close",
+      "quote_asset_volume",
+      "taker_buy_quote"
+    ],
+    "window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "daily_order_flow_paper_read": true,
+    "repository_exact_daily_alt_only_flow_level_consensus_found": false,
+    "prior_daily_acceleration_hourly_disagreement_and_quarter_flow_outcomes_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "paper-supported daily order-flow predictability expressed through alt-only breadth"
+  },
+  "stopping_rule": "terminal first failure; no universe, day, flow, breadth, strength, history, rank, variation, side, hold, clock, subset, threshold, source, or control repair",
+  "manifest_hash": "a05b632b91fa8a561ffb93b79db4da131835d611a15a0c4a6ef64dfd82c1f98a"
+}

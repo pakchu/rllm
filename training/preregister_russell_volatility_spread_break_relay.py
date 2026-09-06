@@ -1,0 +1,161 @@
+"""Outcome-blind preregistration for RVSBR-12."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_OUTPUT = Path("results/russell_volatility_spread_break_relay_preregistration_2026-08-09.json")
+SOURCES = {
+    "RVX": "https://cdn.cboe.com/api/global/us_indices/daily_prices/RVX_History.csv",
+    "VIX": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
+}
+
+
+def canonical_hash(value: Any) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "russell_volatility_spread_break_relay_v1",
+        "policy_id": "RVSBR-12",
+        "as_of_date": "2026-08-09",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": (
+                "A large completed daily change in the Cboe RVX/VIX ratio isolates a small-cap risk-appetite "
+                "shock relative to broad US equity volatility. When BTC is already in a high realized-variation "
+                "regime before the next US session, rising relative small-cap volatility maps short BTC and "
+                "falling relative small-cap volatility maps long BTC for twelve hours."
+            ),
+            "side": "negative sign of the completed delta log(RVX/VIX)",
+            "external_support": {
+                "RVX": "Cboe Russell 2000 Volatility Index: expected 30-day Russell 2000 volatility",
+                "VIX": "Cboe Volatility Index: expected 30-day S&P 500 volatility",
+                "implementation_is_not_a_published_replication": True,
+                "untested_adaptation": "the relative-volatility shock is tested as a BTC risk-appetite relay",
+            },
+            "why_distinct": (
+                "No prior repository alpha uses RVX. Existing volatility-rotation relays use Nasdaq, gold, oil, "
+                "or crypto implied volatility; VVIX candidates measure convexity rather than small-cap stress."
+            ),
+            "why_suited_to_volatile_regimes": "BTC prior-24h realized variation must have a causal rank of at least 0.65",
+            "why_low_gross9_overlap_is_plausible": "an external daily small-cap volatility shock with next-session 09:35 ET entry is absent from Gross9 primitives",
+        },
+        "features": {
+            "relative_volatility": "log(RVX_close/VIX_close) on exact common Cboe source dates",
+            "shock": "current relative_volatility minus immediately previous exact common-source observation",
+            "shock_z": (
+                "(shock-current strict-prior mean)/strict-prior sample std over at most 252 prior finite shocks; "
+                "minimum 126; current excluded; sample std positive"
+            ),
+            "shock_gate": "absolute shock_z >= 1.0; side uses the unstandardized shock sign; zero is ineligible",
+            "btc_variation": (
+                "sqrt(sum squared log(close/open)) over 1,440 exact BTCUSDT 1m bars ending at, but excluding, "
+                "the next exact Cboe source date 09:30 America/New_York"
+            ),
+            "btc_variation_rank": (
+                "strict-prior midrank against at most 252 previous exact Cboe-source-date BTC variations; "
+                "minimum 126; current excluded; rank >= 0.65"
+            ),
+            "missing_or_nonpositive": "ineligible; no imputation",
+        },
+        "clock": {
+            "decision": "after next exact common Cboe source date 09:30 America/New_York BTC variation is complete",
+            "entry": "same source date exact BTCUSDT 09:35 America/New_York 5m open",
+            "hold": "12 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+            "no_imputation": True,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.2,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.1,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.1,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "future_can_rank_repair_or_reselect": False,
+            "accounting": (
+                "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held "
+                "5m favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "source_plan": {
+            "cboe": {"urls": SOURCES, "columns": ["DATE", "CLOSE"], "download_after_preregistration": True},
+            "btc_1m": {
+                "table": "bars_binance",
+                "symbol": "BTCUSDT",
+                "interval": "1m",
+                "columns": ["ts", "open", "close"],
+                "read_only": True,
+            },
+            "execution_price": "sealed until source support and Gross9 novelty pass",
+        },
+        "diagnostic_controls": {
+            "names": ["no_btc_volatility_gate", "vix_change_only", "one_session_stale_spread", "direction_flip"],
+            "diagnostic_controls_cannot_be_promoted": True,
+        },
+        "research_boundary": {
+            "source_schema_and_transport_checked": True,
+            "source_values_used_to_select_rule": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": "official RVX/VIX economic definitions plus the user-required high-volatility BTC regime",
+        },
+        "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, strict economics; no threshold, side, hold, timing, volatility, or subset repair",
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(value: dict[str, Any]) -> None:
+    core = {key: item for key, item in value.items() if key != "manifest_hash"}
+    if value.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("RVSBR preregistration hash drift")
+    if value["outcomes_opened"] is not False or value["source_incidence_opened"] is not False:
+        raise RuntimeError("RVSBR boundary drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    validate(result)
+    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
+    print(args.output)

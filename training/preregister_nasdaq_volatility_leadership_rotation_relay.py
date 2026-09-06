@@ -1,0 +1,278 @@
+"""Outcome-blind preregistration for NVLRR-12."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+POLICY_ID = "NVLRR-12"
+DEFAULT_OUTPUT = Path(
+    "results/nasdaq_volatility_leadership_rotation_relay_preregistration_2026-08-10.json"
+)
+SOURCES = {
+    "vix_panel": {
+        "path": (
+            "data/cboe_volatility_surface_2021_2026/"
+            "cboe_volatility_surface_2021-01-01_2026-08-07.csv.gz"
+        ),
+        "sha256": "42eb1093f5167aec9c71a4733ab3451e40807c81dc7cb49568a6a0c634267ba0",
+        "value_column": "VIX",
+    },
+    "vxn": {
+        "path": "data/cboe_vxn_2021_2026/source/VXN_History.csv",
+        "sha256": "a856a08bbec6c5fabd23c98d4b75bc28b93c24370ef8780e3e75243c22f66716",
+    },
+    "gvz": {
+        "path": "data/cboe_gvz_2021_2026/source/GVZ_History.csv",
+        "sha256": "eaf949af798669fb6a0d5eb0ee5a3d148a9f2abf4679450e7a9d85c6a5e1bcbb",
+    },
+    "ovx": {
+        "path": "data/cboe_ovx_2021_2026/source/OVX_History.csv",
+        "sha256": "77f872f1e069cc93554fe6d80dc6f9d44d0a798ad0a906202a570ad81f73417a",
+    },
+}
+
+
+def canonical_hash(payload: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "nasdaq_volatility_leadership_rotation_relay_v1",
+        "policy_id": POLICY_ID,
+        "slug": "nasdaq_volatility_leadership_rotation_relay",
+        "as_of_date": "2026-08-10",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": (
+                "An unusually large standardized VXN change relative to the median standardized "
+                "change in VIX, GVZ, and OVX isolates Nasdaq volatility leadership rather than a "
+                "common volatility move. In a high-variation BTC regime, fade that idiosyncratic "
+                "leadership for twelve elapsed hours."
+            ),
+            "side": "negative strict sign of leadership_residual; no BTC direction confirmation",
+            "why_distinct": (
+                "NVXCR used raw VXN-versus-VIX rotation with BTC confirmation, cross-asset breadth "
+                "used four-index signs, and the equity-commodity residual used equal-weight raw "
+                "changes. NVLRR instead compares independently standardized VXN change with the "
+                "median of three independently standardized non-Nasdaq volatility-index changes."
+            ),
+            "volatile_market_target": (
+                "BTC prior-24h realized-variation strict-prior decision rank must be at least 0.65"
+            ),
+            "why_low_gross9_overlap_is_plausible": (
+                "Gross9 has no exact standardized VXN-versus-VIX/GVZ/OVX leadership residual clock"
+            ),
+        },
+        "features": {
+            "common_source_dates": (
+                "exact intersection of source dates having one positive finite close for each of "
+                "VIX, VXN, GVZ, and OVX"
+            ),
+            "index_changes": (
+                "for each index independently, log(close on current exact common source date / "
+                "close on previous exact common source date)"
+            ),
+            "index_zscores": {
+                "formula": "z_i(S)=(change_i(S)-mean(H_i(S)))/sample_std(H_i(S))",
+                "history": (
+                    "H_i(S) is at most 252 strictly prior common-date changes for index i; minimum "
+                    "126; current change excluded"
+                ),
+                "validity": (
+                    "all history changes must be finite and sample_std with ddof=1 must be finite "
+                    "and strictly positive; otherwise S is ineligible"
+                ),
+            },
+            "leadership_residual": "z_VXN - median(z_VIX,z_GVZ,z_OVX); strict nonzero",
+            "absolute_leadership_rank": {
+                "history": (
+                    "at most 252 strictly prior valid common-source-date absolute leadership "
+                    "residuals; minimum 126; current excluded"
+                ),
+                "midrank_formula": (
+                    "(count(prior_abs<current_abs)+0.5*count(prior_abs==current_abs))/N"
+                ),
+                "eligible": "rank>=0.70",
+            },
+            "availability": (
+                "source date S close is usable only at 09:30 America/New_York on the next exact "
+                "common Cboe source date D"
+            ),
+            "btc_variation": (
+                "sqrt(sum(log(close/open)^2)) over the exact 1440 unique BTCUSDT 1m rows in "
+                "[D 09:30 America/New_York-24 elapsed hours,D 09:30 America/New_York)"
+            ),
+            "btc_variation_rank": {
+                "history": (
+                    "at most 252 strictly prior valid decision variations; minimum 126; current "
+                    "excluded"
+                ),
+                "midrank_formula": "(count(prior<current)+0.5*count(prior==current))/N",
+                "eligible": "rank>=0.65",
+            },
+            "missing_duplicate_nonpositive_or_nonfinite": (
+                "source failure or ineligible as applicable; no imputation"
+            ),
+        },
+        "clock": {
+            "decision": (
+                "next exact common Cboe source date D at 09:30 America/New_York, after source S "
+                "and the exact prior-24h BTC variation path are available"
+            ),
+            "entry": "exact BTCUSDT D 09:35 America/New_York 5m open",
+            "side": "-sign(leadership_residual); no BTC direction confirmation",
+            "hold": "12 elapsed hours",
+            "reservation": "global half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding_oi_premium": "not signal inputs; exact funding only after novelty passes",
+            "no_imputation": True,
+        },
+        "policy": {
+            "zscore_history_observations": 252,
+            "zscore_minimum_history_observations": 126,
+            "leadership_rank_history_observations": 252,
+            "leadership_rank_minimum_history_observations": 126,
+            "absolute_leadership_rank_min": 0.70,
+            "variation_rank_history_observations": 252,
+            "variation_rank_minimum_history_observations": 126,
+            "variation_rank_min": 0.65,
+            "entry_delay_minutes": 5,
+            "hold_hours": 12,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "rv20_stress_slice": {
+            "rv20": "sqrt(365*mean exact daily returns^2 over t-20 through t-1)",
+            "threshold": "numpy linear q90 over 756 strictly prior available RV20 observations",
+            "entry_filter": False,
+            "future_use": "only after all sequential full-calendar stages and economics pass",
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.20,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.10,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.10,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "future_can_rank_repair_or_reselect": False,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every "
+                "held 5m favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged candidate passes train, test, eval, final and strict economics",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_btc_variation_gate",
+                "no_leadership_tail",
+                "vxn_minus_vix_raw",
+                "one_session_stale_leadership",
+                "direction_flip",
+                "forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "cboe": SOURCES,
+            "btc": {
+                "table": "bars_binance",
+                "symbol": "BTCUSDT",
+                "interval": "1m",
+                "columns": ["ts", "open", "close"],
+                "read_only": True,
+            },
+            "execution_prices": "sealed until source support and Gross9 novelty pass",
+        },
+        "research_boundary": {
+            "prior_nvxcr_outcomes_known": True,
+            "prior_cross_asset_breadth_outcomes_known": True,
+            "prior_equity_commodity_residual_outcomes_known": True,
+            "exact_standardized_vxn_vs_three_index_leadership_residual_previously_tested": False,
+            "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": (
+                "independent standardized Nasdaq-volatility leadership mechanism frozen without "
+                "candidate incidence, outcomes, or Gross9 results"
+            ),
+        },
+        "stopping_rule": (
+            "terminal first failure: source support, Gross9 novelty, strict economics, then RV20 "
+            "audit; no source, zscore, residual, rank, side, hold, clock, volatility, subset, "
+            "comparator, or control repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(payload: dict[str, Any]) -> None:
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    if payload.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("NVLRR preregistration drift")
+    if (
+        payload.get("outcomes_opened") is not False
+        or payload.get("source_incidence_opened") is not False
+        or payload.get("gross9_rows_opened") is not False
+    ):
+        raise RuntimeError("NVLRR research boundary drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    validate(result)
+    args.output.write_text(
+        json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+    )
+    print(args.output)

@@ -1,0 +1,133 @@
+{
+  "protocol_version": "hvecsp_24_sources_v1",
+  "commodity_urls": {
+    "USO": "https://query1.finance.yahoo.com/v8/finance/chart/USO",
+    "BNO": "https://query1.finance.yahoo.com/v8/finance/chart/BNO",
+    "UNG": "https://query1.finance.yahoo.com/v8/finance/chart/UNG"
+  },
+  "source_window": [
+    "2022-01-01T00:00:00+00:00",
+    "2026-08-02T00:00:00+00:00"
+  ],
+  "btc_query": "SELECT ts,open,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts",
+  "btc_window": [
+    "2022-01-02T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "btc_rows": 2407680,
+  "nyse_calendar": {
+    "closed_dates": [
+      "2019-12-25",
+      "2020-01-01",
+      "2020-01-20",
+      "2020-02-17",
+      "2020-04-10",
+      "2020-05-25",
+      "2020-07-03",
+      "2020-09-07",
+      "2020-11-26",
+      "2020-12-25",
+      "2021-01-01",
+      "2021-01-18",
+      "2021-02-15",
+      "2021-04-02",
+      "2021-05-31",
+      "2021-07-05",
+      "2021-09-06",
+      "2021-11-25",
+      "2021-12-24",
+      "2022-01-17",
+      "2022-02-21",
+      "2022-04-15",
+      "2022-05-30",
+      "2022-06-20",
+      "2022-07-04",
+      "2022-09-05",
+      "2022-11-24",
+      "2022-12-26",
+      "2023-01-02",
+      "2023-01-16",
+      "2023-02-20",
+      "2023-04-07",
+      "2023-05-29",
+      "2023-06-19",
+      "2023-07-04",
+      "2023-09-04",
+      "2023-11-23",
+      "2023-12-25",
+      "2024-01-01",
+      "2024-01-15",
+      "2024-02-19",
+      "2024-03-29",
+      "2024-05-27",
+      "2024-06-19",
+      "2024-07-04",
+      "2024-09-02",
+      "2024-11-28",
+      "2024-12-25",
+      "2025-01-01",
+      "2025-01-09",
+      "2025-01-20",
+      "2025-02-17",
+      "2025-04-18",
+      "2025-05-26",
+      "2025-06-19",
+      "2025-07-04",
+      "2025-09-01",
+      "2025-11-27",
+      "2025-12-25",
+      "2026-01-01",
+      "2026-01-19",
+      "2026-02-16",
+      "2026-04-03",
+      "2026-05-25",
+      "2026-06-19",
+      "2026-07-03"
+    ],
+    "early_close_dates": [
+      "2020-11-27",
+      "2020-12-24",
+      "2021-11-26",
+      "2022-11-25",
+      "2023-07-03",
+      "2023-11-24",
+      "2024-07-03",
+      "2024-11-29",
+      "2024-12-24",
+      "2025-07-03",
+      "2025-11-28",
+      "2025-12-24"
+    ]
+  },
+  "builder": {
+    "path": "training/build_high_volatility_energy_commodity_return_spillover_relay_support.py",
+    "sha256": "cd27b04f0133d95051a7caf11630e63ab21774b6c499282402a8c1dae0072583"
+  },
+  "outputs": {
+    "raw_uso": {
+      "path": "data/high_volatility_energy_commodity_return_spillover_relay_sources_2022_2026/uso_yahoo_chart.json",
+      "sha256": "780289b0c0cc4e000e968041b4670ba9c80800d1ce30870d21dfe0dd97fe6fd8"
+    },
+    "raw_bno": {
+      "path": "data/high_volatility_energy_commodity_return_spillover_relay_sources_2022_2026/bno_yahoo_chart.json",
+      "sha256": "53fcc6c1e90d5679e08a3c0eace2c1ddeedcb41ee2d190d62072703b67460123"
+    },
+    "raw_ung": {
+      "path": "data/high_volatility_energy_commodity_return_spillover_relay_sources_2022_2026/ung_yahoo_chart.json",
+      "sha256": "54b397d00656e249103fc46f6a9cc88d9335bfdda341b7b144448edbf559e1ce"
+    },
+    "commodities": {
+      "path": "data/high_volatility_energy_commodity_return_spillover_relay_sources_2022_2026/uso_bno_ung_common_sessions.csv.gz",
+      "sha256": "989a1af39b52398c1a83d4c5efdd44a43abbae3be1f938a68d4eb445d2a2289e",
+      "rows": 1148
+    },
+    "features": {
+      "path": "data/high_volatility_energy_commodity_return_spillover_relay_sources_2022_2026/hvecsp_preentry_features.csv.gz",
+      "sha256": "320301d01a587de87496bb6610547ee9f9b5b813ba6846036055c5b19c6f0ff2",
+      "rows": 1148
+    }
+  },
+  "candidate_outcomes_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "ed5e2a9e382308a528df6b6b82910b7a36085726e08bec9dc5e488a7c63f717b"
+}

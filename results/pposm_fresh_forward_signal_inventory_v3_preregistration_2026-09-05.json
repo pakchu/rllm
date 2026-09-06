@@ -1,0 +1,311 @@
+{
+  "policy_id": "pposm_fresh_forward_signal_inventory_v3",
+  "created_at": "2026-09-05T11:32:40.076957+00:00",
+  "purpose": "outcome-blind fresh-forward causal signal inventory with interval-corrected 5m completeness",
+  "source_contract": {
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "db_query_start": "2026-04-01T00:00:00Z",
+    "forward_start": "2026-06-02T00:00:00Z",
+    "forward_end_exclusive": "2026-09-05T10:05:00Z",
+    "forward_last_inclusive_decision": "2026-09-05T10:00:00Z",
+    "cache_precedence_before": "2026-06-02T00:00:00Z",
+    "parity_window": [
+      "2026-05-01T00:00:00Z",
+      "2026-06-02T00:00:00Z"
+    ],
+    "required_sources": [
+      "bars_binance",
+      "bars_binance_premium",
+      "funding_rates_binance"
+    ],
+    "forbidden_sources": [
+      "open_interest",
+      "post_entry_returns",
+      "execution_lifecycle",
+      "pnl_labels"
+    ],
+    "builder_must_query_db_rows": true,
+    "this_preregistration_db_rows_opened": 0,
+    "post_entry_outcomes_opened": false,
+    "source_completeness_policy": {
+      "market_1m": {
+        "source": "bars_binance",
+        "time_column": "date",
+        "grid": "1min",
+        "start": "2026-04-01T00:00:00Z",
+        "end_exclusive": "2026-09-05T10:05:00Z",
+        "exact_grid": true,
+        "duplicates_allowed": false,
+        "required_finite_columns": [
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "quote_asset_volume",
+          "number_of_trades",
+          "taker_buy_base",
+          "taker_buy_quote"
+        ],
+        "positive_price_columns": [
+          "open",
+          "high",
+          "low",
+          "close"
+        ],
+        "nonnegative_quantity_columns": [
+          "volume",
+          "quote_asset_volume",
+          "number_of_trades",
+          "taker_buy_base",
+          "taker_buy_quote"
+        ]
+      },
+      "premium_1m": {
+        "source": "bars_binance_premium",
+        "time_column": "date",
+        "close_time_column": "close_time",
+        "grid": "1min",
+        "start": "2026-04-01T00:00:00Z",
+        "end_exclusive": "2026-09-05T10:05:00Z",
+        "exact_grid": true,
+        "duplicates_allowed": false,
+        "required_finite_columns": [
+          "close"
+        ],
+        "close_time_non_null": true,
+        "close_time_causal_within_source_minute": true
+      },
+      "forward_5m": {
+        "source": "resampled_btcusdt_5m",
+        "time_column": "date",
+        "grid": "5min",
+        "start": "2026-06-02T00:00:00Z",
+        "end_exclusive": "2026-09-05T10:05:00Z",
+        "exact_grid": true,
+        "last_expected_bucket": "2026-09-05T10:00:00Z"
+      },
+      "funding": {
+        "source": "funding_rates_binance",
+        "time_column": "funding_time/date",
+        "canonicalization": {
+          "alias_grouping": "sort by raw funding_time; group only adjacent rows whose timestamp delta from the previous row is <=100ms",
+          "max_cluster_span_ms": 100,
+          "canonical_timestamp": "latest raw timestamp in the accepted near-alias cluster; no snapping to cadence",
+          "required_exact_equal_columns": [
+            "funding_rate",
+            "mark_price"
+          ],
+          "reject": [
+            "exact_duplicate_timestamp",
+            "malformed_timestamp",
+            "nonfinite_funding_rate_or_mark_price",
+            "unequal_values_within_near_alias_cluster",
+            "cluster_span_gt_100ms"
+          ],
+          "preserve_events_separated_by_at_least": "1min"
+        },
+        "start": "2026-04-01T00:00:00Z",
+        "end_exclusive": "2026-09-05T10:05:00Z",
+        "exact_event_grid": false,
+        "allowed_dynamic_intervals": [
+          "1h",
+          "4h",
+          "8h",
+          "other<=12h"
+        ],
+        "duplicates_allowed": false,
+        "required_finite_columns": [
+          "funding_rate",
+          "mark_price"
+        ],
+        "query_start_max_initial_age": "12h",
+        "last_decision_max_age": "12h",
+        "max_consecutive_gap": "12h",
+        "not_vendor_global_completeness_proof": true
+      },
+      "fail_closed_before_signal_count": true
+    },
+    "state_feature_columns": [
+      "htf_1w_return_1",
+      "rex_576_range_width_pct",
+      "quote_vol_z_1d",
+      "rex_576_range_pos",
+      "bb_z",
+      "premium_index_change",
+      "htf_3d_return_1"
+    ],
+    "active_feature_columns": [
+      "funding_available",
+      "funding_rate",
+      "trend_96",
+      "premium_available",
+      "premium_index_change",
+      "htf_1d_return_4",
+      "rex_576_range_pos",
+      "htf_1d_return_1",
+      "htf_3d_return_1",
+      "bb_z",
+      "quote_vol_z_1d"
+    ],
+    "parity_feature_columns": [
+      "htf_1w_return_1",
+      "rex_576_range_width_pct",
+      "quote_vol_z_1d",
+      "rex_576_range_pos",
+      "bb_z",
+      "premium_index_change",
+      "htf_3d_return_1",
+      "funding_available",
+      "funding_rate",
+      "trend_96",
+      "premium_available",
+      "htf_1d_return_4",
+      "htf_1d_return_1"
+    ],
+    "funding_alias_policy": {
+      "alias_grouping": "sort by raw funding_time; group only adjacent rows whose timestamp delta from the previous row is <=100ms",
+      "max_cluster_span_ms": 100,
+      "canonical_timestamp": "latest raw timestamp in the accepted near-alias cluster; no snapping to cadence",
+      "required_exact_equal_columns": [
+        "funding_rate",
+        "mark_price"
+      ],
+      "reject": [
+        "exact_duplicate_timestamp",
+        "malformed_timestamp",
+        "nonfinite_funding_rate_or_mark_price",
+        "unequal_values_within_near_alias_cluster",
+        "cluster_span_gt_100ms"
+      ],
+      "preserve_events_separated_by_at_least": "1min"
+    },
+    "v1_failure_artifact": "results/pposm_fresh_forward_signal_inventory_2026-09-05.json",
+    "v1_failure_artifact_sha256": "1fa032f039cfac32ffd4bef4b7c6edf4eb77c114e5c5ebb941e7864205d9fe45",
+    "funding_alias_source_diagnostic_artifact": "results/pposm_funding_alias_source_diagnostic_2026-09-05.json",
+    "funding_alias_source_diagnostic_sha256": "c56af6dc39ff07b95483e953cbfa5619b07b93e2e653ef6e1ef405058c1f3396",
+    "funding_alias_source_diagnostic_result_hash": "a8c07ea787cd99aa233ad3ad665a2d0e232fce7f49cecc8c7daf5309dd9f66e9",
+    "source_mechanics_contract": "DB may contain millisecond-offset alias rows for the same funding event; only exact-value near aliases are canonicalized, and dynamic <=12h funding cadence is allowed without assuming fixed 8h vendor cadence.",
+    "v2_failure_artifact": "results/pposm_fresh_forward_signal_inventory_v2_2026-09-05.json",
+    "v2_failure_artifact_sha256": "eb67715f1aad0cbb3f0a9027f5deb57689131633ff2edb09dc2f1576b475651e",
+    "v2_failure_result_hash": "6bc841b6e44a83ac4c9cabddb1d76333a8281b35bd898757d10376bf6d64f7ab",
+    "v2_failure_receipt": {
+      "result_hash": "6bc841b6e44a83ac4c9cabddb1d76333a8281b35bd898757d10376bf6d64f7ab",
+      "terminal": "source_incomplete",
+      "forward_counted": false,
+      "opened_outcomes": false,
+      "trained": false
+    },
+    "forward_grid_check_policy": {
+      "full_resampled_frame_scope": [
+        "2026-04-01T00:00:00Z",
+        "2026-09-05T10:05:00Z"
+      ],
+      "checked_frame_scope": [
+        "2026-06-02T00:00:00Z",
+        "2026-09-05T10:05:00Z"
+      ],
+      "slice_rule": "FORWARD_START <= date < FORWARD_END_EXCLUSIVE",
+      "full_frame_retained_for": [
+        "May cache parity",
+        "causal feature warmup",
+        "forward feature construction"
+      ],
+      "expected_full_rows": 45337,
+      "expected_checked_rows": 27481,
+      "expected_warmup_rows_excluded_from_check": 17856
+    }
+  },
+  "frozen_pposm": {
+    "manifest_path": "results/pullback_premium_overheat_state_machine_manifest_2026-07-15.json",
+    "manifest_sha256": "41d6424b8ca719ee3e3b058f6f5f93bc360905ee02be5b5d9671ff5349978159",
+    "freeze_hash": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+    "champion": {
+      "overheat": "premium_range_overheat",
+      "action": "skip"
+    },
+    "spec_hash": "ac52b2e68c822b84c04aa69af5345a89a2f5db572324f5deb9d8c0f890178567",
+    "implementation_hash": "83b0155d84a0cf66d554bfb29b14c9987e68ef368f8e07a3c4eae7724581dac9",
+    "state_thresholds_sha256": "fbf706c69b5eedb33846612aadd5090aef1c74645d3b448a683874d88637d712"
+  },
+  "immutable_cache": {
+    "path": "/home/pakchu/rllm/data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+  },
+  "query_templates": {
+    "btcusdt_1m": "\n        SELECT ts AS date, open, high, low, close, volume,\n               quote_asset_volume, number_of_trades, taker_buy_base, taker_buy_quote,\n               symbol AS tic\n        FROM bars_binance\n        WHERE symbol = :symbol AND interval = '1m' AND ts >= :start AND ts < :end\n        ORDER BY ts\n    ",
+    "premium_1m": "\n        SELECT ts AS date, close_time, close\n        FROM bars_binance_premium\n        WHERE symbol = :symbol AND interval = '1m' AND ts >= :start AND ts < :end\n        ORDER BY ts\n    ",
+    "funding": "\n        SELECT funding_time, funding_rate, mark_price\n        FROM funding_rates_binance\n        WHERE symbol = :symbol AND funding_time >= :start AND funding_time < :end\n        ORDER BY funding_time\n    "
+  },
+  "query_hashes": {
+    "btcusdt_1m": "b0523118c82e34568812f18d8684796de6ad204382023f10c647698da7d00471",
+    "premium_1m": "b459997dffd655b1152e59a48bec36425c2f091cf902337bf3445983265916b5",
+    "funding": "af57c6a2b5c2a5b17260b5dbd0440ace111738a0127bf38fa11a7b9009bf164a"
+  },
+  "code_hashes": {
+    "v2.preregistration_module": "a3b41c8f46d94708a49507e540147165dcc0bae998766cc54d2f6566d17d3b19",
+    "v2.builder_module": "955983a73ac08bdc3813ad4d14ae271d11e83669e0b0152d9b8027d99fd14e71",
+    "v2.module.audit_confirmed_pullback_squeeze_live_parity": "7c79e6157d0055aeca66e4eff22707d70b549eb6e4e7a79342003a7623a3b9cd",
+    "v2.module.binance_aux_features": "dc97e1694d4c0718262f8fae5cb3ea24c4a33a30e42301528973be61c6e5f1e6",
+    "v2.module.live_db_features": "a4b903913a51e1322e8946cd8dad8fea08b2361655520d20312a65f4219d5099",
+    "v2.module.market_features": "f9091ecb080656c69a08ac3b4d07f7316cc2ddcc1fe4efacb9e10e8334d5cafa",
+    "v2.module.long_regime_interest_gate_validation": "cc9f4b0ea85079992ca060719ad2ab6afc2018884325a893adb459304e312075",
+    "v2.module.pposm": "a17039f3b11f1a19dcb199efab9bd663c7d1fcacce9ca9eb61a2c8fd25e73589",
+    "v2._load_bundle": "be54c43214202b1877bc74c7bd18c8cfd6257a22ae98fc21052206121fb56bdd",
+    "v2._fit_active": "215830c6d43021b2b993b80532812f3357c1d86baeb86640526c5ae54b54f4a7",
+    "v2.build_interest_features": "283040ae53fdda128b7ba34c5d234b4f416a62835644991c824c36876bfac6ec",
+    "v2.normalise_funding_history_frame": "c629ec86dcec65f9e14286be6911cfb77299a90a5a5e7445c6c15a4b02161ae0",
+    "v2.normalise_premium_index_frame": "b2ce2e5daafb3d9fe92d54175afe3bd178384f6264f1d64c4351e7a6e8aa9259",
+    "v2.pposm_state_feature_frame": "449600f541549134b9806ceed6c9932de872b8e65f58d3fcffa644f417018ee0",
+    "v2.pposm_build_state_masks": "e8f98d110de26ae59c65977c2f27c7c886a5a5c879f475e4908eab877fd52dbd",
+    "v2.pposm_constants": "164ca1606840d19390ee103c6a0ef1da92593029274b526aa4ceaa46856a0382",
+    "v2.feature_set_policy": "d8abd10d0ee1b6a84bdf45181dd3f745f98f62f5ef84b653b3774d56ce6dc382",
+    "v2.v1_failure_artifact": "1fa032f039cfac32ffd4bef4b7c6edf4eb77c114e5c5ebb941e7864205d9fe45",
+    "v2.funding_alias_source_diagnostic_artifact": "c56af6dc39ff07b95483e953cbfa5619b07b93e2e653ef6e1ef405058c1f3396",
+    "v2.decision_mask": "79464f2151366b5eb6839d7b96830cb6995b11e71c34c8a4a9129508aa2d6bdb",
+    "v2.live_decision_features": "b1239aa44735063bd7c239c73eee6181eefca20569b4239c173d6d6383cba938",
+    "v2.resample_market_bars": "11426f2bf7b737a6acd6f44fe235b6bab3136cdb73c10a76bacfac66c655f0e0",
+    "v2.attach_binance_um_aux_frames": "9747f09239084a91ce6d7a4fa5cfd57920fe6778ad4e9e8b498c1a22035c177d",
+    "v2.build_market_feature_frame": "a325b729c81f8e14a21ddc2b9803e7029f073bde18e8c0f354dff702d5645dc1",
+    "v2.builder_local.features_from_enriched_market": "c9e3ec04d2f402abdea96b2e1b221729f8b88b284b95868de92e32aa3dcc9518",
+    "v2.builder_local.features_from_db_frames": "5f91834b27077a264d574b5343e0faf0cbbfde877a497e5108114f63ac807638",
+    "v2.builder_local.query_db_frames": "d204dc09b11e4cc890a139e87d0dc6d9c8be0c3c4b41b79f953d2c423c360161",
+    "v2.builder_local.merge_cache_db_markets": "7f52eb3eb97683cfc9030ef8bdb62e22a5287c8cef331916c4b1f5c294364da3",
+    "v2.builder_local.parity_decision_frame": "79137a8a6e7180dab4e34e79c6aa20bba5cea0085916ac1615ea77146936fc71",
+    "v2.builder_local.compare_parity": "6f34db36f2ce58b5d0d6aa8bf584e109641510f4198c68da9fe889484cc0db16",
+    "v2.builder_local._grid_check": "521a5db7f741e3fc268b7fd3eb909df1e9c59db840f320445751c26467e7e0b6",
+    "v2.builder_local._finite_column_check": "5aaf771acf4c60f2a7605882831da74d12edc7223730c673fc772833f74c0399",
+    "v2.builder_local._premium_close_time_check": "34ab42a5b0a8dbb35db946074e4a6c1a96b635e17a9817d85e8e0fdaf490ae1d",
+    "v2.builder_local._expect_contract_value": "fedda7e45e8e96d7b7234a1c1b4acb0093aaa833237c472a44b2091c4b67cac2",
+    "v2.builder_local._canonical_decimal_string": "e90ff4359ebc131ad6f85f03133eadd5ef77831832585a507d4512d5d055cd1d",
+    "v2.builder_local._canonical_hash_cell": "5618ca0f68061e1a3c7d76f48cb794f61a3ca44ed4332c90fb5d033514128f0f",
+    "v2.builder_local._decimal_from_raw": "588672a3afe2cd64836f8459d75a6746d8ae3a728972f5480c9a3ecccbb3e8a2",
+    "v2.builder_local._funding_decimal_columns": "b02ac8a230705b592acd4f9142aa50ef900f05151690322744a20fb17607ca1a",
+    "v2.builder_local.canonicalize_funding_aliases": "33768968762520f63149f7ff0eef9903c62165a16da343432afb730ac4bc3f07",
+    "v2.builder_local._funding_completeness": "34974004a3b3e6f055a5e66754f3fc6d9ec4dcb844f1bf5afd71cf991017413e",
+    "v2.builder_local.check_raw_source_completeness": "213f1eef08ba4e5fce3d2fb0c93601fd0d559fb0cc21dac484020e01cf59b97e",
+    "v2.builder_local.check_source_completeness": "0f0de67c31e0f453c7276ee5355d44fcd1534290973999fb2e57d8db9a8f2a13",
+    "v2.builder_local.terminal_result": "89d06344c20d5374732b6300f135d4cd2d84ba2e561dde02c40982d2e4da807a",
+    "v2.builder_local.build_signal_inventory": "ffe9e704b1cf03ff4d234d65d6bbb9fef2eab545f04e636f2390426e0e253aac",
+    "v2.builder_local.load_frozen_cache_bundle": "351dbe37df837be948801e89dc19f5cf43843ae5dff41e7ba20d37010c34b935",
+    "v2.builder_local.build_from_frames": "ae1be2ba198237214c558c3694ddaa41318672a3043551bcb1f4a54670621ad2",
+    "preregistration_module": "a7141ad755aec0d5df0bf630e9c957e06839426737afc2c9fceed2c58b4fa651",
+    "builder_module": "32d8ddb78a45701fe41c4f1bbfd31616c7c4d6a79b1324a36a02a1fa372f4fe3",
+    "v2_failure_artifact": "eb67715f1aad0cbb3f0a9027f5deb57689131633ff2edb09dc2f1576b475651e",
+    "forward_grid_check_policy": "9c5bb9158edcb563a480938c42b6b6ce7fecf7c5b8f908f8cfbe1f96c350f5dc",
+    "builder_local.forward_grid_frame": "f82e74efda2055852260c6c2c4b9988f0e04412dc58752a30993834a6543fcd6",
+    "builder_local.check_source_completeness": "36f58af6afbb5e0dfd9384c1d6e1efbf1993cf4aed7589b75fe3ff92c8e1b0bd",
+    "builder_local.build_from_frames": "39f08d251f865ac94729c1a09cbe0795a77c0d132e2cb89167c0184ab187de4b"
+  },
+  "terminal_gate": {
+    "parity_before_forward_count": true,
+    "parity_atol": 1e-10,
+    "parity_rtol": 1e-09,
+    "if_cache_db_parity_fails": "terminal_source_mismatch_no_forward_signal_count",
+    "parity_scope": "normalized causal feature outputs at hourly decisions in May overlap",
+    "no_execution_engine": true,
+    "no_training": true
+  },
+  "preregistration_hash": "ba1ad25e9f585aff96c6459ea00bb4ebd258437cbe85eecd6636a87e489f954a"
+}

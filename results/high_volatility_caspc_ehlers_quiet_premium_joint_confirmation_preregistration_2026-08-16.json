@@ -1,0 +1,136 @@
+{
+  "protocol_version": "high_volatility_caspc_ehlers_quiet_premium_joint_confirmation_v1",
+  "policy_id": "HVCELVPQA-8",
+  "as_of_date": "2026-08-16",
+  "exploratory_discovery": true,
+  "fresh_confirmatory_evidence": false,
+  "combined_incidence_opened": false,
+  "combined_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "candidate_family": [
+    "HVCELVPQA-8"
+  ],
+  "candidate_family_size": 1,
+  "component_ids": [
+    "HVCELV-8",
+    "HVCASPCPQA-8"
+  ],
+  "component_artifacts": {
+    "HVCELV-8": {
+      "preregistration": {
+        "path": "results/high_volatility_caspc_ehlers_active_veto_preregistration_2026-08-16.json",
+        "sha256": "7dc8f6228fa32eba7d5aded586d389855a47fbf12917800c43537e5e18c6244f"
+      },
+      "support": {
+        "path": "results/high_volatility_caspc_ehlers_active_veto_support_2026-08-16.json",
+        "sha256": "9b7d2230588465a73dd9646387d3d7000b3f26d98daeef4e25cf51f4118c6375"
+      },
+      "gross9": {
+        "path": "results/high_volatility_caspc_ehlers_active_veto_gross9_novelty_2026-08-16.json",
+        "sha256": "b7d94871688fce546a6a187594cf9665856193d7129cba4c2ca6e69fa9aa3b17"
+      },
+      "clock": {
+        "path": "data/high_volatility_caspc_ehlers_active_veto_clocks_2023_2026.csv.gz",
+        "sha256": "1f8512a74906921169b115ec917c80c76b714c5a2f5fda25698feb6b4b026294"
+      }
+    },
+    "HVCASPCPQA-8": {
+      "preregistration": {
+        "path": "results/high_volatility_caspc_quiet_premium_activity_preregistration_2026-08-16.json",
+        "sha256": "d3fc1e0d152abd2c87a568efa6c2236389bf787de2271c847713ab99c2783e01"
+      },
+      "support": {
+        "path": "results/high_volatility_caspc_quiet_premium_activity_support_2026-08-16.json",
+        "sha256": "f0498c805b3bf93a9fe63fc374f03b7afe0d803382104bc2aa7c6b0fc92c67a2"
+      },
+      "gross9": {
+        "path": "results/high_volatility_caspc_quiet_premium_activity_gross9_novelty_2026-08-16.json",
+        "sha256": "b8cf184ed63dc8b9b8934413ec3641a7992d2d161802711f784548b7e1fa0fe1"
+      },
+      "clock": {
+        "path": "data/high_volatility_caspc_quiet_premium_activity_clocks_2023_2026.csv.gz",
+        "sha256": "684ddfc240679d99ed5d5f30f095a359940c9ed098e5c6b0cf7f15d6fdf6bcce"
+      }
+    }
+  },
+  "construction": {
+    "operator": "exact-entry joint sponsorship intersection",
+    "decision_join": "emit only when frozen HVCELV-8 and HVCASPCOIS-8 clocks have identical decision_time, entry_time, exit_time and side",
+    "timestamp_tolerance": "none",
+    "direction": "immutable common side",
+    "entry": "immutable common entry",
+    "hold": "8 elapsed hours",
+    "additional_or_tuned_thresholds": "none",
+    "alternatives": "none"
+  },
+  "mechanism": {
+    "claim": "Cross-alt serial persistence must survive an active opposite Ehlers veto while relative premium activity remains in its frozen quiet rank state; exact agreement isolates continuation without crowded derivative repricing.",
+    "why_low_gross9_overlap_is_plausible": "the sparse exact intersection of oscillator-veto and quiet-premium cross-alt persistence is absent from Gross9 primitives"
+  },
+  "clock": {
+    "decision": "exact common 03:00/11:00/19:00 UTC component decision",
+    "entry": "D+5m",
+    "hold": "8 elapsed hours",
+    "funding": "sealed until novelty pass"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "research_boundary": {
+    "all_component_prior_outcomes_known": true,
+    "HVCELV_train_pass_test_positive_but_terminal_known": true,
+    "HVCASPCPQA_train_stress_and_half_failure_known": true,
+    "combined_incidence_opened": false,
+    "combined_postentry_returns_or_pnl_opened": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "repair_of_prior_candidate": false,
+    "selection_basis": "independent oscillator veto and quiet-premium confirmation on one frozen cross-alt persistence primary"
+  },
+  "stopping_rule": "source support, Gross9, then train/test/eval/final; stop first failure; no substitution, threshold, side, clock, intersection, component, or control repair.",
+  "manifest_hash": "246f053d7bf3a4a6838eb4eeacfe736602536a0efe4d27a4a421772984a3b86e"
+}

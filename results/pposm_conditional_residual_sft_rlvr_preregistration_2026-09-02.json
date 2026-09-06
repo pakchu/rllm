@@ -1,0 +1,121 @@
+{
+  "protocol_version": "pposm_conditional_residual_sft_rlvr_v1",
+  "status": "preregistered_before_model_scoring",
+  "as_of": "2026-09-02",
+  "research_boundary": {
+    "training_and_selection": "pre-2024 only",
+    "report_veto_only": [
+      "test2024",
+      "eval2025",
+      "holdout2026h1"
+    ],
+    "oos_reranking_or_repair": false,
+    "known_contamination": "The historical PPOSM 2024-2026H1 windows have been exposed by prior research. This experiment is research-only and cannot authorize deployment."
+  },
+  "source": {
+    "git_commit": "9b6bce85d6ecf01c4d0e4a817c94595705b878eb",
+    "manifest": "results/pullback_premium_overheat_state_machine_manifest_2026-07-15.json",
+    "manifest_freeze_hash": "1360cf620b8afcead476e2aa0c1394e1419b70c42cac7e03dcc91912ab60c81f",
+    "frozen_signal_source": "all frozen PPOSM active decisions",
+    "prompt_boundary": "signal-time numeric state and causal symbolic predicates only",
+    "offline_only_fields": [
+      "TP4 execution utility",
+      "candidate execution utility",
+      "residual utility"
+    ]
+  },
+  "architecture": {
+    "name": "pairwise_residual_action_router",
+    "default_action": "TP4",
+    "candidate_actions": [
+      "SKIP",
+      "TP12"
+    ],
+    "rows_per_signal": 2,
+    "labels": [
+      "KEEP",
+      "SWITCH"
+    ],
+    "label_rule": "SWITCH iff candidate exact base-cost utility is strictly greater than TP4 utility; ties KEEP",
+    "residual_utilities": {
+      "KEEP": 0.0,
+      "SWITCH": "candidate utility minus TP4 utility"
+    },
+    "route_rule": "Start at TP4. Switch only when SWITCH-minus-KEEP mean candidate-logprob margin is strictly above the frozen global train threshold. If both candidates qualify, select the larger raw margin; exact ties use SKIP before TP12."
+  },
+  "base_model": {
+    "name": "Qwen/Qwen2.5-1.5B-Instruct",
+    "huggingface_revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "local_files_available": true
+  },
+  "sft": {
+    "sample_mode": "balanced_oversample",
+    "max_samples": 1024,
+    "steps": 128,
+    "learning_rate": 1e-05,
+    "batch": 1,
+    "gradient_accumulation": 8,
+    "max_sequence_length": 2048,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "lora_targets": "all-linear",
+    "seed": 20260902
+  },
+  "rlvr": {
+    "schema": "pposm_residual_utility",
+    "sample_mode": "balanced_oversample",
+    "max_samples": 1024,
+    "steps": 64,
+    "learning_rate": 5e-06,
+    "batch": 4,
+    "gradient_accumulation": 4,
+    "generations": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "scale_rewards": "none",
+    "utility_scale": 0.01,
+    "reward": "exact-format reward plus clipped selected residual utility",
+    "seed": 20260903
+  },
+  "train_only_threshold_freeze": {
+    "score": "mean log probability over label tokens plus EOS; margin = SWITCH minus KEEP",
+    "grid": "all distinct pre-2024 margins plus sentinels immediately below the minimum and above the maximum",
+    "objective": "maximize the sum of selected per-signal residual utilities under the exact deterministic route rule",
+    "feasibility": "at least 10 percent pre-2024 non-default routes, at least 10 observations for every used non-default route, and no action above 90 percent",
+    "tie_break": [
+      "higher threshold",
+      "lexicographically stable serialized route stream"
+    ],
+    "no_feasible_threshold": "freeze above the maximum margin, retain TP4 everywhere, and record a failed experiment without OOS repair"
+  },
+  "execution": {
+    "entry": "exact next 5-minute open",
+    "exit": "take-profit, stop, or 48-hour cap",
+    "funding": true,
+    "non_overlapping": true,
+    "base_one_side_cost": 0.0006,
+    "stress_one_side_cost": 0.001,
+    "signflip_permutations": 100000,
+    "signflip_seed": 20260902
+  },
+  "always_tp4_control": true,
+  "pass_gates": {
+    "oos_actions_used_min": 2,
+    "oos_difference_from_tp4_min": 0.1,
+    "used_non_default_count_min": 10,
+    "single_action_share_max": 0.9,
+    "each_window_base_and_stress_return_positive": true,
+    "combined_strict_mdd_pct_max": 15.0,
+    "combined_base_cagr_mdd_min": 3.0,
+    "combined_base_cagr_mdd_improvement_min": 0.05,
+    "combined_base_return_not_lower": true,
+    "combined_stress_return_strictly_higher": true,
+    "combined_stress_mdd_worsening_pct_points_max": 0.01,
+    "combined_trades_min": 40,
+    "weekly_signflip_p_max": 0.2,
+    "byte_identical_replay": true
+  },
+  "stopping_rule": "Evaluate exactly this frozen adapter, decoding rule, and train-selected threshold once on the full report/veto windows. Do not change architecture, hyperparameters, threshold, or decoding after OOS scoring."
+}

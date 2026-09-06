@@ -1,0 +1,123 @@
+{
+  "protocol_version": "high_volatility_spot_underwater_autocorrelation_router_v1",
+  "policy_id": "HVSAUDAR-8",
+  "as_of_date": "2026-08-18",
+  "singleton": true,
+  "candidate_family": [
+    "HVSAUDAR-8"
+  ],
+  "candidate_family_size": 1,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "base_artifacts": {
+    "preregistration": {
+      "path": "results/high_volatility_spot_adverse_underwater_duration_relay_preregistration_2026-08-18.json",
+      "sha256": "6f65fe4632da0c714cf971a95d1be98fb28bb8ef2a4926188656ff58af676446"
+    },
+    "support": {
+      "path": "results/high_volatility_spot_adverse_underwater_duration_relay_support_2026-08-18.json",
+      "sha256": "1fc578d0c95d12c4f9cea7da4ee0f712fc0546573c2e334011eb19e2ee55b27a"
+    },
+    "gross9": {
+      "path": "results/high_volatility_spot_adverse_underwater_duration_relay_gross9_novelty_2026-08-18.json",
+      "sha256": "77a222777e6baf434260657baf9b1768745b42f0ac02bcc6b9ae321b028edc6c"
+    },
+    "clock": {
+      "path": "data/high_volatility_spot_adverse_underwater_duration_relay_clocks_2023_2026.csv.gz",
+      "sha256": "2a7a893cdc2026227c00ba0a7622f35277c149498cd8413dd21e2d286eaf38d9"
+    }
+  },
+  "mechanism": {
+    "claim": "Spot directional-underwater events should continue when the strictly prior month of completed spot block returns is serially persistent and reverse when it is alternating; use the long-memory autocorrelation sign as a causal regime router.",
+    "side": "immutable HVSAUD base side multiplied by strict sign of prior 30-day spot block-return lag-one Pearson correlation",
+    "why_distinct": "HVSAR uses contemporaneous five-minute autocorrelation inside one 12-hour path and requires a dependence tail. HVSAUDAR uses no current path returns beyond the immutable event, no tail threshold, and estimates a slow 90-block state from strictly previous eight-hour cash returns. It uses no outcome labels, OI, funding, premium, options, fitted outcomes, or promoted controls.",
+    "why_low_gross9_overlap_is_plausible": "immutable sparse HVSAUD event times already passed Gross9; slow source-state routing changes signed exposure"
+  },
+  "state": {
+    "source": {
+      "path": "data/high_volatility_spot_adverse_underwater_duration_sources_2023_2026/states.csv.gz",
+      "sha256": "94bae225225150d5fce8db70c79eb122460ccab8722531dacf3d0d3de507e110"
+    },
+    "history": "latest 90 strictly prior source-valid spot eight-hour block returns",
+    "minimum_history": 60,
+    "autocorrelation": "Pearson correlation of consecutive prior block returns; both lag vectors require strict positive sample standard deviation",
+    "current_excluded": true,
+    "routing": "positive correlation keeps base side; negative correlation inverts; zero/nonfinite/insufficient history is cash",
+    "stage_reset": false
+  },
+  "policy": {
+    "history_blocks": 90,
+    "minimum_history_blocks": 60,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "clock": {
+    "event_times": "immutable HVSAUD decisions, entries, exits",
+    "entry": "immutable D+5m",
+    "hold": "8 elapsed hours",
+    "funding": "not signal input; exact settlements after Gross9"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "research_boundary": {
+    "base_train_pass_test_failure_known": true,
+    "exact_autocorrelation_routed_incidence_or_outcomes_known": false,
+    "current_or_future_state_returns_used": false,
+    "postentry_return_or_pnl_opened": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory source-state routing; not fresh confirmatory evidence",
+    "selection_basis": "slow serial-dependence sign as a continuation/reversal regime state"
+  },
+  "stopping_rule": "source, Gross9, train/test/eval/final; terminal first failure; no base event, history, minimum history, autocorrelation, sign, tie, side, clock, hold, subset, threshold, or control repair",
+  "manifest_hash": "4ee3742b59241844c5935afe4b4438c4d25ab701e78d80c169c38eb5cbc81998"
+}

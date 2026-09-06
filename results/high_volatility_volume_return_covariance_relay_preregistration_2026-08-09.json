@@ -1,0 +1,143 @@
+{
+  "protocol_version": "high_volatility_volume_return_covariance_relay_v1",
+  "policy_id": "HVVRCR-12",
+  "as_of_date": "2026-08-09",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "The correlation between completed five-minute BTC returns and log quote volume over a day measures whether positive or negative moves receive greater participation. An extreme signed correlation in a high-variation state identifies volume-sponsored price discovery that continues for twelve hours.",
+    "side": "strict sign of completed return-log-volume Pearson correlation",
+    "why_distinct": "VSPCR discretized bars into top/bottom volume quartiles and required opposing cohort returns at four-hour onsets; HDVBR used one dominant bar; close-VWAP candidates used price displacement. HVVRCR uses the continuous full-day return-volume covariance at one daily clock, reuses no event set, and promotes no control.",
+    "why_suited_to_volatile_regimes": "completed 24-hour realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "one sparse daily 02:05 UTC continuous covariance clock is absent from Gross9 primitives"
+  },
+  "features": {
+    "decision": "daily exact 02:00 UTC",
+    "window": "288 exact contiguous completed BTCUSDT five-minute bars [decision-24h,decision)",
+    "bar_return": "log(close/open) on each coherent positive-OHLC bar",
+    "log_quote_volume": "log1p(finite nonnegative quote_asset_volume)",
+    "volume_return_correlation": "sample Pearson correlation across 288 bar-return and log-volume pairs; both sample stds positive; strict nonzero",
+    "absolute_correlation_rank": "strict-prior midrank over at most 90 valid daily observations, minimum 60, current excluded; rank>=0.70",
+    "realized_variation": "sqrt(sum bar_return^2)",
+    "variation_rank": "strict-prior midrank over at most 90 valid days, minimum 60, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "daily 02:00 UTC after all source bars complete",
+    "entry": "exact BTCUSDT 02:05 UTC open",
+    "side": "strict covariance-correlation sign",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "funding": "not an input; exact funding only after novelty"
+  },
+  "policy": {
+    "bars": 288,
+    "prior_days": 90,
+    "prior_min_days": 60,
+    "absolute_correlation_rank_min": 0.7,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes all stages",
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "5m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_correlation_tail",
+      "unweighted_return",
+      "one_day_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_vspcr_hdvbr_vwap_evidence_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_hvvrcr_direction_rank_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "continuous volume-sponsorship transmission in volatile BTC"
+  },
+  "stopping_rule": "Terminal first failure; no covariance formula, rank, side, clock, hold, subset, or control repair",
+  "manifest_hash": "1a3207683b3e6843f328b21a395930c9167b04bf9bfa8d94cd7643dd3287ba3b"
+}

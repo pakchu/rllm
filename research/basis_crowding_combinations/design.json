@@ -1,0 +1,50 @@
+{
+  "design": {
+    "version": 1,
+    "selection": "2021--2023 six-half robust rank",
+    "reports": "2024,2025,2026H1 exposed diagnostics",
+    "source": "completed Binance premium-index hourly close_time plus realized funding and completed BTC/flow bars",
+    "mechanisms": [
+      "crowded-long unwind",
+      "crowded-short squeeze",
+      "basis-price joint reversion",
+      "negative-carry trend",
+      "premium/flow disagreement",
+      "panic continuation",
+      "discount recovery"
+    ],
+    "thresholds": {
+      "premium_z": 1.25,
+      "premium_extreme_z": 1.5,
+      "funding_extreme": 5e-05,
+      "flow": 0.02,
+      "trend": 0.75,
+      "price_z": 1.5,
+      "panic_4d_return": -0.07
+    },
+    "rebalance_hours": [
+      6,
+      24
+    ],
+    "sizing": [
+      "raw",
+      "vol20"
+    ],
+    "ml": "annual trailing3y Ridge/HGB/ExtraTrees using basis features, 24h mature target",
+    "portfolio": "two representatives per family, cross-family .25/.5/.75, equal/inversevol aggregates; positions netted",
+    "costs": [
+      0.0,
+      0.0006,
+      0.001
+    ],
+    "no_frequency_or_fee_ratio_gate": true,
+    "risk": "net exposure cap1 and five-minute conservative MDD",
+    "no_live_changes": true
+  },
+  "code_sha256": "55a24d0a2e1df6142cfd22251fab027671abcc8898b6e2cf417efc732bf85dd2",
+  "base_sha256": "8578a2aa3e888bc6ae226b4963d0cc0d6e828b8cd9bc8eeb9f2c915afd0c6088",
+  "regime_sha256": "d02fa0f2b412eaecaec2d8d98bdd12c41e74278d1c1170de5cbb9d6eaf00ad03",
+  "premium_sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7",
+  "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+  "funding_sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+}

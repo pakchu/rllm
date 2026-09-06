@@ -1,0 +1,149 @@
+{
+  "protocol_version": "high_volatility_meme_attention_saturation_reversal_v1",
+  "policy_id": "HVMASR-8",
+  "as_of_date": "2026-08-09",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "An extreme completed four-hour DOGE quote-turnover burst accompanied by an extreme DOGE return during elevated BTC variation marks saturation of meme-led speculative attention. Fade the completed DOGE direction on BTC for eight elapsed hours.",
+    "side": "negative strict sign of completed DOGE four-hour log return",
+    "why_distinct": "Existing cross-alt candidates use breadth, majority, residual, funding, or aggregate flow across six alts. This candidate uses DOGE-specific meme-attention saturation jointly identified by its own quote turnover and price displacement.",
+    "why_suited_to_volatile_regimes": "published four-hour connectedness evidence reports that positive net memecoin spillovers can precede crashes in leading cryptocurrencies; the candidate requires elevated causal BTC variation",
+    "why_low_gross9_overlap_is_plausible": "a DOGE-specific four-hour saturation clock is absent from Gross9"
+  },
+  "features": {
+    "source": "read-only Postgres bars_binance DOGEUSDT and BTCUSDT exact 1m bars",
+    "availability": "decision at exact UTC four-hour boundary after all 240 source minutes are complete",
+    "block": "[decision-4h, decision), exact 240 one-minute rows for both symbols",
+    "doge_return": "log(last DOGE close / first DOGE open), strict nonzero",
+    "doge_abs_return_rank": "strict-prior midrank over at most 270 valid four-hour blocks, minimum 180, current excluded; rank>=0.75",
+    "doge_quote_turnover": "sum DOGE quote_asset_volume over completed block, finite positive",
+    "doge_turnover_rank": "strict-prior midrank over at most 270 valid blocks, minimum 180, current excluded; rank>=0.85",
+    "btc_variation": "sqrt(sum squared exact BTC one-minute close-to-close log returns within completed block, including first close versus prior minute close)",
+    "btc_variation_rank": "strict-prior midrank over at most 270 valid blocks, minimum 180, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "UTC hour divisible by four",
+    "entry": "decision+5m BTCUSDT open",
+    "hold": "8 elapsed hours",
+    "side": "negative DOGE completed-block return sign",
+    "reservation": "nonoverlapping; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements after novelty"
+  },
+  "policy": {
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "doge_abs_return_rank_min": 0.75,
+    "doge_turnover_rank_min": 0.85,
+    "btc_variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes all stages",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "no_doge_return_tail": "turnover and BTC variation gates without DOGE return rank",
+      "no_doge_turnover_tail": "return and BTC variation gates without DOGE turnover rank",
+      "no_btc_variation_gate": "DOGE return and turnover tails only",
+      "one_block_stale_doge": "prior DOGE return/turnover state with current BTC variation",
+      "direction_flip": "negative primary side",
+      "same_clock_forced_long": "side +1 on primary clock"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "database": "read-only bars_binance exact columns, query text frozen before incidence",
+    "required_symbols": [
+      "BTCUSDT",
+      "DOGEUSDT"
+    ],
+    "required_interval": "1m",
+    "required_window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "historical_market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "paper": "Will memecoins' surge trigger a crypto crash? Evidence from the connectedness between leading cryptocurrencies and memecoins",
+    "paper_url": "https://doi.org/10.1016/j.frl.2022.103129",
+    "prior_cross_alt_outcomes_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "exact_hvmasr_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent DOGE-specific meme attention saturation mechanism"
+  },
+  "stopping_rule": "terminal first failure; no source, symbol, block, rank, variation, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "bd73194addb3b14f238d5d12dc7d85f583d56b70f3cbcbf474f1476d0f13dcfd"
+}

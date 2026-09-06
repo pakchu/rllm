@@ -1,0 +1,168 @@
+{
+  "protocol_version": "high_volatility_aggregate_spot_volume_confirmation_relay_v1",
+  "policy_id": "HVASVC-24",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A causal upper-tail day in reported aggregate BTC spot dollar volume confirms that a completed high-variation Bitcoin move was broadly transacted across spot venues rather than produced only by one derivatives venue. Follow the completed Bitcoin direction for one day.",
+    "side": "strict sign of BTCUSDT return over [decision-24h,decision); exact zero rejects",
+    "external_support": {
+      "paper": "Balcilar, Bouri, Gupta and Roubaud (2017), Can volume predict Bitcoin returns and volatility? A quantiles-based approach, Economic Modelling 64, 74-81",
+      "doi": "10.1016/j.econmod.2017.03.019",
+      "reported_fact": "The peer-reviewed paper reports that Bitcoin trading volume predicts returns in bullish and bearish return states while predictability is weak around normal return quantiles.",
+      "official_metric_definition": "Coin Metrics volume_reported_spot_usd_1d aggregates reported BTC spot trading volume in US dollars across its covered spot markets at daily frequency.",
+      "inference_disclosure": "Using an upper-tail aggregate-volume state to confirm the sign of the simultaneously completed BTC day, a completion-time clock, causal variation rank, Binance execution and 24-hour hold is a preregistered adaptation rather than a replication of the paper's quantile-causality test."
+    },
+    "why_distinct": "Exact repository scans found no volume_reported_spot_usd_1d candidate. Existing volume candidates use Binance single-venue intraday base/quote volume, aggressor flow, trade counts, or fitted price features; HVASVC uses an independently completed multi-market aggregate spot-volume day as a cross-venue confirmation state and reuses no prior event set or control.",
+    "why_suited_to_volatile_regimes": "Both aggregate spot volume and completed BTC variation must occupy causal upper tails, directly targeting July-like volatile states.",
+    "why_low_gross9_overlap_is_plausible": "Coin Metrics asset-completion timestamps and an external aggregate spot-volume state are absent from Gross9 primitives."
+  },
+  "features": {
+    "source_day": "Coin Metrics BTC UTC daily observation D at the frozen current download vintage",
+    "aggregate_spot_volume": "exact finite positive volume_reported_spot_usd_1d for D",
+    "availability": "D is eligible only if AssetEODCompletionTime is finite, strictly after D+1 00:00 UTC and no later than D+1 12:00 UTC; late rows reject",
+    "volume_rank": "strict-prior midrank against at most 270 prior source-valid daily volumes, minimum 180, current excluded; rank>=0.75",
+    "btc_return": "log(BTCUSDT open at decision / open at decision-24h) over an exact 1,440-row minute grid; strict nonzero",
+    "btc_variation": "sqrt(sum squared one-minute log(close/open) returns) over the same exact [decision-24h,decision) grid",
+    "btc_variation_rank": "strict-prior midrank against at most 270 prior source-valid decisions, minimum 180, current excluded; rank>=0.65",
+    "eligibility": "valid volume rank>=0.75, variation rank>=0.65, and strict nonzero completed BTC return",
+    "missing": "missing, duplicate, nonpositive, late-completion, rank-history, or BTC-grid drift rejects; no imputation"
+  },
+  "clock": {
+    "decision": "ceiling to the next exact five-minute boundary at or after AssetEODCompletionTime for D",
+    "entry": "exact BTCUSDT five-minute open one five-minute bar after decision",
+    "hold": "24 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty passes"
+  },
+  "policy": {
+    "volume_prior_days": 270,
+    "volume_prior_minimum": 180,
+    "volume_midrank_min": 0.75,
+    "variation_prior_days": 270,
+    "variation_prior_minimum": 180,
+    "variation_midrank_min": 0.65,
+    "latest_completion_hour_after_d_plus_1": 12,
+    "entry_delay_minutes_after_decision": 5,
+    "hold_hours": 24,
+    "gross_exposure": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "coin_metrics": {
+      "endpoint": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+      "asset": "btc",
+      "metrics": [
+        "volume_reported_spot_usd_1d",
+        "AssetEODCompletionTime"
+      ],
+      "frequency": "1d",
+      "start_time": "2022-01-01",
+      "end_time_inclusive": "2026-07-29",
+      "page_size": 10000,
+      "current_vintage_not_historical_revision_archive": true,
+      "catalog_metadata_opened_before_preregistration": true,
+      "historical_values_opened_before_preregistration": false,
+      "read_after_preregistration_commit": true,
+      "read_only": true
+    },
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volume_tail",
+      "no_btc_variation_gate",
+      "one_day_stale_volume",
+      "direction_flip",
+      "same_clock_forced_long"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "post_stage_volatility_audit": {
+    "rv20_q90_entry_filter": false,
+    "opened_only_after_all_train_test_eval_final_economic_gates_pass": true,
+    "cannot_repair_or_promote": true
+  },
+  "research_boundary": {
+    "paper_and_coin_metrics_catalog_metadata_opened": true,
+    "historical_aggregate_spot_volume_values_opened": false,
+    "source_values_used_to_select_rule_or_threshold": false,
+    "candidate_source_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "repository_exact_metric_or_event_candidate_found": false,
+    "prior_volume_event_sets_or_controls_reused": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "published state-dependent volume predictability, unopened free causal aggregate source, high-variation targeting, and exact repository absence"
+  },
+  "stopping_rule": "terminal first-failure sequence: source support, Gross9 novelty, train/test/eval/final strict economics, then RV20 q90 audit; no metric, vintage, volume, rank, return, variation, side, hold, clock, subset, source, comparator, or control repair",
+  "gross9_rows_opened": false,
+  "manifest_hash": "160fc68391e77a13c46c704fb8b7d2d7c9dba1e1a01c4ac0a038ff58021f2f19"
+}

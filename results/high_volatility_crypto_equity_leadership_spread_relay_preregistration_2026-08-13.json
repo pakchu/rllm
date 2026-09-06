@@ -1,0 +1,176 @@
+{
+  "protocol_version": "high_volatility_crypto_equity_leadership_spread_relay_v1",
+  "policy_id": "HVCELSR-24",
+  "slug": "high_volatility_crypto_equity_leadership_spread_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "MSTR and COIN provide different listed-equity transmission channels into crypto risk. A large volatility-standardized MSTR-minus-COIN close shock identifies which channel led the completed US cash session; during elevated completed BTC variation, follow that relative leadership direction for twenty-four hours.",
+    "side": "strict sign of standardized MSTR return minus standardized COIN return",
+    "external_support": {
+      "mstr_official": "https://www.strategy.com/investor-relations",
+      "coin_official": "https://investor.coinbase.com/",
+      "inference_disclosure": "The standardized relative shock, causal rank gates, BTC variation gate, latency and hold are outcome-blind preregistered adaptations, not a claimed published replication."
+    },
+    "why_distinct": "Repository candidates use miner residuals, MSTR short volume, broad equity breadth, BTC-SPY coskewness, and BTC-equity residuals. HVCELSR directly contrasts two crypto-equity channels after scaling each by its own strictly prior volatility. It uses no miner basket, short volume, BTC return in the spread, derivatives, flow, funding, OI, fitted outcome, prior event set, or control.",
+    "why_suited_to_volatile_regimes": "the absolute relative leadership shock must occupy its causal upper quartile and completed BTC variation its causal upper 35 percent",
+    "why_low_gross9_overlap_is_plausible": "official US equity-close leadership onsets with daylight-saving-aware entries are absent from Gross9"
+  },
+  "features": {
+    "sessions": "official common NYSE cash sessions with complete adjusted MSTR and COIN OHLCV rows",
+    "equity_returns": "log adjusted_close_t/adjusted_close_(t-1 common session) independently for MSTR and COIN",
+    "strict_prior_scales": "population standard deviation of at most 63 strictly prior valid common-session returns for each equity, minimum 42, current excluded; both finite strict positive",
+    "leadership_spread": "current MSTR return/prior MSTR scale minus current COIN return/prior COIN scale; finite strict nonzero",
+    "magnitude_rank": "strict-prior midrank of abs(leadership_spread) over at most 270 earlier source-valid sessions, minimum 180, current excluded; rank>=0.75",
+    "btc_variation": "sqrt(sum squared BTCUSDT 1m log(close/open)) over exact 24 elapsed hours ending at official cash close",
+    "btc_variation_rank": "strict-prior midrank over at most 270 earlier source-valid sessions, minimum 180, current excluded; rank>=0.65",
+    "onset": "eligible now and immediately preceding official source-valid session ineligible; missing or invalid predecessor cannot trigger",
+    "missing": "missing adjustment, session, BTC minute, duplicate, nonfinite or nonpositive source rejects; no imputation"
+  },
+  "clock": {
+    "decision": "official common-session NYSE close",
+    "feature_available": "five elapsed minutes after official close",
+    "entry": "exact BTCUSDT five-minute open ten elapsed minutes after official close",
+    "side": "sign(leadership_spread)",
+    "hold": "24 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact held settlements only after novelty",
+    "no_imputation": true
+  },
+  "policy": {
+    "symbols": [
+      "MSTR",
+      "COIN"
+    ],
+    "scale_prior_sessions": 63,
+    "scale_prior_minimum": 42,
+    "magnitude_prior_sessions": 270,
+    "magnitude_prior_minimum": 180,
+    "magnitude_midrank_min": 0.75,
+    "variation_prior_sessions": 270,
+    "variation_prior_minimum": 180,
+    "variation_midrank_min": 0.65,
+    "feature_delay_minutes": 5,
+    "entry_delay_minutes_after_close": 10,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_btc_variation_gate",
+      "no_leadership_tail",
+      "raw_return_spread",
+      "one_session_stale_leadership",
+      "direction_flip",
+      "same_clock_forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "equities": {
+      "provider": "Yahoo chart API current adjusted history",
+      "symbols": [
+        "MSTR",
+        "COIN"
+      ],
+      "interval": "1d",
+      "window": [
+        "2022-01-01",
+        "2026-08-01"
+      ],
+      "official_session_validation": "NYSE schedules and frozen early closes",
+      "read_after_preregistration": true
+    },
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "close"
+      ],
+      "read_only": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "official_company_pages_opened": false,
+    "repository_exact_mstr_coin_standardized_spread_candidate_found": false,
+    "yahoo_mstr_coin_rows_returns_ranks_or_event_incidence_opened": false,
+    "prior_equity_candidate_outcomes_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent standardized listed-crypto-equity leadership channel"
+  },
+  "stopping_rule": "terminal first failure; no symbols, adjustment, scaling window, spread, rank, onset, variation, side, clock, hold, subset, threshold, source, comparator, or control repair",
+  "manifest_hash": "03f93a84ae731b15ede3a0c5e09f403f16d220b123dbb241d3e7b1e074254adc"
+}

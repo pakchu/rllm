@@ -1,0 +1,161 @@
+{
+  "protocol_version": "high_volatility_robust_daily_return_outlier_reversal_v1",
+  "policy_id": "HVRDOR-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A completed daily BTC return that is an extreme robust outlier relative to the median and median absolute deviation of the thirty strictly prior daily returns represents a transient low-frequency displacement. In elevated twenty-day variation, fade the outlier for twenty-four hours.",
+    "side": "opposite strict sign of current daily return minus the prior-thirty-day median",
+    "why_distinct": "VWAP candidates use traded-price centers inside intraday blocks; self-normalized displacement uses one block's L2 path; skew candidates use third moments. HVRDOR compares one completed daily return with a strictly prior robust return distribution using median/MAD, with no price-level anchor, volume, flow, fitted return, prior event, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed twenty-day daily realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "one 02:05 UTC robust daily-outlier reversal clock is absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every calendar day at exact 02:00 UTC",
+    "current_return": "completed close-to-close BTC log return over [D-24h,D)",
+    "reference_returns": "thirty exact coherent daily close-to-close returns ending strictly before current_return",
+    "reference_median": "median of the thirty prior returns",
+    "reference_mad": "median absolute deviation from reference_median, finite strict positive",
+    "robust_score": "(current_return-reference_median)/(1.4826*reference_mad), finite strict nonzero",
+    "variation": "sqrt(sum squared current and prior nineteen daily returns), finite strict positive",
+    "prior_ranks": "strict-prior midranks over at most 180 earlier source-valid daily decisions, minimum 120, current excluded",
+    "outlier_gate": "absolute robust-score rank>=0.75",
+    "variation_gate": "variation rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed daily endpoint at 02:00 UTC",
+    "entry": "exact BTCUSDT 02:05 UTC open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "reference_days": 30,
+    "variation_days": 20,
+    "mad_consistency_scale": 1.4826,
+    "history_days": 180,
+    "minimum_history_days": 120,
+    "outlier_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_outlier_strength",
+      "no_variation_gate",
+      "raw_return_fade",
+      "one_day_stale_features",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-02-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "external_low_frequency_mean_reversion_basis_read": true,
+    "prior_vwap_self_normalized_and_skew_outcomes_known": true,
+    "repository_robust_daily_return_outlier_candidate_found": false,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "paper-supported low-frequency mean reversion with fixed prior-only median/MAD score"
+  },
+  "stopping_rule": "Terminal first failure; no return window, robust estimator, MAD scale, rank history, outlier strength, variation, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "paper": "TESTING FOR TRADABLE ALPHA IN SHORT-TERM BITCOIN MARKET DATA",
+    "author": "Oliver Rustin",
+    "written": "2026-03-17",
+    "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6444920",
+    "reported_relation": "a low-frequency mean-reversion strategy was modestly and consistently profitable after short-horizon features failed costs",
+    "selection_use": "low-frequency mean-reversion mechanism only; fixed robust estimator chosen before incidence"
+  },
+  "manifest_hash": "2a1fa93d8e6d367157fdf0caba44356c6bd336d261a878b2b9337998a8ef608c"
+}

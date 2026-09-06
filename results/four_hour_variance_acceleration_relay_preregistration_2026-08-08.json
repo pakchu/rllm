@@ -1,0 +1,137 @@
+{
+  "protocol_version": "four_hour_variance_acceleration_relay_v1",
+  "policy_id": "FHVAR-2",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "At a fixed four-hour boundary, an unusually volatile completed BTC block whose second two hours realize at least 1.5 times the first-half variation while both half-block returns share a sign represents accelerating price discovery. Follow that common direction for two elapsed hours.",
+    "side": "common nonzero sign of completed first- and second-two-hour returns",
+    "why_distinct": "FHVAR uses two nonoverlapping two-hour realized-variation halves in a fixed four-hour block. JVIAR used intrahour half-hour returns under joint BVOL/DVOL expansion; DVBCR used one daily variance center. FHVAR uses neither options data nor either event set.",
+    "why_suited_to_volatile_regimes": "the full completed four-hour realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "six fixed UTC acceleration clocks with within-block variance geometry are absent from Gross9"
+  },
+  "features": {
+    "source": "BTCUSDT bars_binance interval=1m",
+    "block_valid": "240 exact distinct minute rows in [decision-4h,decision), finite positive coherent OHLC; no imputation",
+    "first_return": "log(close at decision-2h-1m / open at decision-4h)",
+    "second_return": "log(close at decision-1m / open at decision-2h)",
+    "realized_variation": "sum squared 1m close-to-close log returns within each half; the boundary return from the first-half close to second-half open is excluded",
+    "full_variation": "first_variation+second_variation",
+    "variation_rank": "strict-prior midrank among at most 180 valid fixed four-hour blocks, minimum 120, current excluded; rank>=0.65",
+    "acceleration": "second_variation>=1.5*first_variation and first_variation>0",
+    "direction_confirmation": "first_return and second_return have the same strict nonzero sign",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact 00:00,04:00,08:00,12:00,16:00,20:00 UTC",
+    "entry": "exact decision+5m BTCUSDT open",
+    "hold": "2 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "funding_oi_premium_implied_vol": "not signal inputs; exact funding only after novelty passes"
+  },
+  "policy": {
+    "history_observations": 180,
+    "minimum_history_observations": 120,
+    "variation_rank_min": 0.65,
+    "second_to_first_variation_min": 1.5,
+    "entry_delay_minutes": 5,
+    "hold_hours": 2,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "btc_1m": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-06-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "materialize_after_preregistration": true
+    },
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_volatility_gate",
+      "no_acceleration_gate",
+      "one_boundary_stale_geometry",
+      "direction_fade"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "related_variance_geometry_candidate_incidence_known": true,
+    "prior_variance_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_fhvar_direction_threshold_hold_or_clock": false,
+    "fhvar_candidate_incidence_opened": false,
+    "fhvar_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent fixed-block variance-acceleration price-discovery mechanism"
+  },
+  "stopping_rule": "Terminal first-failure sequence: source support, Gross9 novelty, strict economics; no threshold, side, hold, clock, variation, or subset repair.",
+  "manifest_hash": "1239681de2bc06790fa7431b9c9d9cace0ab218cfd3ce0d2892bb673895f853c"
+}

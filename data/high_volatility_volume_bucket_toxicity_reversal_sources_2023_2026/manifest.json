@@ -1,0 +1,54 @@
+{
+  "protocol_version": "hvvbtr_6_btc_volume_bucket_source_v1",
+  "query": "SELECT ts,open,high,low,close,quote_asset_volume,taker_buy_quote\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts",
+  "query_sha256": "db45692322bf4c337cbd4816204eef9d25233e65b06b412a4d60f5a246997366",
+  "table": "bars_binance",
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "columns": [
+    "ts",
+    "open",
+    "high",
+    "low",
+    "close",
+    "quote_asset_volume",
+    "taker_buy_quote"
+  ],
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 1753920,
+  "builder": {
+    "path": "training/build_high_volatility_volume_bucket_toxicity_reversal_support.py",
+    "sha256": "8400300ec9147cba4ad00b3038d8dca4cbb4aab3c8af2abfdcae7009b58d6eb7"
+  },
+  "pair_panel": {
+    "path": "data/high_volatility_volume_bucket_toxicity_reversal_sources_2023_2026/volume_bucket_pairs.csv.gz",
+    "sha256": "fffc44b0736d40dcdad6dcb86d6a5ee196a2a3e5307acda6364d6515cd4787dc",
+    "rows": 2162
+  },
+  "feature_panel": {
+    "path": "data/high_volatility_volume_bucket_toxicity_reversal_sources_2023_2026/volume_bucket_features.csv.gz",
+    "sha256": "d84f0632f04d8373c63516eb52dc3f11fe8892ba7556378b37408f4bd95e6044",
+    "rows": 2162,
+    "valid_rows": 2161
+  },
+  "bucket_construction": {
+    "first_start": "2023-04-02T00:00:00+00:00",
+    "target_prior_minutes": 1440,
+    "target_buckets_per_day": 24,
+    "maximum_bucket_minutes": 360,
+    "whole_minutes_only": true,
+    "target_frozen_at_bucket_start": true,
+    "terminal_failure_rows": 1
+  },
+  "completed_preentry_sources_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "execution_prices_opened": false,
+  "funding_values_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "deterministic_immutable_artifacts": true,
+  "manifest_hash": "4387376a623e01bad20fc462930c454155e4e6fb2f81b566ea3982d05b596b01"
+}

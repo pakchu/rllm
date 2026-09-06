@@ -1,0 +1,133 @@
+{
+  "protocol_version": "spot_participation_volatility_ignition_relay_v1",
+  "policy_id": "SPVIR-6",
+  "as_of_date": "2026-08-08",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "mechanism": {
+    "claim": "When BTC spot's share of combined Binance spot and USD-M perpetual base volume rises into its causal upper tail, same-direction completed-hour spot and perpetual price movement is cash-sponsored rather than leverage-only. Joint BVOL and DVOL expansion confirms a new volatile price-discovery regime whose direction should relay for six hours.",
+    "side": "common sign of completed spot and perpetual returns",
+    "why_distinct": "SPVIR uses hourly base-volume participation across cash and perpetual markets. SLVCR required partial price transmission and no participation measure. CSPR used signed flow coherence, execution centroids, and perpetual flow rejection at five-minute resolution. VGSQF used stablecoin quote-book flow topology rather than spot/perpetual participation.",
+    "why_low_gross9_overlap_is_plausible": "cash participation share fused with dual crypto implied-volatility ignition is absent from Gross9"
+  },
+  "clock": {
+    "decision": "T after completed UTC hour [T-1h,T)",
+    "sources": "60 exact BTCUSDT interval=1m rows from bars_binance_spot and bars_binance",
+    "participation": "spot base volume/(spot base volume+perpetual base volume), denominator positive",
+    "participation_tail": "current share >= strictly-prior 720h q75 with 672 valid observations",
+    "direction_agreement": "spot and perpetual hour_close/hour_open-1 have the same nonzero sign",
+    "volatility_ignition": "normalized completed-hour BVOL and DVOL bodies are both strictly positive",
+    "trigger": "false-to-true onset with prior source-valid consecutive hour",
+    "entry": "exact BTCUSDT perpetual T+5m open",
+    "side": "common price direction",
+    "hold": "6 elapsed hours",
+    "reservation": "global half-open, exit first on equal open",
+    "funding": "not a signal input; exact settlements only for later PnL",
+    "oi_premium_forbidden_as_signal_inputs": true,
+    "no_imputation": true
+  },
+  "policy": {
+    "participation_prior_hours": 720,
+    "participation_min_hours": 672,
+    "participation_quantile": 0.75,
+    "entry_delay_minutes": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding marks, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "source_plan": {
+    "hourly_spot_perpetual": {
+      "tables": [
+        "bars_binance_spot",
+        "bars_binance"
+      ],
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "window": [
+        "2023-06-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "columns": [
+        "ts",
+        "open",
+        "close",
+        "volume"
+      ],
+      "materialize_after_preregistration": true
+    },
+    "volatility": "reuse hash-bound OCDR-12C BVOL/DVOL snapshot",
+    "execution_price": "sealed until source-support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_joint_expansion",
+      "no_participation_tail",
+      "no_direction_agreement",
+      "one_hour_stale_participation",
+      "direction_flip"
+    ],
+    "diagnostic_controls_cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_spot_perpetual_family_outcomes_known": true,
+    "prior_candidate_outcomes_used_to_define_spvir": false,
+    "spvir_candidate_incidence_opened": false,
+    "spvir_post_entry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false
+  },
+  "stopping_rule": "terminal first failure; no repair",
+  "manifest_hash": "0fe85f04cca8836235a01a4fddecb92aa4562835221c9b3a78825d0cc1e30b46"
+}

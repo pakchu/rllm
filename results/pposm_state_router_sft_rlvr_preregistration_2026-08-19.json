@@ -1,0 +1,63 @@
+{
+  "protocol_version": "pposm_state_router_sft_rlvr_v1",
+  "status": "preregistered_before_sft",
+  "as_of": "2026-08-19",
+  "task": "causal nonconstant SKIP/TP4/TP12 state routing",
+  "data": {
+    "train": {
+      "path": "data/pposm_state_router_train_pre2024_2026-08-19.jsonl",
+      "sha256": "f2dd14e8c430d010b52eb3ebd7398ad540a58126b98a5d9f3ab0993df3d1ee42",
+      "rows": 462,
+      "targets": {
+        "SKIP": 50,
+        "TP4": 133,
+        "TP12": 279
+      }
+    },
+    "oos": {
+      "path": "data/pposm_state_router_oos_2024_2026_2026-08-19.jsonl",
+      "sha256": "f9c2d1e514b506f010e215c7fb48465ed6380e6059ae6f959bc8e8328122db6a",
+      "rows": 157,
+      "training_forbidden": true
+    },
+    "summary_sha256": "e12c7dfbce8e369023c8882f1d64867925a12a134e9f72ea1224004718a99698"
+  },
+  "sft": {
+    "base": "Qwen2.5-1.5B local",
+    "steps": 128,
+    "balanced_oversample_samples": 1024,
+    "lr": 1e-05,
+    "seed": 20260825
+  },
+  "rlvr": {
+    "schema": "pposm_state",
+    "reward": "exact frozen formula route only",
+    "steps": 64,
+    "lr": 5e-06,
+    "generations": 4,
+    "batch": 4,
+    "gradient_accumulation": 4,
+    "temperature": 1.2,
+    "top_p": 0.95,
+    "top_k": 50,
+    "seed": 20260826,
+    "oos_or_returns_in_reward": false
+  },
+  "classification_gates": {
+    "accuracy_gt_majority": 0.6815286624,
+    "predicted_distinct_routes_min": 2,
+    "skip_recall_min": 0.5,
+    "tp4_recall_min": 0.5,
+    "tp12_recall_min": 0.7
+  },
+  "economic_gates": {
+    "each_window_base_and_stress_positive": true,
+    "combined_mdd_max": 15.0,
+    "combined_ratio_min": 3.0,
+    "combined_weekly_p_max": 0.2,
+    "schedule_recall_min": 0.9,
+    "material_route_changes_min": 1
+  },
+  "stopping_rule": "No OOS tuning; exact model passes or is rejected.",
+  "manifest_hash": "650e11d53b9f41eccd63b8461d2294960c04f0def2c5437a2f265cdd765af26d"
+}

@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvtifp_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVTIFP-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_taker_imbalance_flow_persistence_economics.py",
+    "sha256": "f5e986030beed919a1288acbb61705f825c05763c2c678db193084c9d7873d04"
+  },
+  "authorization": {
+    "path": "results/high_volatility_taker_imbalance_flow_persistence_gross9_novelty_2026-08-13.json",
+    "sha256": "0220610bdec1fe05b1eeb17727f060b2b619e5706857db13df54962ef9b812f4"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "ab2a6a439a6c6e9e3e80a07d0c2f9adddeecea30a0278ddcbee36758f58940a4"
+}

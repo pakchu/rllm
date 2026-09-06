@@ -1,0 +1,154 @@
+{
+  "protocol_version": "high_volatility_top_two_causal_expert_concordance_relay_v1",
+  "policy_id": "HVTCEC-24",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "current_candidate_outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "During volatile BTC regimes, recent causal performance can distinguish short and daily trend propagation from reversal. Trade only when the two best independently scored formulaic experts currently emit the same direction; their concordance is evidence that the decision is not dependent on a single winner.",
+    "side": "common current side emitted by the two highest mean gross-log-payoff experts",
+    "why_distinct": "HVDOER trades every daily top-one winner level with 6h/24h experts. HVOER trades only changes in a four-hour top-one winner with 4h/12h experts. HVTCEC uses one daily offset decision, 4h/24h experts, 24h matured labels, and requires current top-two side concordance; it uses neither prior winner level nor winner transition event/control.",
+    "why_suited_to_volatile_regimes": "current completed eight-hour variation must rank in its causal upper 35 percent",
+    "why_low_gross9_overlap_is_plausible": "offset daily top-two concordance under high variation is not a fixed Gross9 calendar"
+  },
+  "features": {
+    "decision_grid": "exact daily 02:00 UTC",
+    "returns": {
+      "r4": "log(last completed close/completed close exactly 4h earlier)",
+      "r24": "log(last completed close/completed close exactly 24h earlier)"
+    },
+    "experts_in_tie_order": [
+      "momentum_4h",
+      "reversal_4h",
+      "momentum_24h",
+      "reversal_24h"
+    ],
+    "expert_sides": {
+      "momentum_4h": "sign(r4)",
+      "reversal_4h": "-sign(r4)",
+      "momentum_24h": "sign(r24)",
+      "reversal_24h": "-sign(r24)"
+    },
+    "counterfactual_label": "expert side at prior daily decision times times log(open at prior entry+24h/open at prior entry); label matures only when exit open is observed",
+    "online_score": "arithmetic mean gross log payoff before costs over latest at most 60 mature labels, minimum 30; descending mean and frozen expert order break exact ties",
+    "top_two_concordance": "the first and second ranked experts emit the same current strict nonzero side",
+    "variation": "sqrt(sum squared 96 exact completed 5m intrabar log(close/open) returns over prior 8h)",
+    "variation_rank": "strict-prior midrank over at most 270 source-valid daily decisions, minimum 180, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "causal_label_authorization": {
+    "allowed": "only fixed expert labels whose exit open is observed at or before current decision",
+    "current_candidate_postentry_return_forbidden": true,
+    "funding_pnl_cagr_mdd_forbidden": true,
+    "future_stage_refit_or_reset": false
+  },
+  "clock": {
+    "entry": "decision+5m exact BTCUSDT open",
+    "hold": "24 elapsed hours",
+    "reservation": "daily opportunities are nonoverlapping; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact held settlements after novelty"
+  },
+  "policy": {
+    "expert_memory_labels": 60,
+    "minimum_mature_labels": 30,
+    "variation_history_decisions": 270,
+    "variation_minimum_decisions": 180,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "no_variation_gate": "all top-two concordance decisions",
+      "no_top_two_concordance": "top-one side at every source-valid high-variation decision",
+      "one_decision_stale_committee": "prior daily top-two common side on primary clock",
+      "direction_flip": "negative primary side",
+      "same_clock_forced_long": "side +1"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "historical": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "live_extension": "read-only Postgres BTCUSDT 1m through 2026-08-01 with overlap parity",
+    "mature_expert_label_opens": "explicitly authorized source labels only",
+    "economic_execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_HVDOER_and_HVOER_terminal_results_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "exact_candidate_incidence_opened": false,
+    "current_candidate_postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent top-two causal expert concordance mechanism"
+  },
+  "stopping_rule": "terminal first failure; no expert, memory, label, rotation, variation, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "a69031325c8c4b312e6a8c6340a6ac1ca7f305064f363725bef20b5e4d6f3e71"
+}

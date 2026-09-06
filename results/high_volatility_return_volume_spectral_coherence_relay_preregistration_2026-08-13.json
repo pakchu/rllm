@@ -1,0 +1,172 @@
+{
+  "protocol_version": "high_volatility_return_volume_spectral_coherence_relay_v1",
+  "policy_id": "HVRVSC-8",
+  "as_of_date": "2026-08-13",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated BTC variation, unusually strong low-frequency cross-spectral coherence between completed five-minute quote turnover and signed returns identifies a displacement organized by persistent participation rather than isolated price noise. When the completed block and final two hours agree, follow that sponsored direction for eight elapsed hours.",
+    "side": "common strict sign of completed eight-hour and final-two-hour perpetual returns",
+    "why_distinct": "HVLFE measures return-spectrum energy alone; HVTLRR estimates one-bar turnover-to-next-return correlation; HVTVLR compares turnover and variation time centroids; flow candidates use signed taker imbalance. HVRVSC measures the normalized complex cross-spectrum of unsigned quote turnover and signed return across fixed low-frequency bins. It reuses no event set or control and uses no spot count, funding, OI, premium, fitted outcome, or post-entry data.",
+    "why_suited_to_volatile_regimes": "completed realized variation must occupy its causal upper 35 percent and return-volume low-frequency coherence its causal upper quartile",
+    "why_low_gross9_overlap_is_plausible": "03:05/11:05/19:05 UTC spectral-coherence onsets are absent from Gross9 clocks"
+  },
+  "features": {
+    "decision_grid": "exact 03:00/11:00/19:00 UTC boundaries D",
+    "block": "96 exact epoch-aligned five-minute aggregates from 480 unique coherent BTCUSDT perpetual one-minute rows [D-8h,D)",
+    "five_minute_return": "log(last constituent close/first constituent open)",
+    "five_minute_turnover": "sum finite nonnegative quote_asset_volume over five constituents; block sum strict positive",
+    "coordinates": "demean the 96 signed returns and demean log1p five-minute turnover separately",
+    "spectrum": "numpy rfft of each demeaned coordinate",
+    "low_frequency_cross_spectrum": "sum V_k*conj(R_k) for fixed non-DC bins k=1..8",
+    "spectral_coherence": "absolute low_frequency_cross_spectrum divided by sqrt(sum(k=1..8)|V_k|^2 * sum(k=1..8)|R_k|^2); both energies strict positive; finite in [0,1]",
+    "coherence_rank": "strict-prior midrank over at most 270 source-valid decisions, minimum 180, current excluded; rank>=0.75",
+    "realized_variation": "sqrt(sum squared five-minute returns), finite strict positive",
+    "variation_rank": "strict-prior 270/180 midrank, current excluded; rank>=0.65",
+    "block_return": "sum 96 five-minute returns, strict nonzero",
+    "late_return": "sum final 24 five-minute returns, strict nonzero and same sign as block_return",
+    "onset": "eligible now and immediately preceding scheduled source-valid decision ineligible; missing or invalid prior cannot trigger",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "completed eight-hour boundary D",
+    "entry": "exact BTCUSDT perpetual D+5m open",
+    "side": "common completed-return sign",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding_oi_premium": "not signal inputs; exact funding only after novelty"
+  },
+  "policy": {
+    "prior_decisions": 270,
+    "minimum_prior_decisions": 180,
+    "coherence_rank_min": 0.75,
+    "variation_rank_min": 0.65,
+    "frequency_bins": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "decision_hours_utc": [
+      3,
+      11,
+      19
+    ],
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "future_can_rank_repair_or_reselect": false,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval and final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration_commit": true
+    },
+    "execution_price": "sealed until source support and Gross9 novelty pass"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_coherence_tail",
+      "no_variation_gate",
+      "all_positive_frequency_coherence",
+      "one_decision_stale_spectrum",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "research_boundary": {
+    "prior_return_spectrum_turnover_lag_and_flow_outcomes_known": true,
+    "repository_exact_return_volume_low_frequency_cross_spectral_coherence_event_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "reversal_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent frequency-domain participation sponsorship mechanism selected from formula and complete-source audit only"
+  },
+  "stopping_rule": "terminal first failure; no aggregation, transform, bins, coherence, history, rank, threshold, variation, confirmation, onset, clock, hold, side, subset, source, or control repair",
+  "manifest_hash": "7b810b710c846cf63ce111dacb8003c859fb0473f51b917334bf3e541183b412"
+}

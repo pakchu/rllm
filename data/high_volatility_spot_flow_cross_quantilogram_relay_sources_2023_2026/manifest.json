@@ -1,0 +1,27 @@
+{
+  "protocol_version": "hvsfcq_8_btc_source_v1",
+  "queries": {
+    "perpetual": "\nSELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n",
+    "spot": "\nSELECT ts,open,high,low,close,quote_asset_volume,taker_buy_quote\nFROM bars_binance_spot\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts\n"
+  },
+  "tables": [
+    "bars_binance",
+    "bars_binance_spot"
+  ],
+  "symbol": "BTCUSDT",
+  "interval": "1m",
+  "window": [
+    "2023-01-01T02:00:00+00:00",
+    "2026-08-01T02:00:00+00:00"
+  ],
+  "exact_candidate_outcomes_opened": false,
+  "candidate_incidence_opened": false,
+  "no_imputation": true,
+  "output": {
+    "path": "data/high_volatility_spot_flow_cross_quantilogram_relay_sources_2023_2026/eight_hour_cross_quantilogram_panel.csv.gz",
+    "sha256": "d66911011ea925f139e0ae7143805aa357e40783d4272789cf717bb0040bddaf",
+    "rows": 3924,
+    "valid_rows": 81
+  },
+  "manifest_hash": "ceb57ef987ffbf0dc86163d294a4a137196812cfbd83c6402d0640f9cba0f919"
+}

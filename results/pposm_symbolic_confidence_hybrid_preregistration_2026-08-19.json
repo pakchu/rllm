@@ -1,0 +1,49 @@
+{
+  "protocol_version": "pposm_symbolic_confidence_hybrid_v1",
+  "status": "preregistered_before_margin_scoring",
+  "as_of": "2026-08-19",
+  "adapter": {
+    "path": "checkpoints/pposm_symbolic_router_balanced_sft_rlvr_s64_2026-08-19",
+    "sha256": "ccbe5c8cd81b543764c4beedc5ba34741cbba6a3c4e4023bdff01a3d2fe786cb"
+  },
+  "score": "top1 mean-label-logprob minus second-best",
+  "threshold_candidates": [
+    "-inf",
+    "train_q0.0",
+    "train_q0.1",
+    "train_q0.2",
+    "train_q0.3",
+    "train_q0.4",
+    "train_q0.5",
+    "train_q0.6",
+    "train_q0.7",
+    "train_q0.8",
+    "train_q0.9"
+  ],
+  "train_selection": {
+    "hybrid": "model top1 when confidence>=threshold, otherwise frozen formula route",
+    "accuracy_min": 0.99,
+    "model_authoritative_min": 30,
+    "ranking": [
+      "model_authoritative_count_desc",
+      "accuracy_desc",
+      "threshold_asc"
+    ]
+  },
+  "oos_contract": {
+    "scores_open_after_threshold_freeze": true,
+    "model_authoritative_min": 20,
+    "authoritative_distinct_routes_min": 2,
+    "fallback": "frozen formula",
+    "no_reranking": true
+  },
+  "economic_gates": {
+    "each_window_base_stress_positive": true,
+    "combined_mdd_max": 15,
+    "combined_ratio_min": 3,
+    "weekly_p_max": 0.2,
+    "schedule_recall_min": 0.95
+  },
+  "stopping_rule": "No OOS threshold tuning.",
+  "manifest_hash": "e3412b9c623f1765946148ef96484a027aa9fba6f6c421b01354df583cea39ff"
+}

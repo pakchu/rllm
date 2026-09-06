@@ -1,0 +1,4 @@
+import hashlib,json
+from training import evaluate_joint_volatility_cooling_trend_relay_gross9_novelty as novelty
+def test_jvctr_novelty_is_frozen_terminal_before_economics():
+ assert hashlib.sha256(novelty.OUTPUT.read_bytes()).hexdigest()=="f9db6542b4ce43da155f5d1474f5baf545c2bbf32f2c392a0cdec44ec1b382b2";p=json.loads(novelty.OUTPUT.read_text());core={k:v for k,v in p.items() if k!="manifest_hash"};assert p["manifest_hash"]==novelty.chash(core);assert p["gross9_novelty_status"]=="failed" and p["every_gross9_sleeve_passed"] is False and p["advance_to_economic_outcomes"] is False;assert p["evidence_boundary"]["outcomes_opened"] is False and p["evidence_boundary"]["economic_outcome_rows_opened"]==0;assert p["gross9_sleeves"]["cand_rex_veto_7"]["metrics"]["one_to_one_6h_max_matched_share"]>.35

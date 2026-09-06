@@ -1,0 +1,52 @@
+{
+  "protocol_version": "high_volatility_mstr_relative_short_volume_pressure_relay_source_rejection_v1",
+  "policy_id": "HVMRSVP-24",
+  "as_of_date": "2026-08-10",
+  "preregistration": {
+    "path": "results/high_volatility_mstr_relative_short_volume_pressure_relay_preregistration_2026-08-10.json",
+    "sha256": "4e51be73a940bffa9a4cf9534c2802490322d12e85c8f1feb3a833434db877eb",
+    "manifest_hash": "cab44cd5a82acbc7f0749f58d057d86c90a554042d0ce01889d5272f283ec60a"
+  },
+  "frozen_evaluator": {
+    "path": "training/build_high_volatility_mstr_relative_short_volume_pressure_relay_support.py",
+    "sha256": "cc9cf9e2c6f4a3e373a87021d574a3438f815f8060f32a46304f67124e2d2176",
+    "commit": "6ca8967e9a9b1d5b1d0d3ea215819eaf31498b16"
+  },
+  "failed_contract": {
+    "stage": "official FINRA CDN transport",
+    "failure_class": "urllib.error.HTTPError",
+    "failure_message": "HTTP Error 403: Forbidden",
+    "required_action": "any HTTP status other than 200 or 404 fails closed",
+    "first_failure_short_circuit": true
+  },
+  "execution_shape": {
+    "candidate_weekday_urls_submitted": 935,
+    "thread_workers": 8,
+    "successful_response_count": "not retained after executor exception",
+    "target_rows_decoded_count": "not retained after executor exception",
+    "normalized_panel_created": false,
+    "artifact_files_written_before_failure": 0
+  },
+  "access_boundary": {
+    "finra_target_values_may_have_opened_in_worker_memory": true,
+    "exact_target_rows_opened": "unknown after fail-fast concurrent exception",
+    "candidate_incidence_derived": false,
+    "postgres_connected": false,
+    "market_rows_loaded": 0,
+    "gross9_rows_opened": false,
+    "return_or_pnl_fields_opened": false,
+    "economic_outcomes_opened": false
+  },
+  "decision": {
+    "pass": false,
+    "status": "terminal_source_transport_rejection",
+    "reason": "the frozen official-CDN batch encountered HTTP 403, which is neither an accepted source file nor a preregistered no-source-day 404",
+    "source_support_authorized": false,
+    "gross9_novelty_authorized": false,
+    "economics_authorized": false,
+    "retry_or_transport_repair_authorized": false,
+    "repair_authorized": false,
+    "next_action": "new independently preregistered alpha only"
+  },
+  "manifest_hash": "f9ea942e7c46af8227033206cf06a8c537ab3efc3997d3eebd1fe9e0b9559851"
+}

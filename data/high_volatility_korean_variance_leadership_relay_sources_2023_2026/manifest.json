@@ -1,0 +1,58 @@
+{
+  "protocol_version": "hvkvlr_6_aligned_venue_variance_source_v1",
+  "queries": {
+    "upbit": "SELECT ts,open,high,low,close\nFROM bars_upbit\nWHERE symbol='KRW-BTC' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts",
+    "binance": "SELECT ts,open,high,low,close\nFROM bars_binance\nWHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end\nORDER BY ts"
+  },
+  "query_sha256": {
+    "upbit": "604011f1e776e18a93652a19039ac1bc11860711c7c7ffdce0539913fdb8aa98",
+    "binance": "7e14befcc48680841779196745ecb388feb6fba0f91f8e6e67e1ee16b59728f1"
+  },
+  "sources": {
+    "upbit": {
+      "table": "bars_upbit",
+      "symbol": "KRW-BTC",
+      "interval": "1m",
+      "physical_rows": 1741969
+    },
+    "binance": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "physical_rows": 1753920
+    }
+  },
+  "columns": [
+    "ts",
+    "open",
+    "high",
+    "low",
+    "close"
+  ],
+  "window": [
+    "2023-04-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "builder": {
+    "path": "training/build_high_volatility_korean_variance_leadership_relay_support.py",
+    "sha256": "43da13958171fedb7a1060627bbed6dffde050c8b0ce00f454692d94b89fa156"
+  },
+  "pair_panel": {
+    "path": "data/high_volatility_korean_variance_leadership_relay_sources_2023_2026/hourly_aligned_variance_pairs.csv.gz",
+    "sha256": "763199de626db4d635003de8cd619859483549e331eff92e9be4f33f32c8843a",
+    "rows": 29232
+  },
+  "feature_panel": {
+    "path": "data/high_volatility_korean_variance_leadership_relay_sources_2023_2026/hourly_preentry_features.csv.gz",
+    "sha256": "4f8a20b5a2ec229dc4ac18f1eeb2e4f21b1352943f7bd6e1e03cb8fd9ca2947f",
+    "rows": 29232,
+    "valid_rows": 6511
+  },
+  "completed_preentry_sources_opened": true,
+  "postentry_return_pnl_execution_price_opened": false,
+  "funding_values_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "deterministic_immutable_artifacts": true,
+  "manifest_hash": "bd009ceb2b7d1dacc0578e5af09be5ab222b6cdad37bfcec8cdf1abcb00194fd"
+}

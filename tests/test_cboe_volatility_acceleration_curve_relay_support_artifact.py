@@ -1,0 +1,4 @@
+import hashlib,json
+from training import build_cboe_volatility_acceleration_curve_relay_support as support
+def test_cvacr_source_support_is_frozen_pass():
+ assert hashlib.sha256(support.RESULT.read_bytes()).hexdigest()=="f9ead0b9c5b470fa4c1a241f835cd3bdbe17030994fc9324c69eece39bfc3cf6";assert hashlib.sha256(support.CLOCK.read_bytes()).hexdigest()=="95842fca3ab294ab2b2b9f891ec299aa6ee402ad1b1cd31a15c87fc2d5992d0d";p=json.loads(support.RESULT.read_text());core={k:v for k,v in p.items() if k!="manifest_hash"};assert p["manifest_hash"]==support.chash(core);assert p["support_passed"] is True and p["decision"]=="pass_to_novelty";assert p["advance_to_gross9_novelty"] is True and p["advance_to_economic_outcomes"] is False;assert p["postentry_return_pnl_execution_price_opened"] is False and p["gross9_rows_opened"] is False;assert [p["support"][n]["events"] for n in support.SPLITS]==[56,109,133,80]

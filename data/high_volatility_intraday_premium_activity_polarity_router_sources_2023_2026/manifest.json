@@ -1,0 +1,39 @@
+{
+  "protocol_version": "hviprapr_8_sources_v1",
+  "queries": {
+    "premium": "WITH tagged AS (SELECT ts,date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,close FROM bars_binance_premium WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end), path AS (SELECT *,lag(close) OVER(PARTITION BY decision_time ORDER BY ts) AS previous_close FROM tagged) SELECT decision_time,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,sum(abs(close-previous_close)) FILTER(WHERE previous_close IS NOT NULL) AS premium_total_variation,count(previous_close) AS adjacent_pairs,bool_and(close IS NOT NULL) AS coherent FROM path GROUP BY decision_time ORDER BY decision_time",
+    "btc": "SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,(array_agg(open ORDER BY ts))[1] AS block_open,(array_agg(close ORDER BY ts DESC))[1] AS block_close,sum(power(ln(close/open),2)) AS squared_return_sum,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY decision_time ORDER BY decision_time"
+  },
+  "query_sha256": {
+    "premium": "0fd7c521ecd75725794d92bd316919aa85ee88778d7a2a559d88197b158ec91f",
+    "btc": "be9414b7dd5114799823d86e0b1982dba86aac50f6b97a24c7c141a977b9e632"
+  },
+  "tables": [
+    "bars_binance_premium",
+    "bars_binance"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "premium_blocks": 3924,
+    "btc_blocks": 3924
+  },
+  "builder": {
+    "path": "training/build_high_volatility_intraday_premium_activity_polarity_router_support.py",
+    "sha256": "ec996fb2a25afe546fcf9cb5d892e7e653047771a8f44a5ebfba9d38d1d5bdcf"
+  },
+  "panel": {
+    "path": "data/high_volatility_intraday_premium_activity_polarity_router_sources_2023_2026/cycle_states.csv.gz",
+    "sha256": "1031096dd35a72fb4db058abfeb82dea5e0bb283be5691c6a3a30d3c219caa22",
+    "rows": 3924,
+    "valid_rows": 3922
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "held_interval_funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "70ff6d66cc307a71efdaf204c2fb455881d9fd0fb0917542a596e87350b613b1"
+}

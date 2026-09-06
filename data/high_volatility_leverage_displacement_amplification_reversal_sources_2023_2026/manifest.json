@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvldar_8_source_v1",
+  "query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,'perpetual' AS venue,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 UNION ALL SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,'spot' AS venue,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance_spot WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1,2",
+  "query_sha256": "4515e04427954e0375248e96618373596d1ffd243ab59e8a916baee607f5a229",
+  "window": [
+    "2023-05-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 684288,
+  "builder": {
+    "path": "training/build_high_volatility_leverage_displacement_amplification_reversal_support.py",
+    "sha256": "099ee9a71c720359b1161935fbbb2984c553123f6b6fd80bff4b3baf35ce43dd"
+  },
+  "panel": {
+    "path": "data/high_volatility_leverage_displacement_amplification_reversal_sources_2023_2026/five_minute_barrier_states.csv.gz",
+    "sha256": "e19d4b8f8bc00bfa084549886e9c88901e48ca6b9b21a41948581ffef5353da8",
+    "rows": 342144,
+    "valid_rows": 335807
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "52da798696a920dad5408f8e40b561ff4d44b9ff0cb818be988f7986eea6e42d"
+}

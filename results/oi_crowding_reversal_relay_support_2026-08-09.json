@@ -1,0 +1,109 @@
+{
+  "protocol_version": "oicrr_18_source_support_v1",
+  "policy_id": "OICRR-18",
+  "preregistration": {
+    "path": "results/oi_crowding_reversal_relay_preregistration_2026-08-09.json",
+    "sha256": "c7f705b2fd72705f2ec5850bf27e201035924c1f0f55127e7de616c88b92cab0",
+    "manifest_hash": "12281e8f7119d9f4018cc6383a6330e61d2693d0def1254be1f16b5d6bd1df55"
+  },
+  "source": {
+    "mode": "postgres_live_feature_builder_completed_5m_bar",
+    "rows": 327744,
+    "first": "2023-06-20 00:00:00+00:00",
+    "last": "2026-07-31 23:55:00+00:00",
+    "signal_dependent_tables": [
+      "bars_binance",
+      "open_interest_binance"
+    ],
+    "symbol": "BTCUSDT",
+    "post_entry_prices_opened": false
+  },
+  "source_snapshot": {
+    "path": "data/oi_crowding_reversal_relay_sources_2023_2026/signal_features.csv.gz",
+    "sha256": "c7b8f63d0a6e2e27b28bc25e30ba6808cf8fe7dc1294abad4db178a4139fed68",
+    "rows": 327744
+  },
+  "completed_preentry_sources_opened": true,
+  "btc_postentry_return_or_pnl_opened": false,
+  "gross9_rows_opened": false,
+  "clock": {
+    "path": "data/oi_crowding_reversal_relay_clocks_2023_2026.csv.gz",
+    "sha256": "09f2320542320d048570fe23d0ac9d490a0ea37db70b49214769fcbbbbe7a047",
+    "rows": 81
+  },
+  "controls": {
+    "price_tail_only": {
+      "path": "data/oi_crowding_reversal_relay_controls_2023_2026/price_tail_only.csv.gz",
+      "sha256": "df8b85d3260a4cadc528f3a27d6e586a29419d1a4a6dfcd4aa66b55756f56de1",
+      "rows": 1142,
+      "promotion_authorized": false
+    },
+    "divergence_tail_only": {
+      "path": "data/oi_crowding_reversal_relay_controls_2023_2026/divergence_tail_only.csv.gz",
+      "sha256": "5b360c0b85fbae081333a2d46e7db77701bc0211b4313a5c3b278ee6e5a0f7a4",
+      "rows": 1104,
+      "promotion_authorized": false
+    },
+    "one_bar_stale_features": {
+      "path": "data/oi_crowding_reversal_relay_controls_2023_2026/one_bar_stale_features.csv.gz",
+      "sha256": "78cbb07e9f2d4ac814b4243ef786ecb447801ebb0e9fef8e8f6e90b888d5cd96",
+      "rows": 87,
+      "promotion_authorized": false
+    },
+    "direction_flip": {
+      "path": "data/oi_crowding_reversal_relay_controls_2023_2026/direction_flip.csv.gz",
+      "sha256": "13aaa50c1b355a3e433dadfedda09f6259073f0747294dff0906b36496cbe55d",
+      "rows": 81,
+      "promotion_authorized": false
+    }
+  },
+  "support": {
+    "train": {
+      "events": 12,
+      "longs": 8,
+      "shorts": 4,
+      "minority_side_share": 0.3333333333333333,
+      "max_month_share": 0.3333333333333333
+    },
+    "test": {
+      "events": 25,
+      "longs": 14,
+      "shorts": 11,
+      "minority_side_share": 0.44,
+      "max_month_share": 0.16
+    },
+    "eval": {
+      "events": 28,
+      "longs": 11,
+      "shorts": 17,
+      "minority_side_share": 0.39285714285714285,
+      "max_month_share": 0.14285714285714285
+    },
+    "final": {
+      "events": 16,
+      "longs": 5,
+      "shorts": 11,
+      "minority_side_share": 0.3125,
+      "max_month_share": 0.3125
+    }
+  },
+  "support_checks": {
+    "train_minimum_events": true,
+    "train_side_balance": true,
+    "train_month_concentration": true,
+    "test_minimum_events": true,
+    "test_side_balance": true,
+    "test_month_concentration": true,
+    "eval_minimum_events": true,
+    "eval_side_balance": true,
+    "eval_month_concentration": true,
+    "final_minimum_events": true,
+    "final_side_balance": true,
+    "final_month_concentration": true
+  },
+  "support_passed": true,
+  "advance_to_gross9_novelty": true,
+  "advance_to_economic_outcomes": false,
+  "decision": "pass_to_novelty",
+  "manifest_hash": "58443852909ad4e29a97a048113304f3894a6a17f197bcbbb10fd42d459163c1"
+}

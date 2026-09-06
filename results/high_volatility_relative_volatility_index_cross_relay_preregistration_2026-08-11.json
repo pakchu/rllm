@@ -1,0 +1,155 @@
+{
+  "protocol_version": "high_volatility_relative_volatility_index_cross_relay_v1",
+  "policy_id": "HVRVOL-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated realized variation, a completed four-hour Donald Dorsey Relative Volatility Index crossing of 50 identifies a reversal in whether recent standard deviation is associated with up-closes or down-closes; follow the new side for twenty-four hours.",
+    "side": "long when RVI crosses strictly above 50; short when it crosses strictly below 50",
+    "why_distinct": "RVI assigns a causal 10-period close standard deviation to up or down buckets and Wilder-smooths each over 14 periods before taking their relative share. It is not Relative Vigor, RSI price magnitude, a price-average cross, prior candidate repair, volume, flow, OI, funding, fitted outcome, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "the mechanism is directional volatility and completed trailing twenty-four-hour realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "sparse four-hour directional-standard-deviation balance crossings are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact four-hour UTC boundary",
+    "source_bar": "exact aggregation of 240 coherent BTCUSDT one-minute rows [T-4h,T)",
+    "standard_deviation": "population standard deviation of the latest 10 valid completed closes",
+    "up_down_inputs": "standard deviation in up bucket iff close>prior close and in down bucket iff close<prior close; unchanged close contributes zero to both",
+    "smoothing": "causal Wilder recursive averages with period 14, reset across source gaps and emitted after full warmup",
+    "rvi": "100*smoothed_up/(smoothed_up+smoothed_down), strict positive denominator",
+    "event": "current RVI strictly crosses above 50 from <=50 or below 50 from >=50",
+    "variation": "sqrt(sum squared completed five-minute open-to-close log returns over [T-24h,T)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 180 earlier valid decisions, minimum 120, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "four-hour boundary after completed source bar",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "standard_deviation_periods": 10,
+    "smoothing_periods": 14,
+    "balance_line": 50.0,
+    "variation_hours": 24,
+    "variation_history_decisions": 180,
+    "minimum_variation_history_decisions": 120,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "raw_close_direction",
+      "one_bar_stale_cross",
+      "direction_flip"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2020-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "canonical_dorsey_rvi_definition_read": true,
+    "repository_dorsey_rvi_candidate_found": false,
+    "prior_relative_vigor_outcome_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "canonical Dorsey RVI 10/14 balance-line crossing under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no deviation period, smoothing period, balance line, variation, side, hold, clock, subset, control, or other repair.",
+  "external_basis": {
+    "origin": "Donald Dorsey canonical Relative Volatility Index convention",
+    "fixed_definition": "10-period population standard deviation of close; assign to up bucket when close rises and down bucket when close falls, zero otherwise; Wilder smooth both over 14 periods; RVI=100*up/(up+down)",
+    "selection_use": "published 10-period deviation, 14-period smoothing, and 50 balance line only; no incidence or outcomes"
+  },
+  "manifest_hash": "3d0f773d88a76204706def76413b52a55a1a35b027015bbd2349c17c584d3996"
+}

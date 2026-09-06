@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvciic_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVCIIC-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_cross_alt_illiquidity_impulse_consensus_relay_economics.py",
+    "sha256": "3b39a7a680b4180da713673b595754c31bd6907141258b36c5bee8b865b85fc7"
+  },
+  "authorization": {
+    "path": "results/high_volatility_cross_alt_illiquidity_impulse_consensus_relay_gross9_novelty_2026-08-13.json",
+    "sha256": "b3050b9ba8d3085722cebc3ec6abda39a38feb905a4326acf88a324d5386418b"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "321f4cfc585d119111d4cd91f3fd61405b4edca688b87b59370b8d0d1f2dab94"
+}

@@ -1,0 +1,163 @@
+{
+  "protocol_version": "high_volatility_pastor_stambaugh_temporary_impact_reversal_v1",
+  "policy_id": "HVPST-12",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated realized variation, an unusually negative completed Pastor-Stambaugh-style liquidity gamma means direction-signed turnover is producing next-bar reversal after controlling current return, identifying temporary price impact; fade the completed four-hour displacement for twelve hours at a fresh illiquidity-tail onset.",
+    "side": "short a strictly positive completed trailing four-hour return and long a strictly negative return",
+    "why_distinct": "HVPST regresses next five-minute return on current return and current direction-signed, block-mean-normalized quote turnover inside a completed day. Kyle-style candidates use contemporaneous signed-flow impact; turnover lead-response uses unconditional turnover/next-return association; Roll uses return autocovariance. HVPST isolates the incremental next-return reversal coefficient and uses no OI, funding, fitted postentry outcome, reused event, repair, or promoted control.",
+    "why_suited_to_volatile_regimes": "both the negative-gamma illiquidity magnitude and completed realized variation must occupy causal upper tails, targeting temporary impact during July-like stress",
+    "why_low_gross9_overlap_is_plausible": "sparse four-hour completed liquidity-gamma onsets with twelve-hour reservations are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact four-hour UTC boundary",
+    "source_window": "288 exact completed BTCUSDT five-minute bars [T-24h,T), each from five coherent one-minute rows",
+    "return": "log five-minute close/open, strict sign required for signed-turnover regressor",
+    "signed_turnover": "sign(return)*quote_asset_volume/mean quote_asset_volume over the completed block",
+    "regression": "OLS next_return=a+b*current_return+gamma*signed_turnover on the first 287 bars, full rank and finite",
+    "illiquidity": "-gamma, requiring gamma<0 and finite positive illiquidity",
+    "illiquidity_rank": "strict-prior midrank over at most 180 earlier source-valid decisions, minimum 120, current excluded; rank>=0.80",
+    "direction": "strict completed trailing four-hour close/open return",
+    "variation": "sqrt(sum squared 288 five-minute returns), finite strict positive",
+    "variation_rank": "strict-prior 180/120 midrank, current excluded; rank>=0.65",
+    "event": "eligible now and immediately prior exact source-valid decision ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "four-hour boundary after completed source block",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "side": "opposite strict trailing four-hour displacement",
+    "hold": "12 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "source_hours": 24,
+    "bars_per_source": 288,
+    "illiquidity_history_decisions": 180,
+    "minimum_illiquidity_history_decisions": 120,
+    "illiquidity_rank_min": 0.8,
+    "variation_history_decisions": 180,
+    "minimum_variation_history_decisions": 120,
+    "variation_rank_min": 0.65,
+    "direction_hours": 4,
+    "entry_delay_minutes": 5,
+    "hold_hours": 12,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_illiquidity_tail_gate",
+      "no_variation_gate",
+      "omit_return_control",
+      "one_bar_stale_onset",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "window": [
+        "2020-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "pastor_stambaugh_definition_read": true,
+    "repository_pastor_stambaugh_candidate_found": false,
+    "prior_kyle_roll_turnover_lead_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "published temporary-impact liquidity gamma under independently fixed causal tail gates"
+  },
+  "stopping_rule": "Terminal first failure; no regression, scaling, rank, variation, onset, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "origin": "Pastor-Stambaugh return-reversal liquidity regression convention",
+    "fixed_definition": "within 288 completed five-minute bars, regress r[t+1] on intercept, r[t], and sign(r[t])*quote_turnover[t]/block mean quote turnover; negative signed-turnover coefficient gamma represents temporary price impact and greater -gamma is lower liquidity",
+    "selection_use": "published lead regression, return control, signed-volume construction, and negative-gamma interpretation only; no candidate incidence or outcomes"
+  },
+  "manifest_hash": "7485680378d4f6df69a1c44b7dd4a2dea6dfcb9da171511d07450107ba23b80d"
+}

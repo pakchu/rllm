@@ -1,0 +1,144 @@
+{
+  "protocol_version": "high_volatility_nfci_weekend_relay_v1",
+  "policy_id": "HVNFCI-72",
+  "as_of_date": "2026-08-09",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A weekly tightening or easing in the Chicago Fed National Financial Conditions Index is a broad external risk-state change. After the release is certainly public and when BTC variation is elevated, tightening maps short BTC and easing maps long BTC over the weekend liquidity interval.",
+    "side": "negative strict sign of causal week-over-week NFCI change",
+    "why_distinct": "NFCI jointly summarizes money, debt, equity, and banking conditions. Existing Treasury, SOFR, dollar, Cboe, Fed-balance-sheet, FX, and crypto-native candidates use narrower objects and no repository alpha uses causal ALFRED NFCI vintages.",
+    "why_suited_to_volatile_regimes": "the weekly release is traded only when completed BTC variation is in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "one Friday 00:05 UTC macro-financial weekend clock is absent from Gross9"
+  },
+  "features": {
+    "source": "ALFRED real-time vintages of Chicago Fed NFCI",
+    "reference": "weekly observation ending Friday W",
+    "causal_vintage": "next Friday W+7 calendar days, after normal Wednesday and holiday-shifted Thursday release",
+    "observation": "NFCI value for W read from only the W+7 ALFRED vintage",
+    "change": "causal NFCI[W]-causal NFCI[W-7], strict nonzero; each term independently from its own next-Friday vintage",
+    "direction": "positive=tighter conditions, negative=looser conditions",
+    "btc_variation": "sqrt(sum squared exact completed 5m BTC log returns over seven UTC days ending at decision W+7 00:00)",
+    "variation_rank": "strict-prior midrank over at most 156 source-valid weekly decisions, minimum 104, current excluded; rank>=0.65",
+    "no_imputation": true,
+    "no_latest_vintage_backfill": true
+  },
+  "clock": {
+    "decision": "W+7 Friday 00:00 UTC",
+    "entry": "decision+5m BTCUSDT open",
+    "hold": "72 elapsed hours",
+    "side": "negative NFCI change sign",
+    "reservation": "weekly nonoverlapping; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements after novelty"
+  },
+  "policy": {
+    "variation_history_weeks": 156,
+    "minimum_history_weeks": 104,
+    "variation_rank_min": 0.65,
+    "publication_delay_days": 7,
+    "entry_delay_minutes": 5,
+    "hold_hours": 72,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes all stages",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "definitions": {
+      "no_variation_gate": "every valid NFCI change",
+      "one_week_stale_nfci": "prior NFCI change with current variation",
+      "direction_flip": "negative primary side",
+      "same_clock_forced_long": "side +1 on primary clock"
+    },
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "nfci": {
+      "series": "NFCI",
+      "vintage_provider": "ALFRED",
+      "destination": "data/chicago_fed_nfci_alfred_causal_vintages_2020_2026.csv",
+      "download_after_preregistration_commit": true,
+      "one_reference_value_per_next_friday_vintage": true
+    },
+    "historical_market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "live_extension": "read-only Postgres BTCUSDT 1m through 2026-08-01",
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "official_page": "https://www.chicagofed.org/research/data/nfci/current-data",
+    "release_calendar": "https://www.chicagofed.org/research/data/data-release-calendar",
+    "prior_macro_outcomes_known": true,
+    "prior_event_sets_or_controls_reused": false,
+    "exact_hvnfci_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent real-time-vintage broad financial-conditions mechanism"
+  },
+  "stopping_rule": "terminal first failure; no source, vintage, delay, variation, side, clock, hold, subset, threshold, comparator, or control repair",
+  "manifest_hash": "437080043dd871c1e7341500bbacd1fa52361ba215bd6e25f06bf229f2367058"
+}

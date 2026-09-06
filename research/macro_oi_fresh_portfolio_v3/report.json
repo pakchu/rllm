@@ -1,0 +1,297 @@
+{
+  "registration": {
+    "design": {
+      "version": 3,
+      "window": [
+        "2026-06-01T00:00:00Z",
+        "2026-08-03T21:45:00Z"
+      ],
+      "sleeves": {
+        "macro": "dollar_flow_plus_regime_switch, fixed 75/25 formula",
+        "oi": "fixed four-gate OI divergence pullback, non-overlapping 8h longs"
+      },
+      "weights": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "weight_meaning": "macro weight; OI weight is one minus macro weight",
+      "execution": "five-minute target fractions; same-symbol signed positions net before cost and risk",
+      "risk": "weighted sleeves sum to one and absolute net exposure is capped at 1x",
+      "costs_per_side": [
+        0.0,
+        0.0006,
+        0.001
+      ],
+      "selection": "none; report every predeclared weight and do not name an optimized winner",
+      "status": "descriptive exposed-period portfolio audit; no live authorization",
+      "correction": "native event rebalancing: macro hourly updates; OI entries/exits only",
+      "unchanged": "sources, signals, targets, weights, netting, cost rates, funding and price bars"
+    },
+    "code_sha256": "2cf01a724a5b68d754674e267c53d483031976e19c44aacd1737e10c6cc83b3d",
+    "v1_sha256": "91b0d29751ef6e83913240ca380f18ff03dbb0d7059284100bf344bcf9fcfde0",
+    "v2_sha256": "66e4260182a01c47faad7f293e5fe032075e4399de4fbb44b26ae4b40f4174b1",
+    "v2_failure_sha256": "47454db739dc5aef29980d77623c55afe4a1176e20f0067840740ff35dd509f0",
+    "macro_report_sha256": "e8d31060b550d911411a92fa6c6ebfe8dcd6756b8525431e5b0f759fd363df15",
+    "oi_report_sha256": "ec108c6a7ebf6634431fbae42dbf34a26fadfb1792d418be026a2f54b253c725"
+  },
+  "source_receipt": {
+    "row_counts": {
+      "btcusdt_1m": 183485,
+      "btckrw_1m": 183143,
+      "usdkrw_1m": 125592,
+      "forex_1m": 781546,
+      "premium_1m": 183485,
+      "funding": 1721
+    },
+    "funding_aliases": {
+      "policy": {
+        "alias_grouping": "sort by raw funding_time; group only adjacent rows whose timestamp delta from the previous row is <=100ms",
+        "max_cluster_span_ms": 100,
+        "canonical_timestamp": "latest raw timestamp in the accepted near-alias cluster; no snapping to cadence",
+        "required_exact_equal_columns": [
+          "funding_rate",
+          "mark_price"
+        ],
+        "reject": [
+          "exact_duplicate_timestamp",
+          "malformed_timestamp",
+          "nonfinite_funding_rate_or_mark_price",
+          "unequal_values_within_near_alias_cluster",
+          "cluster_span_gt_100ms"
+        ],
+        "preserve_events_separated_by_at_least": "1min"
+      },
+      "raw_rows": 2000,
+      "canonical_rows": 1721,
+      "alias_clusters": 279,
+      "alias_rows_removed": 279,
+      "max_cluster_span_ms": 16.0,
+      "cluster_size_histogram": {
+        "1": 1442,
+        "2": 279
+      },
+      "selected_timestamp": "latest_raw_timestamp",
+      "passed": true,
+      "reason": "pass",
+      "raw_hash": "ac6f2dd77da6126e015f432fd97e0aa3a5d6e20376808ccbd45d39b454f2e5ad",
+      "canonical_hash": "5c510c67a7d93f2ed2a1bdfe058481e8ec273abc75b951158df0483815512bb8"
+    }
+  },
+  "engine_receipt": {
+    "missing_mark_proxy_events": 4198,
+    "funding_events": 7319,
+    "market_end": "2026-09-05 10:00:00"
+  },
+  "oi_source": {
+    "rows": 27236,
+    "first": "2026-05-01 00:00:00",
+    "last": "2026-08-03 13:35:00"
+  },
+  "targets_sha256": {
+    "macro": "a92581aaa486f3cd35d74d52b1bb2040cb172572efcf4de8206fb350421c99f9",
+    "oi": "5d47c4edfc1b241b4d3e5f3ab9ddd70e5f996b5db93098f2331559b6c24fc36a"
+  },
+  "events": {
+    "macro_updates": 1534,
+    "oi_entries_exits": 16,
+    "oi_trades": 8
+  },
+  "base_cost_return_correlation": 0.010997147465410393,
+  "reports": {
+    "0.0": {
+      "macro_0_oi_1": {
+        "return_pct": 7.996811563125439,
+        "cagr_pct": 55.2233190513064,
+        "mdd_pct": 4.56867562232397,
+        "calmar": 12.087380154867656,
+        "sharpe": 2.654583174221655,
+        "entry_episodes": 8,
+        "rebalance_orders": 16,
+        "turnover": 16.000172724324965,
+        "fees_pct_initial": 0.0,
+        "funding_pct_initial": 0.01781736709578221
+      },
+      "macro_0.25_oi_0.75": {
+        "return_pct": 6.405075068781052,
+        "cagr_pct": 42.59380708935592,
+        "mdd_pct": 3.435819527753292,
+        "calmar": 12.396986147060035,
+        "sharpe": 2.8048349610267826,
+        "entry_episodes": 23,
+        "rebalance_orders": 480,
+        "turnover": 14.714096589848587,
+        "fees_pct_initial": 0.0,
+        "funding_pct_initial": 0.012585541746997775
+      },
+      "macro_0.5_oi_0.5": {
+        "return_pct": 4.792492942151627,
+        "cagr_pct": 30.675790187923234,
+        "mdd_pct": 2.296695723557729,
+        "calmar": 13.356488573246642,
+        "sharpe": 2.9729545227407845,
+        "entry_episodes": 23,
+        "rebalance_orders": 486,
+        "turnover": 13.38226325467109,
+        "fees_pct_initial": 0.0,
+        "funding_pct_initial": 0.007391582500336035
+      },
+      "macro_0.75_oi_0.25": {
+        "return_pct": 3.1605484006442586,
+        "cagr_pct": 19.463687698936628,
+        "mdd_pct": 1.42839424566642,
+        "calmar": 13.626271428904985,
+        "sharpe": 2.8263758151516893,
+        "entry_episodes": 23,
+        "rebalance_orders": 487,
+        "turnover": 12.004217088659127,
+        "fees_pct_initial": 0.0,
+        "funding_pct_initial": 0.0022361635925649452
+      },
+      "macro_1_oi_0": {
+        "return_pct": 1.5108272778040943,
+        "cagr_pct": 8.948387152812787,
+        "mdd_pct": 1.9018957771965717,
+        "calmar": 4.704982922882803,
+        "sharpe": 1.4103387669805958,
+        "entry_episodes": 16,
+        "rebalance_orders": 415,
+        "turnover": 10.579504349347784,
+        "fees_pct_initial": 0.0,
+        "funding_pct_initial": -0.00288010249077263
+      }
+    },
+    "0.0006": {
+      "macro_0_oi_1": {
+        "return_pct": 6.9692458655068235,
+        "cagr_pct": 46.96929527859197,
+        "mdd_pct": 4.685871832825461,
+        "calmar": 10.023597945970854,
+        "sharpe": 2.338123131756173,
+        "entry_episodes": 8,
+        "rebalance_orders": 16,
+        "turnover": 16.00493017495483,
+        "fees_pct_initial": 0.9820150165156675,
+        "funding_pct_initial": 0.017749205535606907
+      },
+      "macro_0.25_oi_0.75": {
+        "return_pct": 5.470041955159899,
+        "cagr_pct": 35.57894326346358,
+        "mdd_pct": 3.523583912723638,
+        "calmar": 10.097373624334091,
+        "sharpe": 2.4195041650800815,
+        "entry_episodes": 23,
+        "rebalance_orders": 481,
+        "turnover": 14.71606003269085,
+        "fees_pct_initial": 0.9050947555020533,
+        "funding_pct_initial": 0.012532419063805502
+      },
+      "macro_0.5_oi_0.5": {
+        "return_pct": 3.95452079196954,
+        "cagr_pct": 24.814981299711803,
+        "mdd_pct": 2.356445385387629,
+        "calmar": 10.530683823011584,
+        "sharpe": 2.474662662156568,
+        "entry_episodes": 23,
+        "rebalance_orders": 487,
+        "turnover": 13.383124332845886,
+        "fees_pct_initial": 0.8234674216317951,
+        "funding_pct_initial": 0.0073581648511725955
+      },
+      "macro_0.75_oi_0.25": {
+        "return_pct": 2.420126710036241,
+        "cagr_pct": 14.64529322075958,
+        "mdd_pct": 1.632084068650208,
+        "calmar": 8.973369388301034,
+        "sharpe": 2.1798991812912982,
+        "entry_episodes": 23,
+        "rebalance_orders": 488,
+        "turnover": 12.004579683234251,
+        "fees_pct_initial": 0.7370425818117473,
+        "funding_pct_initial": 0.0022162531119605446
+      },
+      "macro_1_oi_0": {
+        "return_pct": 0.8683077220416724,
+        "cagr_pct": 5.065425449125294,
+        "mdd_pct": 2.14120515070807,
+        "calmar": 2.3656889894227184,
+        "sharpe": 0.8251668721963507,
+        "entry_episodes": 16,
+        "rebalance_orders": 416,
+        "turnover": 10.579792893579338,
+        "fees_pct_initial": 0.6458059572623033,
+        "funding_pct_initial": -0.002892613805345394
+      }
+    },
+    "0.001": {
+      "macro_0_oi_1": {
+        "return_pct": 6.288964226031779,
+        "cagr_pct": 41.706772148749494,
+        "mdd_pct": 4.764000584743422,
+        "calmar": 8.75456906582133,
+        "sharpe": 2.1252554686638154,
+        "entry_episodes": 8,
+        "rebalance_orders": 16,
+        "turnover": 16.00810495401061,
+        "fees_pct_initial": 1.632038712740977,
+        "funding_pct_initial": 0.017704014965097943
+      },
+      "macro_0.25_oi_0.75": {
+        "return_pct": 4.850875627964868,
+        "cagr_pct": 31.092435409203812,
+        "mdd_pct": 3.5820838068166827,
+        "calmar": 8.67998547382814,
+        "sharpe": 2.1603787365957046,
+        "entry_episodes": 23,
+        "rebalance_orders": 481,
+        "turnover": 14.71782829205897,
+        "fees_pct_initial": 1.5043642348961752,
+        "funding_pct_initial": 0.01249718985756926
+      },
+      "macro_0.5_oi_0.5": {
+        "return_pct": 3.3994213870443213,
+        "cagr_pct": 21.053359613855328,
+        "mdd_pct": 2.3962580613205553,
+        "calmar": 8.785931679767836,
+        "sharpe": 2.14006819723021,
+        "entry_episodes": 23,
+        "rebalance_orders": 487,
+        "turnover": 13.383827899252843,
+        "fees_pct_initial": 1.3689146351866086,
+        "funding_pct_initial": 0.007335999357561268
+      },
+      "macro_0.75_oi_0.25": {
+        "return_pct": 1.9293697040329683,
+        "cagr_pct": 11.540880577492807,
+        "mdd_pct": 1.8664794996013367,
+        "calmar": 6.1832345760871394,
+        "sharpe": 1.7470898391588305,
+        "entry_episodes": 23,
+        "rebalance_orders": 488,
+        "turnover": 12.00486443261276,
+        "fees_pct_initial": 1.2255390640153558,
+        "funding_pct_initial": 0.002203045457572284
+      },
+      "macro_1_oi_0": {
+        "return_pct": 0.4420959121716139,
+        "cagr_pct": 2.5532382729220426,
+        "mdd_pct": 2.374743048747341,
+        "calmar": 1.0751640158579923,
+        "sharpe": 0.4354382030639862,
+        "entry_episodes": 16,
+        "rebalance_orders": 416,
+        "turnover": 10.580217637868019,
+        "fees_pct_initial": 1.0741916292480316,
+        "funding_pct_initial": -0.0029009178107889146
+      }
+    }
+  },
+  "live_enabled": false,
+  "limitations": [
+    "Both sleeves and the common window were exposed before this audit.",
+    "No weight is an OOS optimized winner; all five predeclared weights are reported.",
+    "Eight OI trades dominate inference and the OI source ends on 2026-08-03."
+  ]
+}

@@ -1,0 +1,155 @@
+{
+  "protocol_version": "high_volatility_wilder_rsi_reversal_v1",
+  "policy_id": "HVWRSI-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "A completed daily BTC close that drives the canonical Wilder fourteen-day RSI to an overbought or oversold extreme during elevated realized variation represents one-sided displacement vulnerable to next-day mean reversion.",
+    "side": "long when RSI<=30; short when RSI>=70",
+    "why_distinct": "Existing RSI candidates require OI expansion or price/OI contradiction and use RSI only as a confirmation gate. HVWRSI is the fixed canonical two-sided RSI state itself, with no OI, flow, volume, funding, fitted threshold, prior event, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed twenty-day daily realized variation must rank in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "sparse daily canonical oscillator extremes are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every calendar day at exact 00:00 UTC",
+    "daily_close": "last close of 1,440 exact coherent BTCUSDT one-minute rows [D-24h,D)",
+    "change": "current completed daily close minus immediately prior completed daily close",
+    "wilder_seed": "arithmetic mean gains and losses over the first fourteen exact changes from source start",
+    "wilder_update": "avg=(13*prior_avg+current_component)/14, recursively without reset",
+    "rsi": "100-100/(1+avg_gain/avg_loss); avg_loss=0 maps 100, avg_gain=0 maps 0, both zero invalid",
+    "variation": "sqrt(sum squared latest twenty completed daily close-to-close log returns), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 180 earlier source-valid decisions, minimum 120, current excluded; rank>=0.65",
+    "eligibility": "RSI<=30 or RSI>=70 plus variation gate",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "00:00 UTC after completed daily close",
+    "entry": "exact BTCUSDT 00:05 UTC open",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "rsi_days": 14,
+    "variation_days": 20,
+    "variation_history_days": 180,
+    "minimum_variation_history_days": 120,
+    "oversold_max": 30.0,
+    "overbought_min": 70.0,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "one_day_stale_rsi",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2020-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "canonical_wilder_definition_read": true,
+    "repository_plain_wilder_rsi_candidate_found": false,
+    "prior_oi_rsi_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "canonical Wilder oscillator reversal under the user-requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no RSI period, recursive formula, 30/70 levels, variation, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "origin": "J. Welles Wilder Jr., New Concepts in Technical Trading Systems (1978)",
+    "fixed_definition": "fourteen periods with Wilder recursive average gains and losses; conventional 30/70 extremes",
+    "selection_use": "canonical published formula and thresholds only; no candidate incidence or stage outcomes"
+  },
+  "manifest_hash": "83f2cb474629f5d551a7bc08942b3b2388f2f90098bc64628ec54a6f0ad4c837"
+}

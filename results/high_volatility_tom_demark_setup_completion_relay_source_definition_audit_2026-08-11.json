@@ -1,0 +1,26 @@
+{
+  "protocol_version": "high_volatility_tom_demark_setup_completion_source_definition_audit_v1",
+  "policy_id": "HVTDS-S9-24",
+  "preregistration": {
+    "path": "results/high_volatility_tom_demark_setup_completion_relay_preregistration_2026-08-11.json",
+    "sha256": "9ec7e0e26aceb21cabf1d1d854950bf83349ea6721d6b8e6458d713c12682613",
+    "manifest_hash": "5a23db3085342d6dc343cd45f3078d026e1c11539c3abfa4ddd6934f82880350"
+  },
+  "official_documentation": "https://www.quantconnect.com/docs/v2/writing-algorithms/indicators/supported-indicators/tom-demark-sequential",
+  "official_implementation": "https://github.com/QuantConnect/Lean/blob/master/Indicators/TomDemarkSequential.cs",
+  "completed_preentry_sources_opened": false,
+  "candidate_incidence_opened": false,
+  "postentry_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "definition_conflict": {
+    "frozen_scope": "countdown, TDST levels, and later phases are neither inputs nor selection filters",
+    "lean_state_dependency": "after setup step 9 LEAN enters BuyCountdown or SellCountdown; countdown qualification, TDST invalidation, or count 13 determines when phase returns to None and a new setup can initialize",
+    "consequence": "a setup-only evaluator that immediately rearms would not reproduce the cited LEAN event process, while a full-state evaluator would violate the frozen scope"
+  },
+  "support_passed": false,
+  "advance_to_gross9_novelty": false,
+  "advance_to_economic_outcomes": false,
+  "decision": "terminal_source_definition_reject_no_repair",
+  "failure_action": "reject HVTDS-S9-24 unchanged before candidate incidence; do not mutate preregistration or create a repair successor",
+  "manifest_hash": "5a6394353bcf3092c4579beaf7b1f2293695547f9136d4128a4d9f756d798b64"
+}

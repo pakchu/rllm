@@ -1,0 +1,156 @@
+{
+  "protocol_version": "high_volatility_self_normalized_displacement_reversal_v1",
+  "policy_id": "HVSNDR-8",
+  "slug": "high_volatility_self_normalized_displacement_reversal",
+  "as_of_date": "2026-08-10",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "An extreme completed endpoint displacement relative to its own realized quadratic variation is a statistically one-sided auction excursion. When this self-normalized displacement newly enters its upper magnitude tail during elevated absolute variation, fade the exhausted displacement for eight hours.",
+    "side": "negative strict sign of completed eight-hour displacement",
+    "why_distinct": "L1 path efficiency divides displacement by total absolute travel; bipower jump candidates compare one return with prior robust variation; skew and semivariance use signed moments. HVSNDR uses the block endpoint divided by the L2 norm of all completed five-minute close returns, and reuses no event set or control.",
+    "volatile_market_target": "completed eight-hour realized-variation strict-prior rank>=0.65",
+    "why_low_gross9_overlap_is_plausible": "offset three-daily onsets from a self-normalized endpoint excursion are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "exact 04:00, 12:00 and 20:00 UTC boundaries D",
+    "source_window": "480 exact coherent bars_binance BTCUSDT interval=1m rows [D-8h,D)",
+    "aggregation": "96 exact five-minute groups with OHLC first/max/min/last",
+    "returns": "95 natural-log close-to-close returns from aggregated closes",
+    "displacement": "log(last five-minute close/first five-minute open), finite strict nonzero",
+    "realized_variation": "sum squared 95 close-to-close returns, finite strict positive",
+    "self_normalized_displacement": "displacement/sqrt(realized_variation), finite strict nonzero",
+    "magnitude_rank": "strict-prior midrank of absolute self-normalized displacement over at most 270 earlier source-valid blocks, minimum 180; current excluded; rank>=0.80",
+    "l1_efficiency_control": "abs(displacement)/sum(abs(five-minute returns)), finite; strict-prior 270/180 rank>=0.80 diagnostic only",
+    "variation_rank": "strict-prior 270/180 midrank of realized variation; current excluded; rank>=0.65",
+    "eligible_state": "self-normalized magnitude and variation gates pass",
+    "onset": "eligible now and immediately previous exact source-valid block ineligible",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "D after the full path completes",
+    "entry": "exact BTCUSDT D+5m open",
+    "side": "negative strict sign(displacement)",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact realized funding only after novelty"
+  },
+  "policy": {
+    "window_minutes": 480,
+    "five_minute_bars": 96,
+    "return_observations": 95,
+    "prior_blocks": 270,
+    "minimum_prior_blocks": 180,
+    "magnitude_rank_min": 0.8,
+    "l1_efficiency_rank_min": 0.8,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_magnitude_tail_gate",
+      "no_variation_gate",
+      "l1_efficiency",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance",
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "columns": [
+      "ts",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "query_window": [
+      "2023-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_path_efficiency_bipower_skew_and_semivariance_outcomes_known": true,
+    "repository_self_normalized_endpoint_candidate_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "prior_outcomes_used_to_set_formula_rank_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent self-normalized endpoint excursion reversal"
+  },
+  "stopping_rule": "terminal first failure; no aggregation, normalization, rank, onset, side, clock, hold, subset, threshold, or control repair",
+  "manifest_hash": "34e5acc5e1a7b250263809dad5847e99a5059bc5754fcdae9948d69913160195"
+}

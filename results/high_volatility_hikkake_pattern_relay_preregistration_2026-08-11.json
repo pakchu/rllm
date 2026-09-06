@@ -1,0 +1,162 @@
+{
+  "protocol_version": "high_volatility_hikkake_pattern_relay_v1",
+  "policy_id": "HVHIKKAKE-C3-8",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated completed realized variation, a confirmed hourly Hikkake identifies a failed displacement from an inside bar. Enter in the official reversal direction after the confirmation close and hold for eight hours.",
+    "side": "long only for official bullish confirmation output +2 and short only for official bearish confirmation output -2",
+    "why_distinct": "The official Hikkake requires an hourly inside bar, a next-bar displacement in the opposite direction, and a later close through the inside bar's far boundary within three bars. The prior inside-auction candidate instead partitions an eight-hour block into a four-hour range, a two-hour contained auction, and a direct two-hour outside close without a false-displacement or confirmation sequence. Hikkake uses no volume, flow, OI, funding, fitted outcome, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "failed breakouts can reverse sharply when completed trailing twenty-four-hour realized variation ranks in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "sparse, asynchronously confirmed three-to-six hourly candle-state sequences are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact hourly UTC boundary",
+    "source_bar": "exact aggregation of 60 coherent BTCUSDT one-minute rows [T-1h,T), open first, high max, low min, close last",
+    "inside_bar": "previous hourly high is strictly below the high two bars back and previous hourly low is strictly above the low two bars back",
+    "bullish_setup": "current hourly high and low are both strictly below the inside bar's high and low",
+    "bearish_setup": "current hourly high and low are both strictly above the inside bar's high and low",
+    "confirmation": "within the next three hourly bars, close strictly above the stored inside-bar high for bullish or strictly below the stored inside-bar low for bearish",
+    "overwrite_precedence": "if a new setup and an old confirmation occur on the same bar, emit only the new setup and replace stored state exactly as LEAN",
+    "eligible_pattern": "only ready confirmation outputs +2 or -2; unconfirmed setup outputs +1/-1 and zero outputs are ineligible",
+    "variation": "sqrt(sum squared completed five-minute open-to-close log returns over [T-24h,T)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 2160 earlier source-valid hourly decisions, minimum 720, current excluded; rank>=0.65",
+    "recursive_reset": "hour aggregation, Hikkake state, readiness, and variation history reset after any invalid completed source hour; no imputation",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "hour boundary after the completed confirmation bar",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "indicator_period_hours": 6,
+    "confirmation_bars": 3,
+    "confirmation_absolute_output": 2,
+    "variation_hours": 24,
+    "variation_history_decisions": 2160,
+    "minimum_variation_history_decisions": 720,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "initial_setup_only",
+      "all_nonzero_hikkake_outputs",
+      "one_hour_stale_confirmation",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "canonical_hikkake_definition_read": true,
+    "repository_hikkake_candidate_found": false,
+    "related_inside_auction_candidate_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "official LEAN confirmation-only Hikkake reversal under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no timeframe, inequalities, readiness, confirmation horizon, output class, variation, side, hold, clock, subset, threshold, control, or other repair.",
+  "external_basis": {
+    "origin": "Daniel L. Chesler Hikkake pattern; QuantConnect LEAN canonical implementation",
+    "definition_source": "https://github.com/QuantConnect/Lean/blob/master/Indicators/CandlestickPatterns/Hikkake.cs",
+    "documentation_source": "https://www.quantconnect.com/docs/v2/writing-algorithms/indicators/supported-indicators/hikkake",
+    "fixed_definition": "bar two is strictly inside bar one; bullish setup bar three has lower high and lower low than bar two, bearish setup bar three has higher high and higher low; confirmation in the next three bars closes above bar-two high for bullish or below bar-two low for bearish; setup outputs +1/-1 and confirmation outputs +2/-2; a new setup on a confirmation bar overwrites the prior confirmation",
+    "warmup": "LEAN Period is six hourly bars; pre-ready pattern state may update but all outputs remain zero until Samples >= 6",
+    "selection_use": "official pattern inequalities, confirmation horizon, overwrite precedence, output sign, and readiness only; no incidence or outcomes"
+  },
+  "manifest_hash": "fdd9e544f166f25a28c0652df86866271d21f2a2018ad620d5081d1271ab419d"
+}

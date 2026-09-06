@@ -1,0 +1,41 @@
+{
+  "protocol_version": "ovepr_24_economic_evaluator_freeze_v1",
+  "policy_id": "OVEPR-24",
+  "status": "frozen_before_first_BTC_execution_price_decode",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_options_led_volatility_expansion_premium_relay_economics.py",
+    "sha256": "3bda1c726e14bb511a5154e0f77972a114da804235ca863e098af83045502b87"
+  },
+  "predecessors": {
+    "preregistration_sha256": "180e6be7f6889024896303be511a07b3a95b44dc225f4566a2edab7127022dd6",
+    "source_support_sha256": "afbf8157c2c85aec0470563cdfba1b45afe18472a617633d2140b6ec6c1c15a7",
+    "gross9_novelty_sha256": "b6a5128aa259907df36b39d484f7d7bc3f142134b0d68e5cb22a0ef64ddfdd03",
+    "primary_clock_sha256": "b79bd105784db59980a83d1e1e75e3334e954f76e0f06a6d44eca1dc017e6bf1"
+  },
+  "stage_sequence": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "future_can_rank_repair_or_reselect": false,
+  "economic_contract": {
+    "leverage": "1/2",
+    "base_cost_per_notional_side": "6/10000",
+    "stress_cost_per_notional_side": "10/10000",
+    "hold": "24 elapsed hours",
+    "funding": "exact entry<=funding<=exit implementation; exits at xx:05 never coincide scheduled funding",
+    "mdd": "every held 5m OHLC path, global peak, costs and funding",
+    "cagr": "full declared calendar",
+    "cluster_signflip": {
+      "cluster": "UTC week",
+      "method": "one-sided fixed-seed Monte Carlo",
+      "draws": 100000,
+      "seed": 20260808
+    }
+  },
+  "final_source": "Postgres exact bars_binance 1m to 5m and funding_rates_binance; no imputation",
+  "manifest_hash": "f2e94d2ea925a374622078c7b33342204e7d98e9e80eaf3a28a0e3f942c90b27"
+}

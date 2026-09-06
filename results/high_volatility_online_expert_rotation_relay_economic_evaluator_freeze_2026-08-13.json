@@ -1,0 +1,32 @@
+{
+  "protocol_version": "hvoer_8_economic_evaluator_freeze_v1",
+  "policy_id": "HVOER-8",
+  "outcomes_opened": false,
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_online_expert_rotation_relay_economics.py",
+    "sha256": "9486c4a3e75abe7c60f656443f2a3657a366789cdfbf45df9f3383371a4f5125"
+  },
+  "authorization": {
+    "path": "results/high_volatility_online_expert_rotation_relay_gross9_novelty_2026-08-13.json",
+    "sha256": "ee560bed5d29b0927f46a3e5957d91aa1cbd92cc7b7fb42644c4cda09290a4e9"
+  },
+  "stage_order": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "post_stage_volatility_audit_required_after_final_pass": true,
+  "empty_clock_policy": "outcome-blind load_clock_allow_empty frozen before economics",
+  "accounting": {
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "quantity": "fixed through exit",
+    "funding": "exact event mark cash",
+    "cagr": "full calendar including idle time",
+    "strict_mdd": "global HWM plus favorable-then-adverse held 5m envelope"
+  },
+  "manifest_hash": "a15811ba56316868addf45a151086c2793ef84e62a0ccd9f3d170d9f4b3bfd2d"
+}

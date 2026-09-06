@@ -1,0 +1,89 @@
+{
+  "name": "gross9_overlap_allowed_portfolio_2026_09_03",
+  "policy_id": "G9-OVERLAP-PORT-1",
+  "status": "terminal_train_reject_diagnostic_config_not_live",
+  "as_of": "2026-09-03",
+  "shadow_only": true,
+  "live_capital_authorized": false,
+  "order_submission_enabled": false,
+  "overlap_policy": {
+    "inter_sleeve_overlap_allowed": true,
+    "intra_sleeve_overlap_allowed": false,
+    "gross_risk_nets_opposite_sides": false,
+    "near_6h_gross9_overlap": "diagnostic_not_exclusion_gate_for_this_replacement_portfolio_objective"
+  },
+  "execution": {
+    "position_model": "fixed quantity per sleeve until exit",
+    "same_timestamp_transition": "exit then simultaneous entry, aggregate quantity delta netted",
+    "base_cost_each_notional_side_bp": 6,
+    "stress_cost_each_notional_side_bp": 10,
+    "funding": "exact settlement on post-transition aggregate net quantity",
+    "renormalization": false,
+    "volatility_targeting": false
+  },
+  "optimizer": {
+    "proxy_window": [
+      "2023-07-01T00:00:00Z",
+      "2023-12-01T00:00:00Z"
+    ],
+    "december_holdout_unopened": true,
+    "holdout_window": [
+      "2023-12-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "weight_grid": [
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25
+    ],
+    "gross_grid": [
+      0.25,
+      0.3,
+      0.35,
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.8,
+      0.85,
+      0.9,
+      0.95,
+      1.0
+    ],
+    "min_gross": 0.25,
+    "max_gross": 1.0,
+    "max_sleeves": 8,
+    "beam_width": 8,
+    "proxy_candidate_cap": 12000,
+    "exact_finalist_count": 64,
+    "selection_rule": "fast vectorized proxy beam on Jul-Nov, exact aggregate-net ledger replay of top64, then deterministic raw rank1 among gate-passing finalists"
+  },
+  "risk_caps": {
+    "gross_exposure_cap": 1.0,
+    "mean_gross_exposure_cap": 0.85,
+    "max_aggregate_net_turnover_weight_per_day": 0.2737850787132101,
+    "max_single_sleeve_pre_net_turnover_share": 0.4,
+    "max_month_share": 0.45,
+    "gross_risk_does_not_net": true
+  },
+  "sleeve_weights": {
+    "HVBLIC-6": 0.2,
+    "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8": 0.25,
+    "HVRDBR-6": 0.15,
+    "HVUI-12": 0.1
+  },
+  "selected_gross_exposure": 0.7,
+  "evidence_boundary": {
+    "train_proxy_jul_nov_opened_by_selection": true,
+    "december_holdout_opened_by_selection": false,
+    "oos_2024_2025_2026_opened_by_selection": false,
+    "repair_after_holdout_or_oos_failure_authorized": false
+  },
+  "protocol_hash": "5a8283dc136440de5960e7825644b4812356fc73a402ab3aac656575d286bd48"
+}

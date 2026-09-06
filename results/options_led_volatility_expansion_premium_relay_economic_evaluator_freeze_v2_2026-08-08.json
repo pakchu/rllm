@@ -1,0 +1,84 @@
+{
+  "protocol_version": "ovepr_24_economic_evaluator_freeze_v2",
+  "policy_id": "OVEPR-24",
+  "status": "frozen_before_first_V2_candidate_metric_execution",
+  "outcomes_opened": false,
+  "v1_terminal_evidence": {
+    "path": "results/options_led_volatility_expansion_premium_relay_train_economic_attempt_terminal_failure_2026-08-08.json",
+    "sha256": "080a2c93b8e34999a1520d1c972b033f615393a27426a4623dddf2519d6f8d17",
+    "economic_metrics_computed": false,
+    "disposition": "TERMINAL_FAILURE_NO_RETRY_UNDER_V1"
+  },
+  "evaluator": {
+    "path": "training/evaluate_options_led_volatility_expansion_premium_relay_economics_v2.py",
+    "sha256": "bb436eeabff1ff3d623d59f3f4c410d61cf0ec2313948a567371329381016460"
+  },
+  "regression_tests": {
+    "path": "tests/test_evaluate_options_led_volatility_expansion_premium_relay_economics_v2.py",
+    "sha256": "3c18f1df548fc4cb4bb2eadb81cad22ea034d203b53bb955d7a205374222048b",
+    "passed": true,
+    "contracts": [
+      "exit_first_same_open_reentry",
+      "fixed_quantity_exact_settlement_mark_funding_half_open",
+      "favorable_then_adverse_strict_mdd",
+      "source_blind_predecessor_authorization"
+    ]
+  },
+  "predecessors": {
+    "preregistration_sha256": "180e6be7f6889024896303be511a07b3a95b44dc225f4566a2edab7127022dd6",
+    "source_support_sha256": "afbf8157c2c85aec0470563cdfba1b45afe18472a617633d2140b6ec6c1c15a7",
+    "gross9_novelty_sha256": "b6a5128aa259907df36b39d484f7d7bc3f142134b0d68e5cb22a0ef64ddfdd03",
+    "primary_clock_sha256": "b79bd105784db59980a83d1e1e75e3334e954f76e0f06a6d44eca1dc017e6bf1"
+  },
+  "candidate_contract_change_from_v1": false,
+  "infrastructure_repairs_only": [
+    "accept_entry_equal_previous_exit",
+    "exit_then_entry_at_same_open",
+    "fixed_quantity_additive_funding_ledger_with_settlement_marks"
+  ],
+  "stage_sequence": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "stop_on_first_failure": true,
+  "future_can_rank_repair_or_reselect": false,
+  "economic_contract": {
+    "leverage": "1/2",
+    "base_cost_per_notional_side": "6/10000",
+    "stress_cost_per_notional_side": "10/10000",
+    "hold": "24 elapsed hours",
+    "position_quantity": "side*0.5*pre_entry_equity/entry_open fixed through exit",
+    "funding": "cash=-fixed_quantity*settlement_mark*rate for entry<=funding_time<exit",
+    "same_open_transition": "realize prior exit and exit cost before sizing and charging next entry",
+    "mdd": "global peak; every held 5m favorable then adverse OHLC; cumulative funding cash; virtual adverse exit cost; actual entry and exit costs",
+    "cagr": "full declared calendar",
+    "cluster_signflip": {
+      "cluster": "UTC week",
+      "method": "one-sided fixed-seed Monte Carlo",
+      "draws": 100000,
+      "seed": 20260808
+    }
+  },
+  "source_contract": {
+    "train": {
+      "market": "hash-bound gzip physical prefix",
+      "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+      "funding_marks": "hash-bound frozen Binance settlement marks",
+      "funding_marks_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+    },
+    "test_eval": {
+      "market": "same hash-bound gzip physical prefix",
+      "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+      "funding": "Postgres funding_rates_binance exact rows and mark_price; no imputation"
+    },
+    "final": {
+      "market": "Postgres bars_binance exact 1m-to-5m aggregation",
+      "funding": "Postgres funding_rates_binance exact rows and mark_price",
+      "no_imputation": true
+    }
+  },
+  "no_alpha_threshold_hold_direction_or_stage_gate_changes": true,
+  "manifest_hash": "7de5f06ccca47fd371c03ac91127384e32476f70aa033ad5c3adb5c00da24e46"
+}

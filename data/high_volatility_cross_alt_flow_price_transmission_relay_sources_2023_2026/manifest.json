@@ -1,0 +1,34 @@
+{
+  "protocol_version": "hvcafpt_8_sources_v1",
+  "query": "WITH tagged AS (\n SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 02:00:00+00') AS block_start,\n        ts,symbol,open,high,low,close,quote_asset_volume,taker_buy_quote\n FROM bars_binance\n WHERE symbol=ANY(:symbols) AND interval='1m' AND ts>=:start AND ts<:end\n)\nSELECT block_start,symbol,\n sum(quote_asset_volume) FILTER (WHERE ts<block_start+INTERVAL '4 hours') AS first_quote,\n sum(taker_buy_quote) FILTER (WHERE ts<block_start+INTERVAL '4 hours') AS first_buy_quote,\n (array_agg(open ORDER BY ts) FILTER (WHERE ts>=block_start+INTERVAL '4 hours'))[1] AS second_open,\n (array_agg(close ORDER BY ts DESC) FILTER (WHERE ts>=block_start+INTERVAL '4 hours'))[1] AS second_close,\n sum(power(ln(close/open),2)) AS minute_squared_return,\n count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,\n bool_and(open>0 AND high>0 AND low>0 AND close>0 AND quote_asset_volume>=0 AND\n          taker_buy_quote>=0 AND taker_buy_quote<=quote_asset_volume AND\n          high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent\nFROM tagged GROUP BY 1,2 ORDER BY 1,2",
+  "query_sha256": "1efde77b4bf018714493133e5e18745e038112439172428b476ef9254d6fca14",
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ADAUSDT",
+    "BNBUSDT",
+    "DOGEUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": 27475,
+  "builder": {
+    "path": "training/build_high_volatility_cross_alt_flow_price_transmission_relay_support.py",
+    "sha256": "031f9913b64b3784937fc15b5a901246a89b374c9e942e5ec474b7304c9fac34"
+  },
+  "panel": {
+    "path": "data/high_volatility_cross_alt_flow_price_transmission_relay_sources_2023_2026/block_states.csv.gz",
+    "sha256": "93cd96ae4d69e37291134adc298108dd59b4873d483075d846031a664c3786fd",
+    "rows": 3924,
+    "valid_rows": 3921
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "b80c18c28936cc57ef426df161c6c99399984821993c9bbfbe9a2dbd165b68da"
+}

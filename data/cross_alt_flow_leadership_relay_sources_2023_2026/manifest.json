@@ -1,0 +1,31 @@
+{
+  "protocol_version": "caflr_6_sources_v1",
+  "query": "SELECT date_trunc('hour',ts) AS hour_start,\n       count(*) AS row_count,\n       count(DISTINCT ts) AS distinct_ts,\n       min(ts) AS min_ts,\n       max(ts) AS max_ts,\n       bool_and(ts=date_trunc('minute',ts)) AS minute_aligned,\n       bool_and(open IS NOT NULL AND high IS NOT NULL AND low IS NOT NULL AND close IS NOT NULL\n                AND open>0 AND high>0 AND low>0 AND close>0\n                AND high>=greatest(open,low,close)\n                AND low<=least(open,high,close)) AS ohlc_valid,\n       bool_and(quote_asset_volume IS NOT NULL AND taker_buy_quote IS NOT NULL\n                AND quote_asset_volume>=0 AND taker_buy_quote>=0\n                AND taker_buy_quote<=quote_asset_volume) AS flow_valid,\n       sum(2*taker_buy_quote-quote_asset_volume)\n         / nullif(sum(quote_asset_volume),0) AS flow_imbalance,\n       sqrt(sum(power(ln(close/open),2))) AS realized_variation\nFROM bars_binance\nWHERE symbol=:symbol AND interval='1m' AND ts>=:start AND ts<:end\nGROUP BY 1 ORDER BY 1",
+  "table": "bars_binance",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT"
+  ],
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "builder": {
+    "path": "training/build_cross_alt_flow_leadership_relay_support.py",
+    "sha256": "2652e0eaa2548c684537ff6021b066031da4192fb3e884c2a4955889772e357b"
+  },
+  "features": {
+    "path": "data/cross_alt_flow_leadership_relay_sources_2023_2026/cross_alt_flow_leadership_relay_preentry_features.csv.gz",
+    "sha256": "3804762bcf4a28bba709a23944721d997d02502638440a8f7b03d17909b50a0e",
+    "rows": 31392
+  },
+  "candidate_outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "371f515e52832715bfc09dda079cc251e62a34db3ef71d000d3aa869044bd5ab"
+}

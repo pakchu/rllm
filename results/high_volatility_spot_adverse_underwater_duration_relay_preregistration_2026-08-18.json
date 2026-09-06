@@ -1,0 +1,135 @@
+{
+  "protocol_version": "high_volatility_spot_adverse_underwater_duration_relay_v1",
+  "policy_id": "HVSAUD-8",
+  "as_of_date": "2026-08-18",
+  "singleton": true,
+  "candidate_family": [
+    "HVSAUD-8"
+  ],
+  "candidate_family_size": 1,
+  "source_incidence_opened": false,
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A volatile completed BTC spot move that spends little uninterrupted time away from its running favorable close extreme is repeatedly discovering new cash prices rather than relying on one terminal impulse; when the full spot block and final two hours agree, follow that cash direction for eight hours.",
+    "side": "common strict sign of completed spot eight-hour and final-two-hour returns",
+    "why_distinct": "HVAUD is perpetual-only. HVSAUD independently computes running-extreme underwater duration on actual spot closes and uses perpetual variation solely as the requested volatile-regime gate. It uses no HVAUD event set, volume, flow, OI, funding, premium, options, fitted outcome, or promoted control.",
+    "why_low_gross9_overlap_is_plausible": "spot path-duration onsets are absent from Gross9 primitives"
+  },
+  "features": {
+    "variation_source": {
+      "path": "data/high_volatility_adverse_underwater_duration_sources_2023_2026/states.csv.gz",
+      "sha256": "50a1cd219dd54d7562a3a4216ef9a0305d349f459a2768cba529d2c2cf1127f6"
+    },
+    "decision_grid": "exact 00:00,08:00,16:00 UTC boundaries",
+    "spot_block": "480 exact coherent bars_binance_spot BTCUSDT one-minute rows [D-8h,D)",
+    "block_return": "log(last close/first open), strict nonzero",
+    "late_return": "log(last close/open at D-2h), same strict sign as block return",
+    "directional_underwater": "for positive side close strictly below running maximum close; for negative side close strictly above running minimum close",
+    "adverse_duration": "longest consecutive directional-underwater run divided by 480",
+    "duration_rank": "strict-prior midrank over at most 270 spot-valid blocks, minimum 180, current excluded; rank<=0.25",
+    "variation_gate": "frozen causal perpetual variation_rank>=0.65 at same decision",
+    "onset": "eligible now and immediately prior exact jointly valid block ineligible; missing prior cannot trigger",
+    "no_imputation": true
+  },
+  "policy": {
+    "duration_observations": 480,
+    "history_blocks": 270,
+    "minimum_history_blocks": 180,
+    "variation_rank_min": 0.65,
+    "duration_rank_max": 0.25,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "clock": {
+    "entry": "decision+5m exact BTCUSDT perpetual open",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open; exit first on equal entry",
+    "funding": "not signal input; exact settlements only after source and Gross9 pass"
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "gross9_novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_duration_tail",
+      "no_variation_gate",
+      "raw_duration_at_most_half",
+      "one_block_stale_geometry",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "table": "bars_binance_spot",
+    "symbol": "BTCUSDT",
+    "interval": "1m",
+    "window": [
+      "2023-04-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ],
+    "read_after_preregistration": true,
+    "execution_prices": "sealed until source and Gross9 pass"
+  },
+  "research_boundary": {
+    "prior_HVAUD_train_ratio_failure_known": true,
+    "HVAUD_event_set_reused": false,
+    "exact_spot_duration_incidence_or_outcomes_known": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "classification": "exploratory discovery; not fresh confirmatory evidence",
+    "selection_basis": "independent actual-cash running-extreme duration geometry"
+  },
+  "stopping_rule": "source, Gross9, train/test/eval/final; terminal first failure; no venue, duration formula, history, rank, variation, return confirmation, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "37d6920a5234cb8f7ee1d3741c765c827c1f1f72a176b26347b45e1a2047e308"
+}

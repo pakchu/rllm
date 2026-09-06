@@ -1,0 +1,163 @@
+{
+  "protocol_version": "high_volatility_counterattack_reversal_relay_v1",
+  "policy_id": "HVCOUNTER-R10-E5-8",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated completed realized variation, two consecutive hourly long real bodies of opposite color that finish at equal closes within the official causal tolerance identify a counterattack: the second initiative has fully opposed the first without extending the terminal price. Follow the official second-candle direction for eight hours.",
+    "side": "long for official bullish Counterattack output +1 and short for official bearish output -1",
+    "why_distinct": "Counterattack uses two separately lagged ten-body averages plus a five-range equal-close tolerance. It requires opposing long bodies but neither body/range containment, a multi-bar false breakout, a channel, nor a wide-range continuation. No volume, flow, OI, funding, fitted outcome, reused event set, or promoted control is used.",
+    "why_suited_to_volatile_regimes": "opposing initiative bodies around the same terminal price can resolve sharply when trailing twenty-four-hour realized variation ranks in its causal upper 35%",
+    "why_low_gross9_overlap_is_plausible": "asynchronous two-hour equal-close opposing-body clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact hourly UTC boundary",
+    "source_bar": "exact aggregation of 60 coherent BTCUSDT one-minute rows [T-1h,T)",
+    "candle_color": "white when close>=open and black otherwise, matching LEAN",
+    "body_long_averages": "first body compared with mean real body of its prior 10 hours; second body compared with mean real body of its prior 10 hours, including the first pattern body",
+    "equal_tolerance": "0.05 times mean high-low range of the 5 hours preceding the first pattern body",
+    "pattern": "official ready Counterattack output exactly +1 or -1",
+    "variation": "sqrt(sum squared completed five-minute open-to-close log returns over [T-24h,T)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 2160 earlier source-valid hourly decisions, minimum 720, current excluded; rank>=0.65",
+    "recursive_reset": "hour aggregation, all candle-setting totals, readiness, and variation history reset after any invalid completed source hour",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "hour boundary after completed second pattern body",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "hold": "8 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "body_long_average_period": 10,
+    "body_long_factor": 1.0,
+    "equal_average_period": 5,
+    "equal_factor": 0.05,
+    "indicator_period_hours": 12,
+    "variation_hours": 24,
+    "variation_history_decisions": 2160,
+    "minimum_variation_history_decisions": 720,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "no_long_body_requirements",
+      "opposing_bodies_without_equal_close",
+      "one_hour_stale_pattern",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "canonical_counterattack_definition_read": true,
+    "repository_counterattack_candidate_found": false,
+    "prior_wide_body_hikkake_three_inside_and_absorption_candidates_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "official LEAN Counterattack under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no timeframe, candle settings, inequalities, readiness, variation, side, hold, clock, subset, threshold, control, or other repair.",
+  "external_basis": {
+    "origin": "Counterattack candlestick pattern; QuantConnect LEAN canonical implementation",
+    "definition_source": "https://github.com/QuantConnect/Lean/blob/master/Indicators/CandlestickPatterns/Counterattack.cs",
+    "definition_source_sha256": "c1f58d4a53b931885765cbcbb0a75a3c7e9947d6bd01439739a861570b95818b",
+    "candle_settings_source": "https://github.com/QuantConnect/Lean/blob/master/Indicators/CandlestickPatterns/CandleSettings.cs",
+    "fixed_definition": "BodyLong is factor 1 times mean real body over 10 prior applicable candles; Equal is factor .05 times mean high-low range over 5 candles preceding the first pattern candle; first and second real bodies must each be strictly above their position-specific BodyLong averages, colors must oppose, and second close must lie inclusively within first close plus or minus Equal tolerance; output equals second color",
+    "warmup": "max(Equal 5, BodyLong 10)+1+1 = 12 completed hourly bars",
+    "selection_use": "official defaults, inequalities, output direction, and readiness only; no incidence or outcomes"
+  },
+  "manifest_hash": "b11b461d61bf79e6ba52920a598461e8d5b70aac25c9e47dcfa9da055c2f4c85"
+}

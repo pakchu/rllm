@@ -1,0 +1,40 @@
+{
+  "protocol_version": "hvcber_8_sources_v1",
+  "queries": {
+    "open_interest": "SELECT ts AS decision_time,sum_open_interest FROM open_interest_binance WHERE symbol='BTCUSDT' AND period='5m' AND ts>=:start AND ts<:end AND extract(minute FROM ts)=0 AND extract(second FROM ts)=0 AND extract(hour FROM ts) IN (0,8,16) ORDER BY ts",
+    "bars": "SELECT date_bin('8 hours',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00')+INTERVAL '8 hours' AS decision_time,symbol,sum(ln(close/open)) AS completed_return,sum(power(ln(close/open),2)) AS minute_squared_return,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol IN ('BTCUSDT','ETHUSDT') AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1,2 ORDER BY 1,2"
+  },
+  "query_sha256": {
+    "open_interest": "e69284774dffb4c371fc1ac1137a5853396a3b3c1dd92befdc4957c7b707649e",
+    "bars": "a152a7238a78c76e3eed3375ee5041f03346eefe13fd6ad1dd44be331cfdc601"
+  },
+  "tables": [
+    "open_interest_binance",
+    "bars_binance"
+  ],
+  "symbol": "BTCUSDT",
+  "window": [
+    "2020-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "physical_rows": {
+    "open_interest": 6234,
+    "bars": 11136
+  },
+  "builder": {
+    "path": "training/build_high_volatility_causal_btc_eth_leverage_consensus_relay_support.py",
+    "sha256": "cc191fcae97cd8567f0fb0896e1f7a57b0e24987743ce8d960b86b55cfa1c2ae"
+  },
+  "panel": {
+    "path": "data/high_volatility_causal_btc_eth_leverage_consensus_relay_sources_2020_2026/settlement_states.csv.gz",
+    "sha256": "7c7bd4224ebdd6d8994d410fbe9bd02fb9060c58d1b12ccec35c6dfeb60cddd1",
+    "rows": 6234,
+    "valid_rows": 3509
+  },
+  "outcomes_opened": false,
+  "execution_prices_opened": false,
+  "held_interval_funding_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "a2573a56b6e4029b4e2800136bc1abcc0476e55fdd215ad3477a4974d845daed"
+}

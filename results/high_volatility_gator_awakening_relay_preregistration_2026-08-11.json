@@ -1,0 +1,165 @@
+{
+  "protocol_version": "high_volatility_gator_awakening_relay_v1",
+  "policy_id": "HVGATOR-24",
+  "as_of_date": "2026-08-11",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "singleton": true,
+  "mechanism": {
+    "claim": "During elevated realized variation, a canonical Bill Williams Gator state whose two visible Alligator balance-line gaps simultaneously begin expanding while lips, teeth, and jaw are strictly directionally ordered marks an awakening multi-speed trend; follow the ordering for twenty-four hours.",
+    "side": "long when visible lips>teeth>jaw; short when visible lips<teeth<jaw, only at a fresh simultaneous expansion onset",
+    "why_distinct": "Gator compares two gaps among three differently smoothed and differently display-shifted median-price balance lines. MACD uses two unshifted exponential close averages and a signal line; RAVI uses absolute 7/65 simple-close separation; ordinary triple-average systems do not bind the canonical 13/8, 8/5, 5/3 SMMA shifts or simultaneous two-gap awakening. HVGATOR uses no volume, flow, OI, funding, fitted outcome, reused event, repair, or promoted control.",
+    "why_suited_to_volatile_regimes": "completed trailing twenty-four-hour realized variation must rank in its causal upper 35%, restricting awakening states to July-like auctions",
+    "why_low_gross9_overlap_is_plausible": "sparse four-hour shifted three-balance-line awakening clocks are absent from Gross9 primitives"
+  },
+  "features": {
+    "decision_grid": "every exact four-hour UTC boundary",
+    "source_bar": "exact aggregation of 240 coherent BTCUSDT one-minute rows [T-4h,T)",
+    "smma": "initial period simple mean followed by (previous_smma*(period-1)+current_median)/period without reset or imputation",
+    "visible_jaw": "raw SMMA(13) lagged eight completed bars",
+    "visible_teeth": "raw SMMA(8) lagged five completed bars",
+    "visible_lips": "raw SMMA(5) lagged three completed bars",
+    "upper_gap": "abs(visible_jaw-visible_teeth)",
+    "lower_gap": "abs(visible_teeth-visible_lips)",
+    "expanding": "both gaps strictly exceed their immediately prior valid values",
+    "awakening": "expanding now after the immediately prior valid state was not simultaneously expanding",
+    "direction": "strict complete ordering lips>teeth>jaw or lips<teeth<jaw",
+    "variation": "sqrt(sum squared completed five-minute open-to-close log returns over [T-24h,T)), finite strict positive",
+    "variation_rank": "strict-prior midrank over at most 180 earlier valid decisions, minimum 120, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "feature_available": "four-hour boundary after completed source bar; shifted lines use only older raw SMMAs",
+    "entry": "exact BTCUSDT open five elapsed minutes later",
+    "hold": "24 elapsed hours",
+    "reservation": "global half-open first-eligible reservation; exit first on equal open",
+    "gross_exposure": 0.5,
+    "funding": "not a signal input; exact settlements only after novelty passes"
+  },
+  "policy": {
+    "jaw_period": 13,
+    "jaw_shift": 8,
+    "teeth_period": 8,
+    "teeth_shift": 5,
+    "lips_period": 5,
+    "lips_shift": 3,
+    "variation_hours": 24,
+    "variation_history_decisions": 180,
+    "minimum_variation_history_decisions": 120,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp base and 10bp stress per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged candidate passes train, test, eval, final",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "single_gap_expansion",
+      "one_bar_stale_awakening",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "bars": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-04-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ],
+      "read_after_preregistration": true
+    },
+    "execution_prices": "sealed until source support and Gross9 novelty pass"
+  },
+  "research_boundary": {
+    "official_gator_definition_read": true,
+    "repository_gator_candidate_found": false,
+    "adjacent_macd_ravi_moving_average_outcomes_known": true,
+    "prior_event_sets_reused": false,
+    "prior_candidate_outcomes_used_to_set_formula_side_hold_or_clock": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "canonical visible Gator simultaneous-gap awakening under the requested high-variation regime"
+  },
+  "stopping_rule": "Terminal first failure; no SMMA initialization, period, display shift, gap formula, awakening, variation, side, hold, clock, subset, threshold, or control repair.",
+  "external_basis": {
+    "origin": "Bill Williams Gator Oscillator; official MetaTrader 5 indicator definition",
+    "definition_source": "https://www.metatrader5.com/en/terminal/help/indicators/bw_indicators/go",
+    "fixed_definition": "median=(high+low)/2; jaw=SMMA(13) shifted 8 bars to the future, teeth=SMMA(8) shifted 5, lips=SMMA(5) shifted 3; upper histogram=abs(jaw-teeth), lower magnitude=abs(teeth-lips)",
+    "causal_display_rule": "the value visible at decision bar T is the already-computed raw SMMA from T-shift; no future raw value is read",
+    "selection_use": "official median price, periods, shifts, gap formulas, and simultaneous expansion awakening interpretation only; no incidence or outcomes"
+  },
+  "manifest_hash": "336005e02a5f4ab3207ea93471d6305623dd56a8bf42f6a02e6a0ff145563b3f"
+}

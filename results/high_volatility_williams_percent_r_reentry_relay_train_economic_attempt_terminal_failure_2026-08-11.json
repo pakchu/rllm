@@ -1,0 +1,35 @@
+{
+  "protocol_version": "hvwpr_24_train_economic_attempt_terminal_failure_v1",
+  "policy_id": "HVWPR-24",
+  "stage": "train",
+  "evaluator_freeze": {
+    "path": "results/high_volatility_williams_percent_r_reentry_relay_economic_evaluator_freeze_2026-08-11.json",
+    "sha256": "242d3d56ec0c75fa247b1d53cad5ce91831d6d1c5c1758a1dc699c42a7cfcbb6"
+  },
+  "evaluator": {
+    "path": "training/evaluate_high_volatility_williams_percent_r_reentry_relay_economics.py",
+    "sha256": "9b697c2680919727b637fff7e001abdcecb22df4e7ce1b863e1af95918822db3"
+  },
+  "source_support": {
+    "path": "results/high_volatility_williams_percent_r_reentry_relay_support_2026-08-11.json",
+    "sha256": "399b3789f30a32f1f778e350739a3d7cfb26b91ac3ef161c9b874efd5b0704f5"
+  },
+  "novelty_authorization": {
+    "path": "results/high_volatility_williams_percent_r_reentry_relay_gross9_novelty_2026-08-11.json",
+    "sha256": "9a8488910d99923f0ebdf5d51fcf39ba60b96834be0d1bfdf029ae6f1cc474a0"
+  },
+  "attempted_command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python -B training/evaluate_high_volatility_williams_percent_r_reentry_relay_economics.py --stage train",
+  "outcomes_opened": true,
+  "economic_metrics_persisted": false,
+  "later_stage_outcomes_opened": false,
+  "failure": {
+    "type": "FileNotFoundError",
+    "missing_path": "data/high_volatility_williams_percent_r_reentry_relay_controls_2023_2026/one_bar_stale_cross.csv.gz",
+    "cause": "frozen evaluator expected one_bar_stale_cross while frozen source support authorizes one_bar_stale_reentry",
+    "failure_point": "after primary train simulation and before diagnostic-control completion/report write"
+  },
+  "decision": "terminal_reject_no_evaluator_repair_no_rerun",
+  "repair_authorized": false,
+  "successor_authorized": false,
+  "manifest_hash": "990bd9713602e0ddbb118bf57ab8eac4fb49eb48634aaff46c5d095fe103dcdf"
+}

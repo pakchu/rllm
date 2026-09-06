@@ -1,0 +1,44 @@
+{
+  "protocol_version": "rllm_state_card_ordinal_sft_rlvr_result_v1",
+  "as_of": "2026-08-19",
+  "preregistration": "results/rllm_alpha_state_card_ordinal_sft_rlvr_preregistration_2026-08-19.json",
+  "preregistration_sha256": "5a2de02edb71e10941674589bca1e29f97661d53d0d6e79706ee1ff599013563",
+  "sft": {
+    "sample512_accuracy": 0.236328125,
+    "adapter_sha256": "4ebad0d79c33d2be6f188004efc148817afbca76d82dec3fecbabc8ca717439c"
+  },
+  "rlvr": {
+    "steps": 64,
+    "max_reward_std": 1.067590370774269,
+    "max_gradient_norm": 12.124228477478027,
+    "adapter_sha256": "cc6f7c04a58656ef7dafdfcb42bd7495b32b729fc00bf662eac30878b15ff36c"
+  },
+  "evaluation": {
+    "num_samples": 512,
+    "accuracy": 0.14453125,
+    "confusion": {
+      "target=Q0|pred=Q2": 111,
+      "target=Q0|pred=Q3": 81,
+      "target=Q1|pred=Q2": 61,
+      "target=Q1|pred=Q3": 27,
+      "target=Q2|pred=Q2": 45,
+      "target=Q2|pred=Q3": 22,
+      "target=Q3|pred=Q2": 60,
+      "target=Q3|pred=Q3": 29,
+      "target=Q4|pred=Q2": 40,
+      "target=Q4|pred=Q3": 36
+    }
+  },
+  "sample_majority_accuracy": 0.375,
+  "checks": {
+    "reward_variance_positive": true,
+    "gradient_positive": true,
+    "accuracy_gt_sft": false,
+    "accuracy_gt_majority": false,
+    "full_oos_authorized": false
+  },
+  "decision": "reject_exact_ordinal_sft_rlvr_adapter",
+  "promotion": "rejected",
+  "next": "pairwise SFT->RLVR under a separately frozen verifier task; no ordinal reward retuning on exposed OOS",
+  "result_hash": "3d21538adf9c7351f644c93a7759498ec059ada3aed26ca7fd434458e86a1363"
+}

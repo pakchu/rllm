@@ -1,0 +1,136 @@
+{
+  "protocol_version": "pposm_symbolic_confidence_hybrid_result_v1",
+  "as_of": "2026-08-19",
+  "status": "pass_contaminated_research_not_deployment_authorization",
+  "artifacts": {
+    "preregistration": {
+      "path": "results/pposm_symbolic_confidence_hybrid_preregistration_2026-08-19.json",
+      "sha256": "8fdac6caa76095ca8c4f1b4b24bc6a7ca66bc7e456b6a4f9f575108a0ab0bdc5"
+    },
+    "adapter": {
+      "path": "checkpoints/pposm_symbolic_router_balanced_sft_rlvr_s64_2026-08-19/adapter_model.safetensors",
+      "sha256": "ccbe5c8cd81b543764c4beedc5ba34741cbba6a3c4e4023bdff01a3d2fe786cb"
+    },
+    "train_scores": {
+      "path": "results/pposm_symbolic_router_train_scores_2026-08-19.jsonl",
+      "sha256": "a0e809e01be1a67675f391f67053647d4f1ab28c232452fa3f941e8ce49732b6"
+    },
+    "threshold": {
+      "path": "results/pposm_symbolic_confidence_threshold_2026-08-19.json",
+      "sha256": "2f8b4d341c16e8603e95591ba5034cfa5bc88743361215e927c6ef982b16ae8e"
+    },
+    "oos_scores": {
+      "path": "results/pposm_symbolic_router_oos_scores_2026-08-19.jsonl",
+      "sha256": "d231bb0d99847a31388f720c627e61ba793447542723c1434372673fa2dbede1"
+    },
+    "predictions": {
+      "path": "results/pposm_symbolic_confidence_hybrid_oos_predictions_2026-08-19.jsonl",
+      "sha256": "edf4e4b6f5c73aeb3cbbc2c8a238c526d58f215e44ccfd6f0e2e2a6b104b6385"
+    },
+    "backtest": {
+      "path": "results/pposm_symbolic_confidence_hybrid_backtest_2026-08-19.json",
+      "sha256": "98d9ac739d40bd698637b14b14201bb70710cf886c7ba7d9ef3f1842820bbeec"
+    }
+  },
+  "threshold": {
+    "accuracy": 1.0,
+    "eligible": true,
+    "model_authoritative": 148,
+    "threshold": 0.15234375
+  },
+  "authority": {
+    "authoritative_routes": [
+      "TP12",
+      "TP4"
+    ],
+    "model_authoritative": 67,
+    "prediction_counts": {
+      "SKIP": 15,
+      "TP12": 107,
+      "TP4": 35
+    },
+    "rows": 157,
+    "threshold": 0.15234375
+  },
+  "schedule": {
+    "baseline_trade_count": 48,
+    "common_trade_count": 48,
+    "exact_sequence_match": true,
+    "precision_vs_baseline": 1.0,
+    "predicted_trade_count": 48,
+    "recall_vs_baseline": 1.0
+  },
+  "combined_base": {
+    "equity_stats": {
+      "absolute_return_pct": 47.133678626957256,
+      "cagr_pct": 17.32040325996249,
+      "cagr_to_strict_mdd": 3.029691776281298,
+      "longs": 48,
+      "mean_gross_bps": 178.04649476774986,
+      "mean_net_bps": 81.56714708604594,
+      "shorts": 0,
+      "strict_mdd_pct": 5.716886250792774,
+      "trades": 48,
+      "win_rate": 0.7708333333333334
+    },
+    "one_side_cost_rate": 0.0006,
+    "one_sided_utc_week_sign_flip": {
+      "cluster_count": 36,
+      "observed_mean_return": 0.008156714708604592,
+      "p_value_one_sided": 0.00014999850001499985,
+      "permutations": 100000,
+      "seed": 20260819
+    }
+  },
+  "combined_stress": {
+    "equity_stats": {
+      "absolute_return_pct": 44.33454999451663,
+      "cagr_pct": 16.3919631033248,
+      "cagr_to_strict_mdd": 2.7582038030084446,
+      "longs": 48,
+      "mean_gross_bps": 178.04649476774986,
+      "mean_net_bps": 77.53371358086127,
+      "shorts": 0,
+      "strict_mdd_pct": 5.9429847371849975,
+      "trades": 48,
+      "win_rate": 0.75
+    },
+    "one_side_cost_rate": 0.001,
+    "one_sided_utc_week_sign_flip": {
+      "cluster_count": 36,
+      "observed_mean_return": 0.007753371358086125,
+      "p_value_one_sided": 0.00022999770002299976,
+      "permutations": 100000,
+      "seed": 20260819
+    }
+  },
+  "windows": {
+    "eval_2025": {
+      "base_return_pct": 6.775653769630519,
+      "stress_return_pct": 6.3066857907466245
+    },
+    "holdout_2026": {
+      "base_return_pct": 13.690830148136524,
+      "stress_return_pct": 12.829711785077835
+    },
+    "test_2024": {
+      "base_return_pct": 21.20329216980872,
+      "stress_return_pct": 20.333415826948876
+    }
+  },
+  "checks": {
+    "train_accuracy_100": true,
+    "oos_authoritative_min20": true,
+    "authoritative_routes_min2": true,
+    "every_window_base_stress_positive": true,
+    "combined_mdd_le15": true,
+    "combined_ratio_ge3": true,
+    "combined_p_le20": true,
+    "schedule_recall_ge95": true,
+    "byte_replay_identical": true
+  },
+  "verifier_verdict": "PASS iteration12; broader goal complete only as contaminated research result",
+  "contamination_caveat": "Underlying PPOSM OOS economics were already known. New train-only confidence threshold and hybrid authority interaction were frozen before OOS score opening, but this is not pristine OOS or deployment authorization.",
+  "deployment_next": "fresh forward shadow/live-parity period required before deployment",
+  "result_hash": "4e2fda6fa9e6edce20091de199dd579bda111bad41c740d43098b6181fa770f8"
+}

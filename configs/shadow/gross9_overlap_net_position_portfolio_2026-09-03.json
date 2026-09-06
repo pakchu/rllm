@@ -1,0 +1,166 @@
+{
+  "name": "gross9_overlap_net_position_portfolio_2026_09_03",
+  "policy_id": "G9-OVERLAP-NET-PORT-1",
+  "successor_of": "G9-OVERLAP-PORT-1",
+  "status": "train_selected_shadow_only_holdout_oos_unopened",
+  "as_of": "2026-09-03",
+  "shadow_only": true,
+  "live_capital_authorized": false,
+  "order_submission_enabled": false,
+  "position_risk": {
+    "direction": "sign(sum(active sleeve side * sleeve weight))",
+    "size": "abs(sum(active sleeve side * sleeve weight))",
+    "long_short_offset_for_risk": true,
+    "gross_risk_definition": "absolute aggregate signed position; long and short offset fully",
+    "execution_cost_definition": "absolute aggregate net quantity change"
+  },
+  "sleeve_weights": {
+    "HVBLIC-6": 0.2,
+    "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8": 0.25,
+    "HVRDBR-6": 0.15,
+    "HVUI-12": 0.1
+  },
+  "selected_weight_sum": 0.7,
+  "selection_gate_policy": {
+    "waived_rejection_gates": [
+      "turnover_cap",
+      "sleeve_turnover_share_cap"
+    ],
+    "waiver_reason": "explicit user instruction: operating-cost gates are not required",
+    "cost_metrics_retained_as_disclosure": true,
+    "replaced_legacy_risk_gates": {
+      "mean_gross_exposure_cap": "mean_abs_net_position_cap",
+      "max_gross_exposure_cap": "max_abs_net_position_cap"
+    },
+    "net_position_risk_caps": {
+      "mean_abs_net_position": 0.85,
+      "max_abs_net_position": 1.0
+    },
+    "retained_rejection_gates": [
+      "source_trade_count_min",
+      "month_concentration_max",
+      "absolute_return_positive",
+      "cagr_to_strict_mdd_min",
+      "strict_mdd_max",
+      "stress_absolute_return_positive",
+      "stress_cagr_to_strict_mdd_min",
+      "mean_gross_edge_min_20bp",
+      "both_chronological_halves_positive",
+      "active_iso_weeks_min",
+      "base_positive_months_min_4_of_5",
+      "stress_positive_months_min_3_of_5",
+      "worst_stress_month_min_minus_2_5",
+      "mean_abs_net_position_cap",
+      "max_abs_net_position_cap"
+    ],
+    "non_waived_gate_failures": [],
+    "all_retained_rejection_gates_passed": true,
+    "train_selected_after_user_waiver": true,
+    "original_preregistered_gate_result_preserved_as_failure": true
+  },
+  "net_position_risk_metrics": {
+    "max_abs_net_position": 0.6,
+    "mean_abs_net_position": 0.07363834422657953,
+    "legacy_max_nonnet_gross": 0.7,
+    "legacy_mean_nonnet_gross": 0.0909041394335512,
+    "max_risk_reduction_vs_legacy_share": 0.1428571428571428,
+    "mean_risk_reduction_vs_legacy_share": 0.1899340922708208
+  },
+  "selection_invariance_evidence": {
+    "scope": "frozen Jul-Nov proxy search and 64 exact-ledger finalists only",
+    "exact_finalists_checked": 64,
+    "exact_score_formula_changed": false,
+    "legacy_exposure_gate_failures": 0,
+    "turnover_gate_passes": 0,
+    "current_policy_gate_passes": 64,
+    "rank1_legacy_exposure_gates_passed": true,
+    "reason": "all exact finalists passed the stricter legacy non-net exposure gates and every other retained rejection gate, while the exact score is unchanged; replacing risk with net-position caps and removing the two cost gates preserves the frozen raw rank1"
+  },
+  "economic_snapshot": {
+    "return_pct": 11.063262930450101,
+    "cagr_to_strict_mdd": 9.944970428302364,
+    "strict_mdd_pct": 2.8623521971300137,
+    "stress_return_pct": 7.2967202235613815,
+    "sleeve_intervals": 260,
+    "long_intervals": 124,
+    "short_intervals": 136
+  },
+  "operating_cost_disclosure": {
+    "measurement_window_days": 153,
+    "atomic_transitions": 461,
+    "nonzero_net_execution_events": 461,
+    "nonzero_net_execution_events_per_day": 3.0130718954248366,
+    "hypothetical_pre_net_turnover_weight": 93.60000000000004,
+    "actual_aggregate_net_turnover_weight": 86.27539106373946,
+    "actual_aggregate_net_turnover_weight_per_day": 0.5638914448610423,
+    "annualized_aggregate_net_turnover_x": 205.96135023549567,
+    "annualized_turnover_cap_x": 100.0,
+    "turnover_cap_multiple": 2.059613502354957,
+    "turnover_excess_over_cap_x": 105.96135023549567,
+    "turnover_cap_weight_per_day": 0.2737850787132101,
+    "turnover_excess_weight_per_day": 0.29010636614783214,
+    "netting_savings_share": 0.07825436897714289,
+    "base_cost_each_notional_side_bp": 6,
+    "base_fee_cash": 5443.771147858756,
+    "base_fee_pct_of_initial_equity": 5.443771147858756,
+    "base_funding_cash_received": 77.08133088846557,
+    "base_fee_less_funding_cash": 5366.689816970291,
+    "base_fee_less_funding_pct_of_initial_equity": 5.366689816970291,
+    "stress_cost_each_notional_side_bp": 10,
+    "stress_fee_cash": 8916.875378784229,
+    "stress_fee_pct_of_initial_equity": 8.91687537878423,
+    "stress_funding_cash_received": 75.46236868791497,
+    "stress_fee_less_funding_cash": 8841.413010096314,
+    "stress_fee_less_funding_pct_of_initial_equity": 8.841413010096314,
+    "max_single_sleeve_pre_net_turnover_share": 0.41452991452991433,
+    "single_sleeve_share_cap": 0.4,
+    "historical_frozen_failed_gates": [
+      "turnover_cap",
+      "sleeve_turnover_share_cap"
+    ],
+    "current_rejection_gates": [],
+    "classification": "high_cost_disclosure_not_rejection",
+    "risk_cost_separation": "opposite positions reduce position risk, but fees are charged whenever aggregate net quantity changes; small net exposure therefore does not imply low turnover",
+    "per_sleeve": [
+      {
+        "sleeve_id": "HVBLIC-6",
+        "weight": 0.2,
+        "intervals": 97,
+        "hypothetical_pre_net_turnover_weight": 38.800000000000004,
+        "pre_net_turnover_share": 0.41452991452991456
+      },
+      {
+        "sleeve_id": "HVCPF17-8__ASYNC_ACTIVE_OPPOSITE_VETO_6H__HVDIMIO-8",
+        "weight": 0.25,
+        "intervals": 52,
+        "hypothetical_pre_net_turnover_weight": 26.0,
+        "pre_net_turnover_share": 0.27777777777777773
+      },
+      {
+        "sleeve_id": "HVRDBR-6",
+        "weight": 0.15,
+        "intervals": 66,
+        "hypothetical_pre_net_turnover_weight": 19.8,
+        "pre_net_turnover_share": 0.21153846153846154
+      },
+      {
+        "sleeve_id": "HVUI-12",
+        "weight": 0.1,
+        "intervals": 45,
+        "hypothetical_pre_net_turnover_weight": 9.0,
+        "pre_net_turnover_share": 0.09615384615384615
+      }
+    ]
+  },
+  "source_selection": {
+    "path": "results/gross9_overlap_portfolio_train_selection_2026-09-03.json",
+    "sha256": "a197cbb568e888e82edeca01e2108fad2588e42eb9be74fa9c213a92c33caa8c",
+    "manifest_hash": "00663b4e9112d02c6a9639e53fb490404a95ab59a62ed730b5eb9f213f876c21"
+  },
+  "evidence_boundary": {
+    "new_market_or_funding_rows_opened": 0,
+    "december_holdout_opened": false,
+    "oos_opened": false
+  },
+  "protocol_hash": "7cfa3b7fc34acbace90db391bab528502a79c6b594126c8e3502925f252b6c34"
+}

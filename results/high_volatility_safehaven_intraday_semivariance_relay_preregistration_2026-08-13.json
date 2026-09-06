@@ -1,0 +1,166 @@
+{
+  "protocol_version": "high_volatility_safehaven_intraday_semivariance_relay_v1",
+  "policy_id": "HVSIS-8",
+  "slug": "high_volatility_safehaven_intraday_semivariance_relay",
+  "as_of_date": "2026-08-13",
+  "singleton": true,
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "gross9_rows_opened": false,
+  "mechanism": {
+    "claim": "A completed London session in which minute-level safe-haven strengthening variance dominates weakening variance across both JPY and CHF identifies broad defensive hedging pressure; the opposite identifies hedge release. During locally elevated BTC variation, BTC relays in the opposite direction of safe-haven pressure for eight hours.",
+    "side": "negative strict sign of the pooled JPY-plus-CHF safe-haven semivariance imbalance",
+    "why_distinct": "Dollar breadth uses session endpoint directions; FX synchronization uses correlation; HVSCRD uses a JPY-minus-CHF standardized endpoint return; HVSVL chooses the higher-variation pair. HVSIS instead pools both safe havens and decomposes every completed minute into strengthening versus weakening quadratic variation. It uses no endpoint-return tail, pair leader, BTC return direction, fitted outcome, reused event set, or promoted control.",
+    "why_suited_to_volatile_regimes": "BTC trailing 24-hour realized variation must rank in the upper 35 percent against the 20 strictly prior source-valid sessions, adapting causally to local volatility regimes such as July-like transitions",
+    "why_low_gross9_overlap_is_plausible": "a fixed 13:05 UTC external-FX intraday semivariance clock is absent from Gross9 primitives"
+  },
+  "features": {
+    "fx_session": "exact observed bars_polygon one-minute rows during weekday [07:00,13:00) UTC",
+    "session_valid": "each pair has at least 330 distinct minutes, first no later than 07:05, last no earlier than 12:55, every OHLC finite positive and coherent; no imputation",
+    "minute_safehaven_return": "negative log(close/open) for each exact observed USDJPY and USDCHF minute",
+    "strengthening_semivariance": "sum squares of strictly positive minute_safehaven_return across both pairs",
+    "weakening_semivariance": "sum squares of strictly negative minute_safehaven_return across both pairs",
+    "semivariance_imbalance": "(strengthening_semivariance-weakening_semivariance)/(strengthening_semivariance+weakening_semivariance); denominator strict positive and numerator strict nonzero",
+    "imbalance_rank": "strict-prior midrank of absolute semivariance_imbalance over at most 60 prior jointly valid sessions, minimum 40, current excluded; rank>=0.65",
+    "btc_realized_variation": "sqrt(sum squared exact BTC one-minute log(close/open) returns over [D-24h,D))",
+    "variation_rank": "strict-prior midrank over the 20 prior source-valid weekday decisions, minimum 15, current excluded; rank>=0.65",
+    "no_imputation": true
+  },
+  "clock": {
+    "decision": "exact weekday D 13:00 UTC after both sessions complete",
+    "entry": "exact BTCUSDT perpetual D 13:05 UTC open",
+    "side": "negative semivariance_imbalance sign",
+    "hold": "8 elapsed hours",
+    "reservation": "global chronological half-open; exit first on equal open",
+    "split_crossing_action": "skip",
+    "gross_exposure": 0.5,
+    "funding": "not signal input; exact settlements only after novelty"
+  },
+  "policy": {
+    "session_start_utc": "07:00",
+    "session_end_utc": "13:00",
+    "minimum_session_minutes": 330,
+    "imbalance_prior_sessions": 60,
+    "imbalance_minimum_sessions": 40,
+    "imbalance_rank_min": 0.65,
+    "variation_prior_sessions": 20,
+    "variation_minimum_sessions": 15,
+    "variation_rank_min": 0.65,
+    "entry_delay_minutes": 5,
+    "hold_hours": 8,
+    "leverage": 0.5,
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001
+  },
+  "stages": {
+    "train": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "test": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "final": [
+      "2026-01-01T00:00:00Z",
+      "2026-08-01T00:00:00Z"
+    ]
+  },
+  "source_support_gates": {
+    "minimum_events": {
+      "train": 8,
+      "test": 12,
+      "eval": 12,
+      "final": 8
+    },
+    "minority_side_share_min": 0.2,
+    "max_month_share": 0.45
+  },
+  "novelty_gates": {
+    "exact_entry_jaccard_max": 0.1,
+    "candidate_near_6h_share_max": 0.35,
+    "occupied_5m_bar_jaccard_max": 0.25,
+    "absolute_signed_exposure_pearson_max": 0.35,
+    "must_pass_before_economics": true
+  },
+  "economic_gates": {
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "mean_gross_underlying_min_bp": 20.0,
+    "weekly_signflip_one_sided_p_max": 0.1,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "each_calendar_half_positive": true,
+    "stop_on_first_failure": true,
+    "accounting": "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+  },
+  "post_stage_volatility_audit": {
+    "prerequisite": "unchanged all-stage pass",
+    "rv20_q90_entry_filter": false,
+    "minimum_q90_trades": 8,
+    "candidate_q90_absolute_return_positive": true,
+    "identical_clock_forced_long_residual_positive": true
+  },
+  "diagnostic_controls": {
+    "names": [
+      "no_variation_gate",
+      "no_imbalance_tail",
+      "JPY_only",
+      "CHF_only",
+      "one_session_stale_imbalance",
+      "direction_flip",
+      "forced_long"
+    ],
+    "cannot_be_promoted": true
+  },
+  "source_plan": {
+    "fx": {
+      "table": "bars_polygon",
+      "symbols": [
+        "USDJPY",
+        "USDCHF"
+      ],
+      "interval": "1m",
+      "columns": [
+        "ts",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2026-08-01T00:00:00Z"
+      ]
+    },
+    "btc": {
+      "table": "bars_binance",
+      "symbol": "BTCUSDT",
+      "interval": "1m",
+      "completed_variation_only": true
+    },
+    "read_after_preregistration_commit": true,
+    "execution_prices": "sealed until source and novelty pass"
+  },
+  "research_boundary": {
+    "prior_fx_family_outcomes_known": true,
+    "repository_exact_safehaven_intraday_semivariance_event_found": false,
+    "prior_event_sets_or_controls_reused": false,
+    "candidate_incidence_opened": false,
+    "postentry_return_or_pnl_opened": false,
+    "gross9_rows_opened": false,
+    "candidate_count": 1,
+    "grid": false,
+    "repair_of_prior_candidate": false,
+    "promoted_prior_control": false,
+    "selection_basis": "independent pooled intraday safehaven semivariance mechanism with causal local-volatility state"
+  },
+  "stopping_rule": "terminal first failure; no pair universe, session, minute-return law, semivariance formula, histories, ranks, side, clock, hold, subset, comparator, or control repair",
+  "manifest_hash": "2bffc61ecef0aa9e1ff0c007d14d4b45ea647bbcdc4b1ef602ef8527a0a5acf6"
+}

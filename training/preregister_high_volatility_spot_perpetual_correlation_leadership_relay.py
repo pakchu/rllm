@@ -1,0 +1,217 @@
+"""Outcome-blind preregistration for HVSPCL-8."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+POLICY_ID = "HVSPCL-8"
+SLUG = "high_volatility_spot_perpetual_correlation_leadership_relay"
+DEFAULT_OUTPUT = Path(f"results/{SLUG}_preregistration_2026-08-13.json")
+
+
+def canonical_hash(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": f"{SLUG}_v1",
+        "policy_id": POLICY_ID,
+        "slug": SLUG,
+        "as_of_date": "2026-08-13",
+        "singleton": True,
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "gross9_rows_opened": False,
+        "mechanism": {
+            "claim": (
+                "When completed Binance spot returns predict the next perpetual minute more "
+                "strongly than perpetual returns predict the next spot minute, cash price "
+                "discovery is leading leverage. During elevated variation, a fresh extreme "
+                "spot-lead state with final-hour venue agreement should relay in that common "
+                "direction for eight hours."
+            ),
+            "side": "common strict sign of completed final-hour spot and perpetual returns",
+            "why_distinct": (
+                "HVSPSTL counts categorical sign-transition hits; HVSPER fits level-spread "
+                "error correction; HVSCTBA estimates same-minute sign-conditioned betas; spot "
+                "flow and first-passage candidates use volume or barrier timing. HVSPCL uses "
+                "the difference between two directed lag-one Pearson correlations of continuous "
+                "open-to-close minute returns, with no level, sign discretization, flow, volume, "
+                "funding, OI, fitted outcome, reused event set, or promoted control."
+            ),
+            "why_suited_to_volatile_regimes": (
+                "completed perpetual variation must occupy its causal upper 35 percent"
+            ),
+            "why_low_gross9_overlap_is_plausible": (
+                "hourly false-to-true continuous cash-leadership onsets are absent from Gross9 primitives"
+            ),
+        },
+        "features": {
+            "decision_grid": "every exact UTC hour D",
+            "block": (
+                "360 exact aligned unique coherent BTCUSDT spot and perpetual one-minute rows "
+                "[D-6h,D)"
+            ),
+            "minute_return": "log(close/open) independently by venue for each completed minute",
+            "spot_leads_perpetual": "Pearson corr(spot_return[t], perpetual_return[t+1]) over 359 pairs",
+            "perpetual_leads_spot": "Pearson corr(perpetual_return[t], spot_return[t+1]) over 359 pairs",
+            "correlation_validity": (
+                "all four paired vectors finite with strict positive sample variance; no imputation"
+            ),
+            "leadership_advantage": (
+                "spot_leads_perpetual minus perpetual_leads_spot, finite strict positive"
+            ),
+            "leadership_rank": (
+                "strict-prior midrank over at most 2160 earlier source-valid positive advantages, "
+                "minimum 1440, current excluded; rank>=0.80"
+            ),
+            "perpetual_variation": (
+                "sqrt(sum squared 360 perpetual minute returns), finite strict positive"
+            ),
+            "variation_rank": (
+                "strict-prior midrank over the same 2160/1440 source-valid history, current "
+                "excluded; rank>=0.65"
+            ),
+            "final_hour_returns": (
+                "sum of final 60 completed minute returns independently by venue"
+            ),
+            "direction_confirmation": "both final-hour returns have one strict nonzero sign",
+            "eligible_state": "leadership and variation ranks pass with direction confirmation",
+            "onset": (
+                "eligible now and immediately preceding exact source-valid hourly decision "
+                "ineligible; missing prior cannot trigger"
+            ),
+            "no_imputation": True,
+        },
+        "clock": {
+            "decision": "D after both completed six-hour paths are available",
+            "entry": "exact BTCUSDT perpetual D+5m open",
+            "side": "common final-hour venue direction",
+            "hold": "8 elapsed hours",
+            "reservation": "global chronological half-open; exit first on equal open",
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+            "funding": "not signal input; exact settlements only after novelty",
+        },
+        "policy": {
+            "window_minutes": 360,
+            "lag_minutes": 1,
+            "history_hours": 2160,
+            "minimum_history_hours": 1440,
+            "leadership_rank_min": 0.80,
+            "variation_rank_min": 0.65,
+            "onset_required": True,
+            "entry_delay_minutes": 5,
+            "hold_hours": 8,
+            "leverage": 0.5,
+            "base_cost_per_notional_side": 0.0006,
+            "stress_cost_per_notional_side": 0.001,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.2,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.1,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.1,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding, 6bp/10bp per notional side, every held 5m "
+                "favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "post_stage_volatility_audit": {
+            "prerequisite": "unchanged all-stage pass",
+            "rv20_q90_entry_filter": False,
+            "minimum_q90_trades": 8,
+            "candidate_q90_absolute_return_positive": True,
+            "identical_clock_forced_long_residual_positive": True,
+        },
+        "diagnostic_controls": {
+            "names": [
+                "no_leadership_tail",
+                "no_variation_gate",
+                "same_minute_correlation",
+                "one_hour_stale_leadership",
+                "direction_flip",
+                "forced_long",
+            ],
+            "cannot_be_promoted": True,
+        },
+        "source_plan": {
+            "spot": {"table": "bars_binance_spot", "symbol": "BTCUSDT"},
+            "perpetual": {"table": "bars_binance", "symbol": "BTCUSDT"},
+            "interval": "1m",
+            "columns": ["ts", "open", "high", "low", "close"],
+            "window": ["2023-04-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+            "read_after_preregistration_commit": True,
+            "execution_prices": "sealed until source and novelty pass",
+        },
+        "research_boundary": {
+            "prior_spot_perpetual_and_alt_leadership_results_known": True,
+            "repository_exact_continuous_spot_perpetual_lag_correlation_candidate_found": False,
+            "prior_event_sets_or_controls_reused": False,
+            "prior_results_used_to_set_formula_ranks_side_hold_or_clock": False,
+            "candidate_incidence_opened": False,
+            "postentry_return_or_pnl_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+            "selection_basis": "independent continuous directed cross-venue price-discovery mechanism",
+        },
+        "stopping_rule": (
+            "terminal first failure; no venue, return definition, window, lag, correlation, "
+            "rank, variation, confirmation, onset, side, clock, hold, subset, threshold, "
+            "comparator, or control repair"
+        ),
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(value: dict[str, Any]) -> None:
+    core = {key: item for key, item in value.items() if key != "manifest_hash"}
+    if value.get("manifest_hash") != canonical_hash(core) or value != build():
+        raise RuntimeError("HVSPCL preregistration drift")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    payload = build()
+    validate(payload)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False) + "\n").encode()
+    if args.output.exists() and args.output.read_bytes() != encoded:
+        raise RuntimeError(f"refusing overwrite {args.output}")
+    args.output.write_bytes(encoded)
+    print(args.output)

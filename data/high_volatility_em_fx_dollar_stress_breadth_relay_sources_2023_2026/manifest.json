@@ -1,0 +1,24 @@
+{
+  "protocol_version": "hvemfx_12_source_v1",
+  "fx_query": "SELECT date_trunc('day',ts) AS source_day,(array_agg(open ORDER BY ts))[1] AS session_open,max(high) AS session_high,min(low) AS session_low,(array_agg(close ORDER BY ts DESC))[1] AS session_close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_polygon WHERE symbol=:symbol AND interval='1m' AND ts>=:start AND ts<:end AND extract(isodow from ts) BETWEEN 1 AND 5 AND ts::time<TIME '22:30' GROUP BY 1 ORDER BY 1",
+  "btc_query": "SELECT date_bin('5 minutes',ts,TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,(array_agg(open ORDER BY ts))[1] AS open,max(high) AS high,min(low) AS low,(array_agg(close ORDER BY ts DESC))[1] AS close,count(*) AS source_rows,count(DISTINCT ts) AS distinct_rows,min(ts) AS first_ts,max(ts) AS last_ts,bool_and(open>0 AND high>0 AND low>0 AND close>0 AND high>=greatest(open,close,low) AND low<=least(open,close,high)) AS coherent FROM bars_binance WHERE symbol='BTCUSDT' AND interval='1m' AND ts>=:start AND ts<:end GROUP BY 1 ORDER BY 1",
+  "query_sha256": "8768ab8082fbf9dcb50dcfcab5b524cef749e490d630118812798a2a8fbed5d5",
+  "window": [
+    "2023-01-01T00:00:00+00:00",
+    "2026-08-01T00:00:00+00:00"
+  ],
+  "builder": {
+    "path": "training/build_high_volatility_em_fx_dollar_stress_breadth_relay_support.py",
+    "sha256": "77d61104c1cc4590a233145d29fad098948e507063f35ac4795c00fd5d4692fb"
+  },
+  "panel": {
+    "path": "data/high_volatility_em_fx_dollar_stress_breadth_relay_sources_2023_2026/scheduled_em_fx_states.csv.gz",
+    "sha256": "07a538d69b0e3e64692348cf2a88a7ab91ad59db3563cedb3e47b1b94d526660",
+    "rows": 934,
+    "valid_rows": 372
+  },
+  "outcomes_opened": false,
+  "gross9_rows_opened": false,
+  "no_imputation": true,
+  "manifest_hash": "ddae3ef589c4491111ac1ca374bdc49bf3de08a43d4849308013c1b2576073ec"
+}

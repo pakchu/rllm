@@ -1,0 +1,204 @@
+"""Outcome-blind preregistration for BCPPSR-ASYM."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_OUTPUT = Path(
+    "results/bocpd_premium_stress_asymmetric_relay_preregistration_2026-08-09.json"
+)
+SOURCE_BINDINGS = {
+    "results/bocpd_state_gated_alpha_scan_2026-07-13.json": "cf526fe824ae7e1cd983c2fe2c921152ed0a3b57f55cfde729b5a2fdf7b640fa",
+    "training/search_bocpd_state_gated_alpha.py": "43be4c2bc5f91562bdfe05bd829b31024c7028c93d9881fe9fd27a4fe8653ac6",
+    "training/search_low_corr_feature_alpha.py": "293d6871c80bd5a22110bef6158a9c52bb24befecd67dd957a72b55d79bf6374",
+    "training/portfolio_opt_new_alpha_pool.py": "88434d2aefafd763a6b09d2ad78b4b77dd493e4102b696e80cc53e67437e91fa",
+    "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+    "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7",
+}
+
+
+def canonical_hash(payload: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    ).hexdigest()
+
+
+def build() -> dict[str, Any]:
+    core = {
+        "protocol_version": "bocpd_premium_stress_asymmetric_relay_v1",
+        "policy_id": "BCPPSR-ASYM",
+        "as_of_date": "2026-08-09",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "singleton": True,
+        "mechanism": {
+            "claim": (
+                "Funding or premium discounts with positive momentum map long only in "
+                "historically favorable causal BOCPD return/flow regimes. Deep premium "
+                "panic or joint BTC drawdown and kimchi unwind maps short. The relay is "
+                "designed to stay active during volatile directional state transitions."
+            ),
+            "why_distinct": (
+                "The long clock is the previously frozen BOCPD-gated minimal funding/"
+                "premium expert; the short clock is the frozen premium-or-kimchi stress "
+                "union. Their globally reserved composition has not been evaluated and "
+                "does not alter any terminal candidate threshold, hold, side, or control."
+            ),
+            "why_suited_to_volatile_regimes": (
+                "BOCPD run-length state changes condition upside exposure while the short "
+                "state explicitly requires multi-day derivatives or cross-venue stress"
+            ),
+        },
+        "bocpd_contract": {
+            "hourly_inputs": ["ret1", "flow24"],
+            "standardization_mean": [5.04681791469994e-05, -0.0032722758619435966],
+            "standardization_std": [0.0074313883252710615, 0.02578054723970236],
+            "hazard_lambda_hours": 336,
+            "max_run_length": 1000,
+            "prior_kappa": 0.1,
+            "prior_alpha": 2.0,
+            "prior_beta": 1.0,
+            "short_run_horizon_hours": 6,
+            "state_thresholds": {
+                "primary_low": -0.04305213207251328,
+                "primary_high": 0.043264074149964006,
+                "short_mass_high": 0.007773205608742969,
+                "secondary_high": -0.01810828307604237,
+            },
+            "allowed_states": [1, 2, 3, 4, 6, 7, 8, 9],
+            "causal_filter": "Adams-MacKay Normal-Gamma filter over completed hourly observations",
+            "no_refit_or_state_reselection": True,
+        },
+        "frozen_states": {
+            "long_bocpd_funding_premium": {
+                "base_logic": "OR across components; AND within component; then BOCPD state must be allowed",
+                "components": {
+                    "funding10_trend70": [
+                        {"feature": "funding_rate", "op": "<=", "threshold": -0.0000167},
+                        {"feature": "trend_96", "op": ">=", "threshold": 0.007485218212390219},
+                    ],
+                    "premium20_mom90": [
+                        {"feature": "premium_index_change", "op": "<=", "threshold": -0.00023471},
+                        {"feature": "htf_1d_return_4", "op": ">=", "threshold": 0.0940403008961932},
+                    ],
+                },
+                "side": 1,
+                "hold_hours": 48,
+            },
+            "short_premium_kimchi_stress": {
+                "base_logic": "OR across components; AND within component",
+                "components": {
+                    "premium_panic": [
+                        {"feature": "htf_3d_range_pos", "op": "<=", "threshold": -0.5114186851},
+                        {"feature": "premium_index_zscore", "op": "<=", "threshold": -1.47209312},
+                    ],
+                    "kimchi_unwind": [
+                        {"feature": "htf_3d_return_1", "op": "<=", "threshold": -0.0303196833},
+                        {"feature": "kimchi_premium_change", "op": "<=", "threshold": -0.0046123752},
+                    ],
+                },
+                "side": -1,
+                "hold_hours": 24,
+            },
+            "decision_grid": "completed UTC hourly bars mapped backward-asof to 5m features",
+            "conflict": "skip when both states are active",
+            "availability": "completed source observation; enter next 5m open",
+            "global_reservation": "half-open; ignore new states while active",
+            "no_threshold_side_hold_state_or_subset_tuning": True,
+        },
+        "clock": {
+            "entry": "next 5m open after hourly decision",
+            "long_hold": "48 elapsed hours",
+            "short_hold": "24 elapsed hours",
+            "path_dependent_exit": False,
+            "split_crossing_action": "skip",
+            "gross_exposure": 0.5,
+        },
+        "stages": {
+            "train": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+            "test": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+            "eval": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+            "final": ["2026-01-01T00:00:00Z", "2026-08-01T00:00:00Z"],
+        },
+        "source_support_gates": {
+            "minimum_events": {"train": 8, "test": 12, "eval": 12, "final": 8},
+            "minority_side_share_min": 0.2,
+            "max_month_share": 0.45,
+        },
+        "novelty_gates": {
+            "exact_entry_jaccard_max": 0.1,
+            "candidate_near_6h_share_max": 0.35,
+            "occupied_5m_bar_jaccard_max": 0.25,
+            "absolute_signed_exposure_pearson_max": 0.35,
+            "must_pass_before_economics": True,
+        },
+        "economic_gates": {
+            "absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_max_pct": 15.0,
+            "mean_gross_underlying_min_bp": 20.0,
+            "weekly_signflip_one_sided_p_max": 0.1,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "each_calendar_half_positive": True,
+            "stop_on_first_failure": True,
+            "accounting": (
+                "fixed quantity, exact funding marks, 6bp base and 10bp stress per "
+                "notional side, every held 5m favorable then adverse, global HWM, full-calendar CAGR"
+            ),
+        },
+        "diagnostic_controls": {
+            "names": ["long_state_only", "short_state_only", "no_bocpd_gate", "premium_panic_only", "kimchi_unwind_only", "direction_flip"],
+            "diagnostic_controls_cannot_be_promoted": True,
+        },
+        "database_contract": {
+            "env_file": "/home/pakchu/rllm/.env",
+            "historical_cache_through": "2026-06-01",
+            "live_extension_tables": ["bars_binance", "funding_rates_binance", "bars_binance_premium"],
+            "external_backward_asof_features": ["kimchi_premium_change"],
+            "symbol": "BTCUSDT",
+            "read_only": True,
+        },
+        "source_bindings": SOURCE_BINDINGS,
+        "research_boundary": {
+            "component_outcomes_previously_known": True,
+            "combined_candidate_outcomes_known": False,
+            "prior_outcome_warning": (
+                "Both component families were selected after historical inspection. A "
+                "pass is a frozen composition validation, not a fresh-data discovery."
+            ),
+            "candidate_incidence_opened": False,
+            "post_entry_outcomes_opened": False,
+            "gross9_rows_opened": False,
+            "candidate_count": 1,
+            "grid": False,
+            "repair_of_prior_candidate": False,
+            "promoted_prior_control": False,
+        },
+        "stopping_rule": "terminal first failure; no repair",
+    }
+    return {**core, "manifest_hash": canonical_hash(core)}
+
+
+def validate(payload: dict[str, Any]) -> None:
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    if payload.get("manifest_hash") != canonical_hash(core):
+        raise RuntimeError("BCPPSR preregistration hash mismatch")
+    for raw, expected in SOURCE_BINDINGS.items():
+        if hashlib.sha256(Path(raw).read_bytes()).hexdigest() != expected:
+            raise RuntimeError(f"BCPPSR source drift: {raw}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    result = build()
+    validate(result)
+    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
+    print(args.output)

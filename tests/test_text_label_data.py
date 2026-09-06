@@ -18,6 +18,9 @@ class TestTextLabelData(unittest.TestCase):
     def test_parse_label_and_target_echo(self):
         self.assertEqual(parse_label("NO_TRADE\n", key="gate"), "NO_TRADE")
         self.assertEqual(parse_label("TRADE.", key="gate"), "TRADE")
+        self.assertEqual(parse_label("Q4.", key="ordinal"), "Q4")
+        self.assertEqual(parse_label("B", key="pair"), "B")
+        self.assertEqual(parse_label("TP12", key="pposm_state"), "TP12")
         with tempfile.TemporaryDirectory() as td:
             inp = Path(td) / "in.jsonl"
             out = Path(td) / "out.jsonl"
