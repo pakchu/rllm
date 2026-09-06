@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 import numpy as np
 import pandas as pd
 
 from training.backtest_added_alpha_month import (
     _fixed_hold_arrays,
     _interval_slots,
+    _ledger_audit,
     _strict_metric,
 )
 
@@ -76,3 +79,81 @@ def test_strict_metric_applies_upper_before_lower_same_bar() -> None:
     )
     assert np.isclose(metric["strict_mdd_pct"], 25.0)
     assert metric["absolute_return_pct"] == 0.0
+
+
+def test_ledger_audit_keeps_strategy_pnl_separate_and_reports_missing_attribution() -> None:
+    queries: list[str] = []
+    result_rows = [
+        [
+            {
+                "sub_strategy_name": "markov_state",
+                "action": "CLOSE",
+                "status": "FILLED",
+                "rows": 2,
+                "net_realized_pnl": Decimal("1.25"),
+                "exchange_net_realized_pnl": Decimal("1.10"),
+                "missing_strategy_attribution_rows": 1,
+            }
+        ],
+        [
+            {
+                "action": "CLOSE",
+                "status": "FILLED",
+                "rows": 1,
+                "net_realized_pnl": Decimal("0"),
+                "exchange_net_realized_pnl": Decimal("0.50"),
+                "missing_strategy_attribution_rows": 1,
+            }
+        ],
+    ]
+
+    class Result:
+        def __init__(self, rows):
+            self.rows = rows
+
+        def mappings(self):
+            return self
+
+        def all(self):
+            return self.rows
+
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute(self, statement, params=None):
+            queries.append(str(statement))
+            return Result(result_rows[len(queries) - 1])
+
+    class Engine:
+        def connect(self):
+            return Connection()
+
+    audit = _ledger_audit(
+        Engine(), promotion=pd.Timestamp("2026-08-01T00:00:00Z")
+    )
+
+    assert audit["post_promotion_current_sleeves"][0]["net_realized_pnl"] == "1.25"
+    assert (
+        audit["post_promotion_current_sleeves"][0]["exchange_net_realized_pnl"]
+        == "1.10"
+    )
+    assert (
+        audit["post_promotion_current_sleeves"][0][
+            "missing_strategy_attribution_rows"
+        ]
+        == 1
+    )
+    assert audit["july14_cand_rex_ledger_rows"][0]["net_realized_pnl"] == "0"
+    assert (
+        audit["july14_cand_rex_ledger_rows"][0]["exchange_net_realized_pnl"]
+        == "0.50"
+    )
+    for query in queries:
+        compact = "".join(query.split())
+        assert "ASexchange_net_realized_pnl" in compact
+        assert "ASmissing_strategy_attribution_rows" in compact
+        assert "strategy_net_realized_pnl')::numeric,net_realized_pnl" not in compact

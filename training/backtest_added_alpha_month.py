@@ -687,7 +687,23 @@ def _ledger_audit(
             text(
                 """
                 SELECT sub_strategy_name, action, status, COUNT(*) AS rows,
-                       COALESCE(SUM(net_realized_pnl), 0) AS net_realized_pnl
+                       COALESCE(
+                           SUM(
+                               NULLIF(
+                                   to_jsonb(trade_executions)->>'strategy_net_realized_pnl',
+                                   ''
+                               )::numeric
+                           ),
+                           0
+                       ) AS net_realized_pnl,
+                       COALESCE(SUM(net_realized_pnl), 0) AS exchange_net_realized_pnl,
+                       COUNT(*) FILTER (
+                           WHERE action = 'CLOSE'
+                             AND NULLIF(
+                                 to_jsonb(trade_executions)->>'strategy_net_realized_pnl',
+                                 ''
+                             ) IS NULL
+                       ) AS missing_strategy_attribution_rows
                 FROM trade_executions
                 WHERE created_at >= :promotion
                   AND sub_strategy_name IN :names
@@ -701,7 +717,23 @@ def _ledger_audit(
             text(
                 """
                 SELECT action, status, COUNT(*) AS rows,
-                       COALESCE(SUM(net_realized_pnl), 0) AS net_realized_pnl
+                       COALESCE(
+                           SUM(
+                               NULLIF(
+                                   to_jsonb(trade_executions)->>'strategy_net_realized_pnl',
+                                   ''
+                               )::numeric
+                           ),
+                           0
+                       ) AS net_realized_pnl,
+                       COALESCE(SUM(net_realized_pnl), 0) AS exchange_net_realized_pnl,
+                       COUNT(*) FILTER (
+                           WHERE action = 'CLOSE'
+                             AND NULLIF(
+                                 to_jsonb(trade_executions)->>'strategy_net_realized_pnl',
+                                 ''
+                             ) IS NULL
+                       ) AS missing_strategy_attribution_rows
                 FROM trade_executions
                 WHERE sub_strategy_name = 'cand_rex_veto_7'
                   AND created_at >= TIMESTAMPTZ '2026-07-14 00:00:00+00'
@@ -714,12 +746,22 @@ def _ledger_audit(
     return {
         "queried": True,
         "post_promotion_current_sleeves": [
-            {key: str(value) if key == "net_realized_pnl" else value for key, value in row.items()}
+            {
+                key: str(value)
+                if key in {"net_realized_pnl", "exchange_net_realized_pnl"}
+                else value
+                for key, value in row.items()
+            }
             for row in current
         ],
         "post_promotion_execution_rows": int(sum(int(row["rows"]) for row in current)),
         "july14_cand_rex_ledger_rows": [
-            {key: str(value) if key == "net_realized_pnl" else value for key, value in row.items()}
+            {
+                key: str(value)
+                if key in {"net_realized_pnl", "exchange_net_realized_pnl"}
+                else value
+                for key, value in row.items()
+            }
             for row in unsupported
         ],
         "july14_classification": (

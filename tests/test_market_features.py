@@ -47,6 +47,42 @@ class TestMarketFeatures(unittest.TestCase):
             self.assertIn(col, frame.columns)
         self.assertTrue(np.isfinite(frame.to_numpy(dtype=np.float64)).all())
 
+    def test_completed_timeframe_features_do_not_depend_on_frame_start_phase(self):
+        rows = 80 * 24 * 12
+        phase = np.linspace(0.0, 40.0, rows)
+        close = 100.0 + np.linspace(0.0, 25.0, rows) + np.sin(phase) * 3.0
+        market = pd.DataFrame(
+            {
+                "date": pd.date_range("2025-01-01", periods=rows, freq="5min"),
+                "open": close * (1.0 - 0.0005),
+                "high": close * (1.0 + 0.002),
+                "low": close * (1.0 - 0.002),
+                "close": close,
+                "volume": 100.0 + np.cos(phase) * 10.0,
+            }
+        )
+
+        full = build_market_feature_frame(market, window_size=144)
+        # Start on a different three-day phase and a non-midnight timestamp.
+        # Once both frames contain enough completed HTF history, identical
+        # source rows must produce identical calendar features.
+        tail_start = 10 * 24 * 12 + 27
+        tail_market = market.iloc[tail_start:].reset_index(drop=True)
+        tail = build_market_feature_frame(tail_market, window_size=144)
+        compare_rows = 10 * 24 * 12
+        columns = [
+            column
+            for column in full.columns
+            if column.startswith(("htf_4h_", "htf_1d_", "htf_3d_", "htf_1w_"))
+        ]
+
+        np.testing.assert_allclose(
+            full.loc[len(full) - compare_rows :, columns].to_numpy(),
+            tail.loc[len(tail) - compare_rows :, columns].to_numpy(),
+            rtol=0.0,
+            atol=0.0,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

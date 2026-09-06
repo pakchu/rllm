@@ -919,6 +919,7 @@ def _ensure_trade_executions_table(engine: Any) -> None:
             expires_at TIMESTAMPTZ,
             execution_finished_at TIMESTAMPTZ,
             computing_wall_time_sec DOUBLE PRECISION,
+            execution_wall_time_sec DOUBLE PRECISION,
             order_id TEXT,
             client_order_id TEXT,
             quantity_requested NUMERIC,
@@ -932,6 +933,12 @@ def _ensure_trade_executions_table(engine: Any) -> None:
             commission NUMERIC,
             commission_asset TEXT,
             net_realized_pnl NUMERIC,
+            strategy_realized_pnl NUMERIC,
+            entry_commission NUMERIC,
+            entry_commission_asset TEXT,
+            exit_commission NUMERIC,
+            exit_commission_asset TEXT,
+            strategy_net_realized_pnl NUMERIC,
             payload JSONB NOT NULL DEFAULT '{}'::jsonb
         )
         """
@@ -1000,6 +1007,13 @@ def _ensure_trade_executions_table(engine: Any) -> None:
         "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS commission NUMERIC",
         "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS commission_asset TEXT",
         "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS net_realized_pnl NUMERIC",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS execution_wall_time_sec DOUBLE PRECISION",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS strategy_realized_pnl NUMERIC",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS entry_commission NUMERIC",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS entry_commission_asset TEXT",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS exit_commission NUMERIC",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS exit_commission_asset TEXT",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS strategy_net_realized_pnl NUMERIC",
     ]
     indexes = [
         "CREATE INDEX IF NOT EXISTS idx_trade_executions_strategy_created ON trade_executions(strategy_name, sub_strategy_name, created_at DESC)",
@@ -1063,23 +1077,45 @@ def _log_trade_execution(
             strategy_name, sub_strategy_name, exchange, symbol, quote_asset,
             action, side, position_side, order_type, signal_id, status,
             execution_started_at, expires_at, execution_finished_at,
-            computing_wall_time_sec, order_id, client_order_id,
+            computing_wall_time_sec, execution_wall_time_sec, order_id, client_order_id,
             quantity_requested, quantity_filled, reference_price, avg_price,
             maker_max_deviation_pct, refresh_interval_sec, error,
-            realized_pnl, commission, commission_asset, net_realized_pnl, payload
+            realized_pnl, commission, commission_asset, net_realized_pnl,
+            strategy_realized_pnl, entry_commission, entry_commission_asset,
+            exit_commission, exit_commission_asset, strategy_net_realized_pnl,
+            payload
         ) VALUES (
             :strategy_name, :sub_strategy_name, :exchange, :symbol, :quote_asset,
             :action, :side, :position_side, :order_type, :signal_id, :status,
             :execution_started_at, :expires_at, :execution_finished_at,
-            :computing_wall_time_sec, :order_id, :client_order_id,
+            :computing_wall_time_sec, :execution_wall_time_sec, :order_id, :client_order_id,
             :quantity_requested, :quantity_filled, :reference_price, :avg_price,
             :maker_max_deviation_pct, :refresh_interval_sec, :error,
-            :realized_pnl, :commission, :commission_asset, :net_realized_pnl, CAST(:payload AS jsonb)
+            :realized_pnl, :commission, :commission_asset, :net_realized_pnl,
+            :strategy_realized_pnl, :entry_commission, :entry_commission_asset,
+            :exit_commission, :exit_commission_asset, :strategy_net_realized_pnl,
+            CAST(:payload AS jsonb)
         )
         """
     )
     raw_order = info.get("raw_order") if isinstance(info.get("raw_order"), dict) else {}
     trade_report = info.get("trade_report") if isinstance(info.get("trade_report"), dict) else {}
+    strategy_report: dict[str, Any] = (
+        info.get("strategy_trade_report")
+        if isinstance(info.get("strategy_trade_report"), dict)
+        else {}
+    )
+    if action.upper() == "OPEN" and trade_report and not strategy_report:
+        strategy_report = {
+            "strategy_realized_pnl": "0",
+            "entry_commission": trade_report.get("commission"),
+            "entry_commission_asset": trade_report.get("commission_asset"),
+            "exit_commission": "0",
+            "exit_commission_asset": None,
+            # The complete trade net is recognized on CLOSE, where the sleeve's
+            # own entry lot and both fee legs are available.
+            "strategy_net_realized_pnl": "0",
+        }
     order_id = info.get("order_id") or raw_order.get("orderId")
     client_order_id = info.get("client_order_id") or raw_order.get("clientOrderId")
     with engine.begin() as conn:
@@ -1100,7 +1136,8 @@ def _log_trade_execution(
                 "execution_started_at": info.get("started_at"),
                 "expires_at": info.get("deadline_at"),
                 "execution_finished_at": info.get("finished_at"),
-                "computing_wall_time_sec": computing_wall_time_sec if computing_wall_time_sec is not None else info.get("wall_time_sec"),
+                "computing_wall_time_sec": computing_wall_time_sec,
+                "execution_wall_time_sec": info.get("wall_time_sec"),
                 "order_id": None if order_id is None else str(order_id),
                 "client_order_id": None if client_order_id is None else str(client_order_id),
                 "quantity_requested": _safe_decimal_value(info.get("requested_quantity")),
@@ -1114,6 +1151,24 @@ def _log_trade_execution(
                 "commission": _safe_decimal_value(trade_report.get("commission")),
                 "commission_asset": trade_report.get("commission_asset"),
                 "net_realized_pnl": _safe_decimal_value(trade_report.get("net_realized_pnl")),
+                "strategy_realized_pnl": _safe_decimal_value(
+                    strategy_report.get("strategy_realized_pnl")
+                ),
+                "entry_commission": _safe_decimal_value(
+                    strategy_report.get("entry_commission")
+                ),
+                "entry_commission_asset": strategy_report.get(
+                    "entry_commission_asset"
+                ),
+                "exit_commission": _safe_decimal_value(
+                    strategy_report.get("exit_commission")
+                ),
+                "exit_commission_asset": strategy_report.get(
+                    "exit_commission_asset"
+                ),
+                "strategy_net_realized_pnl": _safe_decimal_value(
+                    strategy_report.get("strategy_net_realized_pnl")
+                ),
                 "payload": payload,
             },
         )
@@ -2011,9 +2066,58 @@ def _entry_fill_metadata(order_info: dict[str, Any], fallback_price: float) -> d
                     continue
             if filled_at is not None:
                 break
+    entry_report = next(
+        (
+            record["trade_report"]
+            for record in candidates
+            if isinstance(record.get("trade_report"), dict)
+        ),
+        {},
+    )
+    requested_quantity = next(
+        (
+            record.get("requested_quantity")
+            for record in candidates
+            if record.get("requested_quantity") not in (None, "")
+        ),
+        None,
+    )
+    unfilled_quantity = next(
+        (
+            record.get("unfilled_quantity")
+            for record in candidates
+            if record.get("unfilled_quantity") not in (None, "")
+        ),
+        None,
+    )
+    fill_ratio = next(
+        (
+            record.get("fill_ratio")
+            for record in candidates
+            if record.get("fill_ratio") not in (None, "")
+        ),
+        None,
+    )
+    entry_commission = (
+        _safe_decimal_value(entry_report.get("commission")) if entry_report else None
+    )
+    entry_fee_report_complete = bool(
+        entry_report
+        and entry_commission is not None
+        and entry_report.get("commission_asset") not in (None, "")
+    )
     return {
         "entry_fill_price": float(price),
         "entry_filled_at": None if filled_at is None else str(filled_at),
+        "entry_filled_quantity": _safe_decimal_value(entry_report.get("quantity")),
+        "entry_target_quantity": _safe_decimal_value(requested_quantity),
+        "entry_unfilled_quantity": _safe_decimal_value(unfilled_quantity),
+        "entry_fill_ratio": None if fill_ratio is None else float(fill_ratio),
+        "entry_trade_report_attached": bool(entry_report),
+        "entry_fee_report_complete": entry_fee_report_complete,
+        "entry_commission": entry_commission,
+        "entry_commission_remaining": entry_commission,
+        "entry_commission_asset": entry_report.get("commission_asset"),
     }
 
 
@@ -2898,20 +3002,224 @@ def _summarize_exchange_trade_fills(fills: list[dict[str, Any]]) -> dict[str, An
     }
 
 
+def _sleeve_execution_signal_digests(signal_id: str) -> set[str]:
+    """Return sanctioned order-id digests for one sleeve lifecycle."""
+
+    return {
+        hashlib.sha1(candidate.encode("utf-8")).hexdigest()[:8]
+        for candidate in (
+            signal_id,
+            f"{signal_id}:taker-fallback",
+            f"{signal_id}:barrier-close",
+        )
+    }
+
+
+def _strategy_trade_report(
+    *, open_state: dict[str, Any], close_info: dict[str, Any]
+) -> dict[str, Any]:
+    """Attribute a close to its sleeve entry lot, not Binance's hedge-side average.
+
+    Binance reports realized PnL against the aggregate LONG/SHORT entry price.  If
+    two sleeves share that hedge side, that value is valid account PnL but invalid
+    sleeve PnL.  This report reconstructs the sleeve result from its own fill
+    basis and allocates entry fees pro rata for partial closes. Funding remains an
+    account-level cash flow and is intentionally excluded.
+    """
+
+    trade_report = (
+        close_info.get("trade_report")
+        if isinstance(close_info.get("trade_report"), dict)
+        else {}
+    )
+
+    def decimal_value(*values: Any) -> Decimal:
+        for value in values:
+            if value in (None, ""):
+                continue
+            try:
+                return Decimal(str(value))
+            except Exception:
+                continue
+        return Decimal("0")
+
+    state_quantity = abs(decimal_value(open_state.get("quantity")))
+    report_quantity = abs(decimal_value(trade_report.get("quantity")))
+    closed_quantity = report_quantity or abs(
+        decimal_value(close_info.get("filled_quantity"))
+    )
+    if state_quantity > 0:
+        closed_quantity = min(closed_quantity, state_quantity)
+    entry_price = decimal_value(
+        open_state.get("entry_fill_price"), open_state.get("entry_reference_price")
+    )
+    exit_price = decimal_value(
+        trade_report.get("avg_price"),
+        close_info.get("avg_price"),
+        close_info.get("price"),
+    )
+    side = str(open_state.get("side", "")).upper()
+    complete = bool(
+        side in {"LONG", "SHORT"}
+        and closed_quantity > 0
+        and entry_price > 0
+        and exit_price > 0
+        and not close_info.get("trade_report_incomplete")
+    )
+    if complete:
+        direction = Decimal("1") if side == "LONG" else Decimal("-1")
+        strategy_realized = direction * (exit_price - entry_price) * closed_quantity
+    else:
+        strategy_realized = Decimal("0")
+
+    entry_commission_remaining = max(
+        Decimal("0"),
+        decimal_value(
+            open_state.get("entry_commission_remaining"),
+            open_state.get("entry_commission"),
+        ),
+    )
+    if state_quantity > 0 and closed_quantity < state_quantity:
+        entry_commission = entry_commission_remaining * (
+            closed_quantity / state_quantity
+        )
+    else:
+        entry_commission = entry_commission_remaining
+    entry_commission_after = max(
+        Decimal("0"), entry_commission_remaining - entry_commission
+    )
+
+    raw_exit_commission = max(
+        Decimal("0"), decimal_value(trade_report.get("commission"))
+    )
+    if report_quantity > 0 and closed_quantity < report_quantity:
+        exit_commission = raw_exit_commission * (closed_quantity / report_quantity)
+    else:
+        exit_commission = raw_exit_commission
+    entry_asset = open_state.get("entry_commission_asset")
+    exit_asset = trade_report.get("commission_asset")
+    quote_assets = {"USDT", "USDC", "BUSD"}
+    entry_fee_reported = bool(
+        open_state.get("entry_fee_report_complete")
+        if "entry_fee_report_complete" in open_state
+        else open_state.get("entry_trade_report_attached")
+        and open_state.get("entry_commission_remaining") not in (None, "")
+        and entry_asset not in (None, "")
+    )
+    exit_fee_reported = bool(
+        trade_report.get("commission") not in (None, "")
+        and exit_asset not in (None, "")
+    )
+    fee_assets_supported = entry_asset in quote_assets and exit_asset in quote_assets
+    fee_report_complete = (
+        entry_fee_reported and exit_fee_reported and fee_assets_supported
+    )
+    entry_quote_fee = entry_commission if entry_asset in quote_assets else Decimal("0")
+    exit_quote_fee = exit_commission if exit_asset in quote_assets else Decimal("0")
+    strategy_net = strategy_realized - entry_quote_fee - exit_quote_fee
+
+    return {
+        "complete": complete,
+        "attribution": "sleeve_entry_lot",
+        "side": side,
+        "quantity": str(closed_quantity),
+        "entry_price": str(entry_price),
+        "exit_price": str(exit_price),
+        "strategy_realized_pnl": str(strategy_realized) if complete else None,
+        "entry_commission": str(entry_commission) if entry_fee_reported else None,
+        "entry_commission_asset": entry_asset,
+        "entry_commission_remaining_after": (
+            str(entry_commission_after) if entry_fee_reported else None
+        ),
+        "exit_commission": str(exit_commission) if exit_fee_reported else None,
+        "exit_commission_asset": exit_asset,
+        "strategy_net_realized_pnl": (
+            str(strategy_net) if complete and fee_report_complete else None
+        ),
+        "exchange_realized_pnl": _safe_decimal_value(
+            trade_report.get("realized_pnl")
+        ),
+        "funding_included": False,
+        "fee_report_complete": fee_report_complete,
+        "fee_assets_supported": fee_assets_supported,
+    }
+
+
+def _execution_order_ids(order_info: dict[str, Any]) -> set[str]:
+    """Collect every exchange order id represented by one execution result."""
+
+    ids: set[str] = set()
+    report = order_info.get("trade_report")
+    if isinstance(report, dict):
+        ids.update(
+            str(order_id)
+            for order_id in report.get("order_ids", [])
+            if order_id not in (None, "")
+        )
+    records = [
+        order_info,
+        order_info.get("raw_order"),
+        order_info.get("taker_fallback_order"),
+        *(order_info.get("raw_orders") or []),
+    ]
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        order_id = record.get("order_id", record.get("orderId"))
+        if order_id in (None, ""):
+            continue
+        ids.update(part for part in str(order_id).split(",") if part)
+    return ids
+
+
 async def _attach_exchange_trade_report(
     *, client: Any, symbol: str, order_info: dict[str, Any]
 ) -> dict[str, Any]:
-    """Attach actual fill PnL/fees to a submitted close order result."""
+    """Attach actual fill PnL/fees to a submitted order result."""
 
-    order_ids = {
-        str(order_id)
-        for order_id in [order_info.get("order_id"), *(o.get("orderId") for o in (order_info.get("raw_orders") or []) if isinstance(o, dict))]
-        if order_id is not None
-    }
+    raw_orders = [
+        order
+        for order in (order_info.get("raw_orders") or [])
+        if isinstance(order, dict)
+    ]
+    related_orders = [
+        order
+        for order in (
+            order_info.get("raw_order"),
+            order_info.get("taker_fallback_order"),
+        )
+        if isinstance(order, dict)
+    ]
+    order_ids = _execution_order_ids(order_info)
     if not order_ids:
         return order_info
+    try:
+        expected_quantity = abs(
+            Decimal(str(order_info.get("filled_quantity", "0") or "0"))
+        )
+    except Exception:
+        expected_quantity = Decimal("0")
+    required_fill_order_ids: set[str] = set()
+    for order in [*raw_orders, *related_orders]:
+        order_id = order.get("orderId", order.get("order_id"))
+        if order_id is None:
+            continue
+        reported_quantity = Decimal("0")
+        for key in ("executedQty", "cumQty", "filled_quantity"):
+            try:
+                reported_quantity = abs(Decimal(str(order.get(key, "0") or "0")))
+            except Exception:
+                continue
+            if reported_quantity > 0:
+                break
+        if reported_quantity > 0 or str(order.get("status", "")).upper() in {
+            "FILLED",
+            "PARTIALLY_FILLED",
+        }:
+            required_fill_order_ids.add(str(order_id))
     fills: list[dict[str, Any]] = []
     last_error: str | None = None
+    complete_report = False
     for attempt in range(5):
         try:
             trades = await client.get_trades(symbol, limit=1000)
@@ -2919,22 +3227,56 @@ async def _attach_exchange_trade_report(
         except Exception as exc:
             last_error = str(exc)
         if fills:
-            break
+            report = _summarize_exchange_trade_fills(fills)
+            observed_order_ids = set(report["order_ids"])
+            if (
+                Decimal(report["quantity"]) >= expected_quantity
+                and required_fill_order_ids <= observed_order_ids
+            ):
+                complete_report = True
+                break
         if attempt < 4:
             await asyncio.sleep(0.2)
     if not fills:
-        return {**order_info, "trade_report_error": last_error or "no_user_trade_fills_for_close_order"}
-    return {**order_info, "trade_report": _summarize_exchange_trade_fills(fills)}
+        return {
+            **order_info,
+            "trade_report_error": last_error or "no_user_trade_fills_for_order",
+        }
+    report = _summarize_exchange_trade_fills(fills)
+    if not complete_report:
+        return {
+            **order_info,
+            # Order confirmations remain authoritative for position state.  A
+            # partial user-trade snapshot is retained only as evidence and must
+            # not downgrade a confirmed full fill or fabricate strategy PnL.
+            "partial_trade_report": report,
+            "trade_report_incomplete": True,
+            "trade_report_error": (
+                "user_trade_fills_incomplete_after_retry:"
+                f"expected_quantity={expected_quantity},"
+                f"observed_quantity={report['quantity']},"
+                "missing_order_ids="
+                + ",".join(sorted(required_fill_order_ids - set(report["order_ids"])))
+            ),
+        }
+    return {
+        **order_info,
+        # User-trade fills are the final source of truth when a cancel/status
+        # response raced a fill during maker refresh.
+        "filled_quantity": report["quantity"],
+        "avg_price": report["avg_price"],
+        "trade_report": report,
+    }
 
 
 async def _reconcile_exchange_flat_sleeves(
     *, state: dict[str, Any], client: Any, exec_cfg: WaveExecutionConfig
 ) -> list[dict[str, Any]]:
-    """Report state-owned sleeves that became flat while the runner was down.
+    """Reconcile exact state-owned close fills observed while the runner was down.
 
-    Reconciliation is deliberately limited to a completely flat Binance hedge
-    side.  A smaller aggregate position is ambiguous when multiple sleeves
-    share LONG or SHORT, so it must not silently close one sleeve in state.
+    A fully flat hedge side is always safe to remove from state.  If another
+    sleeve keeps the side active, reconcile only client-order-id-attributed fills
+    whose summed quantity exactly explains the state/exchange quantity gap.
     """
 
     try:
@@ -2945,7 +3287,8 @@ async def _reconcile_exchange_flat_sleeves(
         state["last_position_reconcile_error"] = str(exc)
         return []
     state.pop("last_position_reconcile_error", None)
-    active_sides: set[str] = set()
+    tolerance = Decimal("0.00000001")
+    exchange_quantity_by_side = {"LONG": Decimal("0"), "SHORT": Decimal("0")}
     for pos in positions:
         try:
             qty = abs(Decimal(str(pos.get("positionAmt", "0") or "0")))
@@ -2954,12 +3297,40 @@ async def _reconcile_exchange_flat_sleeves(
         if qty > 0:
             side = str(pos.get("positionSide") or "").upper()
             if side in {"LONG", "SHORT"}:
-                active_sides.add(side)
+                exchange_quantity_by_side[side] += qty
+
+    open_sleeves = state.setdefault("open_sleeves", {})
+    state_quantity_by_side = {"LONG": Decimal("0"), "SHORT": Decimal("0")}
+    for sleeve in open_sleeves.values():
+        side = str(sleeve.get("side", "")).upper()
+        if side not in state_quantity_by_side:
+            continue
+        try:
+            state_quantity_by_side[side] += abs(
+                Decimal(str(sleeve.get("quantity", "0") or "0"))
+            )
+        except Exception:
+            continue
+
+    active_close_gap = {
+        side: state_quantity_by_side[side] - exchange_quantity_by_side[side]
+        for side in ("LONG", "SHORT")
+        if exchange_quantity_by_side[side] > 0
+        and state_quantity_by_side[side] - exchange_quantity_by_side[side]
+        > tolerance
+    }
+    flat_sides = {
+        side
+        for side in ("LONG", "SHORT")
+        if state_quantity_by_side[side] > 0
+        and exchange_quantity_by_side[side] <= tolerance
+    }
     candidates = [
         (name, sleeve)
-        for name, sleeve in state.setdefault("open_sleeves", {}).items()
+        for name, sleeve in open_sleeves.items()
         if str(sleeve.get("side", "")).upper() in {"LONG", "SHORT"}
-        and str(sleeve.get("side", "")).upper() not in active_sides
+        and str(sleeve.get("side", "")).upper()
+        in (flat_sides | set(active_close_gap))
     ]
     if not candidates:
         return []
@@ -2967,7 +3338,20 @@ async def _reconcile_exchange_flat_sleeves(
         trades = await client.get_trades(exec_cfg.symbol, limit=1000)
     except Exception:
         trades = []
+    def accounted_order_ids(sleeve: dict[str, Any]) -> set[str]:
+        out = {
+            str(order_id)
+            for order_id in sleeve.get("accounted_close_order_ids", [])
+            if order_id not in (None, "")
+        }
+        last_close = sleeve.get("last_close_order_info")
+        if not isinstance(last_close, dict):
+            return out
+        out.update(_execution_order_ids(last_close))
+        return out
+
     reconciled: list[dict[str, Any]] = []
+    attributed_active_by_side = {"LONG": Decimal("0"), "SHORT": Decimal("0")}
     for name, sleeve in candidates:
         side = str(sleeve["side"]).upper()
         close_side = "SELL" if side == "LONG" else "BUY"
@@ -2984,25 +3368,68 @@ async def _reconcile_exchange_flat_sleeves(
             and int(t.get("time", 0) or 0) >= start_ms
         ]
         expected_key = _portfolio_sleeve_key(name)
-        expected_digest = hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8]
+        expected_digests = _sleeve_execution_signal_digests(signal_id)
+        previously_accounted = accounted_order_ids(sleeve)
         attributed: list[dict[str, Any]] = []
         client_order_ids: list[str] = []
         for order_id in dict.fromkeys(t.get("orderId") for t in possible if t.get("orderId") is not None):
+            if str(order_id) in previously_accounted:
+                continue
             try:
                 order = await client.get_order(exec_cfg.symbol, order_id=order_id)
             except Exception:
                 continue
             cid = str(order.get("clientOrderId") or "")
             parts = _portfolio_order_parts(cid)
-            if parts and parts["sleeve_key"] == expected_key and parts["signal_digest"] == expected_digest:
+            if (
+                parts
+                and parts["sleeve_key"] == expected_key
+                and parts["signal_digest"] in expected_digests
+            ):
                 attributed.extend(t for t in possible if t.get("orderId") == order_id)
                 client_order_ids.append(cid)
         report = _summarize_exchange_trade_fills(attributed) if attributed else None
-        requested = str(sleeve.get("quantity", "0") or "0")
+        requested_quantity = abs(
+            Decimal(str(sleeve.get("quantity", "0") or "0"))
+        )
+        attributed_quantity = (
+            Decimal(str(report.get("quantity", "0") or "0"))
+            if report
+            else Decimal("0")
+        )
+        side_flat = side in flat_sides
+        if not side_flat and attributed_quantity <= 0:
+            continue
+        if not side_flat and attributed_quantity - requested_quantity > tolerance:
+            raise RuntimeError(
+                "attributed close fills exceed the sleeve quantity still held in state: "
+                f"sleeve={name} state={requested_quantity} attributed={attributed_quantity}"
+            )
+        if side_flat:
+            filled_quantity = requested_quantity
+            fully_closed = True
+            if report and attributed_quantity >= requested_quantity:
+                status = "FILLED_RECONCILED"
+            elif report:
+                status = "EXCHANGE_FLAT_PARTIALLY_ATTRIBUTED"
+            else:
+                status = "EXCHANGE_FLAT_UNATTRIBUTED"
+        else:
+            filled_quantity = min(requested_quantity, attributed_quantity)
+            fully_closed = filled_quantity >= requested_quantity
+            status = (
+                "FILLED_RECONCILED"
+                if fully_closed
+                else "PARTIAL_FILLED_RECONCILED"
+            )
+            attributed_active_by_side[side] += filled_quantity
+        remaining_quantity = max(
+            Decimal("0"), requested_quantity - filled_quantity
+        )
         order_info = {
-            "status": "FILLED_RECONCILED" if report else "EXCHANGE_FLAT_UNATTRIBUTED",
-            "requested_quantity": requested,
-            "filled_quantity": report["quantity"] if report else requested,
+            "status": status,
+            "requested_quantity": str(requested_quantity),
+            "filled_quantity": str(filled_quantity),
             "avg_price": report["avg_price"] if report else None,
             "order_id": ",".join(report["order_ids"]) if report else None,
             "client_order_id": ",".join(client_order_ids) or None,
@@ -3010,13 +3437,42 @@ async def _reconcile_exchange_flat_sleeves(
             "finished_at": report["last_fill_at"] if report else str(pd.Timestamp.utcnow()),
             "trade_report": report,
             "reconciliation": {
-                "reason": "state_open_but_exchange_side_flat",
+                "reason": (
+                    "state_open_but_exchange_side_flat"
+                    if side_flat
+                    else "attributed_close_reduced_active_hedge_side"
+                ),
                 "state_exit_at": sleeve.get("exit_at"),
                 "dynamic_exit": sleeve.get("dynamic_exit"),
                 "attributed_by_client_order_id": bool(report),
+                "fully_closed": fully_closed,
+                "remaining_quantity": str(remaining_quantity),
+                "accounted_order_ids": report["order_ids"] if report else [],
             },
         }
-        reconciled.append({"name": name, "side": side, "signal_id": signal_id, "order_info": order_info})
+        order_info["strategy_trade_report"] = _strategy_trade_report(
+            open_state=sleeve,
+            close_info=order_info,
+        )
+        reconciled.append(
+            {
+                "name": name,
+                "side": side,
+                "signal_id": signal_id,
+                "fully_closed": fully_closed,
+                "remaining_quantity": str(remaining_quantity),
+                "accounted_order_ids": report["order_ids"] if report else [],
+                "order_info": order_info,
+            }
+        )
+
+    for side, expected_gap in active_close_gap.items():
+        attributed_gap = attributed_active_by_side[side]
+        if abs(attributed_gap - expected_gap) > tolerance:
+            raise RuntimeError(
+                "cannot safely attribute active-side position reduction to sleeve closes: "
+                f"side={side} expected_gap={expected_gap} attributed={attributed_gap}"
+            )
     return reconciled
 
 
@@ -3037,20 +3493,20 @@ def _infer_signal_id_from_digest(
         naive = ts.tz_convert(None)
         for stamp in (naive.isoformat(), str(naive)):
             signal_id = f"{sleeve_name}:{stamp}"
-            if hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8] == digest:
+            if digest in _sleeve_execution_signal_digests(signal_id):
                 return signal_id, ts
             # New auto-direction signal ids include the effective side between
             # name and timestamp.  Historical orders did not, but support both.
             for side in ("LONG", "SHORT"):
                 signal_id = f"{sleeve_name}:{side}:{stamp}"
-                if hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8] == digest:
+                if digest in _sleeve_execution_signal_digests(signal_id):
                     return signal_id, ts
         if rank7_model_version:
             for source in ("funding", "premium"):
                 signal_id = (
                     f"frozen_annual_rank7:{rank7_model_version}:{source}:{ts.isoformat()}"
                 )
-                if hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8] == digest:
+                if digest in _sleeve_execution_signal_digests(signal_id):
                     return signal_id, ts
     return None, None
 
@@ -3100,83 +3556,316 @@ async def _recover_exchange_positions_into_state(
         active_positions.append((pos, side, qty))
     if not active_positions:
         return recovered
-    existing_sides = {str(v.get("side", "")).upper() for v in open_sleeves.values() if Decimal(str(v.get("quantity", "0") or "0")) > 0}
+
+    tolerance = Decimal("0.00000001")
+    position_by_side = {side: (pos, qty) for pos, side, qty in active_positions}
+
+    def state_quantity_for_side(side: str) -> Decimal:
+        total = Decimal("0")
+        for sleeve in open_sleeves.values():
+            if str(sleeve.get("side", "")).upper() != side:
+                continue
+            try:
+                total += abs(Decimal(str(sleeve.get("quantity", "0") or "0")))
+            except Exception:
+                continue
+        return total
+
+    sides_needing_recovery = {
+        side
+        for side, (_, exchange_quantity) in position_by_side.items()
+        if abs(state_quantity_for_side(side) - exchange_quantity) > tolerance
+    }
+    if not sides_needing_recovery:
+        return recovered
+
     try:
-        trades = await client._private_request("GET", "/fapi/v1/userTrades", {"symbol": exec_cfg.symbol, "limit": 100})
+        trades = await client.get_trades(exec_cfg.symbol, limit=1000)
     except Exception:
-        trades = []
-    for pos, side, qty in active_positions:
-        if side in existing_sides:
+        try:
+            trades = await client._private_request(
+                "GET",
+                "/fapi/v1/userTrades",
+                {"symbol": exec_cfg.symbol, "limit": 1000},
+            )
+        except Exception:
+            trades = []
+
+    # Query order metadata only for the currently active aggregate lifecycle.
+    # Walking fills backwards from the exchange position reaches the last flat
+    # boundary and avoids up to 1000 signed get_order calls on every restart.
+    active_window_trades: list[dict[str, Any]] = []
+    for side in sorted(sides_needing_recovery):
+        _, exchange_quantity = position_by_side[side]
+        side_trades = sorted(
+            (
+                trade
+                for trade in trades
+                if str(trade.get("positionSide", "")).upper() == side
+            ),
+            key=lambda trade: (
+                int(trade.get("time", 0) or 0),
+                int(trade.get("id", 0) or 0),
+            ),
+            reverse=True,
+        )
+        quantity_after = exchange_quantity
+        selected: list[dict[str, Any]] = []
+        for trade in side_trades:
+            try:
+                fill_quantity = abs(Decimal(str(trade.get("qty", "0") or "0")))
+            except Exception:
+                continue
+            if fill_quantity <= 0:
+                continue
+            trade_side = str(trade.get("side", "")).upper()
+            if trade_side not in {"BUY", "SELL"}:
+                continue
+            entry_side = "BUY" if side == "LONG" else "SELL"
+            signed_fill = fill_quantity if trade_side == entry_side else -fill_quantity
+            quantity_before = quantity_after - signed_fill
+            if quantity_before < -tolerance:
+                raise RuntimeError(
+                    "cannot find a consistent flat boundary in exchange fills: "
+                    f"side={side} quantity_after={quantity_after} fill={signed_fill}"
+                )
+            selected.append(trade)
+            quantity_after = max(Decimal("0"), quantity_before)
+            if quantity_after <= tolerance:
+                break
+        if quantity_after > tolerance:
+            raise RuntimeError(
+                "exchange trade history does not reach the active position's flat boundary: "
+                f"side={side} unresolved_quantity={quantity_after}"
+            )
+        active_window_trades.extend(selected)
+
+    order_cache: dict[str, dict[str, Any]] = {}
+    trade_records: list[dict[str, Any]] = []
+    for trade in active_window_trades:
+        order_id = trade.get("orderId")
+        if order_id is None:
             continue
-        open_side = "BUY" if side == "LONG" else "SELL"
-        close_side = "SELL" if side == "LONG" else "BUY"
-        side_trades = [t for t in trades if str(t.get("positionSide", "")).upper() == side]
-        last_close_ms = max((int(t.get("time", 0) or 0) for t in side_trades if str(t.get("side", "")).upper() == close_side), default=0)
-        entries = [t for t in side_trades if str(t.get("side", "")).upper() == open_side and int(t.get("time", 0) or 0) >= last_close_ms]
-        if not entries:
-            continue
-        entry = max(entries, key=lambda t: int(t.get("time", 0) or 0))
-        order_id = entry.get("orderId")
-        order: dict[str, Any] = {}
-        if order_id is not None:
+        order_key = str(order_id)
+        order = order_cache.get(order_key)
+        if order is None:
             try:
                 order = await client.get_order(exec_cfg.symbol, order_id=order_id)
             except Exception:
                 try:
-                    order = await client._private_request("GET", "/fapi/v1/order", {"symbol": exec_cfg.symbol, "orderId": order_id})
+                    order = await client._private_request(
+                        "GET",
+                        "/fapi/v1/order",
+                        {"symbol": exec_cfg.symbol, "orderId": order_id},
+                    )
                 except Exception:
                     order = {}
-        cid = str(order.get("clientOrderId") or "")
-        parts = _portfolio_order_parts(cid)
+            order_cache[order_key] = order
+        parts = _portfolio_order_parts(str(order.get("clientOrderId") or ""))
         if parts is None:
             continue
         spec = known_by_key.get(parts["sleeve_key"])
         if spec is None:
             continue
-        name = str(spec["name"])
-        if name in open_sleeves:
+        side = str(trade.get("positionSide") or "").upper()
+        if side not in {"LONG", "SHORT"}:
             continue
+        trade_side = str(trade.get("side") or "").upper()
+        is_entry = trade_side == ("BUY" if side == "LONG" else "SELL")
+        trade_records.append(
+            {
+                "trade": trade,
+                "order": order,
+                "parts": parts,
+                "spec": spec,
+                "name": str(spec["name"]),
+                "side": side,
+                "is_entry": is_entry,
+            }
+        )
+
+    groups: dict[tuple[str, str, str], dict[str, Any]] = {}
+    digest_to_group: dict[tuple[str, str], tuple[str, str, str]] = {}
+    for record in trade_records:
+        if not record["is_entry"]:
+            continue
+        trade = record["trade"]
+        order = record["order"]
+        spec = record["spec"]
+        name = record["name"]
         signal_id, signal_ts = _infer_signal_id_from_digest(
             sleeve_name=name,
-            digest=parts["signal_digest"],
-            order_time_ms=int(order.get("time", entry.get("time", 0)) or 0),
+            digest=record["parts"]["signal_digest"],
+            order_time_ms=int(order.get("time", trade.get("time", 0)) or 0),
             interval_minutes=exec_cfg.interval_minutes,
             rank7_model_version=spec.get("rank7_model_version"),
         )
-        if signal_ts is None:
-            signal_ts = pd.Timestamp(int(entry.get("time", 0) or 0), unit="ms", tz="UTC").floor(f"{int(exec_cfg.interval_minutes)}min")
-        if signal_id is None and spec.get("rank7_model_version"):
+        if signal_id is None or signal_ts is None:
             raise RuntimeError(
-                f"cannot recover Rank7 source lifecycle from exchange order digest for sleeve={name}"
+                f"cannot recover signal id from entry order digest for sleeve={name}"
             )
-        if signal_id is None:
-            signal_id = f"{name}:{side}:recovered:{order_id}"
-        recovered_entry_price = float(pos.get("entryPrice") or entry.get("price") or 0.0)
-        recovered_fill_at = pd.Timestamp(int(entry.get("time", 0) or 0), unit="ms", tz="UTC")
+        group_key = (name, record["side"], signal_id)
+        group = groups.setdefault(
+            group_key,
+            {
+                "name": name,
+                "side": record["side"],
+                "signal_id": signal_id,
+                "signal_ts": signal_ts,
+                "spec": spec,
+                "entry_fills": [],
+                "close_fills": [],
+                "order_ids": set(),
+                "client_order_ids": set(),
+            },
+        )
+        group["entry_fills"].append(trade)
+        group["order_ids"].add(str(trade.get("orderId")))
+        group["client_order_ids"].add(str(order.get("clientOrderId")))
+        for digest in _sleeve_execution_signal_digests(signal_id):
+            digest_to_group[(record["parts"]["sleeve_key"], digest)] = group_key
+
+    for record in trade_records:
+        if record["is_entry"]:
+            continue
+        group_key = digest_to_group.get(
+            (
+                record["parts"]["sleeve_key"],
+                record["parts"]["signal_digest"],
+            )
+        )
+        if group_key is None:
+            continue
+        group = groups[group_key]
+        group["close_fills"].append(record["trade"])
+        group["order_ids"].add(str(record["trade"].get("orderId")))
+        group["client_order_ids"].add(str(record["order"].get("clientOrderId")))
+
+    def fill_quantity(fills: list[dict[str, Any]]) -> Decimal:
+        total = Decimal("0")
+        for fill in fills:
+            try:
+                total += abs(Decimal(str(fill.get("qty", "0") or "0")))
+            except Exception:
+                continue
+        return total
+
+    candidates: list[dict[str, Any]] = []
+    for group in groups.values():
+        entry_quantity = fill_quantity(group["entry_fills"])
+        close_quantity = fill_quantity(group["close_fills"])
+        group["entry_quantity"] = entry_quantity
+        group["quantity"] = max(Decimal("0"), entry_quantity - close_quantity)
+        if group["quantity"] > 0 and group["name"] not in open_sleeves:
+            candidates.append(group)
+
+    candidate_names = [str(group["name"]) for group in candidates]
+    duplicate_names = sorted(
+        name for name in set(candidate_names) if candidate_names.count(name) > 1
+    )
+    if duplicate_names:
+        raise RuntimeError(
+            "cannot represent overlapping lifecycles for the same sleeve in state: "
+            + ",".join(duplicate_names)
+        )
+    unexpected_sides = sorted(
+        {str(group["side"]) for group in candidates} - set(position_by_side)
+    )
+    if unexpected_sides:
+        raise RuntimeError(
+            "recovered sleeve fills have no active exchange position side: "
+            + ",".join(unexpected_sides)
+        )
+
+    for side, (pos, exchange_quantity) in position_by_side.items():
+        existing_quantity = state_quantity_for_side(side)
+        recoverable_quantity = sum(
+            (group["quantity"] for group in candidates if group["side"] == side),
+            Decimal("0"),
+        )
+        if abs(existing_quantity + recoverable_quantity - exchange_quantity) > tolerance:
+            raise RuntimeError(
+                "cannot safely attribute active exchange position to sleeve lots: "
+                f"side={side} exchange={exchange_quantity} state={existing_quantity} "
+                f"recoverable={recoverable_quantity}"
+            )
+
+    total_weight = float(
+        sum(
+            float(sleeve.get("weight", 0.0) or 0.0)
+            for sleeve in portfolio.get("base_sleeves", [])
+        )
+    )
+    for group in candidates:
+        name = group["name"]
+        side = group["side"]
+        signal_id = group["signal_id"]
+        signal_ts = group["signal_ts"]
+        spec = group["spec"]
+        quantity = group["quantity"]
+        pos = position_by_side[side][0]
+        entry_report = _summarize_exchange_trade_fills(group["entry_fills"])
+        entry_fee_report_complete = bool(group["entry_fills"]) and all(
+            fill.get("commission") not in (None, "")
+            and fill.get("commissionAsset") not in (None, "")
+            for fill in group["entry_fills"]
+        )
+        entry_price = Decimal(str(entry_report.get("avg_price", "0") or "0"))
+        if entry_price <= 0:
+            raise RuntimeError(f"cannot recover entry fill price for sleeve={name}")
+        entry_quantity = group["entry_quantity"]
+        entry_commission = (
+            Decimal(str(entry_report.get("commission", "0") or "0"))
+            if entry_fee_report_complete
+            else None
+        )
+        remaining_entry_commission = (
+            entry_commission * quantity / entry_quantity
+            if entry_commission is not None and entry_quantity > 0
+            else None
+        )
+        fill_times = [
+            int(fill.get("time", 0) or 0)
+            for fill in group["entry_fills"]
+            if int(fill.get("time", 0) or 0) > 0
+        ]
+        if not fill_times:
+            raise RuntimeError(f"cannot recover entry fill time for sleeve={name}")
+        recovered_fill_at = pd.Timestamp(min(fill_times), unit="ms", tz="UTC")
         recovered_lifecycle: dict[str, Any] | None = None
         rank7_lifecycles = spec.get("rank7_source_lifecycles")
-        if isinstance(rank7_lifecycles, dict) and signal_id.startswith("frozen_annual_rank7:"):
-            parts = signal_id.split(":", 3)
-            source_name = parts[2] if len(parts) == 4 else ""
+        if isinstance(rank7_lifecycles, dict) and signal_id.startswith(
+            "frozen_annual_rank7:"
+        ):
+            signal_parts = signal_id.split(":", 3)
+            source_name = signal_parts[2] if len(signal_parts) == 4 else ""
             candidate_lifecycle = rank7_lifecycles.get(source_name)
-            if isinstance(candidate_lifecycle, dict):
-                recovered_lifecycle = candidate_lifecycle
-            else:
-                raise RuntimeError(f"unknown recovered Rank7 source lifecycle: {source_name}")
+            if not isinstance(candidate_lifecycle, dict):
+                raise RuntimeError(
+                    f"unknown recovered Rank7 source lifecycle: {source_name}"
+                )
+            recovered_lifecycle = candidate_lifecycle
         hold_bars = int(
             (recovered_lifecycle or {}).get("hold_bars")
             or spec.get("hold_bars")
             or exec_cfg.max_holding_bars
         )
-        exit_at = signal_ts + pd.Timedelta(minutes=exec_cfg.interval_minutes * (1 + hold_bars))
-        total_weight = float(sum(float(s.get("weight", 0.0) or 0.0) for s in portfolio.get("base_sleeves", [])))
+        exit_at = signal_ts + pd.Timedelta(
+            minutes=exec_cfg.interval_minutes * (1 + hold_bars)
+        )
         weight = float(spec.get("weight") or 0.0)
-        margin_fraction = _margin_fraction_for_weight(
-            weight=weight,
-            total_weight=total_weight,
-            leverage_budget=float(leverage_budget),
-            allocation_mode=allocation_mode,
-        ) if weight > 0 else 0.0
+        margin_fraction = (
+            _margin_fraction_for_weight(
+                weight=weight,
+                total_weight=total_weight,
+                leverage_budget=float(leverage_budget),
+                allocation_mode=allocation_mode,
+            )
+            if weight > 0
+            else 0.0
+        )
+        order_ids = sorted(group["order_ids"])
+        client_order_ids = sorted(group["client_order_ids"])
         open_sleeves[name] = {
             "name": name,
             "side": side,
@@ -3186,17 +3875,37 @@ async def _recover_exchange_positions_into_state(
             "weight": weight,
             "margin_fraction": margin_fraction,
             "allocation_mode": allocation_mode,
-            "quantity": str(qty),
-            "entry_reference_price": recovered_entry_price,
-            "entry_fill_price": recovered_entry_price,
+            "quantity": str(quantity),
+            "entry_reference_price": float(entry_price),
+            "entry_fill_price": float(entry_price),
             "entry_filled_at": str(recovered_fill_at),
+            "entry_filled_quantity": str(entry_quantity),
+            "entry_trade_report_attached": bool(group["entry_fills"]),
+            "entry_fee_report_complete": entry_fee_report_complete,
+            "entry_commission": (
+                None if entry_commission is None else str(entry_commission)
+            ),
+            "entry_commission_remaining": (
+                None
+                if remaining_entry_commission is None
+                else str(remaining_entry_commission)
+            ),
+            "entry_commission_asset": entry_report.get("commission_asset"),
             "order_info": {
                 "status": "RECOVERED_FROM_EXCHANGE",
-                "order_id": order_id,
-                "client_order_id": cid,
-                "entry_trade_time": entry.get("time"),
-                "entry_price": entry.get("price", pos.get("entryPrice")),
-                "position": {k: pos.get(k) for k in ["symbol", "positionSide", "positionAmt", "entryPrice", "updateTime"]},
+                "order_ids": order_ids,
+                "client_order_ids": client_order_ids,
+                "entry_trade_report": entry_report,
+                "position": {
+                    key: pos.get(key)
+                    for key in [
+                        "symbol",
+                        "positionSide",
+                        "positionAmt",
+                        "entryPrice",
+                        "updateTime",
+                    ]
+                },
             },
             "dynamic_exit": spec.get("dynamic_exit"),
             "barrier_exit": (
@@ -3216,8 +3925,16 @@ async def _recover_exchange_positions_into_state(
             "recovered_from_exchange": True,
         }
         state.setdefault("processed_signals", {})[name] = signal_id
-        rec = {"name": name, "side": side, "quantity": str(qty), "signal_id": signal_id, "exit_at": str(exit_at), "order_id": order_id}
-        recovered.append(rec)
+        recovered.append(
+            {
+                "name": name,
+                "side": side,
+                "quantity": str(quantity),
+                "signal_id": signal_id,
+                "exit_at": str(exit_at),
+                "order_ids": order_ids,
+            }
+        )
     if recovered:
         history = list(state.get("exchange_position_recovery_history", []))
         history.extend({**r, "recovered_at": str(pd.Timestamp.utcnow())} for r in recovered)
@@ -3348,6 +4065,60 @@ async def _cancel_portfolio_orders_for_sleeve(
     return cancelled
 
 
+def _floor_lot_quantity(quantity: Decimal, step_size: Decimal) -> Decimal:
+    value = max(Decimal("0"), Decimal(str(quantity)))
+    if step_size <= 0:
+        return value
+    return (value // step_size) * step_size
+
+
+async def _symbol_lot_size_constraints(
+    client: Any, symbol: str
+) -> tuple[Decimal, Decimal, str]:
+    """Return the exact quantity contract used by the wave Binance client."""
+
+    fallback = Decimal("0.001") if str(symbol).upper() == "BTCUSDT" else Decimal("0")
+    minimum = fallback
+    step = fallback
+    source = "btc_fallback" if fallback > 0 else "unconstrained_fallback"
+    get_symbol_info = getattr(client, "get_symbol_info", None)
+    if get_symbol_info is None:
+        return minimum, step, source
+    try:
+        symbol_info = await get_symbol_info(symbol)
+    except Exception:
+        return minimum, step, source
+    for raw_filter in symbol_info.get("filters", []):
+        if raw_filter.get("filterType") != "LOT_SIZE":
+            continue
+        try:
+            parsed_minimum = Decimal(str(raw_filter.get("minQty", "0") or "0"))
+            parsed_step = Decimal(str(raw_filter.get("stepSize", "0") or "0"))
+        except Exception:
+            break
+        minimum = max(parsed_minimum, parsed_step)
+        step = parsed_step
+        source = "exchange_info"
+        break
+    return minimum, step, source
+
+
+def _allocation_fill_fields(
+    *, requested: Decimal, filled: Decimal, minimum: Decimal, step: Decimal
+) -> dict[str, str]:
+    requested = max(Decimal("0"), requested)
+    filled = max(Decimal("0"), filled)
+    unfilled = max(Decimal("0"), requested - filled)
+    ratio = filled / requested if requested > 0 else Decimal("0")
+    return {
+        "executable_target_quantity": str(_floor_lot_quantity(requested, step)),
+        "unfilled_quantity": str(unfilled),
+        "fill_ratio": str(ratio),
+        "lot_min_quantity": str(minimum),
+        "lot_step_size": str(step),
+    }
+
+
 async def _place_portfolio_maker_order_with_deadline(
     *,
     client: Any,
@@ -3381,8 +4152,17 @@ async def _place_portfolio_maker_order_with_deadline(
     last_status: dict[str, Any] = {}
     active_counted_executed = Decimal("0")
     active_counted_quote = Decimal("0")
-    terminal_statuses = {"FILLED", "CANCELED", "REJECTED", "EXPIRED"}
-    min_qty = Decimal("0.001")
+    terminal_statuses = {
+        "FILLED",
+        "CANCELED",
+        "REJECTED",
+        "EXPIRED",
+        "EXPIRED_IN_MATCH",
+    }
+    execution_uncertain = False
+    min_qty, step_size, lot_constraint_source = await _symbol_lot_size_constraints(
+        client, exec_cfg.symbol
+    )
 
     def _order_executed_qty(order: dict[str, Any] | None) -> Decimal:
         if not isinstance(order, dict):
@@ -3461,6 +4241,73 @@ async def _place_portfolio_maker_order_with_deadline(
         )
         return delta
 
+    async def cancel_active_order(reason: str) -> bool:
+        """Cancel the active maker order or prove its terminal state.
+
+        A replacement must never be submitted after an unconfirmed cancellation;
+        otherwise a late fill and the replacement can both execute.
+        """
+
+        nonlocal cancel_result, execution_uncertain, last_status
+        try:
+            resolved = dict(
+                await client.cancel_order(
+                    exec_cfg.symbol,
+                    client_order_id=active_client_order_id,
+                )
+            )
+            cancel_result = resolved
+        except Exception as cancel_exc:
+            try:
+                if active_order_id is not None:
+                    resolved = dict(
+                        await client.get_order(
+                            exec_cfg.symbol,
+                            order_id=active_order_id,
+                        )
+                    )
+                else:
+                    resolved = dict(
+                        await client.get_order(
+                            exec_cfg.symbol,
+                            client_order_id=active_client_order_id,
+                        )
+                    )
+            except Exception as lookup_exc:
+                execution_uncertain = True
+                refresh_history.append(
+                    {
+                        "action": "cancel_unconfirmed",
+                        "reason": reason,
+                        "order_id": active_order_id,
+                        "client_order_id": active_client_order_id,
+                        "cancel_error": f"{type(cancel_exc).__name__}: {cancel_exc}",
+                        "lookup_error": f"{type(lookup_exc).__name__}: {lookup_exc}",
+                        "at": str(pd.Timestamp.utcnow()),
+                    }
+                )
+                return False
+            resolved["cancel_error"] = f"{type(cancel_exc).__name__}: {cancel_exc}"
+            cancel_result = resolved
+
+        last_status = resolved
+        reconcile_active_fill(resolved, f"{reason}_resolved")
+        resolved_status = str(resolved.get("status", "UNKNOWN")).upper()
+        terminal = resolved_status in terminal_statuses
+        refresh_history.append(
+            {
+                "action": "cancel_confirmed" if terminal else "cancel_still_active",
+                "reason": reason,
+                "order_id": active_order_id,
+                "client_order_id": active_client_order_id,
+                "status": resolved_status,
+                "remaining_qty": str(remaining_qty),
+                "result": resolved,
+                "at": str(pd.Timestamp.utcnow()),
+            }
+        )
+        return terminal
+
     def deviation_ok(price: float) -> tuple[bool, float | None]:
         if reference_price is None or max_deviation_pct is None or max_deviation_pct <= 0:
             return True, None
@@ -3472,8 +4319,9 @@ async def _place_portfolio_maker_order_with_deadline(
 
     async def place_new(reason: str) -> bool:
         nonlocal active_order_id, active_client_order_id, active_price, last_status, active_counted_executed, active_counted_quote
-        if remaining_qty < min_qty:
-            refresh_history.append({"action": "skip_place_min_remaining", "reason": reason, "remaining_qty": str(remaining_qty), "at": str(pd.Timestamp.utcnow())})
+        submitted_quantity = _floor_lot_quantity(remaining_qty, step_size)
+        if submitted_quantity <= 0 or submitted_quantity < min_qty:
+            refresh_history.append({"action": "skip_place_min_remaining", "reason": reason, "remaining_qty": str(remaining_qty), "submitted_quantity": str(submitted_quantity), "min_quantity": str(min_qty), "step_size": str(step_size), "at": str(pd.Timestamp.utcnow())})
             return False
         maker_price = float(await executor.get_maker_price(order_side, None))
         ok, deviation = deviation_ok(maker_price)
@@ -3486,7 +4334,7 @@ async def _place_portfolio_maker_order_with_deadline(
                 symbol=exec_cfg.symbol,
                 side=order_side,
                 order_type="LIMIT",
-                quantity=float(remaining_qty),
+                quantity=float(submitted_quantity),
                 price=float(maker_price),
                 time_in_force="GTX",
                 reduce_only=bool(reduce_only),
@@ -3503,12 +4351,39 @@ async def _place_portfolio_maker_order_with_deadline(
         active_counted_quote = Decimal("0")
         last_status = dict(order)
         raw_orders.append(order)
-        refresh_history.append({"action": "placed" if reason == "initial" else "replaced", "reason": reason, "order_id": active_order_id, "client_order_id": cid, "price": str(active_price), "quantity": str(remaining_qty), "reference_price": reference_price, "deviation_pct": deviation, "at": str(pd.Timestamp.utcnow())})
+        refresh_history.append({"action": "placed" if reason == "initial" else "replaced", "reason": reason, "order_id": active_order_id, "client_order_id": cid, "price": str(active_price), "quantity": str(submitted_quantity), "target_remaining_quantity": str(remaining_qty), "reference_price": reference_price, "deviation_pct": deviation, "at": str(pd.Timestamp.utcnow())})
         return True
 
     if not await place_new("initial"):
         finished = pd.Timestamp.utcnow()
-        return {"status": "REJECTED_DEVIATION" if refresh_history and refresh_history[-1]["action"] == "skip_place_deviation" else "REJECTED", "client_order_id": active_client_order_id, "requested_quantity": str(quantity), "filled_quantity": "0", "avg_price": "0", "price": "0", "ttl_sec": int(ttl_sec), "started_at": str(started), "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))), "finished_at": str(finished), "wall_time_sec": float((finished - started).total_seconds()), "refresh_history": refresh_history}
+        last_action = refresh_history[-1]["action"] if refresh_history else None
+        if last_action == "skip_place_deviation":
+            status = "REJECTED_DEVIATION"
+        elif last_action == "skip_place_min_remaining":
+            status = "REJECTED_MIN_QTY_UNREPRESENTABLE"
+        else:
+            status = "REJECTED"
+        return {
+            "status": status,
+            "client_order_id": active_client_order_id,
+            "requested_quantity": str(quantity),
+            "filled_quantity": "0",
+            "avg_price": "0",
+            "price": "0",
+            "ttl_sec": int(ttl_sec),
+            "started_at": str(started),
+            "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))),
+            "finished_at": str(finished),
+            "wall_time_sec": float((finished - started).total_seconds()),
+            "refresh_history": refresh_history,
+            "lot_constraint_source": lot_constraint_source,
+            **_allocation_fill_fields(
+                requested=quantity,
+                filled=Decimal("0"),
+                minimum=min_qty,
+                step=step_size,
+            ),
+        }
 
     last_refresh = asyncio.get_event_loop().time()
     final_status = "UNKNOWN"
@@ -3532,12 +4407,18 @@ async def _place_portfolio_maker_order_with_deadline(
         observed_executed = _order_executed_qty(last_status)
         if status == "FILLED":
             reconcile_active_fill(last_status, "status_filled")
-            final_status = "FILLED"
+            final_status = (
+                "FILLED"
+                if remaining_qty <= 0
+                else "PARTIAL_FILLED_MIN_REMAINING"
+                if _floor_lot_quantity(remaining_qty, step_size) < min_qty
+                else "PARTIAL_FILLED"
+            )
             break
         if status in terminal_statuses:
             reconcile_active_fill(last_status, f"terminal_{status.lower()}")
             final_status = status
-            if remaining_qty < min_qty:
+            if _floor_lot_quantity(remaining_qty, step_size) < min_qty:
                 break
             if asyncio.get_event_loop().time() < deadline:
                 active_order_id = None
@@ -3549,19 +4430,21 @@ async def _place_portfolio_maker_order_with_deadline(
 
         if asyncio.get_event_loop().time() - last_refresh >= max(1, int(refresh_interval_sec)):
             reconcile_active_fill(last_status, "before_refresh_cancel")
-            if remaining_qty < min_qty:
+            if _floor_lot_quantity(remaining_qty, step_size) < min_qty:
                 final_status = "FILLED" if remaining_qty <= 0 else "PARTIAL_FILLED_MIN_REMAINING" if total_filled > 0 else status
                 break
-            try:
-                cancel_result = await client.cancel_order(exec_cfg.symbol, client_order_id=active_client_order_id)
-                reconcile_active_fill(cancel_result, "after_refresh_cancel")
-                refresh_history.append({"action": "cancel_for_refresh", "order_id": active_order_id, "client_order_id": active_client_order_id, "executed_qty_before_cancel": str(observed_executed), "executed_qty_after_cancel": str(_order_executed_qty(cancel_result)), "remaining_qty": str(remaining_qty), "result": cancel_result, "at": str(pd.Timestamp.utcnow())})
-            except Exception as exc:
-                if "-2011" not in str(exc):
-                    refresh_history.append({"action": "cancel_for_refresh_failed", "order_id": active_order_id, "client_order_id": active_client_order_id, "error": str(exc), "remaining_qty": str(remaining_qty), "at": str(pd.Timestamp.utcnow())})
+            cancel_confirmed = await cancel_active_order("refresh_cancel")
+            if not cancel_confirmed:
+                if execution_uncertain:
+                    final_status = "CANCEL_UNCERTAIN"
+                    break
+                # The order is still known-active. Keep monitoring it and do
+                # not submit a replacement that could double the position.
+                last_refresh = asyncio.get_event_loop().time()
+                continue
             active_order_id = None
             active_client_order_id = ""
-            if remaining_qty < min_qty:
+            if _floor_lot_quantity(remaining_qty, step_size) < min_qty:
                 final_status = "FILLED" if remaining_qty <= 0 else "PARTIAL_FILLED_MIN_REMAINING" if total_filled > 0 else status
                 break
             await place_new("refresh_60s")
@@ -3569,23 +4452,65 @@ async def _place_portfolio_maker_order_with_deadline(
 
     if final_status == "UNKNOWN":
         final_status = str(last_status.get("status") or "UNKNOWN")
-    if active_client_order_id and final_status not in {"FILLED", "CANCELED", "REJECTED", "EXPIRED"}:
+    if active_client_order_id and final_status.upper() not in terminal_statuses:
         reconcile_active_fill(last_status, "before_timeout_cancel")
-        try:
-            cancel_result = await client.cancel_order(exec_cfg.symbol, client_order_id=active_client_order_id)
-            reconcile_active_fill(cancel_result, "after_timeout_cancel")
-            if remaining_qty < min_qty:
+        cancel_confirmed = await cancel_active_order("timeout_cancel")
+        if cancel_confirmed:
+            if remaining_qty <= 0:
                 final_status = "FILLED"
+            elif _floor_lot_quantity(remaining_qty, step_size) < min_qty:
+                final_status = (
+                    "PARTIAL_FILLED_MIN_REMAINING"
+                    if total_filled > 0
+                    else "REJECTED_MIN_QTY_UNREPRESENTABLE"
+                )
             else:
                 final_status = "TIMEOUT_CANCELLED" if total_filled <= 0 else "PARTIAL_CANCELLED"
-        except Exception as exc:
-            if "-2011" not in str(exc):
-                cancel_result = {"status": "cancel_failed", "error": str(exc)}
+        else:
+            execution_uncertain = True
+            final_status = (
+                "PARTIAL_CANCEL_UNCERTAIN" if total_filled > 0 else "CANCEL_UNCERTAIN"
+            )
     if avg_price <= 0 and active_price > 0:
         avg_price = active_price
     finished = pd.Timestamp.utcnow()
 
-    return {"status": final_status, "order_id": active_order_id, "client_order_id": active_client_order_id, "requested_quantity": str(quantity), "filled_quantity": str(total_filled), "avg_price": str(avg_price), "price": str(active_price), "ttl_sec": int(ttl_sec), "refresh_interval_sec": int(refresh_interval_sec), "reference_price": reference_price, "max_deviation_pct": max_deviation_pct, "started_at": str(started), "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))), "finished_at": str(finished), "wall_time_sec": float((finished - started).total_seconds()), "cancel_result": cancel_result, "raw_order": raw_orders[0] if raw_orders else {}, "raw_orders": raw_orders, "last_status": last_status, "refresh_history": refresh_history}
+    if remaining_qty > 0 and _floor_lot_quantity(remaining_qty, step_size) < min_qty:
+        final_status = (
+            "PARTIAL_FILLED_MIN_REMAINING"
+            if total_filled > 0
+            else "REJECTED_MIN_QTY_UNREPRESENTABLE"
+        )
+    return {
+        "status": final_status,
+        "order_id": active_order_id,
+        "client_order_id": active_client_order_id,
+        "requested_quantity": str(quantity),
+        "filled_quantity": str(total_filled),
+        "avg_price": str(avg_price),
+        "price": str(active_price),
+        "ttl_sec": int(ttl_sec),
+        "refresh_interval_sec": int(refresh_interval_sec),
+        "reference_price": reference_price,
+        "max_deviation_pct": max_deviation_pct,
+        "started_at": str(started),
+        "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))),
+        "finished_at": str(finished),
+        "wall_time_sec": float((finished - started).total_seconds()),
+        "cancel_result": cancel_result,
+        "raw_order": raw_orders[0] if raw_orders else {},
+        "raw_orders": raw_orders,
+        "last_status": last_status,
+        "refresh_history": refresh_history,
+        "execution_uncertain": execution_uncertain,
+        "lot_constraint_source": lot_constraint_source,
+        **_allocation_fill_fields(
+            requested=quantity,
+            filled=total_filled,
+            minimum=min_qty,
+            step=step_size,
+        ),
+    }
 
 
 def _margin_fraction_for_weight(
@@ -3715,6 +4640,11 @@ async def _open_sleeve(
         reference_price=float(sleeve.get("current_close", 0.0) or 0.0),
         max_deviation_pct=float(sleeve.get("entry_maker_max_deviation_pct", 0.0) or 0.0),
         refresh_interval_sec=int(sleeve.get("maker_refresh_interval_sec", 60) or 60),
+    )
+    order = await _attach_exchange_trade_report(
+        client=client,
+        symbol=exec_cfg.symbol,
+        order_info=order,
     )
     return {
         "order": order,
@@ -3954,6 +4884,10 @@ async def _open_sleeve_market(
     reference_price = float(await client.get_ticker_price(exec_cfg.symbol))
     notional = total_equity * float(margin_fraction) * float(exec_cfg.leverage)
     quantity = Decimal(str(notional / reference_price))
+    min_qty, step_size, lot_constraint_source = await _symbol_lot_size_constraints(
+        client, exec_cfg.symbol
+    )
+    submitted_quantity = _floor_lot_quantity(quantity, step_size)
     side: Side = sleeve["side"]
     order_side = "BUY" if side == "LONG" else "SELL"
     client_order_id = _portfolio_client_order_id(
@@ -3961,11 +4895,43 @@ async def _open_sleeve_market(
         sleeve_name=str(sleeve["name"]),
     )
     started = pd.Timestamp.utcnow()
+    if submitted_quantity <= 0 or submitted_quantity < min_qty:
+        finished = pd.Timestamp.utcnow()
+        normalized = {
+            "status": "REJECTED_MIN_QTY_UNREPRESENTABLE",
+            "client_order_id": client_order_id,
+            "requested_quantity": str(quantity),
+            "submitted_quantity": str(submitted_quantity),
+            "filled_quantity": "0",
+            "avg_price": "0",
+            "reference_price": reference_price,
+            "started_at": str(started),
+            "finished_at": str(finished),
+            "wall_time_sec": float((finished - started).total_seconds()),
+            "barrier_market_entry": True,
+            "execution_uncertain": False,
+            "lot_constraint_source": lot_constraint_source,
+            **_allocation_fill_fields(
+                requested=quantity,
+                filled=Decimal("0"),
+                minimum=min_qty,
+                step=step_size,
+            ),
+        }
+        return {
+            "order": normalized,
+            "requested_quantity": str(quantity),
+            "filled_quantity": "0",
+            "entry_ttl_sec": 0,
+            "notional": notional,
+            "margin_fraction": margin_fraction,
+            "equity_basis": total_equity,
+        }
     raw = await _place_or_resolve_market_order(
         client=client,
         symbol=exec_cfg.symbol,
         side=order_side,
-        quantity=quantity,
+        quantity=submitted_quantity,
         position_side=side,
         reduce_only=False,
         client_order_id=client_order_id,
@@ -3995,12 +4961,25 @@ async def _open_sleeve_market(
     if filled <= 0 and status.upper() == "FILLED":
         filled = first_decimal("origQty")
     avg_price = first_decimal("avgPrice", "avg_price", "price")
+    allocation_fields = _allocation_fill_fields(
+        requested=quantity,
+        filled=filled,
+        minimum=min_qty,
+        step=step_size,
+    )
+    if (
+        status.upper() == "FILLED"
+        and filled < quantity
+        and Decimal(allocation_fields["unfilled_quantity"]) > 0
+    ):
+        status = "PARTIAL_FILLED_MIN_REMAINING"
     finished = pd.Timestamp.utcnow()
     normalized = {
         "status": status,
         "order_id": order_id,
         "client_order_id": order.get("clientOrderId", client_order_id),
         "requested_quantity": str(quantity),
+        "submitted_quantity": str(submitted_quantity),
         "filled_quantity": str(filled),
         "avg_price": str(avg_price),
         "reference_price": reference_price,
@@ -4014,6 +4993,8 @@ async def _open_sleeve_market(
         "time": order.get("time"),
         "barrier_market_entry": True,
         "execution_uncertain": bool(order.get("execution_uncertain")),
+        "lot_constraint_source": lot_constraint_source,
+        **allocation_fields,
     }
     return {
         "order": normalized,
@@ -4038,16 +5019,23 @@ def _build_open_intents(
     max_entry_wait_sec: int,
     entry_maker_max_deviation_pct: float,
     maker_refresh_interval_sec: int,
+    blocked_reentry_sleeves: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Build immutable, de-duplicated order intents from score/state snapshots."""
 
     open_sleeves = state.get("open_sleeves", {})
     processed = state.get("processed_signals", {})
+    non_overlap_blocks = blocked_reentry_sleeves or set()
     intents: list[dict[str, Any]] = []
     for raw_sleeve in sleeve_scores:
         name = str(raw_sleeve["name"])
         signal_id = str(raw_sleeve["signal_id"])
-        if not raw_sleeve.get("active") or name in open_sleeves or processed.get(name) == signal_id:
+        if (
+            not raw_sleeve.get("active")
+            or name in open_sleeves
+            or name in non_overlap_blocks
+            or processed.get(name) == signal_id
+        ):
             continue
         current_close = float(raw_sleeve.get("current_close", 0.0) or 0.0)
         if not np.isfinite(current_close) or current_close <= 0.0:
@@ -4149,14 +5137,23 @@ async def _execute_open_intents(
             filled = Decimal(str(quantity or "0"))
             order_payload = order_info.get("order", order_info)
             execution_uncertain = bool(order_payload.get("execution_uncertain"))
+            order_status = str(order_payload.get("status", ""))
+            if execution_uncertain:
+                reservation_status = "UNCERTAIN"
+            elif filled <= 0:
+                reservation_status = "MISSED"
+            elif order_status == "FILLED":
+                reservation_status = "FILLED"
+            else:
+                reservation_status = "PARTIAL"
             return {
                 "intent": intent,
                 "ok": not execution_uncertain,
                 "replaced": replaced,
                 "order_info": order_info,
                 "filled_quantity": str(filled),
-                "order_status": str(order_payload.get("status", "")),
-                "reservation_status": "UNCERTAIN" if execution_uncertain else "FILLED" if filled > 0 else "MISSED",
+                "order_status": order_status,
+                "reservation_status": reservation_status,
                 "execution_uncertain": execution_uncertain,
                 "error": "market_order_execution_uncertain" if execution_uncertain else None,
             }
@@ -4212,25 +5209,105 @@ async def _close_sleeve(
     if remaining > Decimal("0"):
         taker_started = pd.Timestamp.utcnow()
         try:
-            taker_order = await client.place_market(
+            taker_client_order_id = _portfolio_client_order_id(
+                f"{sleeve_state.get('signal_id', 'portfolio-exit')}:taker-fallback",
+                sleeve_name=str(sleeve_state.get("name", "portfolio-exit")),
+            )
+            raw_taker_order = await _place_or_resolve_market_order(
+                client=client,
                 symbol=exec_cfg.symbol,
                 side=close_side,
-                quantity=float(remaining),
+                quantity=remaining,
                 reduce_only=True,
                 position_side=side,
+                client_order_id=taker_client_order_id,
+            )
+            taker_order = await _confirm_market_order(
+                client=client,
+                symbol=exec_cfg.symbol,
+                raw_order=dict(raw_taker_order or {}),
+                client_order_id=taker_client_order_id,
+                require_fill_details=True,
             )
             taker_finished = pd.Timestamp.utcnow()
             order["taker_fallback_order"] = taker_order
             order["taker_fallback_finished_at"] = str(taker_finished)
             order["taker_fallback_wall_time_sec"] = float((taker_finished - taker_started).total_seconds())
-            order["filled_quantity"] = str(quantity)
-            order["status"] = "TAKER_FALLBACK_FILLED"
+            taker_report = (
+                taker_order.get("trade_report")
+                if isinstance(taker_order.get("trade_report"), dict)
+                else {}
+            )
+            taker_filled = Decimal(str(taker_report.get("quantity", "0") or "0"))
+            if taker_filled <= 0:
+                for key in ("executedQty", "cumQty", "filled_quantity", "origQty"):
+                    try:
+                        taker_filled = Decimal(str(taker_order.get(key, "0") or "0"))
+                    except Exception:
+                        continue
+                    if taker_filled > 0:
+                        break
+            taker_filled = min(remaining, max(Decimal("0"), taker_filled))
+            combined_filled = maker_filled + taker_filled
+            order["taker_fallback_filled_quantity"] = str(taker_filled)
+            order["filled_quantity"] = str(combined_filled)
+            maker_avg = Decimal(str(order.get("avg_price", "0") or "0"))
+            taker_avg = Decimal(
+                str(
+                    taker_report.get("avg_price")
+                    or taker_order.get("avgPrice")
+                    or taker_order.get("avg_price")
+                    or "0"
+                )
+            )
+            priced_quantity = Decimal("0")
+            priced_quote = Decimal("0")
+            if maker_filled > 0 and maker_avg > 0:
+                priced_quantity += maker_filled
+                priced_quote += maker_filled * maker_avg
+            if taker_filled > 0 and taker_avg > 0:
+                priced_quantity += taker_filled
+                priced_quote += taker_filled * taker_avg
+            if priced_quantity == combined_filled and priced_quantity > 0:
+                order["avg_price"] = str(priced_quote / priced_quantity)
+            if taker_order.get("execution_uncertain"):
+                order["execution_uncertain"] = True
+                order["taker_fallback_error"] = "taker_fallback_execution_uncertain"
+                order["status"] = (
+                    "PARTIAL_TAKER_FALLBACK_UNCERTAIN"
+                    if combined_filled > 0
+                    else "TAKER_FALLBACK_UNCERTAIN"
+                )
+            elif taker_filled >= remaining:
+                order["status"] = "TAKER_FALLBACK_FILLED"
+            else:
+                order["taker_fallback_error"] = (
+                    f"taker fallback filled {taker_filled} of {remaining}"
+                )
+                order["status"] = (
+                    "PARTIAL_TAKER_FALLBACK_FAILED"
+                    if combined_filled > 0
+                    else "TAKER_FALLBACK_FAILED"
+                )
         except Exception as exc:
             order["taker_fallback_error"] = f"{type(exc).__name__}: {exc}"
             order["filled_quantity"] = str(maker_filled)
             order["status"] = "PARTIAL_TAKER_FALLBACK_FAILED" if maker_filled > 0 else "TAKER_FALLBACK_FAILED"
         order["taker_fallback_started_at"] = str(taker_started)
         order["taker_fallback_quantity"] = str(remaining)
+        close_finished = pd.Timestamp.utcnow()
+        order["finished_at"] = str(close_finished)
+        try:
+            close_started = pd.Timestamp(order.get("started_at"))
+            if close_started.tzinfo is None:
+                close_started = close_started.tz_localize("UTC")
+            else:
+                close_started = close_started.tz_convert("UTC")
+            order["wall_time_sec"] = float(
+                (close_finished - close_started).total_seconds()
+            )
+        except Exception:
+            pass
     return order
 
 
@@ -4249,6 +5326,7 @@ async def _close_sleeve_market(
         f"{sleeve_state.get('signal_id', 'portfolio-exit')}:barrier-close",
         sleeve_name=str(sleeve_state.get("name", "portfolio-exit")),
     )
+    started = pd.Timestamp.utcnow()
     raw = await _place_or_resolve_market_order(
         client=client,
         symbol=exec_cfg.symbol,
@@ -4281,6 +5359,7 @@ async def _close_sleeve_market(
     if filled <= 0 and str(order.get("status", "")).upper() == "FILLED":
         filled = first_decimal("origQty")
     avg_price = first_decimal("avgPrice", "avg_price", "price")
+    finished = pd.Timestamp.utcnow()
     return {
         "status": str(order.get("status", "UNKNOWN")),
         "order_id": order_id,
@@ -4288,8 +5367,9 @@ async def _close_sleeve_market(
         "requested_quantity": str(quantity),
         "filled_quantity": str(filled),
         "avg_price": str(avg_price),
-        "started_at": str(pd.Timestamp.utcnow()),
-        "finished_at": str(pd.Timestamp.utcnow()),
+        "started_at": str(started),
+        "finished_at": str(finished),
+        "wall_time_sec": float((finished - started).total_seconds()),
         "raw_order": order,
         "barrier_market_exit": True,
         "execution_uncertain": bool(order.get("execution_uncertain")),
@@ -4341,6 +5421,10 @@ async def _execute_close_intents(
                     client=client,
                     symbol=exec_cfg.symbol,
                     order_info=close_info,
+                )
+                close_info["strategy_trade_report"] = _strategy_trade_report(
+                    open_state=open_state,
+                    close_info=close_info,
                 )
             try:
                 filled = Decimal(str(close_info.get("filled_quantity", "0") or "0"))
@@ -4879,6 +5963,22 @@ async def _wait_with_barrier_monitor(
                 requested = Decimal(str(open_state.get("quantity", "0") or "0"))
                 filled = Decimal(str(outcome.get("filled_quantity", "0") or "0"))
                 open_state["quantity"] = str(max(Decimal("0"), requested - filled))
+                strategy_report = close_info.get("strategy_trade_report")
+                if isinstance(strategy_report, dict):
+                    open_state["entry_commission_remaining"] = strategy_report.get(
+                        "entry_commission_remaining_after",
+                        open_state.get("entry_commission_remaining", "0"),
+                    )
+                close_order_ids = _execution_order_ids(close_info)
+                if close_order_ids:
+                    accounted = {
+                        str(order_id)
+                        for order_id in open_state.get(
+                            "accounted_close_order_ids", []
+                        )
+                    }
+                    accounted.update(close_order_ids)
+                    open_state["accounted_close_order_ids"] = sorted(accounted)
                 open_state["close_pending"] = True
                 open_state["last_close_order_info"] = close_info
                 state["open_sleeves"][key] = open_state
@@ -5140,6 +6240,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             if db_lease is not None:
                 _assert_portfolio_db_lease(db_lease)
             state = _load_state(cfg.state_file)
+            decision_open_sleeves = set(state.get("open_sleeves", {}))
             if portfolio_selector_record is not None:
                 state["last_portfolio_selector"] = portfolio_selector_record
             now = pd.Timestamp.utcnow()
@@ -5162,29 +6263,6 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             reconciled_positions: list[dict[str, Any]] = []
             if not exec_cfg.dry_run:
                 assert client is not None
-                recovered_positions = await _recover_exchange_positions_into_state(
-                    state=state,
-                    client=client,
-                    exec_cfg=exec_cfg,
-                    portfolio=portfolio,
-                    leverage_budget=float(cfg.leverage),
-                    allocation_mode=cfg.allocation_mode,
-                )
-                for rec in recovered_positions:
-                    _log_trade_execution(
-                        engine,
-                        strategy_name=cfg.strategy_name,
-                        sub_strategy_name=str(rec.get("name")),
-                        exchange=execution_exchange,
-                        symbol=exec_cfg.symbol,
-                        action="RECOVER_POSITION",
-                        side=str(rec.get("side")),
-                        position_side=str(rec.get("side")),
-                        order_type="RECOVERY",
-                        signal_id=str(rec.get("signal_id")),
-                        status="RECOVERED",
-                        order_info=rec,
-                    )
                 reconciled_positions = await _reconcile_exchange_flat_sleeves(
                     state=state,
                     client=client,
@@ -5201,12 +6279,42 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         action="CLOSE",
                         side="SELL" if str(rec["side"]).upper() == "LONG" else "BUY",
                         position_side=str(rec["side"]),
-                        order_type="EXCHANGE_FLAT_RECONCILE",
+                        order_type=(
+                            "EXCHANGE_FLAT_RECONCILE"
+                            if info.get("reconciliation", {}).get("reason")
+                            == "state_open_but_exchange_side_flat"
+                            else "EXCHANGE_PARTIAL_RECONCILE"
+                        ),
                         signal_id=str(rec["signal_id"]),
                         status=str(info.get("status")),
                         order_info=info,
                     )
-                    state["open_sleeves"].pop(str(rec["name"]), None)
+                    name = str(rec["name"])
+                    if rec.get("fully_closed"):
+                        state["open_sleeves"].pop(name, None)
+                        continue
+                    open_state = state["open_sleeves"].get(name)
+                    if not isinstance(open_state, dict):
+                        raise RuntimeError(
+                            f"reconciled sleeve disappeared from state: {name}"
+                        )
+                    open_state["quantity"] = str(rec["remaining_quantity"])
+                    strategy_report = info.get("strategy_trade_report")
+                    if isinstance(strategy_report, dict):
+                        open_state["entry_commission_remaining"] = strategy_report.get(
+                            "entry_commission_remaining_after"
+                        )
+                    known_ids = {
+                        str(order_id)
+                        for order_id in open_state.get(
+                            "accounted_close_order_ids", []
+                        )
+                    }
+                    known_ids.update(str(order_id) for order_id in rec["accounted_order_ids"])
+                    open_state["accounted_close_order_ids"] = sorted(known_ids)
+                    open_state["last_close_order_info"] = info
+                    open_state.pop("close_pending", None)
+                    state["open_sleeves"][name] = open_state
                 if reconciled_positions:
                     history = list(state.get("exchange_flat_reconcile_history", []))
                     history.extend(
@@ -5215,6 +6323,37 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     )
                     state["exchange_flat_reconcile_history"] = history[-100:]
                     state["last_exchange_flat_reconcile"] = reconciled_positions
+                    state["updated_at"] = str(pd.Timestamp.utcnow())
+                    _write_json(cfg.state_file, state)
+
+                recovered_positions = await _recover_exchange_positions_into_state(
+                    state=state,
+                    client=client,
+                    exec_cfg=exec_cfg,
+                    portfolio=portfolio,
+                    leverage_budget=float(cfg.leverage),
+                    allocation_mode=cfg.allocation_mode,
+                )
+                # Offline close reconciliation can prove that a stale state
+                # sleeve was already flat before this decision.  Rebuild the
+                # snapshot here; later same-cycle strategy closes remain in it
+                # and still enforce research-style non-overlap.
+                decision_open_sleeves = set(state.get("open_sleeves", {}))
+                for rec in recovered_positions:
+                    _log_trade_execution(
+                        engine,
+                        strategy_name=cfg.strategy_name,
+                        sub_strategy_name=str(rec.get("name")),
+                        exchange=execution_exchange,
+                        symbol=exec_cfg.symbol,
+                        action="RECOVER_POSITION",
+                        side=str(rec.get("side")),
+                        position_side=str(rec.get("side")),
+                        order_type="RECOVERY",
+                        signal_id=str(rec.get("signal_id")),
+                        status="RECOVERED",
+                        order_info=rec,
+                    )
 
             closed: list[str] = []
             close_intents: list[dict[str, Any]] = []
@@ -5302,6 +6441,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                             signal_id=str(open_state.get("signal_id")),
                             status="ERROR",
                             order_info={},
+                            computing_wall_time_sec=frame_build_sec
+                            + alpha_score_sec,
                             error=str(outcome.get("error")),
                         )
                     state["updated_at"] = str(pd.Timestamp.utcnow())
@@ -5334,6 +6475,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         signal_id=str(open_state.get("signal_id")),
                         status=str(close_info.get("status", "FILLED" if fully_closed else "PARTIAL_OR_TIMEOUT")),
                         order_info=close_info,
+                        computing_wall_time_sec=frame_build_sec + alpha_score_sec,
                     )
                 if fully_closed:
                     closed.append(key)
@@ -5342,6 +6484,22 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     requested = Decimal(str(open_state.get("quantity", "0") or "0"))
                     filled = Decimal(str(outcome.get("filled_quantity", "0") or "0"))
                     open_state["quantity"] = str(max(Decimal("0"), requested - filled))
+                    strategy_report = close_info.get("strategy_trade_report")
+                    if isinstance(strategy_report, dict):
+                        open_state["entry_commission_remaining"] = strategy_report.get(
+                            "entry_commission_remaining_after",
+                            open_state.get("entry_commission_remaining", "0"),
+                        )
+                    close_order_ids = _execution_order_ids(close_info)
+                    if close_order_ids:
+                        accounted = {
+                            str(order_id)
+                            for order_id in open_state.get(
+                                "accounted_close_order_ids", []
+                            )
+                        }
+                        accounted.update(close_order_ids)
+                        open_state["accounted_close_order_ids"] = sorted(accounted)
                     open_state["close_pending"] = True
                     state["open_sleeves"][key] = open_state
                 state["updated_at"] = str(pd.Timestamp.utcnow())
@@ -5358,6 +6516,26 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     if not trade_stream.healthy:
                         sleeve["active"] = False
                         sleeve.setdefault("reasons", []).append("aggtrade_stream_pre_entry=unhealthy:fail_closed")
+            non_overlap_blocks = [
+                {
+                    "name": str(sleeve["name"]),
+                    "signal_id": str(sleeve["signal_id"]),
+                    "reason": "signal_scored_while_same_sleeve_open",
+                    "recorded_at": str(pd.Timestamp.utcnow()),
+                }
+                for sleeve in sleeve_scores
+                if sleeve.get("active")
+                and str(sleeve["name"]) in decision_open_sleeves
+            ]
+            for blocked in non_overlap_blocks:
+                state["processed_signals"][blocked["name"]] = blocked["signal_id"]
+            state["last_non_overlap_blocks"] = non_overlap_blocks
+            if non_overlap_blocks:
+                history = list(state.get("non_overlap_block_history", []))
+                history.extend(non_overlap_blocks)
+                state["non_overlap_block_history"] = history[-200:]
+                state["updated_at"] = str(pd.Timestamp.utcnow())
+                _write_json(cfg.state_file, state)
             entry_intents = _build_open_intents(
                 sleeve_scores=sleeve_scores,
                 state=state,
@@ -5369,6 +6547,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 max_entry_wait_sec=cfg.max_entry_wait_sec,
                 entry_maker_max_deviation_pct=cfg.entry_maker_max_deviation_pct,
                 maker_refresh_interval_sec=cfg.maker_refresh_interval_sec,
+                blocked_reentry_sleeves=decision_open_sleeves,
             )
             reservation_conflicts: list[dict[str, Any]] = []
             if not exec_cfg.dry_run:
@@ -5500,12 +6679,23 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         computing_wall_time_sec=frame_build_sec + alpha_score_sec,
                     )
                 if Decimal(quantity) <= Decimal("0"):
+                    order_payload = order_info.get("order", order_info)
+                    order_status = str(order_payload.get("status", ""))
+                    if order_status == "REJECTED_MIN_QTY_UNREPRESENTABLE":
+                        missed_reason = "target_quantity_below_exchange_minimum"
+                    else:
+                        missed_reason = (
+                            "market_barrier_entry_not_filled"
+                            if barrier_market_entry
+                            else "post_only_entry_not_filled"
+                        )
                     missed = list(state.get("missed_entries", []))
                     missed.append(
                         {
                             "name": name,
                             "signal_id": signal_id,
-                            "reason": "market_barrier_entry_not_filled" if barrier_market_entry else "post_only_entry_not_filled",
+                            "reason": missed_reason,
+                            "order_status": order_status,
                             "entry_ttl_sec": entry_ttl_sec,
                             "order_info": order_info,
                             "recorded_at": str(pd.Timestamp.utcnow()),
@@ -5525,6 +6715,26 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 )
                 if fill_metadata["entry_filled_at"] is None:
                     fill_metadata["entry_filled_at"] = str(pd.Timestamp.utcnow())
+                fill_ratio = fill_metadata.get("entry_fill_ratio")
+                if fill_ratio is not None and float(fill_ratio) < 1.0:
+                    shortfalls = list(state.get("allocation_shortfall_history", []))
+                    shortfalls.append(
+                        {
+                            "name": name,
+                            "signal_id": signal_id,
+                            "target_quantity": fill_metadata.get(
+                                "entry_target_quantity"
+                            ),
+                            "filled_quantity": quantity,
+                            "unfilled_quantity": fill_metadata.get(
+                                "entry_unfilled_quantity"
+                            ),
+                            "fill_ratio": fill_ratio,
+                            "order_status": outcome.get("order_status"),
+                            "recorded_at": str(pd.Timestamp.utcnow()),
+                        }
+                    )
+                    state["allocation_shortfall_history"] = shortfalls[-200:]
                 state["open_sleeves"][name] = {
                     "name": name,
                     "side": sleeve["side"],
