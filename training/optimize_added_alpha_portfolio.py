@@ -11,11 +11,11 @@ from training import evaluate_macro_flow_fixed_fresh as macro
 from training import search_macro_flow_alpha_combinations as features_macro
 from training import evaluate_regional_trend_fresh as regional
 
-OUT = base.ROOT / 'research/added_alpha_portfolio_optimization'
+OUT = base.ROOT / 'research/added_alpha_portfolio_optimization_v2'
 NAMES = ['macro_flow', 'oi_pullback', 'regional_trend']
-DESIGN = {'version': 1, 'sleeves': NAMES, 'grid': 'all nonnegative fully invested weights in 5% steps (231)',
+DESIGN = {'version': 2, 'sleeves': NAMES, 'grid': 'all nonnegative fully invested weights in 5% steps (231)',
           'selection': ['2026-06-01', '2026-07-01'], 'report': ['2026-07-01', oi.EVAL_END],
-          'rank': 'June 10bp return / conservative MDD; no frequency, overlap or fee-ratio gate',
+          'rank': 'June 10bp CAGR / conservative MDD; no frequency, overlap or fee-ratio gate',
           'accounting': 'update only the originating sleeve units; net actual units before fees and funding; 1x net cap at execution events',
           'status': 'all periods already exposed; chronological diagnostic, not clean OOS; no live orders'}
 
@@ -37,8 +37,9 @@ def simulate(d, targets, events, weights, cost):
         net = proposed.sum(axis=1)
         hit = np.abs(net * op) > np.maximum(eq, 0) + 1e-12
         scale = np.minimum(1, np.maximum(eq, 0) / np.maximum(np.abs(net*op), 1e-15))
-        if events[t].any():
-            proposed *= scale[:, None]; cap_hits += hit
+        active_event = np.any(events[t][None, :] & (weights != 0), axis=1)
+        proposed *= np.where(active_event, scale, 1.)[:, None]
+        cap_hits += hit & active_event
         units = proposed; net = units.sum(axis=1)
         notional = (net-previous)*op
         charge = np.abs(notional)*cost; fees += charge; eq -= charge

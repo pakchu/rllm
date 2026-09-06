@@ -27,3 +27,13 @@ def test_opposing_units_net_before_fees():
        'end_date':np.array(['2027-01-01'],dtype='datetime64[ns]')}
     r=m.simulate(d,np.array([[1.,-1.,0.]]),np.ones((1,3),bool),np.array([[.5,.5,0.]]),.001)[0]
     assert r['return_pct']==0 and r['fees_pct_initial']==0 and r['funding_pct_initial']==0
+
+
+def test_zero_weight_events_cannot_trigger_risk_resize():
+    d={'open':np.array([100.,110.,120.]),'end':np.array([110.,120.,130.]),
+       'high':np.array([110.,120.,130.]),'low':np.array([100.,110.,120.]),
+       'funding':np.zeros(3),'date':np.array(['2026-01-01','2026-01-02','2026-01-03'],dtype='datetime64[ns]'),
+       'end_date':np.array(['2026-01-02','2026-01-03','2026-01-04'],dtype='datetime64[ns]')}
+    r=m.simulate(d,np.array([[0.,1.,0.]]*3),np.array([[1,1,1],[1,0,1],[1,0,1]],bool),np.array([[0.,1.,0.]]),.001)[0]
+    assert r['orders_including_liquidation']==2
+    assert r['net_cap_events']==0
