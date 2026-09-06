@@ -1,0 +1,387 @@
+{
+  "registration": {
+    "version": 1,
+    "spec": {
+      "name": "failed_rebound_t0.5_h24_tp0.02_sl0.015",
+      "family": "failed_rebound",
+      "threshold": 0.5,
+      "hold": 24,
+      "tp": 0.02,
+      "sl": 0.015
+    },
+    "window": [
+      "2026-06-01",
+      "2026-09-05"
+    ],
+    "selection": "none in extension; historical2024 rank2 retained for research after exposed reports",
+    "hashes": {
+      "/tmp/rllm-alpha-combinations/training/evaluate_independent_short_september.py": "6a238e72379857148c478989bad952785b9232bc62bd1e02614d84d130f43d05",
+      "/tmp/rllm-alpha-combinations/training/search_independent_short_candidates.py": "9ac81c99e85bccb6ca73d2c500e822b44bc9e05629fc8ac78966fa0fe2a355bf",
+      "/tmp/rllm-alpha-combinations/research/g9_september_inputs/raw_enriched_cache.pkl": "e350aa650cbb64c7ba62a1c9bf55b6d7d427da618c58f8e6ca31d89856f2fa7c",
+      "/tmp/rllm-alpha-combinations/research/g9_september_inputs/raw_funding_cache.csv.gz": "55c1fadfc4468d7bb1349124e70ed2222601fcf94ace256ae9a41785db8a546e",
+      "/tmp/rllm-alpha-combinations/research/independent_short_candidates/report.json": "02dc7f0c8339da1c483c4850916615a989f1e4ee699f46b0e5de9e5a10203d75"
+    },
+    "live_enabled": false
+  },
+  "funding_receipt": {
+    "policy": {
+      "alias_grouping": "sort by raw funding_time; group only adjacent rows whose timestamp delta from the previous row is <=100ms",
+      "max_cluster_span_ms": 100,
+      "canonical_timestamp": "latest raw timestamp in the accepted near-alias cluster; no snapping to cadence",
+      "required_exact_equal_columns": [
+        "funding_rate",
+        "mark_price"
+      ],
+      "reject": [
+        "exact_duplicate_timestamp",
+        "malformed_timestamp",
+        "nonfinite_funding_rate_or_mark_price",
+        "unequal_values_within_near_alias_cluster",
+        "cluster_span_gt_100ms"
+      ],
+      "preserve_events_separated_by_at_least": "1min"
+    },
+    "raw_rows": 797,
+    "canonical_rows": 584,
+    "alias_clusters": 213,
+    "alias_rows_removed": 213,
+    "max_cluster_span_ms": 16.0,
+    "cluster_size_histogram": {
+      "1": 371,
+      "2": 213
+    },
+    "selected_timestamp": "latest_raw_timestamp",
+    "passed": true,
+    "reason": "pass",
+    "raw_hash": "90ab55fc0f0633180e8c530e01c5bf3645e6fcc5867539c12dce1e657d948603",
+    "canonical_hash": "3fec00c5d3e2b9fdac762b619b4dbea8d72dcb7c3359c4be1704c217043b7a98"
+  },
+  "reports": {
+    "recent": {
+      "0.0006": {
+        "weights_notional": {
+          "independent_short": 1.0
+        },
+        "return_pct": 10.127227247644255,
+        "cagr_pct": 44.34317694175505,
+        "mdd_pct": 5.730601945888014,
+        "calmar": 7.737961449856665,
+        "entry_episodes": 26,
+        "orders": 52,
+        "turnover": 51.77304914063023,
+        "fees_pct_initial": 3.4405712506205623,
+        "funding_pct_initial": -0.20688722998678982,
+        "max_open_net_exposure": 1.0303442476742959,
+        "mean_open_net_exposure": 0.1455098141736044,
+        "cap_interventions": 0,
+        "insolvent": false,
+        "trades": 26,
+        "win_rate": 0.5769230769230769
+      },
+      "0.001": {
+        "weights_notional": {
+          "independent_short": 1.0
+        },
+        "return_pct": 7.872682978607992,
+        "cagr_pct": 33.41906676021998,
+        "mdd_pct": 6.262341449190312,
+        "calmar": 5.336513032923315,
+        "entry_episodes": 26,
+        "orders": 52,
+        "turnover": 51.783324982469715,
+        "fees_pct_initial": 5.677275225032511,
+        "funding_pct_initial": -0.20397209455907875,
+        "max_open_net_exposure": 1.0307629339989455,
+        "mean_open_net_exposure": 0.1455680472654501,
+        "cap_interventions": 0,
+        "insolvent": false,
+        "trades": 26,
+        "win_rate": 0.5384615384615384
+      }
+    },
+    "extension_since_aug4": {
+      "0.0006": {
+        "weights_notional": {
+          "independent_short": 1.0
+        },
+        "return_pct": -0.2358109816211318,
+        "cagr_pct": -2.6587556174254234,
+        "mdd_pct": 2.1948767169206906,
+        "calmar": -1.2113462213748083,
+        "entry_episodes": 4,
+        "orders": 8,
+        "turnover": 7.998245770029897,
+        "fees_pct_initial": 0.47996217303144706,
+        "funding_pct_initial": -0.06918346249172179,
+        "max_open_net_exposure": 1.013771622849681,
+        "mean_open_net_exposure": 0.12487462688329592,
+        "cap_interventions": 0,
+        "insolvent": false,
+        "trades": 4,
+        "win_rate": 0.5
+      },
+      "0.001": {
+        "weights_notional": {
+          "independent_short": 1.0
+        },
+        "return_pct": -0.5547938249310214,
+        "cagr_pct": -6.152665642963906,
+        "mdd_pct": 2.195741007562746,
+        "calmar": -2.8020907847384575,
+        "entry_episodes": 4,
+        "orders": 8,
+        "turnover": 7.999845724358993,
+        "fees_pct_initial": 0.7989776641542403,
+        "funding_pct_initial": -0.0691103172161665,
+        "max_open_net_exposure": 1.0141801960623014,
+        "mean_open_net_exposure": 0.12492458582443983,
+        "cap_interventions": 0,
+        "insolvent": false,
+        "trades": 4,
+        "win_rate": 0.25
+      }
+    },
+    "september_only": {
+      "0.0006": {
+        "weights_notional": {
+          "independent_short": 1.0
+        },
+        "return_pct": -0.3913560629891122,
+        "cagr_pct": -30.096754272955717,
+        "mdd_pct": 2.194876716920824,
+        "calmar": -13.712275519136323,
+        "entry_episodes": 1,
+        "orders": 2,
+        "turnover": 2.0062350912403035,
+        "fees_pct_initial": 0.12017415736140236,
+        "funding_pct_initial": -0.0190803633762718,
+        "max_open_net_exposure": 1.0109452293217243,
+        "mean_open_net_exposure": 0.24850254474461744,
+        "cap_interventions": 0,
+        "insolvent": false,
+        "trades": 1,
+        "win_rate": 0.0
+      },
+      "0.001": {
+        "weights_notional": {
+          "independent_short": 1.0
+        },
+        "return_pct": -0.47147216789670265,
+        "cagr_pct": -35.0486137056708,
+        "mdd_pct": 2.195741007562757,
+        "calmar": -15.962089146649538,
+        "entry_episodes": 1,
+        "orders": 2,
+        "turnover": 2.0066390848278965,
+        "fees_pct_initial": 0.20029026226900393,
+        "funding_pct_initial": -0.0190803633762718,
+        "max_open_net_exposure": 1.0113520672830052,
+        "mean_open_net_exposure": 0.24860171631210579,
+        "cap_interventions": 0,
+        "insolvent": false,
+        "trades": 1,
+        "win_rate": 0.0
+      }
+    }
+  },
+  "trades": {
+    "recent": [
+      {
+        "entry_date": "2026-06-01T20:05:00.000000000",
+        "exit_date": "2026-06-02T02:05:00.000000000",
+        "exit_price": 70079.212,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-02T21:05:00.000000000",
+        "exit_date": "2026-06-02T23:00:00.000000000",
+        "exit_price": 66199.098,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-03T06:05:00.000000000",
+        "exit_date": "2026-06-03T16:00:00.000000000",
+        "exit_price": 65870.20999999999,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-04T04:05:00.000000000",
+        "exit_date": "2026-06-04T09:10:00.000000000",
+        "exit_price": 63193.634,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-05T00:05:00.000000000",
+        "exit_date": "2026-06-05T03:05:00.000000000",
+        "exit_price": 62433.545999999995,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-05T08:05:00.000000000",
+        "exit_date": "2026-06-05T12:35:00.000000000",
+        "exit_price": 61580.554000000004,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-05T21:05:00.000000000",
+        "exit_date": "2026-06-05T23:30:00.000000000",
+        "exit_price": 60562.334,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-06T22:05:00.000000000",
+        "exit_date": "2026-06-07T01:15:00.000000000",
+        "exit_price": 61556.197499999995,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-07T18:05:00.000000000",
+        "exit_date": "2026-06-07T22:10:00.000000000",
+        "exit_price": 63052.307499999995,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-08T22:05:00.000000000",
+        "exit_date": "2026-06-09T13:20:00.000000000",
+        "exit_price": 62250.776,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-09T20:05:00.000000000",
+        "exit_date": "2026-06-10T09:20:00.000000000",
+        "exit_price": 60808.314,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-10T13:05:00.000000000",
+        "exit_date": "2026-06-10T13:45:00.000000000",
+        "exit_price": 62434.17249999999,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-23T14:05:00.000000000",
+        "exit_date": "2026-06-24T13:45:00.000000000",
+        "exit_price": 61278.518,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-24T21:05:00.000000000",
+        "exit_date": "2026-06-25T05:05:00.000000000",
+        "exit_price": 61643.58899999999,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-26T04:05:00.000000000",
+        "exit_date": "2026-06-26T13:15:00.000000000",
+        "exit_price": 58649.178,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-26T14:05:00.000000000",
+        "exit_date": "2026-06-27T14:05:00.000000000",
+        "exit_price": 60497.3,
+        "barrier": false
+      },
+      {
+        "entry_date": "2026-06-29T00:05:00.000000000",
+        "exit_date": "2026-06-29T06:15:00.000000000",
+        "exit_price": 60261.15899999999,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-06-29T11:05:00.000000000",
+        "exit_date": "2026-06-30T11:05:00.000000000",
+        "exit_price": 59367.5,
+        "barrier": false
+      },
+      {
+        "entry_date": "2026-06-30T19:05:00.000000000",
+        "exit_date": "2026-07-01T14:10:00.000000000",
+        "exit_price": 59508.536499999995,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-07-28T06:05:00.000000000",
+        "exit_date": "2026-07-29T06:05:00.000000000",
+        "exit_price": 64042.4,
+        "barrier": false
+      },
+      {
+        "entry_date": "2026-07-29T14:05:00.000000000",
+        "exit_date": "2026-07-29T21:00:00.000000000",
+        "exit_price": 63268.114,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-08-01T22:05:00.000000000",
+        "exit_date": "2026-08-02T21:40:00.000000000",
+        "exit_price": 63738.04149999999,
+        "barrier": true
+      },
+      {
+        "entry_date": "2026-08-13T03:05:00.000000000",
+        "exit_date": "2026-08-14T03:05:00.000000000",
+        "exit_price": 63407.9,
+        "barrier": false
+      },
+      {
+        "entry_date": "2026-08-14T16:05:00.000000000",
+        "exit_date": "2026-08-15T16:05:00.000000000",
+        "exit_price": 63061.3,
+        "barrier": false
+      },
+      {
+        "entry_date": "2026-08-15T22:05:00.000000000",
+        "exit_date": "2026-08-16T22:05:00.000000000",
+        "exit_price": 62845.6,
+        "barrier": false
+      },
+      {
+        "entry_date": "2026-09-02T03:05:00.000000000",
+        "exit_date": "2026-09-03T03:05:00.000000000",
+        "exit_price": 77672.0,
+        "barrier": false
+      }
+    ],
+    "extension_since_aug4": [
+      {
+        "entry_date": "2026-08-13T03:05:00.000000000",
+        "exit_date": "2026-08-14T03:05:00.000000000",
+        "exit_price": 63407.9,
+        "barrier": false
+      },
+      {
+        "entry_date": "2026-08-14T16:05:00.000000000",
+        "exit_date": "2026-08-15T16:05:00.000000000",
+        "exit_price": 63061.3,
+        "barrier": false
+      },
+      {
+        "entry_date": "2026-08-15T22:05:00.000000000",
+        "exit_date": "2026-08-16T22:05:00.000000000",
+        "exit_price": 62845.6,
+        "barrier": false
+      },
+      {
+        "entry_date": "2026-09-02T03:05:00.000000000",
+        "exit_date": "2026-09-03T03:05:00.000000000",
+        "exit_price": 77672.0,
+        "barrier": false
+      }
+    ],
+    "september_only": [
+      {
+        "entry_date": "2026-09-02T03:05:00.000000000",
+        "exit_date": "2026-09-03T03:05:00.000000000",
+        "exit_price": 77672.0,
+        "barrier": false
+      }
+    ]
+  },
+  "live_enabled": false,
+  "notes": [
+    "Window ends Sep5 00:00UTC, not full September.",
+    "Windows restart flat independently; results overlap.",
+    "No original-parent requirement."
+  ]
+}
