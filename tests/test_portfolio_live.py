@@ -55,6 +55,7 @@ from execution.portfolio_live import (
     _recover_exchange_positions_into_state,
     _score_sleeves,
     _summarize_exchange_trade_fills,
+    _symbol_lot_size_constraints,
     _strategy_trade_report,
     _terminate_process_executor,
     _gate_clauses_pass,
@@ -1343,6 +1344,25 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
 
         asyncio.run(run())
 
+
+    def test_strategy_trade_report_does_not_complete_without_user_trade_report(self):
+        report = _strategy_trade_report(
+            open_state={
+                "side": "LONG",
+                "quantity": "0.002",
+                "entry_fill_price": "100",
+            },
+            close_info={
+                "status": "FILLED",
+                "filled_quantity": "0.002",
+                "avg_price": "110",
+                "trade_report_error": "no_user_trade_fills_for_order",
+            },
+        )
+
+        self.assertFalse(report["complete"])
+        self.assertIsNone(report["strategy_realized_pnl"])
+
     def test_strategy_trade_report_uses_sleeve_lot_not_exchange_average(self):
         close_info = {
             "filled_quantity": "0.002",
@@ -2221,6 +2241,58 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertEqual(result["filled_quantity"], "0")
             self.assertEqual(result["unfilled_quantity"], "0.0006")
             self.assertEqual(client.placed, [])
+
+        asyncio.run(run())
+
+    def test_symbol_lot_size_constraints_fail_closed_on_live_lookup_error(self):
+        async def run():
+            class LiveLikeClient:
+                def __init__(self):
+                    self.placed = []
+
+                async def get_symbol_info(self, symbol):
+                    raise RuntimeError("exchange info unavailable")
+
+                async def place_order(self, **kwargs):
+                    self.placed.append(kwargs)
+                    return {"orderId": 1, "status": "NEW"}
+
+            client = LiveLikeClient()
+            with self.assertRaisesRegex(RuntimeError, "LOT_SIZE lookup failed"):
+                await _symbol_lot_size_constraints(client, "BTCUSDT")
+            with self.assertRaisesRegex(RuntimeError, "LOT_SIZE lookup failed"):
+                await _place_portfolio_maker_order_with_deadline(
+                    client=client,
+                    executor=FakeExecutor(),
+                    exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+                    order_side="BUY",
+                    quantity=Decimal("0.01"),
+                    position_side="LONG",
+                    signal_id="sig-live-lot-fail",
+                    sleeve_name="rex",
+                    ttl_sec=1,
+                    poll_interval_sec=0.01,
+                )
+            self.assertEqual(client.placed, [])
+
+        asyncio.run(run())
+
+    def test_symbol_lot_size_constraints_fail_closed_on_bad_live_lot_filter(self):
+        async def run():
+            class LiveLikeClient:
+                async def get_symbol_info(self, symbol):
+                    return {
+                        "filters": [
+                            {
+                                "filterType": "LOT_SIZE",
+                                "minQty": "bad",
+                                "stepSize": "0.001",
+                            }
+                        ]
+                    }
+
+            with self.assertRaisesRegex(RuntimeError, "invalid LOT_SIZE"):
+                await _symbol_lot_size_constraints(LiveLikeClient(), "BTCUSDT")
 
         asyncio.run(run())
 

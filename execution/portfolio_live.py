@@ -3045,9 +3045,13 @@ def _strategy_trade_report(
 
     state_quantity = abs(decimal_value(open_state.get("quantity")))
     report_quantity = abs(decimal_value(trade_report.get("quantity")))
-    closed_quantity = report_quantity or abs(
-        decimal_value(close_info.get("filled_quantity"))
+    has_complete_trade_report = bool(
+        isinstance(close_info.get("trade_report"), dict)
+        and not close_info.get("trade_report_incomplete")
+        and not close_info.get("trade_report_error")
+        and report_quantity > 0
     )
+    closed_quantity = report_quantity if has_complete_trade_report else Decimal("0")
     if state_quantity > 0:
         closed_quantity = min(closed_quantity, state_quantity)
     entry_price = decimal_value(
@@ -3061,10 +3065,10 @@ def _strategy_trade_report(
     side = str(open_state.get("side", "")).upper()
     complete = bool(
         side in {"LONG", "SHORT"}
+        and has_complete_trade_report
         and closed_quantity > 0
         and entry_price > 0
         and exit_price > 0
-        and not close_info.get("trade_report_incomplete")
     )
     if complete:
         direction = Decimal("1") if side == "LONG" else Decimal("-1")
@@ -4075,32 +4079,61 @@ def _floor_lot_quantity(quantity: Decimal, step_size: Decimal) -> Decimal:
 async def _symbol_lot_size_constraints(
     client: Any, symbol: str
 ) -> tuple[Decimal, Decimal, str]:
-    """Return the exact quantity contract used by the wave Binance client."""
+    """Return the exact quantity contract used by the wave Binance client.
+
+    Clients that expose exchange symbol metadata are treated as live-style
+    surfaces: if the LOT_SIZE contract cannot be fetched or parsed, fail closed
+    before any order quantity is submitted.  Lightweight dry-run/test doubles
+    without ``get_symbol_info`` keep the historical local fallback.
+    """
 
     fallback = Decimal("0.001") if str(symbol).upper() == "BTCUSDT" else Decimal("0")
-    minimum = fallback
-    step = fallback
     source = "btc_fallback" if fallback > 0 else "unconstrained_fallback"
     get_symbol_info = getattr(client, "get_symbol_info", None)
     if get_symbol_info is None:
-        return minimum, step, source
+        return fallback, fallback, source
+
     try:
-        symbol_info = await get_symbol_info(symbol)
-    except Exception:
-        return minimum, step, source
-    for raw_filter in symbol_info.get("filters", []):
-        if raw_filter.get("filterType") != "LOT_SIZE":
+        maybe_symbol_info = get_symbol_info(symbol)
+        symbol_info = (
+            await maybe_symbol_info
+            if inspect.isawaitable(maybe_symbol_info)
+            else maybe_symbol_info
+        )
+    except Exception as exc:
+        raise RuntimeError(
+            f"LOT_SIZE lookup failed for {symbol}; refusing to submit orders without exchange constraints: {exc}"
+        ) from exc
+
+    if not isinstance(symbol_info, dict):
+        raise RuntimeError(
+            f"invalid LOT_SIZE metadata for {symbol}: symbol info response is not a mapping"
+        )
+    filters = symbol_info.get("filters")
+    if not isinstance(filters, list):
+        raise RuntimeError(
+            f"invalid LOT_SIZE metadata for {symbol}: filters missing or not a list"
+        )
+
+    for raw_filter in filters:
+        if not isinstance(raw_filter, dict) or raw_filter.get("filterType") != "LOT_SIZE":
             continue
         try:
             parsed_minimum = Decimal(str(raw_filter.get("minQty", "0") or "0"))
             parsed_step = Decimal(str(raw_filter.get("stepSize", "0") or "0"))
-        except Exception:
-            break
-        minimum = max(parsed_minimum, parsed_step)
-        step = parsed_step
-        source = "exchange_info"
-        break
-    return minimum, step, source
+        except Exception as exc:
+            raise RuntimeError(
+                f"invalid LOT_SIZE metadata for {symbol}: cannot parse minQty/stepSize"
+            ) from exc
+        if parsed_minimum <= 0 or parsed_step <= 0:
+            raise RuntimeError(
+                f"invalid LOT_SIZE metadata for {symbol}: minQty and stepSize must be positive"
+            )
+        return max(parsed_minimum, parsed_step), parsed_step, "exchange_info"
+
+    raise RuntimeError(
+        f"invalid LOT_SIZE metadata for {symbol}: LOT_SIZE filter missing"
+    )
 
 
 def _allocation_fill_fields(
@@ -4404,7 +4437,6 @@ async def _place_portfolio_maker_order_with_deadline(
                 break
             last_status = {**last_status, "query_error": str(exc)}
         status = str(last_status.get("status") or "UNKNOWN")
-        observed_executed = _order_executed_qty(last_status)
         if status == "FILLED":
             reconcile_active_fill(last_status, "status_filled")
             final_status = (
