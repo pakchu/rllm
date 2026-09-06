@@ -28,3 +28,14 @@ def test_forced_window_exit_and_nonoverlap():
     assert t['exit'].tolist()==[12,12,12]
     assert len(s.schedule(t,np.ones(3,bool))['entry'])==1
     assert len(s.specs())==384
+
+
+def test_positive_funding_credits_short_and_stops_at_exit():
+    d=data();d['funding'][0]=1.
+    t=s.potential_trades(d,np.array([0]),1,None,None)
+    assert np.isclose(t['gross_factor'][0],1.01)
+    assert np.isclose(s.exact(d,t,0)['return_pct'],1.)
+    d['low'][0]=98.;d['funding'][1]=100.
+    t=s.potential_trades(d,np.array([0]),1,.01,.02)
+    assert t['exit'][0]==0
+    assert np.isclose(t['gross_factor'][0],1.02)
