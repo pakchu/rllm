@@ -155,6 +155,11 @@ def _coerce_datetime(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series, errors="coerce")
 
 
+# Preserve the phase of the frozen research source while making rolling live
+# frames independent of their query start timestamp.
+_COMPLETED_TIMEFRAME_ORIGIN = pd.Timestamp("2020-01-01")
+
+
 def _completed_timeframe_features(
     market_df: pd.DataFrame,
     *,
@@ -186,14 +191,16 @@ def _completed_timeframe_features(
         return defaults
     source = source.set_index("date")
 
-    htf = pd.DataFrame(
-        {
-            "open": source["open"].resample(resample_rule, label="right", closed="right").first(),
-            "high": source["high"].resample(resample_rule, label="right", closed="right").max(),
-            "low": source["low"].resample(resample_rule, label="right", closed="right").min(),
-            "close": source["close"].resample(resample_rule, label="right", closed="right").last(),
-        }
-    ).dropna()
+    htf = (
+        source.resample(
+            resample_rule,
+            label="right",
+            closed="right",
+            origin=_COMPLETED_TIMEFRAME_ORIGIN,
+        )
+        .agg({"open": "first", "high": "max", "low": "min", "close": "last"})
+        .dropna()
+    )
     if len(htf) < 2:
         return defaults
 

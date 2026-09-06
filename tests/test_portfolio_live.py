@@ -31,6 +31,7 @@ from execution.portfolio_live import (
     _add_portfolio_oi_features,
     _cancel_stale_portfolio_orders,
     _close_sleeve,
+    _entry_fill_metadata,
     _entry_ttl_seconds,
     _execution_exchange_scope,
     _ensure_trade_executions_table,
@@ -41,6 +42,8 @@ from execution.portfolio_live import (
     _margin_fraction_for_weight,
     _make_executor,
     _load_sleeve_runtime_spec,
+    _log_trade_execution,
+    _open_sleeve,
     _place_portfolio_maker_order_with_deadline,
     _portfolio_client_order_id,
     _portfolio_db_lease_key,
@@ -52,6 +55,7 @@ from execution.portfolio_live import (
     _recover_exchange_positions_into_state,
     _score_sleeves,
     _summarize_exchange_trade_fills,
+    _strategy_trade_report,
     _terminate_process_executor,
     _gate_clauses_pass,
     _gate_pass,
@@ -64,6 +68,7 @@ from execution.portfolio_live import (
     _release_portfolio_db_lease,
     _reserve_trade_intents,
     _assert_portfolio_db_lease,
+    _attach_exchange_trade_report,
     _validate_portfolio_mode,
     _validate_portfolio_execution_network,
     parse_args,
@@ -704,6 +709,10 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         self.assertIn("lock_key", engine.calls[0][1])
         self.assertTrue(any("CREATE TABLE IF NOT EXISTS trade_executions" in sql for sql, _ in engine.calls))
         self.assertTrue(any("DO $migration$" in sql for sql, _ in engine.calls))
+        self.assertTrue(
+            any("strategy_net_realized_pnl" in sql for sql, _ in engine.calls)
+        )
+        self.assertTrue(any("execution_wall_time_sec" in sql for sql, _ in engine.calls))
 
     def test_open_intent_builder_filters_state_without_mutating_scores(self):
         scores = [
@@ -727,6 +736,46 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         self.assertEqual([intent["sleeve"]["name"] for intent in intents], ["new"])
         self.assertAlmostEqual(intents[0]["margin_fraction"], 0.1)
         self.assertEqual(scores, before)
+
+    def test_open_intent_builder_blocks_signal_scored_during_same_sleeve_hold(self):
+        scores = [
+            {
+                "name": "markov",
+                "signal_id": "markov:2026-08-23T16:55:00Z",
+                "active": True,
+                "side": "LONG",
+                "weight": 2.0,
+                "current_close": 100.0,
+                "hold_bars": 576,
+                "stride_bars": 12,
+            },
+            {
+                "name": "rank7",
+                "signal_id": "rank7:2026-08-23T16:55:00Z",
+                "active": True,
+                "side": "LONG",
+                "weight": 2.0,
+                "current_close": 100.0,
+                "hold_bars": 144,
+                "stride_bars": 1,
+            },
+        ]
+
+        intents = _build_open_intents(
+            sleeve_scores=scores,
+            state={"open_sleeves": {}, "processed_signals": {}},
+            blocked_reentry_sleeves={"markov"},
+            total_weight=4.0,
+            leverage_budget=8.0,
+            allocation_mode="research_gross",
+            exec_cfg=WaveExecutionConfig(leverage=8),
+            entry_timeout_fraction=0.25,
+            max_entry_wait_sec=300,
+            entry_maker_max_deviation_pct=0.003,
+            maker_refresh_interval_sec=60,
+        )
+
+        self.assertEqual([intent["sleeve"]["name"] for intent in intents], ["rank7"])
 
     def test_open_order_tasks_run_concurrently_and_isolate_one_failure(self):
         async def run():
@@ -894,16 +943,21 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
 
     def test_close_preserves_partial_fill_when_taker_fallback_fails(self):
         async def run():
-            class Client:
-                async def place_market(self, **kwargs):
-                    raise RuntimeError("market unavailable")
-
             async def fake_maker(**kwargs):
                 return {"status": "PARTIAL_CANCELLED", "filled_quantity": "0.004"}
 
-            with patch("execution.portfolio_live._place_portfolio_maker_order_with_deadline", new=fake_maker):
+            async def fake_market(**kwargs):
+                raise RuntimeError("market unavailable")
+
+            with patch(
+                "execution.portfolio_live._place_portfolio_maker_order_with_deadline",
+                new=fake_maker,
+            ), patch(
+                "execution.portfolio_live._place_or_resolve_market_order",
+                new=fake_market,
+            ):
                 result = await _close_sleeve(
-                    client=Client(),
+                    client=object(),
                     executor=object(),
                     sleeve_state={"name": "alpha", "signal_id": "alpha:1", "side": "LONG", "quantity": "0.01"},
                     exec_cfg=WaveExecutionConfig(),
@@ -915,6 +969,71 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertEqual(result["status"], "PARTIAL_TAKER_FALLBACK_FAILED")
             self.assertEqual(result["filled_quantity"], "0.004")
             self.assertIn("market unavailable", result["taker_fallback_error"])
+
+        asyncio.run(run())
+
+    def test_close_taker_fallback_confirms_actual_exchange_fill(self):
+        async def run():
+            calls = []
+
+            async def fake_maker(**kwargs):
+                return {
+                    "status": "PARTIAL_CANCELLED",
+                    "filled_quantity": "0.004",
+                    "avg_price": "100",
+                    "started_at": str(pd.Timestamp.utcnow()),
+                }
+
+            async def fake_place(**kwargs):
+                calls.append(("place", kwargs["quantity"]))
+                return {"orderId": 88, "status": "ACK"}
+
+            async def fake_confirm(**kwargs):
+                calls.append(("confirm", kwargs["raw_order"]["orderId"]))
+                return {
+                    "orderId": 88,
+                    "status": "FILLED",
+                    "executedQty": "0.006",
+                    "avgPrice": "101",
+                    "trade_report": {
+                        "quantity": "0.006",
+                        "avg_price": "101",
+                        "commission": "0.01",
+                        "commission_asset": "USDT",
+                    },
+                    "execution_uncertain": False,
+                }
+
+            with patch(
+                "execution.portfolio_live._place_portfolio_maker_order_with_deadline",
+                new=fake_maker,
+            ), patch(
+                "execution.portfolio_live._place_or_resolve_market_order",
+                new=fake_place,
+            ), patch(
+                "execution.portfolio_live._confirm_market_order",
+                new=fake_confirm,
+            ):
+                result = await _close_sleeve(
+                    client=object(),
+                    executor=object(),
+                    sleeve_state={
+                        "name": "alpha",
+                        "signal_id": "alpha:1",
+                        "side": "LONG",
+                        "quantity": "0.01",
+                    },
+                    exec_cfg=WaveExecutionConfig(),
+                    ttl_sec=30,
+                    reference_price=100.0,
+                    max_deviation_pct=0.002,
+                    refresh_interval_sec=60,
+                )
+
+            self.assertEqual(calls, [("place", Decimal("0.006")), ("confirm", 88)])
+            self.assertEqual(result["status"], "TAKER_FALLBACK_FILLED")
+            self.assertEqual(result["filled_quantity"], "0.010")
+            self.assertEqual(result["avg_price"], "100.6")
 
         asyncio.run(run())
 
@@ -1109,6 +1228,229 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         self.assertEqual(report["realized_pnl"], "-0.01")
         self.assertEqual(report["net_realized_pnl"], "-0.01004")
 
+    def test_exchange_fill_report_includes_maker_and_taker_fallback_orders(self):
+        async def run():
+            class Client:
+                def __init__(self):
+                    self.calls = 0
+
+                async def get_trades(self, symbol, limit=1000):
+                    self.calls += 1
+                    fills = [
+                        {
+                            "orderId": 1,
+                            "qty": "0.001",
+                            "price": "100",
+                            "quoteQty": "0.1",
+                            "realizedPnl": "0.01",
+                            "commission": "0.001",
+                            "commissionAsset": "USDT",
+                        },
+                    ]
+                    if self.calls == 1:
+                        return fills
+                    return [
+                        *fills,
+                        {
+                            "orderId": 2,
+                            "qty": "0.002",
+                            "price": "99",
+                            "quoteQty": "0.198",
+                            "realizedPnl": "0.02",
+                            "commission": "0.002",
+                            "commissionAsset": "USDT",
+                        },
+                    ]
+
+            client = Client()
+            result = await _attach_exchange_trade_report(
+                client=client,
+                symbol="BTCUSDT",
+                order_info={
+                    "order_id": 1,
+                    "filled_quantity": "0.003",
+                    "raw_orders": [{"orderId": 1}],
+                    "taker_fallback_order": {
+                        "orderId": 2,
+                        "status": "FILLED",
+                        "executedQty": "0.002",
+                    },
+                },
+            )
+
+            self.assertEqual(result["trade_report"]["order_ids"], ["1", "2"])
+            self.assertEqual(result["trade_report"]["quantity"], "0.003")
+            self.assertEqual(result["trade_report"]["commission"], "0.003")
+            self.assertEqual(result["filled_quantity"], "0.003")
+            self.assertEqual(result["avg_price"], "99.33333333333333333333333333")
+            self.assertEqual(client.calls, 2)
+
+        asyncio.run(run())
+
+    def test_incomplete_trade_report_does_not_downgrade_confirmed_full_fill(self):
+        async def run():
+            class Client:
+                async def get_trades(self, symbol, limit=1000):
+                    return [
+                        {
+                            "orderId": 1,
+                            "qty": "0.001",
+                            "price": "100",
+                            "quoteQty": "0.1",
+                            "realizedPnl": "0.01",
+                            "commission": "0.001",
+                            "commissionAsset": "USDT",
+                        }
+                    ]
+
+            async def no_sleep(_seconds):
+                return None
+
+            with patch(
+                "execution.portfolio_live.asyncio.sleep", new=no_sleep
+            ):
+                result = await _attach_exchange_trade_report(
+                    client=Client(),
+                    symbol="BTCUSDT",
+                    order_info={
+                        "filled_quantity": "0.003",
+                        "avg_price": "99",
+                        "raw_orders": [{"orderId": 1}],
+                        "taker_fallback_order": {
+                            "orderId": 2,
+                            "status": "FILLED",
+                            "executedQty": "0.002",
+                            "avgPrice": "98.5",
+                        },
+                    },
+                )
+
+            self.assertEqual(result["filled_quantity"], "0.003")
+            self.assertEqual(result["avg_price"], "99")
+            self.assertTrue(result["trade_report_incomplete"])
+            self.assertEqual(result["partial_trade_report"]["quantity"], "0.001")
+            self.assertNotIn("trade_report", result)
+            strategy_report = _strategy_trade_report(
+                open_state={
+                    "side": "LONG",
+                    "quantity": "0.003",
+                    "entry_fill_price": 90.0,
+                },
+                close_info=result,
+            )
+            self.assertFalse(strategy_report["complete"])
+            self.assertIsNone(strategy_report["strategy_realized_pnl"])
+
+        asyncio.run(run())
+
+    def test_strategy_trade_report_uses_sleeve_lot_not_exchange_average(self):
+        close_info = {
+            "filled_quantity": "0.002",
+            "avg_price": "110",
+            "trade_report": {
+                "quantity": "0.002",
+                "avg_price": "110",
+                "realized_pnl": "1.61",
+                "commission": "0.06",
+                "commission_asset": "USDT",
+            },
+        }
+        report = _strategy_trade_report(
+            open_state={
+                "side": "LONG",
+                "quantity": "0.002",
+                "entry_fill_price": 100.0,
+                "entry_trade_report_attached": True,
+                "entry_commission_remaining": "0.04",
+                "entry_commission_asset": "USDT",
+            },
+            close_info=close_info,
+        )
+
+        self.assertEqual(Decimal(report["strategy_realized_pnl"]), Decimal("0.020"))
+        self.assertEqual(report["entry_commission"], "0.04")
+        self.assertEqual(report["exit_commission"], "0.06")
+        self.assertEqual(
+            Decimal(report["strategy_net_realized_pnl"]), Decimal("-0.080")
+        )
+        self.assertEqual(report["exchange_realized_pnl"], "1.61")
+
+    def test_strategy_trade_report_attributes_short_lot_direction(self):
+        report = _strategy_trade_report(
+            open_state={
+                "side": "SHORT",
+                "quantity": "0.002",
+                "entry_fill_price": 110.0,
+                "entry_trade_report_attached": True,
+                "entry_commission_remaining": "0.01",
+                "entry_commission_asset": "USDT",
+            },
+            close_info={
+                "filled_quantity": "0.002",
+                "trade_report": {
+                    "quantity": "0.002",
+                    "avg_price": "100",
+                    "realized_pnl": "999",
+                    "commission": "0.01",
+                    "commission_asset": "USDT",
+                },
+            },
+        )
+
+        self.assertEqual(Decimal(report["strategy_realized_pnl"]), Decimal("0.020"))
+        self.assertEqual(
+            Decimal(report["strategy_net_realized_pnl"]), Decimal("0.000")
+        )
+
+    def test_execution_ledger_separates_compute_and_order_wall_time(self):
+        class FakeEngine:
+            def __init__(self):
+                self.params = None
+
+            def begin(self):
+                engine = self
+
+                class Context:
+                    def __enter__(self):
+                        return self
+
+                    def __exit__(self, *args):
+                        return False
+
+                    def execute(self, statement, params):
+                        engine.params = dict(params)
+
+                return Context()
+
+        engine = FakeEngine()
+        info = {
+            "status": "FILLED",
+            "wall_time_sec": 61.5,
+            "strategy_trade_report": {
+                "strategy_realized_pnl": "1.2",
+                "entry_commission": "0.01",
+                "exit_commission": "0.02",
+                "strategy_net_realized_pnl": "1.17",
+            },
+        }
+        with patch.dict(
+            sys.modules, {"sqlalchemy": SimpleNamespace(text=lambda statement: statement)}
+        ):
+            _log_trade_execution(
+                engine,
+                strategy_name="rllm",
+                sub_strategy_name="markov",
+                exchange="binance",
+                symbol="BTCUSDT",
+                action="CLOSE",
+                order_info=info,
+            )
+
+        self.assertIsNone(engine.params["computing_wall_time_sec"])
+        self.assertEqual(engine.params["execution_wall_time_sec"], 61.5)
+        self.assertEqual(engine.params["strategy_realized_pnl"], "1.2")
+        self.assertEqual(engine.params["strategy_net_realized_pnl"], "1.17")
+
     def test_restart_reconciles_exchange_flat_as_attributed_close(self):
         async def run():
             signal_id = "rex_dual_regime_auto:LONG:2026-07-08T11:55:00"
@@ -1162,6 +1504,258 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
 
         asyncio.run(run())
 
+    def test_restart_reconciles_sanctioned_market_close_digests(self):
+        async def run(close_suffix):
+            signal_id = "alpha:LONG:2026-08-23T16:55:00"
+            close_cid = _portfolio_client_order_id(
+                f"{signal_id}:{close_suffix}",
+                sleeve_name="alpha",
+                now_sec=100,
+            )
+            close_ms = int(pd.Timestamp("2026-08-23T17:00:00Z").timestamp() * 1000)
+
+            class Client:
+                async def get_positions(self, symbol=None):
+                    return [{"positionSide": "LONG", "positionAmt": "0"}]
+
+                async def get_trades(self, symbol, limit=1000):
+                    return [
+                        {
+                            "orderId": 77,
+                            "positionSide": "LONG",
+                            "side": "SELL",
+                            "qty": "0.002",
+                            "price": "110",
+                            "quoteQty": "0.22",
+                            "realizedPnl": "0.01",
+                            "commission": "0.001",
+                            "commissionAsset": "USDT",
+                            "time": close_ms,
+                        }
+                    ]
+
+                async def get_order(self, symbol, order_id=None):
+                    return {"orderId": order_id, "clientOrderId": close_cid}
+
+            state = {
+                "open_sleeves": {
+                    "alpha": {
+                        "name": "alpha",
+                        "side": "LONG",
+                        "signal_id": signal_id,
+                        "signal_date": "2026-08-23T16:55:00",
+                        "exit_at": "2026-08-23T17:00:00Z",
+                        "quantity": "0.002",
+                        "entry_fill_price": 100.0,
+                        "entry_trade_report_attached": True,
+                        "entry_commission_remaining": "0.001",
+                        "entry_commission_asset": "USDT",
+                    }
+                }
+            }
+
+            rows = await _reconcile_exchange_flat_sleeves(
+                state=state,
+                client=Client(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+            )
+
+            self.assertEqual(rows[0]["order_info"]["status"], "FILLED_RECONCILED")
+            self.assertEqual(rows[0]["order_info"]["trade_report"]["order_ids"], ["77"])
+            self.assertTrue(
+                rows[0]["order_info"]["strategy_trade_report"]["fee_report_complete"]
+            )
+
+        for close_suffix in ("taker-fallback", "barrier-close"):
+            with self.subTest(close_suffix=close_suffix):
+                asyncio.run(run(close_suffix))
+
+    def test_restart_reconciles_one_closed_sleeve_while_same_side_remains_open(self):
+        async def run():
+            signal_a = "alpha_a:LONG:2026-08-25T10:00:00"
+            close_cid = _portfolio_client_order_id(
+                f"{signal_a}:taker-fallback",
+                sleeve_name="alpha_a",
+                now_sec=100,
+            )
+            close_ms = int(
+                pd.Timestamp("2026-08-25T11:00:00Z").timestamp() * 1000
+            )
+
+            class Client:
+                async def get_positions(self, symbol=None):
+                    return [
+                        {
+                            "positionSide": "LONG",
+                            "positionAmt": "0.003",
+                            "entryPrice": "200",
+                        }
+                    ]
+
+                async def get_trades(self, symbol, limit=1000):
+                    return [
+                        {
+                            "orderId": 77,
+                            "positionSide": "LONG",
+                            "side": "SELL",
+                            "qty": "0.002",
+                            "price": "110",
+                            "quoteQty": "0.22",
+                            "realizedPnl": "0.01",
+                            "commission": "0.001",
+                            "commissionAsset": "USDT",
+                            "time": close_ms,
+                        }
+                    ]
+
+                async def get_order(self, symbol, order_id=None):
+                    return {"orderId": order_id, "clientOrderId": close_cid}
+
+            state = {
+                "open_sleeves": {
+                    "alpha_a": {
+                        "name": "alpha_a",
+                        "side": "LONG",
+                        "signal_id": signal_a,
+                        "signal_date": "2026-08-25T10:00:00",
+                        "exit_at": "2026-08-25T11:00:00Z",
+                        "quantity": "0.002",
+                        "entry_fill_price": 100.0,
+                        "entry_trade_report_attached": True,
+                        "entry_commission_remaining": "0.001",
+                        "entry_commission_asset": "USDT",
+                    },
+                    "alpha_b": {
+                        "name": "alpha_b",
+                        "side": "LONG",
+                        "signal_id": "alpha_b:LONG:2026-08-25T10:05:00",
+                        "signal_date": "2026-08-25T10:05:00",
+                        "exit_at": "2026-08-25T12:00:00Z",
+                        "quantity": "0.003",
+                        "entry_fill_price": 200.0,
+                    },
+                }
+            }
+
+            rows = await _reconcile_exchange_flat_sleeves(
+                state=state,
+                client=Client(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+            )
+
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["name"], "alpha_a")
+            self.assertTrue(rows[0]["fully_closed"])
+            self.assertEqual(rows[0]["remaining_quantity"], "0")
+            self.assertEqual(
+                rows[0]["order_info"]["status"], "FILLED_RECONCILED"
+            )
+
+        asyncio.run(run())
+
+    def test_missing_entry_fill_report_does_not_claim_zero_fee(self):
+        metadata = _entry_fill_metadata(
+            {"status": "FILLED", "avg_price": "100"}, fallback_price=100.0
+        )
+        self.assertFalse(metadata["entry_trade_report_attached"])
+        self.assertIsNone(metadata["entry_commission"])
+        self.assertIsNone(metadata["entry_commission_remaining"])
+
+        report = _strategy_trade_report(
+            open_state={
+                "side": "LONG",
+                "quantity": "0.002",
+                "entry_fill_price": 100.0,
+                **metadata,
+            },
+            close_info={
+                "filled_quantity": "0.002",
+                "trade_report": {
+                    "quantity": "0.002",
+                    "avg_price": "110",
+                    "commission": "0.001",
+                    "commission_asset": "USDT",
+                },
+            },
+        )
+        self.assertFalse(report["fee_report_complete"])
+        self.assertIsNone(report["entry_commission"])
+        self.assertIsNone(report["entry_commission_remaining_after"])
+        self.assertIsNone(report["strategy_net_realized_pnl"])
+
+    def test_non_quote_fee_asset_does_not_claim_strategy_net_pnl(self):
+        report = _strategy_trade_report(
+            open_state={
+                "side": "LONG",
+                "quantity": "0.002",
+                "entry_fill_price": 100.0,
+                "entry_trade_report_attached": True,
+                "entry_commission_remaining": "0.001",
+                "entry_commission_asset": "BNB",
+            },
+            close_info={
+                "filled_quantity": "0.002",
+                "trade_report": {
+                    "quantity": "0.002",
+                    "avg_price": "110",
+                    "commission": "0.001",
+                    "commission_asset": "USDT",
+                },
+            },
+        )
+
+        self.assertFalse(report["fee_assets_supported"])
+        self.assertFalse(report["fee_report_complete"])
+        self.assertIsNone(report["strategy_net_realized_pnl"])
+
+    def test_exchange_recovery_skips_trade_history_when_state_matches_position(self):
+        async def run():
+            class Client:
+                async def get_positions(self, symbol=None):
+                    return [
+                        {
+                            "positionSide": "LONG",
+                            "positionAmt": "0.003",
+                            "entryPrice": "100",
+                        }
+                    ]
+
+                async def get_trades(self, symbol, limit=1000):
+                    raise AssertionError("trade history should not be queried")
+
+            state = {
+                "open_sleeves": {
+                    "alpha": {
+                        "name": "alpha",
+                        "side": "LONG",
+                        "quantity": "0.003",
+                    }
+                },
+                "processed_signals": {},
+            }
+            rows = await _recover_exchange_positions_into_state(
+                state=state,
+                client=Client(),
+                exec_cfg=SimpleNamespace(
+                    symbol="BTCUSDT", interval_minutes=5, max_holding_bars=144
+                ),
+                portfolio={
+                    "base_sleeves": [
+                        {
+                            "name": "alpha",
+                            "side": "LONG",
+                            "weight": 1.0,
+                            "hold_bars": 12,
+                        }
+                    ]
+                },
+                leverage_budget=8,
+                allocation_mode="research_gross",
+            )
+            self.assertEqual(rows, [])
+
+        asyncio.run(run())
+
     def test_exchange_recovery_restores_dynamic_exit_spec(self):
         async def run():
             name = "oi_alt_ratio72_dyn_exit"
@@ -1174,7 +1768,20 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
                     return [{"positionSide": "LONG", "positionAmt": "0.003", "entryPrice": "100"}]
 
                 async def _private_request(self, method, path, params):
-                    return [{"orderId": 88, "positionSide": "LONG", "side": "BUY", "time": entry_ms, "price": "99"}]
+                    return [
+                        {
+                            "orderId": 88,
+                            "positionSide": "LONG",
+                            "side": "BUY",
+                            "time": entry_ms,
+                            "qty": "0.003",
+                            "price": "100",
+                            "quoteQty": "0.3",
+                            "realizedPnl": "0",
+                            "commission": "0.001",
+                            "commissionAsset": "USDT",
+                        }
+                    ]
 
                 async def get_order(self, symbol, order_id=None):
                     return {"orderId": order_id, "clientOrderId": cid, "time": entry_ms}
@@ -1211,6 +1818,128 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
 
         asyncio.run(run())
 
+    def test_exchange_recovery_restores_all_same_side_sleeves_and_entry_orders(self):
+        async def run():
+            signals = {
+                "alpha_a": "alpha_a:LONG:2026-08-25T10:00:00",
+                "alpha_b": "alpha_b:LONG:2026-08-25T10:05:00",
+            }
+            times = {
+                "alpha_a": int(pd.Timestamp("2026-08-25T10:00:00Z").timestamp() * 1000),
+                "alpha_b": int(pd.Timestamp("2026-08-25T10:05:00Z").timestamp() * 1000),
+            }
+            cids = {
+                11: _portfolio_client_order_id(
+                    signals["alpha_a"], sleeve_name="alpha_a", now_sec=100
+                ),
+                12: _portfolio_client_order_id(
+                    signals["alpha_a"], sleeve_name="alpha_a", now_sec=101
+                ),
+                21: _portfolio_client_order_id(
+                    signals["alpha_b"], sleeve_name="alpha_b", now_sec=102
+                ),
+            }
+            fills = [
+                {
+                    "orderId": 11,
+                    "positionSide": "LONG",
+                    "side": "BUY",
+                    "qty": "0.001",
+                    "price": "100",
+                    "quoteQty": "0.1",
+                    "realizedPnl": "0",
+                    "commission": "0.01",
+                    "commissionAsset": "USDT",
+                    "time": times["alpha_a"],
+                },
+                {
+                    "orderId": 12,
+                    "positionSide": "LONG",
+                    "side": "BUY",
+                    "qty": "0.001",
+                    "price": "102",
+                    "quoteQty": "0.102",
+                    "realizedPnl": "0",
+                    "commission": "0.01",
+                    "commissionAsset": "USDT",
+                    "time": times["alpha_a"] + 60_000,
+                },
+                {
+                    "orderId": 21,
+                    "positionSide": "LONG",
+                    "side": "BUY",
+                    "qty": "0.003",
+                    "price": "200",
+                    "quoteQty": "0.6",
+                    "realizedPnl": "0",
+                    "commission": "0.03",
+                    "commissionAsset": "USDT",
+                    "time": times["alpha_b"],
+                },
+            ]
+
+            class Client:
+                async def get_positions(self, symbol=None):
+                    return [
+                        {
+                            "positionSide": "LONG",
+                            "positionAmt": "0.005",
+                            "entryPrice": "160",
+                        }
+                    ]
+
+                async def get_trades(self, symbol, limit=1000):
+                    return fills
+
+                async def get_order(self, symbol, order_id=None):
+                    return {
+                        "orderId": order_id,
+                        "clientOrderId": cids[order_id],
+                        "time": next(
+                            fill["time"] for fill in fills if fill["orderId"] == order_id
+                        ),
+                    }
+
+            portfolio = {
+                "base_sleeves": [
+                    {
+                        "name": "alpha_a",
+                        "side": "LONG",
+                        "weight": 2.0,
+                        "hold_bars": 12,
+                    },
+                    {
+                        "name": "alpha_b",
+                        "side": "LONG",
+                        "weight": 2.0,
+                        "hold_bars": 12,
+                    },
+                ]
+            }
+            state = {"open_sleeves": {}, "processed_signals": {}}
+
+            rows = await _recover_exchange_positions_into_state(
+                state=state,
+                client=Client(),
+                exec_cfg=SimpleNamespace(
+                    symbol="BTCUSDT", interval_minutes=5, max_holding_bars=144
+                ),
+                portfolio=portfolio,
+                leverage_budget=8,
+                allocation_mode="research_gross",
+            )
+
+            self.assertEqual({row["name"] for row in rows}, {"alpha_a", "alpha_b"})
+            self.assertEqual(state["open_sleeves"]["alpha_a"]["quantity"], "0.002")
+            self.assertEqual(state["open_sleeves"]["alpha_a"]["entry_fill_price"], 101.0)
+            self.assertEqual(
+                state["open_sleeves"]["alpha_a"]["entry_commission_remaining"],
+                "0.02",
+            )
+            self.assertEqual(state["open_sleeves"]["alpha_b"]["quantity"], "0.003")
+
+        asyncio.run(run())
+
     def test_exchange_recovery_restores_rank7_source_specific_lifecycle(self):
         async def run(source_name, expected_hold, expected_take, expected_stop):
             name = "frozen_annual_rank7"
@@ -1238,7 +1967,12 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
                             "positionSide": "LONG",
                             "side": "BUY",
                             "time": entry_ms,
-                            "price": "99",
+                            "qty": "0.003",
+                            "price": "100",
+                            "quoteQty": "0.3",
+                            "realizedPnl": "0",
+                            "commission": "0.001",
+                            "commissionAsset": "USDT",
                         }
                     ]
 
@@ -1410,6 +2144,141 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
 
         asyncio.run(run())
 
+    def test_post_only_filled_exchange_lot_reports_unfilled_target_residual(self):
+        async def run():
+            class LotClient(FakeClient):
+                async def get_symbol_info(self, symbol):
+                    return {
+                        "filters": [
+                            {
+                                "filterType": "LOT_SIZE",
+                                "minQty": "0.001",
+                                "stepSize": "0.001",
+                            }
+                        ]
+                    }
+
+            client = LotClient(
+                order_statuses=[
+                    {
+                        "orderId": 101,
+                        "status": "FILLED",
+                        "executedQty": "0.002",
+                        "avgPrice": "100",
+                    }
+                ]
+            )
+            result = await _place_portfolio_maker_order_with_deadline(
+                client=client,
+                executor=FakeExecutor(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+                order_side="BUY",
+                quantity=Decimal("0.0026"),
+                position_side="LONG",
+                signal_id="sig-quantized",
+                sleeve_name="markov",
+                ttl_sec=1,
+                poll_interval_sec=0.01,
+            )
+
+            self.assertEqual(result["status"], "PARTIAL_FILLED_MIN_REMAINING")
+            self.assertEqual(Decimal(str(client.placed[0]["quantity"])), Decimal("0.002"))
+            self.assertEqual(result["filled_quantity"], "0.002")
+            self.assertEqual(result["unfilled_quantity"], "0.0006")
+            self.assertEqual(Decimal(result["fill_ratio"]), Decimal("0.002") / Decimal("0.0026"))
+
+        asyncio.run(run())
+
+    def test_post_only_sub_minimum_target_is_explicitly_unrepresentable(self):
+        async def run():
+            class LotClient(FakeClient):
+                async def get_symbol_info(self, symbol):
+                    return {
+                        "filters": [
+                            {
+                                "filterType": "LOT_SIZE",
+                                "minQty": "0.001",
+                                "stepSize": "0.001",
+                            }
+                        ]
+                    }
+
+            client = LotClient()
+            result = await _place_portfolio_maker_order_with_deadline(
+                client=client,
+                executor=FakeExecutor(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+                order_side="BUY",
+                quantity=Decimal("0.0006"),
+                position_side="LONG",
+                signal_id="sig-too-small",
+                sleeve_name="rex",
+                ttl_sec=1,
+                poll_interval_sec=0.01,
+            )
+
+            self.assertEqual(result["status"], "REJECTED_MIN_QTY_UNREPRESENTABLE")
+            self.assertEqual(result["filled_quantity"], "0")
+            self.assertEqual(result["unfilled_quantity"], "0.0006")
+            self.assertEqual(client.placed, [])
+
+        asyncio.run(run())
+
+    def test_maker_entry_attaches_fill_fee_report_before_state_persistence(self):
+        async def run():
+            class EntryClient:
+                async def get_usdt_balance(self):
+                    return {"total": 100.0}
+
+                async def get_ticker_price(self, symbol):
+                    return 100.0
+
+                async def get_trades(self, symbol, limit=1000):
+                    return [
+                        {
+                            "orderId": 77,
+                            "qty": "0.01",
+                            "price": "100",
+                            "quoteQty": "1",
+                            "realizedPnl": "0",
+                            "commission": "0.0002",
+                            "commissionAsset": "USDT",
+                            "time": 1_000,
+                        }
+                    ]
+
+            async def fake_maker(**kwargs):
+                return {
+                    "status": "FILLED",
+                    "order_id": 77,
+                    "raw_orders": [{"orderId": 77}],
+                    "requested_quantity": "0.01",
+                    "filled_quantity": "0.01",
+                    "avg_price": "100",
+                }
+
+            with patch(
+                "execution.portfolio_live._place_portfolio_maker_order_with_deadline",
+                new=fake_maker,
+            ):
+                result = await _open_sleeve(
+                    client=EntryClient(),
+                    executor=object(),
+                    exec_cfg=SimpleNamespace(symbol="BTCUSDT", leverage=1),
+                    sleeve={
+                        "name": "markov",
+                        "signal_id": "markov:1",
+                        "side": "LONG",
+                        "current_close": 100.0,
+                    },
+                    margin_fraction=0.01,
+                    entry_ttl_sec=30,
+                )
+
+            self.assertEqual(result["order"]["trade_report"]["commission"], "0.0002")
+
+        asyncio.run(run())
+
     def test_post_only_refresh_reorders_only_uncancelled_remainder(self):
         async def run():
             client = FakeClient(
@@ -1437,6 +2306,90 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertGreaterEqual(len(client.placed), 2)
             self.assertEqual(Decimal(str(client.placed[0]["quantity"])), Decimal("0.01"))
             self.assertEqual(Decimal(str(client.placed[1]["quantity"])), Decimal("0.004"))
+
+        asyncio.run(run())
+
+    def test_post_only_refresh_never_replaces_after_unconfirmed_cancel(self):
+        async def run():
+            class UncertainCancelClient(FakeClient):
+                async def cancel_order(
+                    self, symbol, order_id=None, client_order_id=None
+                ):
+                    raise RuntimeError("cancel transport failed")
+
+                async def get_order(
+                    self, symbol, order_id=None, client_order_id=None
+                ):
+                    raise RuntimeError("order lookup failed")
+
+            client = UncertainCancelClient()
+            result = await _place_portfolio_maker_order_with_deadline(
+                client=client,
+                executor=FakeExecutor(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+                order_side="BUY",
+                quantity=Decimal("0.002"),
+                position_side="LONG",
+                signal_id="sig-cancel-uncertain",
+                sleeve_name="markov",
+                ttl_sec=2,
+                refresh_interval_sec=1,
+                poll_interval_sec=0.05,
+            )
+
+            self.assertEqual(result["status"], "CANCEL_UNCERTAIN")
+            self.assertTrue(result["execution_uncertain"])
+            self.assertEqual(len(client.placed), 1)
+
+        asyncio.run(run())
+
+    def test_post_only_refresh_resolves_failed_cancel_before_replacement(self):
+        async def run():
+            class ResolvedCancelClient(FakeClient):
+                cancel_attempted = False
+
+                async def cancel_order(
+                    self, symbol, order_id=None, client_order_id=None
+                ):
+                    self.cancel_attempted = True
+                    raise RuntimeError("-2011 unknown order")
+
+                async def get_order(
+                    self, symbol, order_id=None, client_order_id=None
+                ):
+                    if self.cancel_attempted:
+                        return {
+                            "orderId": order_id,
+                            "status": "FILLED",
+                            "executedQty": "0.002",
+                            "avgPrice": "100",
+                        }
+                    return {
+                        "orderId": order_id,
+                        "status": "NEW",
+                        "executedQty": "0",
+                        "avgPrice": "0",
+                    }
+
+            client = ResolvedCancelClient()
+            result = await _place_portfolio_maker_order_with_deadline(
+                client=client,
+                executor=FakeExecutor(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+                order_side="BUY",
+                quantity=Decimal("0.002"),
+                position_side="LONG",
+                signal_id="sig-cancel-resolved",
+                sleeve_name="markov",
+                ttl_sec=2,
+                refresh_interval_sec=1,
+                poll_interval_sec=0.05,
+            )
+
+            self.assertEqual(result["status"], "FILLED")
+            self.assertFalse(result["execution_uncertain"])
+            self.assertEqual(result["filled_quantity"], "0.002")
+            self.assertEqual(len(client.placed), 1)
 
         asyncio.run(run())
 
