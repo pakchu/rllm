@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "id": "g9_refined_only_remove_macro_dollar_2026_09_09",
+  "status": "operator_approved_live",
+  "approval": {
+    "date": "2026-09-09",
+    "authority": "explicit user instruction in this thread",
+    "instruction": "매크로와 달러 숏은 기존 기준 통과 못한 비 정제 알파였어 라이브에서 제거해",
+    "scope": "Retain only the five refined G9 sleeves and retire macro_flow plus dollar_rally_short from live execution."
+  },
+  "portfolio_selection_approved": true,
+  "runtime_ready": true,
+  "enabled": true,
+  "allow_live_orders": true,
+  "selected_label": "g9_refined_only",
+  "weights_notional": {
+    "fresh_kimchi_fx": 1.0,
+    "frozen_annual_rank7": 1.5,
+    "rex_taker_low_range_position": 0.2,
+    "cand_rex_veto_7": 0.8,
+    "markov_transition_long": 1.0
+  },
+  "weight_units": "entry-notional/equity coefficients; not capital percentages",
+  "retired_from_live": {
+    "macro_flow": "Did not pass the established refined-alpha admission criteria.",
+    "dollar_rally_short": "Did not pass the established refined-alpha admission criteria."
+  },
+  "risk_contract": {
+    "net_cap_at_open_rebalance_after_fees": 4.5,
+    "continuous_intrabar_cap": false,
+    "cross_sleeve_overlap_allowed": true,
+    "long_short_offset_before_cost_and_funding": true,
+    "same_sleeve_clock_overlap": "preserve source policy",
+    "frequency_gate": false,
+    "fee_ratio_gate": false
+  },
+  "migration_requirements": [
+    "Neither retired sleeve may be open when the policy is rebound.",
+    "Every retained sleeve weight must remain unchanged.",
+    "Virtual sleeve quantity plus signed dust must match the Binance physical position.",
+    "Any retained open sleeve must survive the migration without resizing."
+  ],
+  "supersedes": {
+    "path": "configs/approved/g9_macro1_dollar_short05_2026-09-07.json",
+    "reason": "The macro and dollar-short additions were later identified as unrefined and ineligible for live execution."
+  }
+}

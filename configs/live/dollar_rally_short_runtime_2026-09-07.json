@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "id": "legacy_dollar_rally_independent_short_live_v1",
+  "status": "runtime_ready",
+  "runtime_ready": true,
+  "enabled": true,
+  "live_authorized": true,
+  "research_only": false,
+  "policy_type": "dollar_rally_short",
+  "symbol": "BTCUSDT",
+  "side": "SHORT",
+  "parent_long_required": false,
+  "same_sleeve_overlap_allowed": false,
+  "other_sleeve_overlap_allowed": true,
+  "minimum_feature_history_bars": 5760,
+  "gates": [
+    {
+      "feature": "dxy_momentum",
+      "op": ">=",
+      "threshold": 0.0021818982809893497
+    },
+    {
+      "feature": "htf_1d_return_4",
+      "op": ">=",
+      "threshold": 0.016096783732847175
+    }
+  ],
+  "hold_bars_5m": 144,
+  "stride_bars_5m": 12,
+  "stride_offset_bars": 11,
+  "entry_delay_bars": 1,
+  "entry_window_bars": 1,
+  "phase_anchor_utc": "2019-12-31T15:00:00+00:00",
+  "phase_offset_bars": 143,
+  "signal_clock": "hourly decision at minute 55 UTC; next 5m bar entry",
+  "take_profit": null,
+  "stop_loss": null,
+  "dynamic_exit": null,
+  "barrier_exit": null,
+  "source_availability_contract": {
+    "dxy_available_at_signal": true,
+    "freshness_wait_required": false,
+    "closed_market_missing_value_blocks_signal": true,
+    "missing_values_fail_closed": true
+  },
+  "research_provenance": {
+    "branch": "origin/codex/meaningful-alpha-combinations",
+    "recovery_commit": "1ea74d80",
+    "source_path": "configs/shadow/legacy_dollar_rally_short_2026-09-07.json",
+    "source_sha256": "62fecd410deeca32b1ca8cea7e48c384ddeda06594a275d5c490a673d089c20d"
+  },
+  "promotion_authority": "explicit operator approval recorded 2026-09-07",
+  "notes": [
+    "Portfolio weight is supplied by the containing portfolio; approved addition uses 0.5 notional/equity.",
+    "The strategy is a virtual SHORT sleeve aggregated into the containing portfolio's signed hedge-mode net target, with a 12-hour time exit and no TP/SL.",
+    "This runtime config does not start a service or submit an order by itself."
+  ]
+}

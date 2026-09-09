@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "id": "g9_macro1_dollar_short05_2026_09_07",
+  "status": "operator_approved_pending_runtime_integration",
+  "approval": {
+    "date": "2026-09-07",
+    "authority": "explicit user instruction in this thread",
+    "instruction": "그정도는 괜찮아 라이브로 확정해",
+    "scope": "Approve G9 unchanged + macro1 + dollar-rally short0.5; not the optimizer rank-one replacement."
+  },
+  "portfolio_selection_approved": true,
+  "runtime_ready": false,
+  "enabled": false,
+  "allow_live_orders": false,
+  "selected_label": "g9_macro1_d0.5_r0.0",
+  "weights_notional": {
+    "fresh_kimchi_fx": 1.0,
+    "frozen_annual_rank7": 1.5,
+    "rex_taker_low_range_position": 0.2,
+    "cand_rex_veto_7": 0.8,
+    "markov_transition_long": 1.0,
+    "macro_flow": 1.0,
+    "oi_pullback": 0.0,
+    "regional_trend": 0.0,
+    "dollar_rally_short": 0.5,
+    "failed_rebound_short": 0.0
+  },
+  "weight_units": "entry-notional/equity coefficients; not capital percentages",
+  "g9_legacy_weights": {
+    "fresh_kimchi_fx": 2.0,
+    "frozen_annual_rank7": 3.0,
+    "rex_taker_low_range_position": 0.4,
+    "cand_rex_veto_7": 1.6,
+    "markov_transition_long": 2.0
+  },
+  "additional_notional_coefficients": {
+    "macro_flow": 1.0,
+    "dollar_rally_short": 0.5
+  },
+  "excluded_additions": [
+    "failed_rebound_short",
+    "oi_pullback",
+    "regional_trend"
+  ],
+  "risk_contract": {
+    "net_cap_at_open_rebalance_after_fees": 4.5,
+    "continuous_intrabar_cap": false,
+    "cross_sleeve_overlap_allowed": true,
+    "long_short_offset_before_cost_and_funding": true,
+    "same_sleeve_clock_overlap": "preserve source policy",
+    "frequency_gate": false,
+    "fee_ratio_gate": false
+  },
+  "execution_requirements": [
+    "Implement and verify native hourly macro target maintenance adapter.",
+    "Implement and verify frozen dollar-rally standalone short adapter with12h hold.",
+    "Verify live aggregate net-unit execution and barrier lifecycle against research ledger.",
+    "Verify contemporaneous source freshness and publication/arrival timing.",
+    "Explicitly identify target deployment/account; this approval record does not start a service or submit orders."
+  ],
+  "known_limits": [
+    "Exposed historical research, not pristine OOS.",
+    "July-onward return fell from7.13% to5.07% in anchored comparison.",
+    "Dollar-rally short has no separate stop loss,12h time exit; recent1h signal delay changes standalone result to negative.",
+    "Live capacity, latency, liquidation and continuous intrabar risk enforcement unverified."
+  ],
+  "evidence": {
+    "configs/shadow/ten_alpha_portfolio_research_2026-09-07.json": "012c44e5d76bc0d86cd89195d5aec7be90cff6e60df4b16cc93b53c9cabc3350",
+    "research/ten_alpha_optimization/report.json": "7b933d652f91e55afc5fcff9f877c279bf0129208512112a9d6d300110e4933e",
+    "configs/shadow/macro_flow_regime_switch_candidate_2026-09-06.json": "5c398879eb090a97423b85e7d8f268d6ba2f199b709bb25d728d8b77a8e2fcdc",
+    "configs/shadow/legacy_dollar_rally_short_2026-09-07.json": "62fecd410deeca32b1ca8cea7e48c384ddeda06594a275d5c490a673d089c20d"
+  },
+  "deployment_actions_performed": []
+}

@@ -7,15 +7,19 @@ supports the current gross<=6 BTCUSDT candidate family by:
 * evaluating fixed sleeve gates from ``configs/live/portfolio_gross6_*.json``,
 * allocating margin by fixed sleeve weights against the research leverage
   budget (weight/leverage by default),
-* placing hedge-mode LONG/SHORT maker orders through ``wave_trading``, and
+* placing hedge-mode orders through ``wave_trading``, and
 * tracking per-sleeve exit timestamps in a local ledger.
 
-It does not select new weights, change sleeve rules, or net active sleeves.
+Legacy portfolios retain independent physical LONG/SHORT sleeves.  Portfolios
+that explicitly opt in to ``signed_net_hedge_v1`` instead retain strategy
+sleeves virtually and expose only their signed aggregate on one Binance hedge
+side.  The runner does not select weights or change sleeve rules.
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
+import copy
 import fcntl
 import hashlib
 import inspect
@@ -27,7 +31,7 @@ import os
 import select
 import time
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict, dataclass, field
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal
@@ -35,36 +39,68 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
-from execution.rex_llm_live import (
-    RexLivePolicyConfig,
-    RexLlmSelectorConfig,
-    build_rex_live_policy_record,
-    rex_policy_config_from_candidate,
-)
+from execution import dollar_rally_short, macro_flow
 from execution.binance_aggtrade_stream import BinanceAggTradeStream
+from execution.portfolio_shadow_policies import (
+    build_fresh_kimchi_feature_frame,
+    build_markov_feature_frame,
+    observable_markov_transition_keys,
+)
 from execution.rank7_runtime import (
     Rank7Bundle,
     Rank7BundleError,
     Rank7Decision,
     Rank7FeatureError,
     build_rank7_feature_context,
-    rank7_state_runtime_cache_ready,
     rank7_barrier_contract,
+    rank7_state_runtime_cache_ready,
     score_rank7_row,
 )
-from execution.portfolio_shadow_policies import (
-    build_fresh_kimchi_feature_frame,
-    build_markov_feature_frame,
-    observable_markov_transition_keys,
+from execution.rex_llm_live import (
+    RexLivePolicyConfig,
+    RexLlmSelectorConfig,
+    build_rex_live_policy_record,
+    rex_policy_config_from_candidate,
+)
+from execution.signed_net_hedge import (
+    HedgeLeg,
+    SignedNetPlan,
+    SignedNetPolicy,
+    build_hedge_legs,
+    physical_signed_quantity,
+    retarget_plan_for_risk_reduction,
+    round_toward_zero,
+    signed_state_quantity,
+)
+from execution.signed_net_hedge import (
+    apply_plan as apply_signed_net_plan,
+)
+from execution.signed_net_hedge import (
+    build_plan as build_signed_net_plan,
+)
+from execution.signed_net_hedge import (
+    parse_policy as parse_signed_net_policy,
+)
+from execution.signed_net_hedge import (
+    plan_from_dict as signed_net_plan_from_dict,
+)
+from execution.signed_net_hedge import (
+    plan_to_dict as signed_net_plan_to_dict,
+)
+from execution.signed_net_hedge import (
+    policy_digest as signed_net_policy_digest,
 )
 from execution.wave_execution import (
     WaveExecutionConfig,
-    _StaticSignalGenerator,
     _load_api_credentials,
+    _StaticSignalGenerator,
     load_wave_execution_classes,
 )
 from preprocessing.binance_aux_features import attach_binance_um_aux_frames
-from preprocessing.external_features import attach_external_features, build_external_feature_frame
+from preprocessing.external_features import (
+    attach_external_features,
+    build_external_feature_frame,
+)
 from preprocessing.live_db_features import (
     LiveDbFeatureConfig,
     _attach_1m_decision_close_and_rows,
@@ -77,9 +113,11 @@ from preprocessing.market_features import build_market_feature_frame
 from training.evaluate_oi_llm_selector import _context_id, _tokens
 from training.evaluate_portfolio_llm_selector import _base_context_tokens
 from training.long_regime_interest_gate_validation import build_interest_features
-from training.long_regime_score_gate_validation import _build_score_frame, _score_variant
+from training.long_regime_score_gate_validation import (
+    _build_score_frame,
+    _score_variant,
+)
 from training.wave_feature_ridge_policy import build_wave_feature_frame
-
 
 Side = Literal["LONG", "SHORT"]
 
@@ -798,6 +836,65 @@ def _validate_portfolio_mode(portfolio: dict[str, Any], *, live: bool) -> None:
         )
 
 
+def _validate_signed_net_approval(
+    portfolio: dict[str, Any],
+    *,
+    policy: SignedNetPolicy | None,
+    live: bool,
+) -> None:
+    """Bind a live signed portfolio to its immutable approval artifact."""
+
+    if policy is None:
+        return
+    contract = portfolio.get("approval_contract")
+    if contract is None:
+        if live:
+            raise RuntimeError(
+                "live signed-net portfolio requires an approval_contract"
+            )
+        return
+    if not isinstance(contract, dict):
+        raise RuntimeError("approval_contract must be an object")
+    path = Path(str(contract.get("path", "")))
+    expected_hash = str(contract.get("sha256", ""))
+    if not path.is_file() or not expected_hash:
+        raise RuntimeError("signed-net approval artifact is missing")
+    actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual_hash != expected_hash:
+        raise RuntimeError(
+            f"signed-net approval artifact hash drift: {actual_hash} != {expected_hash}"
+        )
+    approval = _load_json(path)
+    if approval.get("portfolio_selection_approved") is not True:
+        raise RuntimeError("signed-net portfolio selection is not approved")
+    selected_label = str(contract.get("selected_label", ""))
+    if str(approval.get("selected_label", "")) != selected_label:
+        raise RuntimeError("signed-net selected approval label changed")
+    approved_weights = {
+        str(name): Decimal(str(weight))
+        for name, weight in dict(approval.get("weights_notional", {})).items()
+        if Decimal(str(weight)) > 0
+    }
+    actual_weights = {
+        str(sleeve["name"]): Decimal(str(sleeve["weight"]))
+        for sleeve in portfolio.get("base_sleeves", [])
+        if Decimal(str(sleeve.get("weight", 0))) > 0
+    }
+    if actual_weights != approved_weights or dict(policy.weights) != approved_weights:
+        raise RuntimeError(
+            "signed-net runtime weights differ from the approved portfolio"
+        )
+    risk = dict(approval.get("risk_contract", {}))
+    if Decimal(
+        str(risk.get("net_cap_at_open_rebalance_after_fees"))
+    ) != policy.net_cap_after_fees:
+        raise RuntimeError("signed-net runtime cap differs from approval")
+    if risk.get("cross_sleeve_overlap_allowed") is not True:
+        raise RuntimeError("approval does not allow cross-sleeve overlap")
+    if risk.get("long_short_offset_before_cost_and_funding") is not True:
+        raise RuntimeError("approval does not authorize signed offsetting")
+
+
 def _validate_portfolio_execution_network(
     portfolio: dict[str, Any], *, testnet: bool
 ) -> None:
@@ -821,9 +918,15 @@ def _portfolio_gate_features(portfolio: dict[str, Any]) -> set[str]:
         source = str(sleeve.get("source") or "")
         if not source.endswith(".json") or not Path(source).exists():
             continue
-        cfg = _load_json(source)
-        if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
-            cfg = _load_json(str(cfg["base_candidate"]))
+        try:
+            cfg = _load_json(source)
+            if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
+                cfg = _load_json(str(cfg["base_candidate"]))
+        except Exception:
+            # Entry scoring will fail the individual sleeve closed. Source
+            # metadata must not prevent persisted positions from reaching the
+            # recovery and risk-reducing close path during startup.
+            continue
         signal_cfg = cfg.get("signal", cfg)
         gate_lists = [
             signal_cfg.get("gates", []),
@@ -884,7 +987,28 @@ def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\n"
     temporary = p.with_name(f".{p.name}.{os.getpid()}.{time.time_ns()}.tmp")
+    backup = p.with_name(f"{p.name}.bak")
+    backup_temporary = p.with_name(
+        f".{p.name}.bak.{os.getpid()}.{time.time_ns()}.tmp"
+    )
     try:
+        if p.exists():
+            previous = p.read_text()
+            try:
+                decoded = json.loads(previous)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(
+                    f"refusing to overwrite corrupt state file: {p}"
+                ) from exc
+            if not isinstance(decoded, dict):
+                raise RuntimeError(
+                    f"refusing to overwrite non-object state file: {p}"
+                )
+            with backup_temporary.open("w") as handle:
+                handle.write(previous)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(backup_temporary, backup)
         with temporary.open("w") as handle:
             handle.write(body)
             handle.flush()
@@ -892,6 +1016,7 @@ def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
         os.replace(temporary, p)
     finally:
         temporary.unlink(missing_ok=True)
+        backup_temporary.unlink(missing_ok=True)
 
 
 def _ensure_trade_executions_table(engine: Any) -> None:
@@ -1314,10 +1439,14 @@ def _load_state(path: str | Path) -> dict[str, Any]:
         return {"open_sleeves": {}, "processed_signals": {}}
     try:
         data = json.loads(p.read_text())
-    except json.JSONDecodeError:
-        return {"open_sleeves": {}, "processed_signals": {}}
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"portfolio state is corrupt; automatic empty-ledger recovery refused: {p}"
+        ) from exc
     if not isinstance(data, dict):
-        return {"open_sleeves": {}, "processed_signals": {}}
+        raise RuntimeError(
+            f"portfolio state must be a JSON object; automatic recovery refused: {p}"
+        )
     data.setdefault("open_sleeves", {})
     data.setdefault("processed_signals", {})
     return data
@@ -2314,6 +2443,11 @@ def _score_sleeve(
     configured_side = str(sleeve["side"]).upper()
     side = configured_side
     active = False
+    ready = True
+    emit = True
+    kind = "entry"
+    target_fraction: float | None = None
+    scheduled_execution_time: str | None = None
     reasons: list[str] = []
     hold = 0
     stride = 1
@@ -2326,6 +2460,7 @@ def _score_sleeve(
 
     if source.endswith(".json"):
         if not Path(source).exists():
+            ready = False
             reasons.append(f"source_config=missing:{source}")
         else:
             cfg = _load_json(source)
@@ -2341,7 +2476,155 @@ def _score_sleeve(
             entry_delay = int(signal_cfg.get("entry_delay_bars", cfg.get("entry_delay_bars", 1)))
             base_policy = str(cfg.get("base_policy", "")).lower()
             policy_type = str(cfg.get("policy_type", "")).lower()
-            if policy_type == "bidirectional_gate":
+            if policy_type == "macro_flow":
+                kind = "target"
+                hold = 0
+                stride = 1
+                stride_offset = 0
+                entry_delay = 1
+                try:
+                    macro_flow.validate_macro_flow_runtime_config(
+                        cfg,
+                        configured_side=configured_side,
+                    )
+                    if len(enriched) < macro_flow.MACRO_FLOW_MIN_HISTORY_BARS:
+                        raise ValueError(
+                            "macro-flow live history is too short: "
+                            f"{len(enriched)} < {macro_flow.MACRO_FLOW_MIN_HISTORY_BARS}"
+                        )
+                    required = [
+                        "date",
+                        "open",
+                        "high",
+                        "low",
+                        "close",
+                        "quote_asset_volume",
+                        "taker_buy_quote",
+                        "dxy",
+                        "dxy_available",
+                    ]
+                    missing = [column for column in required if column not in enriched]
+                    if missing:
+                        raise ValueError(
+                            f"macro-flow market columns are missing: {missing}"
+                        )
+                    decision = macro_flow.score_macro_flow(
+                        enriched[required].copy(),
+                        ts,
+                    )
+                    emit = bool(decision.get("emit"))
+                    ready = bool(decision.get("ready"))
+                    target_fraction = (
+                        float(decision["target_fraction"])
+                        if "target_fraction" in decision
+                        else None
+                    )
+                    side = str(decision.get("side", "FLAT")).upper()
+                    signal_id = decision.get("signal_id")
+                    scheduled_execution_time = decision.get("execution_time")
+                    gate_ok = bool(emit and ready)
+                    reasons.extend(
+                        [
+                            f"macro_flow={decision.get('reason', 'unknown')}",
+                            "runtime_bridge=ready:macro-flow-target-v1",
+                        ]
+                    )
+                    policy_metadata = {
+                        "policy_type": "macro_flow",
+                        "decision_time": decision.get("decision_time"),
+                        "execution_time": decision.get("execution_time"),
+                        "source_decision_time": decision.get(
+                            "source_decision_time"
+                        ),
+                        "source_execution_time": decision.get(
+                            "source_execution_time"
+                        ),
+                        "target_fraction": target_fraction,
+                        "target_maintenance": True,
+                    }
+                except (
+                    macro_flow.MacroFlowContractError,
+                    KeyError,
+                    TypeError,
+                    ValueError,
+                ) as exc:
+                    ready = False
+                    emit = True
+                    gate_ok = False
+                    reasons.extend(
+                        [
+                            f"runtime_bridge=error:{type(exc).__name__}:{exc}",
+                            "macro_flow_fail_closed=pass",
+                        ]
+                    )
+            elif policy_type == "dollar_rally_short":
+                side = "SHORT"
+                hold = dollar_rally_short.DOLLAR_SHORT_HOLD_BARS
+                stride = dollar_rally_short.DOLLAR_SHORT_STRIDE_BARS
+                stride_offset = dollar_rally_short.DOLLAR_SHORT_STRIDE_OFFSET_BARS
+                entry_delay = 1
+                try:
+                    dollar_rally_short.validate_dollar_short_runtime_config(
+                        cfg,
+                        configured_side=configured_side,
+                    )
+                    if not dollar_rally_short.is_dollar_short_signal_phase(ts):
+                        gate_ok = False
+                        reasons.extend(
+                            [
+                                "decision_clock=skip:not_legacy_hourly_phase",
+                                "runtime_bridge=ready:dollar-rally-short-v1:deferred",
+                            ]
+                        )
+                    else:
+                        if len(enriched) != len(features):
+                            raise ValueError(
+                                "enriched/features row count mismatch for dollar short"
+                            )
+                        policy_market = enriched[
+                            ["date", "open", "high", "low", "close"]
+                        ].copy()
+                        for column in ("dxy_momentum", "dxy_available"):
+                            if column not in features.columns:
+                                raise ValueError(
+                                    f"dollar short feature is missing: {column}"
+                                )
+                            policy_market[column] = features[column].to_numpy()
+                        decision = dollar_rally_short.score_dollar_short(
+                            policy_market,
+                            ts,
+                        )
+                        gate_ok = bool(decision.get("active"))
+                        reasons.extend(
+                            [
+                                f"dollar_short={decision.get('reason', 'unknown')}",
+                                "runtime_bridge=ready:dollar-rally-short-v1",
+                            ]
+                        )
+                        policy_metadata = {
+                            "policy_type": "dollar_rally_short",
+                            "decision_time": decision.get("decision_time"),
+                            "execution_time": decision.get("execution_time"),
+                            "entry_window": decision.get("entry_window"),
+                            "lifecycle": decision.get("lifecycle"),
+                            "global_phase": decision.get("global_phase"),
+                            "gates": decision.get("gates"),
+                        }
+                except (
+                    dollar_rally_short.DollarShortContractError,
+                    KeyError,
+                    TypeError,
+                    ValueError,
+                ) as exc:
+                    ready = False
+                    gate_ok = False
+                    reasons.extend(
+                        [
+                            f"runtime_bridge=error:{type(exc).__name__}:{exc}",
+                            "dollar_short_fail_closed=pass",
+                        ]
+                    )
+            elif policy_type == "bidirectional_gate":
                 policy_features = build_fresh_kimchi_feature_frame(enriched, features)
                 policy_row = policy_features.iloc[-1]
                 long_ok, long_reasons = _gate_pass(policy_row, cfg.get("long_gates", []))
@@ -2417,6 +2700,7 @@ def _score_sleeve(
                     try:
                         decision = _rank7_score_from_config(cfg, enriched)
                     except (Rank7BundleError, Rank7FeatureError, ValueError, KeyError) as exc:
+                        ready = False
                         gate_ok = False
                         reasons.append(f"runtime_bridge=error:{type(exc).__name__}:{exc}")
                         reasons.append("rank7_fail_closed=pass")
@@ -2477,6 +2761,12 @@ def _score_sleeve(
                 activation_ok = True
             entry_delay_ok = entry_delay == 1
             active = bool(gate_ok and stride_ok and activation_ok and entry_delay_ok)
+            if kind == "target":
+                active = bool(
+                    active
+                    and target_fraction is not None
+                    and target_fraction != 0.0
+                )
             reasons.extend(
                 [
                     f"stride={stride}@{stride_offset}:{'pass' if stride_ok else 'fail'}",
@@ -2543,6 +2833,9 @@ def _score_sleeve(
         "side": side,
         "weight": weight,
         "active": active,
+        "ready": ready,
+        "emit": emit,
+        "kind": kind,
         "hold_bars": hold,
         "stride_bars": stride,
         "stride_offset_bars": stride_offset,
@@ -2555,6 +2848,16 @@ def _score_sleeve(
         "dynamic_exit": dynamic_exit,
         "barrier_exit": barrier_exit,
         "policy_metadata": policy_metadata,
+        **(
+            {"target_fraction": target_fraction}
+            if target_fraction is not None
+            else {}
+        ),
+        **(
+            {"execution_time": scheduled_execution_time}
+            if scheduled_execution_time is not None
+            else {}
+        ),
     }
 
 
@@ -2569,17 +2872,26 @@ def _score_sleeves(
 ) -> list[dict[str, Any]]:
     """Serial compatibility scorer used by tests and explicit fallback mode."""
 
-    return [
-        _score_sleeve(
-            sleeve=sleeve,
-            enriched=enriched,
-            features=features,
-            exec_cfg=exec_cfg,
-            asof=asof,
-            rex_selector_cfg=rex_selector_cfg,
-        )
-        for sleeve in portfolio["base_sleeves"]
-    ]
+    scores: list[dict[str, Any]] = []
+    for sleeve in portfolio["base_sleeves"]:
+        try:
+            score = _score_sleeve(
+                sleeve=sleeve,
+                enriched=enriched,
+                features=features,
+                exec_cfg=exec_cfg,
+                asof=asof,
+                rex_selector_cfg=rex_selector_cfg,
+            )
+        except Exception as exc:
+            score = _worker_failure_score(
+                sleeve=sleeve,
+                enriched=enriched,
+                exec_cfg=exec_cfg,
+                reason=f"serial_score_error:{type(exc).__name__}:{exc}",
+            )
+        scores.append(score)
+    return scores
 
 
 def _score_sleeve_worker(payload: dict[str, Any]) -> dict[str, Any]:
@@ -2609,6 +2921,7 @@ def _worker_failure_score(
         "side": side,
         "weight": float(sleeve.get("weight", 0.0)),
         "active": False,
+        "ready": False,
         "hold_bars": 0,
         "stride_bars": 1,
         "stride_offset_bars": 0,
@@ -2853,12 +3166,16 @@ def _portfolio_order_parts(client_order_id: str) -> dict[str, str] | None:
 
 
 def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
-    """Best-effort runtime metadata for a configured sleeve."""
+    """Load recovery metadata without letting entry-config drift block exits."""
 
     source = str(sleeve.get("source") or sleeve.get("source_predictions") or "")
     rank7_expected = (
         str(sleeve.get("policy_type", "")).lower() == "frozen_annual_rank7"
         or str(sleeve.get("name", "")).lower() == "frozen_annual_rank7"
+    )
+    dollar_short_expected = (
+        str(sleeve.get("policy_type", "")).lower() == "dollar_rally_short"
+        or str(sleeve.get("name", "")).lower() == "dollar_rally_short"
     )
     hold = int(sleeve.get("hold_bars", sleeve.get("hold_bars_5m", 0)) or 0)
     stride = int(sleeve.get("stride_bars", sleeve.get("stride_bars_5m", 1)) or 1)
@@ -2866,11 +3183,27 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
     barrier_exit = _barrier_exit_from_config(sleeve)
     rank7_model_version: str | None = None
     rank7_source_lifecycles: dict[str, dict[str, Any]] | None = None
+    runtime_contract_error: str | None = None
+    if dollar_short_expected:
+        hold = dollar_rally_short.DOLLAR_SHORT_HOLD_BARS
+        stride = dollar_rally_short.DOLLAR_SHORT_STRIDE_BARS
+        dynamic_exit = None
+        barrier_exit = None
     if rank7_expected and not source.endswith(".json"):
         raise Rank7BundleError("Rank7 sleeve runtime source must be a JSON config")
+    if dollar_short_expected and not source.endswith(".json"):
+        runtime_contract_error = (
+            "DollarShortContractError: Dollar-short sleeve runtime source "
+            "must be a JSON config"
+        )
     if source.endswith(".json") and not Path(source).exists():
         if rank7_expected:
             raise Rank7BundleError(f"Rank7 sleeve runtime config is missing: {source}")
+        if dollar_short_expected:
+            runtime_contract_error = (
+                "DollarShortContractError: Dollar-short sleeve runtime config "
+                f"is missing: {source}"
+            )
     elif source.endswith(".json"):
         try:
             cfg = _load_json(source)
@@ -2896,12 +3229,27 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
                     }
                     for source_name, exit_spec in bundle.manifest["exits_by_source"].items()
                 }
-            if "signal" in cfg:
-                hold = int(cfg["signal"].get("hold_bars_5m", cfg["signal"].get("hold_bars", hold)) or hold)
-                stride = int(cfg["signal"].get("stride_bars_5m", cfg["signal"].get("stride_bars", stride)) or stride)
-            else:
-                hold = int(cfg.get("hold_bars", cfg.get("hold_bars_5m", hold)) or hold)
-                stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", stride)) or stride)
+            if (
+                dollar_short_expected
+                or str(cfg.get("policy_type", "")).lower()
+                == "dollar_rally_short"
+            ):
+                dollar_short_expected = True
+                hold = dollar_rally_short.DOLLAR_SHORT_HOLD_BARS
+                stride = dollar_rally_short.DOLLAR_SHORT_STRIDE_BARS
+                dynamic_exit = None
+                barrier_exit = None
+                dollar_rally_short.validate_dollar_short_runtime_config(
+                    cfg,
+                    configured_side=str(sleeve.get("side", "")),
+                )
+            if not dollar_short_expected:
+                if "signal" in cfg:
+                    hold = int(cfg["signal"].get("hold_bars_5m", cfg["signal"].get("hold_bars", hold)) or hold)
+                    stride = int(cfg["signal"].get("stride_bars_5m", cfg["signal"].get("stride_bars", stride)) or stride)
+                else:
+                    hold = int(cfg.get("hold_bars", cfg.get("hold_bars_5m", hold)) or hold)
+                    stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", stride)) or stride)
         except Exception as exc:
             if rank7_expected:
                 if isinstance(exc, Rank7BundleError):
@@ -2909,6 +3257,12 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
                 raise Rank7BundleError(
                     f"cannot load Rank7 sleeve runtime contract from {source}: {exc}"
                 ) from exc
+            if dollar_short_expected:
+                hold = dollar_rally_short.DOLLAR_SHORT_HOLD_BARS
+                stride = dollar_rally_short.DOLLAR_SHORT_STRIDE_BARS
+                dynamic_exit = None
+                barrier_exit = None
+                runtime_contract_error = f"{type(exc).__name__}: {exc}"
     return {
         "source": source,
         "hold_bars": hold,
@@ -2917,6 +3271,7 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
         "barrier_exit": barrier_exit,
         "rank7_model_version": rank7_model_version,
         "rank7_source_lifecycles": rank7_source_lifecycles,
+        "runtime_contract_error": runtime_contract_error,
     }
 
 
@@ -4404,7 +4759,6 @@ async def _place_portfolio_maker_order_with_deadline(
                 break
             last_status = {**last_status, "query_error": str(exc)}
         status = str(last_status.get("status") or "UNKNOWN")
-        observed_executed = _order_executed_qty(last_status)
         if status == "FILLED":
             reconcile_active_fill(last_status, "status_filled")
             final_status = (
@@ -4581,6 +4935,1094 @@ def _allocation_audit(portfolio: dict[str, Any], *, leverage_budget: float, allo
     }
 
 
+def _initialize_signed_net_state(
+    state: dict[str, Any],
+    *,
+    policy: SignedNetPolicy,
+    physical_quantity: Decimal,
+) -> dict[str, Any]:
+    """Initialize signed-net ownership only from a provably flat empty ledger.
+
+    Existing legacy sleeve attribution and non-flat exchange positions are not
+    automatically migrated.  Their relationship cannot be reconstructed from
+    aggregate position size without explicit operator reconciliation.
+    """
+
+    result = dict(state)
+    expected_policy_hash = signed_net_policy_digest(policy)
+    mode = result.get("position_aggregation_mode")
+    if mode is None:
+        if (
+            result.get("open_sleeves")
+            or result.get("pending_signed_net_transition")
+            or abs(Decimal(str(physical_quantity))) > Decimal("0.00000001")
+        ):
+            raise RuntimeError(
+                "signed-net mode can only initialize from a flat empty ledger; "
+                "legacy/non-flat state requires explicit reconciliation"
+            )
+        result["position_aggregation_mode"] = policy.mode
+        result["signed_net_policy_hash"] = expected_policy_hash
+        result["signed_net_revision"] = 0
+        result["signed_net_dust_quantity"] = "0"
+        result.setdefault("processed_signal_ids", {})
+        result.setdefault("open_sleeves", {})
+        result.setdefault("processed_signals", {})
+        return result
+    if str(mode) != policy.mode:
+        raise RuntimeError(
+            f"state aggregation mode mismatch: state={mode!r} config={policy.mode!r}"
+        )
+    stored_policy_hash = result.get("signed_net_policy_hash")
+    ownership_active = bool(
+        result.get("open_sleeves")
+        or result.get("pending_signed_net_transition")
+        or abs(Decimal(str(physical_quantity))) > Decimal("0.00000001")
+    )
+    if stored_policy_hash is None and ownership_active:
+        raise RuntimeError(
+            "signed-net policy hash is missing while ownership is active; "
+            "automatic adoption refused"
+        )
+    if stored_policy_hash not in (None, expected_policy_hash):
+        if ownership_active:
+            raise RuntimeError(
+                "signed-net policy changed while exposure or a transition is active; "
+                "automatic migration refused"
+            )
+    result["signed_net_policy_hash"] = expected_policy_hash
+    result.setdefault("signed_net_revision", 0)
+    result.setdefault("signed_net_dust_quantity", "0")
+    result.setdefault("processed_signal_ids", {})
+    result.setdefault("open_sleeves", {})
+    result.setdefault("processed_signals", {})
+    return result
+
+
+def _validate_state_aggregation_mode(
+    state: dict[str, Any],
+    *,
+    policy: SignedNetPolicy | None,
+) -> None:
+    """Prevent either executor from consuming the other executor's ledger."""
+
+    state_mode = state.get("position_aggregation_mode")
+    if policy is None:
+        if state_mode is not None:
+            raise RuntimeError(
+                "legacy portfolio cannot consume a signed virtual ledger; "
+                "use a separate state file or explicitly reconcile it flat"
+            )
+        return
+    if state_mode not in (None, policy.mode):
+        raise RuntimeError(
+            f"signed-net config/state mode mismatch: config={policy.mode!r} "
+            f"state={state_mode!r}"
+        )
+
+
+async def _exchange_physical_signed_quantity(
+    client: Any,
+    *,
+    symbol: str,
+) -> Decimal:
+    try:
+        positions = await client.get_positions(symbol)
+    except TypeError:
+        positions = await client.get_positions()
+    return physical_signed_quantity(positions, symbol=symbol)
+
+
+def _signed_net_order_fill_quantity(order: dict[str, Any]) -> Decimal:
+    report = order.get("trade_report")
+    candidates = [
+        report.get("quantity") if isinstance(report, dict) else None,
+        order.get("executedQty"),
+        order.get("cumQty"),
+        order.get("filled_quantity"),
+        order.get("origQty") if str(order.get("status", "")).upper() == "FILLED" else None,
+    ]
+    for value in candidates:
+        if value in (None, ""):
+            continue
+        try:
+            quantity = Decimal(str(value))
+        except Exception:
+            continue
+        if quantity > 0:
+            return quantity
+    return Decimal("0")
+
+
+_SIGNED_NET_TERMINAL_ORDER_STATUSES = {
+    "FILLED",
+    "CANCELED",
+    "REJECTED",
+    "EXPIRED",
+    "EXPIRED_IN_MATCH",
+}
+
+
+def _signed_net_record_is_terminal(record: dict[str, Any]) -> bool:
+    return bool(
+        not record.get("execution_uncertain")
+        and str(record.get("status", "")).upper()
+        in _SIGNED_NET_TERMINAL_ORDER_STATUSES
+    )
+
+
+def _signed_net_attributed_quantity(
+    *,
+    plan: SignedNetPlan,
+    order_records: list[dict[str, Any]],
+) -> Decimal:
+    """Reconstruct physical quantity using this transition's proven fills."""
+
+    quantity = plan.base_quantity
+    seen: set[str] = set()
+    for record in order_records:
+        client_order_id = str(record.get("client_order_id", ""))
+        if not client_order_id or client_order_id in seen:
+            raise RuntimeError(
+                "signed-net journal contains a missing or duplicate client order id"
+            )
+        seen.add(client_order_id)
+        if not _signed_net_record_is_terminal(record):
+            raise RuntimeError(
+                "signed-net journal contains an unresolved order record: "
+                f"{client_order_id}"
+            )
+        filled = _signed_net_order_fill_quantity(record)
+        side = str(record.get("side", "")).upper()
+        if side == "BUY":
+            quantity += filled
+        elif side == "SELL":
+            quantity -= filled
+        else:
+            raise RuntimeError(
+                f"signed-net journal has invalid order side: {side!r}"
+            )
+    return quantity
+
+
+def _signed_net_pending_client_order_ids(state: dict[str, Any]) -> set[str]:
+    pending = state.get("pending_signed_net_transition")
+    if not isinstance(pending, dict):
+        return set()
+    return {
+        str(intent.get("client_order_id"))
+        for intent in pending.get("order_intents", [])
+        if isinstance(intent, dict) and intent.get("client_order_id")
+    }
+
+
+def _signed_net_upsert_order_record(
+    *,
+    state: dict[str, Any],
+    record: dict[str, Any],
+) -> None:
+    pending = state.get("pending_signed_net_transition")
+    if not isinstance(pending, dict):
+        raise RuntimeError("signed-net transition journal disappeared during execution")
+    client_order_id = str(record.get("client_order_id", ""))
+    durable = [
+        item
+        for item in pending.get("order_records", [])
+        if str(item.get("client_order_id", "")) != client_order_id
+    ]
+    durable.append(record)
+    pending["order_records"] = durable[-100:]
+    pending["last_physical_quantity"] = record.get("physical_quantity_after")
+    pending["updated_at"] = str(pd.Timestamp.utcnow())
+    state["pending_signed_net_transition"] = pending
+    state["updated_at"] = str(pd.Timestamp.utcnow())
+
+
+def _signed_net_next_intent(
+    *,
+    state: dict[str, Any],
+    plan: SignedNetPlan,
+    observed: Decimal,
+    leg: HedgeLeg,
+) -> dict[str, Any]:
+    pending = state.get("pending_signed_net_transition")
+    if not isinstance(pending, dict):
+        raise RuntimeError("signed-net transition journal is missing")
+    intents = list(pending.get("order_intents", []))
+    sequence = max(
+        (int(item.get("sequence", -1)) for item in intents if isinstance(item, dict)),
+        default=-1,
+    ) + 1
+    plan_epoch = int(pd.Timestamp(plan.execution_time).timestamp())
+    client_order_id = _portfolio_client_order_id(
+        f"{plan.plan_id}:{sequence}",
+        sleeve_name="portfolio_signed_net",
+        now_sec=plan_epoch,
+    )
+    intent = {
+        "sequence": sequence,
+        "client_order_id": client_order_id,
+        "side": leg.side,
+        "position_side": leg.position_side,
+        "quantity": str(leg.quantity),
+        "reduce_position": bool(leg.reduce_position),
+        "physical_quantity_before": str(observed),
+        "created_at": str(pd.Timestamp.utcnow()),
+    }
+    intents.append(intent)
+    pending["order_intents"] = intents[-100:]
+    pending["updated_at"] = str(pd.Timestamp.utcnow())
+    state["pending_signed_net_transition"] = pending
+    return intent
+
+
+async def _execute_signed_net_plan(
+    *,
+    client: Any,
+    exec_cfg: Any,
+    plan: SignedNetPlan,
+    observed_quantity: Decimal,
+    min_quantity: Decimal,
+    state: dict[str, Any] | None = None,
+    state_file: Path | None = None,
+    engine: Any | None = None,
+    strategy_name: str = "rllm",
+    execution_exchange: str = "binance",
+    computing_wall_time_sec: float | None = None,
+) -> list[dict[str, Any]]:
+    """Move one physical hedge side to ``plan.target_quantity`` exactly.
+
+    Position snapshots, not HTTP acknowledgements, are authoritative.  A lost
+    response or partial fill therefore resumes from the observed physical
+    quantity.  Any move outside the frozen base-to-target path fails closed.
+    """
+
+    if state is None or state_file is None:
+        raise RuntimeError(
+            "live signed-net execution requires a durable state journal"
+        )
+    observed = Decimal(str(observed_quantity))
+    minimum = Decimal(str(min_quantity))
+    tolerance = max(plan.quantity_step / Decimal("10"), Decimal("0.00000001"))
+    records: list[dict[str, Any]] = []
+    attempt = 0
+    while True:
+        pending = state.get("pending_signed_net_transition")
+        if not isinstance(pending, dict):
+            raise RuntimeError("signed-net transition journal is missing")
+        durable_records = list(pending.get("order_records", []))
+        record_by_id = {
+            str(item.get("client_order_id")): item
+            for item in durable_records
+            if isinstance(item, dict) and item.get("client_order_id")
+        }
+        unresolved = [
+            intent
+            for intent in pending.get("order_intents", [])
+            if isinstance(intent, dict)
+            and not _signed_net_record_is_terminal(
+                record_by_id.get(str(intent.get("client_order_id")), {})
+            )
+        ]
+        if len(unresolved) > 1:
+            raise RuntimeError("multiple unresolved signed-net order intents")
+
+        resuming_intent = bool(unresolved)
+        if resuming_intent:
+            intent = dict(unresolved[0])
+            leg = HedgeLeg(
+                side=str(intent["side"]).upper(),  # type: ignore[arg-type]
+                position_side=str(intent["position_side"]).upper(),  # type: ignore[arg-type]
+                quantity=Decimal(str(intent["quantity"])),
+                reduce_position=bool(intent["reduce_position"]),
+            )
+            client_order_id = str(intent["client_order_id"])
+        else:
+            attributed = _signed_net_attributed_quantity(
+                plan=plan,
+                order_records=durable_records,
+            )
+            if abs(attributed - observed) > tolerance:
+                raise RuntimeError(
+                    "physical quantity is not attributable to journaled signed-net fills: "
+                    f"physical={observed} attributed={attributed}"
+                )
+            if abs(observed - plan.target_quantity) <= tolerance:
+                break
+            legs = build_hedge_legs(
+                observed,
+                plan.target_quantity,
+                quantity_step=plan.quantity_step,
+            )
+            if not legs:
+                raise RuntimeError(
+                    "signed-net target is not reachable at the configured lot step: "
+                    f"observed={observed} target={plan.target_quantity}"
+                )
+            leg = legs[0]
+            if leg.quantity < minimum:
+                raise RuntimeError(
+                    "signed-net transition leg is below exchange minimum quantity: "
+                    f"quantity={leg.quantity} minimum={minimum}"
+                )
+            intent = _signed_net_next_intent(
+                state=state,
+                plan=plan,
+                observed=observed,
+                leg=leg,
+            )
+            client_order_id = str(intent["client_order_id"])
+            _write_json(state_file, state)
+
+            # Freeze the account again after the intent reaches durable storage.
+            # Any unowned move in this window invalidates attribution before POST.
+            physical_before_post = await _exchange_physical_signed_quantity(
+                client,
+                symbol=exec_cfg.symbol,
+            )
+            if abs(physical_before_post - observed) > tolerance:
+                raise RuntimeError(
+                    "physical quantity changed after signed-net intent journaling: "
+                    f"expected={observed} actual={physical_before_post}"
+                )
+        started = pd.Timestamp.utcnow()
+        if resuming_intent:
+            try:
+                raw = dict(
+                    await client.get_order(
+                        exec_cfg.symbol,
+                        client_order_id=client_order_id,
+                    )
+                )
+            except Exception as lookup_exc:
+                error_text = str(lookup_exc).lower()
+                definitely_missing = (
+                    "-2013" in error_text
+                    or "order does not exist" in error_text
+                    or "unknown order sent" in error_text
+                )
+                settled_records = [
+                    item
+                    for item in durable_records
+                    if _signed_net_record_is_terminal(item)
+                ]
+                settled_quantity = _signed_net_attributed_quantity(
+                    plan=plan,
+                    order_records=settled_records,
+                )
+                if not definitely_missing:
+                    raise RuntimeError(
+                        "cannot resolve journaled signed-net order before retry; "
+                        f"no new POST sent: {type(lookup_exc).__name__}: {lookup_exc}"
+                    ) from lookup_exc
+                if abs(observed - settled_quantity) > tolerance:
+                    raise RuntimeError(
+                        "journaled order is absent but physical quantity changed; "
+                        "foreign/unattributed execution refused"
+                    ) from lookup_exc
+                raw = await _place_or_resolve_market_order(
+                    client=client,
+                    symbol=exec_cfg.symbol,
+                    side=leg.side,
+                    quantity=leg.quantity,
+                    position_side=leg.position_side,
+                    reduce_only=leg.reduce_position,
+                    client_order_id=client_order_id,
+                )
+        else:
+            raw = await _place_or_resolve_market_order(
+                client=client,
+                symbol=exec_cfg.symbol,
+                side=leg.side,
+                quantity=leg.quantity,
+                position_side=leg.position_side,
+                reduce_only=leg.reduce_position,
+                client_order_id=client_order_id,
+            )
+        confirmed = await _confirm_market_order(
+            client=client,
+            symbol=exec_cfg.symbol,
+            raw_order=dict(raw or {}),
+            client_order_id=client_order_id,
+            require_fill_details=True,
+            expected_quantity=leg.quantity,
+        )
+        finished = pd.Timestamp.utcnow()
+        physical_after = await _exchange_physical_signed_quantity(
+            client,
+            symbol=exec_cfg.symbol,
+        )
+        record = {
+            "status": str(confirmed.get("status", "UNKNOWN")),
+            "order_id": confirmed.get("orderId", confirmed.get("order_id")),
+            "client_order_id": confirmed.get(
+                "clientOrderId", confirmed.get("client_order_id", client_order_id)
+            ),
+            "requested_quantity": str(leg.quantity),
+            "filled_quantity": str(_signed_net_order_fill_quantity(confirmed)),
+            "reference_price": str(plan.reference_price),
+            "avg_price": str(
+                confirmed.get("avgPrice")
+                or confirmed.get("avg_price")
+                or confirmed.get("price")
+                or "0"
+            ),
+            "started_at": str(started),
+            "finished_at": str(finished),
+            "wall_time_sec": float((finished - started).total_seconds()),
+            "raw_order": confirmed,
+            "plan_id": plan.plan_id,
+            "plan_base_quantity": str(plan.base_quantity),
+            "plan_target_quantity": str(plan.target_quantity),
+            "physical_quantity_before": str(observed),
+            "physical_quantity_after": str(physical_after),
+            "reduce_position": bool(leg.reduce_position),
+            "position_side": leg.position_side,
+            "side": leg.side,
+            "execution_uncertain": bool(confirmed.get("execution_uncertain")),
+        }
+        records.append(record)
+        _signed_net_upsert_order_record(state=state, record=record)
+        _write_json(state_file, state)
+        if engine is not None:
+            _log_trade_execution(
+                engine,
+                strategy_name=strategy_name,
+                sub_strategy_name="portfolio_signed_net",
+                exchange=execution_exchange,
+                symbol=exec_cfg.symbol,
+                action="NET_REBALANCE",
+                side=leg.side,
+                position_side=leg.position_side,
+                order_type="MARKET_SIGNED_NET",
+                signal_id=plan.plan_id,
+                status=str(record["status"]),
+                order_info=record,
+                computing_wall_time_sec=computing_wall_time_sec,
+                error=(
+                    "market_order_execution_uncertain"
+                    if record["execution_uncertain"]
+                    else None
+                ),
+            )
+        if confirmed.get("execution_uncertain"):
+            raise RuntimeError(
+                "signed-net market execution is uncertain; pending transition retained: "
+                f"plan={plan.plan_id} client_order_id={client_order_id}"
+            )
+        durable_records = list(
+            state["pending_signed_net_transition"].get("order_records", [])
+        )
+        attributed_after = _signed_net_attributed_quantity(
+            plan=plan,
+            order_records=durable_records,
+        )
+        if abs(physical_after - attributed_after) > tolerance:
+            raise RuntimeError(
+                "post-order physical quantity is not attributable to signed-net fills: "
+                f"physical={physical_after} attributed={attributed_after}"
+            )
+        if abs(physical_after - plan.target_quantity) <= tolerance:
+            observed = physical_after
+            break
+        if abs(physical_after - observed) <= tolerance:
+            raise RuntimeError(
+                "signed-net market order made no observable position progress; "
+                f"plan={plan.plan_id} observed={physical_after}"
+            )
+        observed = physical_after
+        attempt += 1
+        if attempt >= 8:
+            raise RuntimeError(
+                f"signed-net transition exceeded recovery attempt bound: plan={plan.plan_id}"
+            )
+    return records
+
+
+async def _signed_net_account_snapshot(
+    *,
+    client: Any,
+    exec_cfg: WaveExecutionConfig,
+    allowed_open_client_order_ids: set[str] | None = None,
+) -> tuple[Decimal, Decimal, Decimal, Decimal, Decimal]:
+    """Return physical quantity, equity, mark, minimum and quantity step."""
+
+    allowed_order_ids = set(allowed_open_client_order_ids or ())
+    get_open_orders = getattr(client, "get_open_orders", None)
+    if get_open_orders is not None:
+        open_orders = await get_open_orders(exec_cfg.symbol)
+        foreign_orders = [
+            order
+            for order in open_orders
+            if str(order.get("clientOrderId") or "") not in allowed_order_ids
+        ]
+        if foreign_orders:
+            identifiers = [
+                str(order.get("clientOrderId") or order.get("orderId") or "unknown")
+                for order in foreign_orders[:5]
+            ]
+            raise RuntimeError(
+                "signed-net snapshot requires no open BTCUSDT orders; "
+                "an asynchronous fill could invalidate the virtual ledger: "
+                + ",".join(identifiers)
+            )
+    physical = await _exchange_physical_signed_quantity(
+        client,
+        symbol=exec_cfg.symbol,
+    )
+    balance = await client.get_usdt_balance()
+    wallet = Decimal(str(balance.get("total", "0") or "0"))
+    unrealized = Decimal(str(balance.get("unrealized_pnl", "0") or "0"))
+    equity = wallet + unrealized
+    if not equity.is_finite() or equity <= 0:
+        raise RuntimeError(f"invalid signed-net account equity: {equity}")
+    get_mark_price = getattr(client, "get_mark_price", None)
+    if callable(get_mark_price):
+        raw_mark = await get_mark_price(exec_cfg.symbol)
+        if isinstance(raw_mark, dict):
+            raw_mark = raw_mark.get("markPrice", raw_mark.get("mark_price"))
+    else:
+        public_request = getattr(client, "_public_request", None)
+        if not callable(public_request):
+            raise RuntimeError(
+                "signed-net risk snapshot requires Binance mark-price support"
+            )
+        mark_payload = await public_request(
+            "GET",
+            "/fapi/v1/premiumIndex",
+            {"symbol": exec_cfg.symbol},
+        )
+        raw_mark = mark_payload.get("markPrice")
+    price = Decimal(str(raw_mark))
+    if not price.is_finite() or price <= 0:
+        raise RuntimeError(f"invalid signed-net reference price: {price}")
+    minimum, step, _ = await _symbol_lot_size_constraints(client, exec_cfg.symbol)
+    if step <= 0 or minimum <= 0:
+        raise RuntimeError(
+            f"invalid signed-net exchange lot constraints: minimum={minimum} step={step}"
+        )
+    return physical, equity, price, minimum, step
+
+
+async def _enforce_signed_net_post_fill_cap(
+    *,
+    policy: SignedNetPolicy,
+    state: dict[str, Any],
+    state_file: Path,
+    plan: SignedNetPlan,
+    client: Any,
+    exec_cfg: WaveExecutionConfig,
+    engine: Any | None,
+    strategy_name: str,
+    execution_exchange: str,
+    computing_wall_time_sec: float | None,
+) -> tuple[SignedNetPlan, list[dict[str, Any]]]:
+    """Verify the actual post-fill account and trim exposure before commit."""
+
+    correction_records: list[dict[str, Any]] = []
+    current_plan = plan
+    for _ in range(4):
+        physical, equity, mark, minimum, step = await _signed_net_account_snapshot(
+            client=client,
+            exec_cfg=exec_cfg,
+            allowed_open_client_order_ids=_signed_net_pending_client_order_ids(
+                state
+            ),
+        )
+        tolerance = max(step / Decimal("10"), Decimal("0.00000001"))
+        if abs(physical - current_plan.target_quantity) > tolerance:
+            raise RuntimeError(
+                "post-fill cap check observed a quantity outside the pending target: "
+                f"physical={physical} target={current_plan.target_quantity}"
+            )
+        cap_notional = policy.net_cap_after_fees * equity
+        actual_notional = abs(physical) * mark
+        check = {
+            "physical_quantity": str(physical),
+            "equity_after_actual_fees": str(equity),
+            "mark_price": str(mark),
+            "actual_notional": str(actual_notional),
+            "cap_notional": str(cap_notional),
+            "checked_at": str(pd.Timestamp.utcnow()),
+        }
+        pending = state.get("pending_signed_net_transition")
+        if not isinstance(pending, dict):
+            raise RuntimeError("signed-net transition journal disappeared before cap check")
+        checks = list(pending.get("post_fill_cap_checks", []))
+        checks.append(check)
+        pending["post_fill_cap_checks"] = checks[-20:]
+        state["pending_signed_net_transition"] = pending
+        _write_json(state_file, state)
+        if actual_notional <= cap_notional + Decimal("0.00000001"):
+            return current_plan, correction_records
+
+        safe_abs = round_toward_zero(cap_notional / mark, step)
+        if safe_abs >= abs(physical):
+            safe_abs = max(Decimal("0"), abs(physical) - step)
+        safe_target = safe_abs if physical >= 0 else -safe_abs
+        corrected = retarget_plan_for_risk_reduction(
+            current_plan,
+            safe_target,
+            fee_rate=policy.fee_rate,
+        )
+        previous_plan_id = current_plan.plan_id
+        pending = state["pending_signed_net_transition"]
+        superseded = list(pending.get("superseded_plan_ids", []))
+        superseded.append(previous_plan_id)
+        pending["superseded_plan_ids"] = superseded[-20:]
+        pending["status"] = "POST_FILL_CAP_CORRECTION"
+        pending["plan"] = signed_net_plan_to_dict(corrected)
+        pending["policy_hash"] = corrected.policy_hash
+        pending["updated_at"] = str(pd.Timestamp.utcnow())
+        state["pending_signed_net_transition"] = pending
+        _write_json(state_file, state)
+        new_records = await _execute_signed_net_plan(
+            client=client,
+            exec_cfg=exec_cfg,
+            plan=corrected,
+            observed_quantity=physical,
+            min_quantity=minimum,
+            state=state,
+            state_file=state_file,
+            engine=engine,
+            strategy_name=strategy_name,
+            execution_exchange=execution_exchange,
+            computing_wall_time_sec=computing_wall_time_sec,
+        )
+        correction_records.extend(new_records)
+        current_plan = corrected
+    raise RuntimeError(
+        "signed-net post-fill cap remained breached after bounded risk reductions"
+    )
+
+
+def _signed_net_virtual_event_info(
+    *,
+    plan: SignedNetPlan,
+    sleeve: dict[str, Any],
+    order_records: list[dict[str, Any]],
+    close_reason: str | None = None,
+) -> dict[str, Any]:
+    quantity = str(sleeve.get("quantity", "0") or "0")
+    return {
+        "status": "NET_COMMITTED",
+        "requested_quantity": quantity,
+        "filled_quantity": quantity,
+        "reference_price": str(plan.reference_price),
+        "avg_price": str(plan.reference_price),
+        "started_at": plan.execution_time,
+        "finished_at": str(pd.Timestamp.utcnow()),
+        "wall_time_sec": 0.0,
+        "plan_id": plan.plan_id,
+        "plan_base_quantity": str(plan.base_quantity),
+        "plan_target_quantity": str(plan.target_quantity),
+        "close_reason": close_reason,
+        "netted_without_broker_order": not bool(order_records),
+        "aggregate_order_records": order_records,
+        "virtual_sleeve": True,
+    }
+
+
+def _signed_net_open_fill_anchor(
+    *,
+    plan: SignedNetPlan,
+    order_records: list[dict[str, Any]],
+) -> tuple[Decimal, pd.Timestamp, str]:
+    """Choose an auditable barrier anchor for newly opened virtual sleeves.
+
+    Exposure-increasing physical fills are authoritative.  When virtual opens
+    offset closes and therefore require no increasing broker order, the plan's
+    contemporaneous mark is an explicit synthetic netting price.
+    """
+
+    quote = Decimal("0")
+    quantity = Decimal("0")
+    fill_times: list[pd.Timestamp] = []
+    for record in order_records:
+        if record.get("reduce_position"):
+            continue
+        filled = _signed_net_order_fill_quantity(record)
+        try:
+            price = Decimal(str(record.get("avg_price", "0") or "0"))
+        except Exception:
+            price = Decimal("0")
+        if filled <= 0 or price <= 0:
+            continue
+        quantity += filled
+        quote += filled * price
+        raw_order = record.get("raw_order")
+        report = raw_order.get("trade_report") if isinstance(raw_order, dict) else None
+        for raw_time in (
+            report.get("last_fill_at") if isinstance(report, dict) else None,
+            record.get("finished_at"),
+        ):
+            if raw_time in (None, ""):
+                continue
+            try:
+                timestamp = pd.Timestamp(raw_time)
+                fill_times.append(
+                    timestamp.tz_localize("UTC")
+                    if timestamp.tzinfo is None
+                    else timestamp.tz_convert("UTC")
+                )
+                break
+            except Exception:
+                continue
+    if quantity > 0:
+        return quote / quantity, max(fill_times), "aggregate_exposure_increase_fill"
+    return (
+        plan.reference_price,
+        pd.Timestamp(plan.execution_time),
+        "synthetic_netting_mark",
+    )
+
+
+def _finalize_signed_net_plan(
+    *,
+    state: dict[str, Any],
+    state_file: Path,
+    plan: SignedNetPlan,
+    close_reasons: dict[str, str],
+    order_records: list[dict[str, Any]],
+    engine: Any | None,
+    strategy_name: str,
+    execution_exchange: str,
+    symbol: str,
+    computing_wall_time_sec: float | None,
+) -> dict[str, Any]:
+    """Commit virtual state only after the physical target is authoritative."""
+
+    previous_sleeves = copy.deepcopy(state.get("open_sleeves", {}))
+    committed = apply_signed_net_plan(state, plan)
+    anchor_price, anchor_time, anchor_source = _signed_net_open_fill_anchor(
+        plan=plan,
+        order_records=order_records,
+    )
+    anchor_names = set(plan.opened_sleeves)
+    anchor_names.update(
+        name
+        for name, sleeve in committed.get("open_sleeves", {}).items()
+        if isinstance(sleeve, dict)
+        and isinstance(previous_sleeves.get(name), dict)
+        and previous_sleeves[name].get("signal_id") != sleeve.get("signal_id")
+    )
+    for name in anchor_names:
+        sleeve = committed.get("open_sleeves", {}).get(name)
+        if not isinstance(sleeve, dict):
+            continue
+        sleeve["entry_fill_price"] = float(anchor_price)
+        sleeve["entry_filled_at"] = str(anchor_time)
+        sleeve["entry_fill_price_source"] = anchor_source
+    history = list(committed.get("signed_net_transition_history", []))
+    history.append(
+        {
+            "plan_id": plan.plan_id,
+            "execution_time": plan.execution_time,
+            "base_quantity": str(plan.base_quantity),
+            "target_quantity": str(plan.target_quantity),
+            "estimated_fee": str(plan.estimated_fee),
+            "resize_scale": str(plan.resize_scale),
+            "opened_sleeves": list(plan.opened_sleeves),
+            "closed_sleeves": list(plan.closed_sleeves),
+            "blocked_entries": [list(item) for item in plan.blocked_entries],
+            "order_records": order_records,
+            "committed_at": str(pd.Timestamp.utcnow()),
+        }
+    )
+    committed["signed_net_transition_history"] = history[-500:]
+    committed["last_signed_net_order_records"] = order_records
+    committed["updated_at"] = str(pd.Timestamp.utcnow())
+    _write_json(state_file, committed)
+
+    if engine is None:
+        return committed
+    log_errors: list[str] = []
+    for name in plan.closed_sleeves:
+        sleeve = previous_sleeves.get(name)
+        if not isinstance(sleeve, dict):
+            continue
+        info = _signed_net_virtual_event_info(
+            plan=plan,
+            sleeve=sleeve,
+            order_records=order_records,
+            close_reason=close_reasons.get(name),
+        )
+        try:
+            _log_trade_execution(
+                engine,
+                strategy_name=strategy_name,
+                sub_strategy_name=name,
+                exchange=execution_exchange,
+                symbol=symbol,
+                action="CLOSE",
+                side="SELL" if str(sleeve.get("side")).upper() == "LONG" else "BUY",
+                position_side=str(sleeve.get("side")),
+                order_type="SIGNED_NET_VIRTUAL_CLOSE",
+                signal_id=str(sleeve.get("signal_id")),
+                status="NET_COMMITTED",
+                order_info=info,
+                computing_wall_time_sec=computing_wall_time_sec,
+            )
+        except Exception as exc:
+            log_errors.append(f"CLOSE:{name}:{type(exc).__name__}: {exc}")
+    for name in plan.opened_sleeves:
+        sleeve = committed.get("open_sleeves", {}).get(name)
+        if not isinstance(sleeve, dict):
+            continue
+        info = _signed_net_virtual_event_info(
+            plan=plan,
+            sleeve=sleeve,
+            order_records=order_records,
+        )
+        try:
+            _log_trade_execution(
+                engine,
+                strategy_name=strategy_name,
+                sub_strategy_name=name,
+                exchange=execution_exchange,
+                symbol=symbol,
+                action="OPEN",
+                side="BUY" if str(sleeve.get("side")).upper() == "LONG" else "SELL",
+                position_side=str(sleeve.get("side")),
+                order_type="SIGNED_NET_VIRTUAL_OPEN",
+                signal_id=str(sleeve.get("signal_id")),
+                status="NET_COMMITTED",
+                order_info=info,
+                computing_wall_time_sec=computing_wall_time_sec,
+            )
+        except Exception as exc:
+            log_errors.append(f"OPEN:{name}:{type(exc).__name__}: {exc}")
+    for name, sleeve in committed.get("open_sleeves", {}).items():
+        previous = previous_sleeves.get(name)
+        if (
+            name in plan.opened_sleeves
+            or name in plan.closed_sleeves
+            or not isinstance(previous, dict)
+            or not isinstance(sleeve, dict)
+            or previous.get("signal_id") == sleeve.get("signal_id")
+        ):
+            continue
+        info = _signed_net_virtual_event_info(
+            plan=plan,
+            sleeve=sleeve,
+            order_records=order_records,
+        )
+        info["previous_quantity"] = previous.get("quantity")
+        info["previous_side"] = previous.get("side")
+        try:
+            _log_trade_execution(
+                engine,
+                strategy_name=strategy_name,
+                sub_strategy_name=str(name),
+                exchange=execution_exchange,
+                symbol=symbol,
+                action="REBALANCE",
+                side="BUY" if str(sleeve.get("side")).upper() == "LONG" else "SELL",
+                position_side=str(sleeve.get("side")),
+                order_type="SIGNED_NET_VIRTUAL_TARGET",
+                signal_id=str(sleeve.get("signal_id")),
+                status="NET_COMMITTED",
+                order_info=info,
+                computing_wall_time_sec=computing_wall_time_sec,
+            )
+        except Exception as exc:
+            log_errors.append(f"REBALANCE:{name}:{type(exc).__name__}: {exc}")
+    if log_errors:
+        committed["last_signed_net_virtual_log_errors"] = log_errors
+        committed["updated_at"] = str(pd.Timestamp.utcnow())
+        _write_json(state_file, committed)
+    else:
+        committed.pop("last_signed_net_virtual_log_errors", None)
+    return committed
+
+
+async def _apply_signed_net_transition(
+    *,
+    policy: SignedNetPolicy,
+    state: dict[str, Any],
+    state_file: Path,
+    plan: SignedNetPlan,
+    close_reasons: dict[str, str],
+    client: Any | None,
+    exec_cfg: WaveExecutionConfig,
+    min_quantity: Decimal,
+    engine: Any | None,
+    strategy_name: str,
+    execution_exchange: str,
+    computing_wall_time_sec: float | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Journal, execute, reconcile, then commit one signed-net transition."""
+
+    pending = {
+        "version": 1,
+        "status": "PLANNED",
+        "policy_hash": plan.policy_hash,
+        "plan": signed_net_plan_to_dict(plan),
+        "close_reasons": dict(close_reasons),
+        "order_intents": [],
+        "order_records": [],
+        "created_at": str(pd.Timestamp.utcnow()),
+    }
+    state["pending_signed_net_transition"] = pending
+    state["updated_at"] = str(pd.Timestamp.utcnow())
+    _write_json(state_file, state)
+
+    order_records: list[dict[str, Any]] = []
+    if not exec_cfg.dry_run:
+        if client is None:
+            raise RuntimeError("live signed-net transition requires an exchange client")
+        order_records = await _execute_signed_net_plan(
+            client=client,
+            exec_cfg=exec_cfg,
+            plan=plan,
+            observed_quantity=plan.base_quantity,
+            min_quantity=min_quantity,
+            state=state,
+            state_file=state_file,
+            engine=engine,
+            strategy_name=strategy_name,
+            execution_exchange=execution_exchange,
+            computing_wall_time_sec=computing_wall_time_sec,
+        )
+        physical_after = await _exchange_physical_signed_quantity(
+            client,
+            symbol=exec_cfg.symbol,
+        )
+        tolerance = max(plan.quantity_step / Decimal("10"), Decimal("0.00000001"))
+        if abs(physical_after - plan.target_quantity) > tolerance:
+            raise RuntimeError(
+                "signed-net physical target was not reached; pending transition retained: "
+                f"physical={physical_after} target={plan.target_quantity}"
+            )
+        plan, cap_records = await _enforce_signed_net_post_fill_cap(
+            policy=policy,
+            state=state,
+            state_file=state_file,
+            plan=plan,
+            client=client,
+            exec_cfg=exec_cfg,
+            engine=engine,
+            strategy_name=strategy_name,
+            execution_exchange=execution_exchange,
+            computing_wall_time_sec=computing_wall_time_sec,
+        )
+        order_records.extend(cap_records)
+        pending_after_cap = state.get("pending_signed_net_transition")
+        if not isinstance(pending_after_cap, dict):
+            raise RuntimeError("signed-net journal disappeared after cap enforcement")
+        order_records = list(pending_after_cap.get("order_records", []))
+
+    committed = _finalize_signed_net_plan(
+        state=state,
+        state_file=state_file,
+        plan=plan,
+        close_reasons=close_reasons,
+        order_records=order_records,
+        engine=engine if not exec_cfg.dry_run else None,
+        strategy_name=strategy_name,
+        execution_exchange=execution_exchange,
+        symbol=exec_cfg.symbol,
+        computing_wall_time_sec=computing_wall_time_sec,
+    )
+    return committed, order_records
+
+
+async def _resume_signed_net_transition(
+    *,
+    state: dict[str, Any],
+    state_file: Path,
+    policy: SignedNetPolicy,
+    client: Any | None,
+    exec_cfg: WaveExecutionConfig,
+    physical_quantity: Decimal,
+    min_quantity: Decimal,
+    engine: Any | None,
+    strategy_name: str,
+    execution_exchange: str,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Finish an interrupted transition without re-attributing broker fills."""
+
+    pending = state.get("pending_signed_net_transition")
+    if not isinstance(pending, dict):
+        return state, []
+    plan_payload = pending.get("plan")
+    if not isinstance(plan_payload, dict):
+        raise RuntimeError("pending signed-net transition has no valid plan")
+    plan = signed_net_plan_from_dict(plan_payload)
+    if plan.policy_hash != signed_net_policy_digest(policy):
+        raise RuntimeError("pending signed-net transition policy no longer matches config")
+    if int(state.get("signed_net_revision", 0) or 0) != plan.base_revision:
+        raise RuntimeError("pending signed-net transition state revision changed")
+    close_reasons = {
+        str(name): str(reason)
+        for name, reason in dict(pending.get("close_reasons", {})).items()
+    }
+    if exec_cfg.dry_run:
+        observed = plan.target_quantity
+    else:
+        observed = physical_quantity
+    new_records: list[dict[str, Any]] = []
+    if not exec_cfg.dry_run:
+        if client is None:
+            raise RuntimeError("pending live signed-net transition requires exchange client")
+        new_records = await _execute_signed_net_plan(
+            client=client,
+            exec_cfg=exec_cfg,
+            plan=plan,
+            observed_quantity=observed,
+            min_quantity=min_quantity,
+            state=state,
+            state_file=state_file,
+            engine=engine,
+            strategy_name=strategy_name,
+            execution_exchange=execution_exchange,
+        )
+        observed = await _exchange_physical_signed_quantity(
+            client,
+            symbol=exec_cfg.symbol,
+        )
+        plan, cap_records = await _enforce_signed_net_post_fill_cap(
+            policy=policy,
+            state=state,
+            state_file=state_file,
+            plan=plan,
+            client=client,
+            exec_cfg=exec_cfg,
+            engine=engine,
+            strategy_name=strategy_name,
+            execution_exchange=execution_exchange,
+            computing_wall_time_sec=None,
+        )
+        new_records.extend(cap_records)
+        observed = await _exchange_physical_signed_quantity(
+            client,
+            symbol=exec_cfg.symbol,
+        )
+    tolerance = max(plan.quantity_step / Decimal("10"), Decimal("0.00000001"))
+    if abs(observed - plan.target_quantity) > tolerance:
+        raise RuntimeError(
+            "pending signed-net transition recovery did not reach target: "
+            f"observed={observed} target={plan.target_quantity}"
+        )
+    current_pending = state.get("pending_signed_net_transition")
+    if not isinstance(current_pending, dict):
+        raise RuntimeError("signed-net transition journal disappeared during recovery")
+    all_records = list(current_pending.get("order_records", []))
+    committed = _finalize_signed_net_plan(
+        state=state,
+        state_file=state_file,
+        plan=plan,
+        close_reasons=close_reasons,
+        order_records=all_records,
+        engine=engine if not exec_cfg.dry_run else None,
+        strategy_name=strategy_name,
+        execution_exchange=execution_exchange,
+        symbol=exec_cfg.symbol,
+        computing_wall_time_sec=None,
+    )
+    return committed, new_records
+
+
 async def _make_executor(exec_cfg: WaveExecutionConfig):
     key, secret = _load_api_credentials(exec_cfg.testnet, exec_cfg.wave_trading_path, dry_run=exec_cfg.dry_run)
     client_cls, executor_cls = load_wave_execution_classes(exec_cfg.wave_trading_path)
@@ -4603,7 +6045,7 @@ async def _make_executor(exec_cfg: WaveExecutionConfig):
     try:
         await client.sync_time()
         if not await client.is_hedge_mode(force_refresh=True):
-            raise RuntimeError("Binance account must be in hedge mode for distributed LONG/SHORT portfolio execution")
+            raise RuntimeError("Binance account must be in hedge mode for portfolio execution")
         await client.set_leverage(exec_cfg.symbol, exec_cfg.leverage)
         return client, executor
     except BaseException:
@@ -4765,12 +6207,18 @@ async def _confirm_market_order(
     raw_order: dict[str, Any],
     client_order_id: str,
     require_fill_details: bool = False,
+    expected_quantity: Decimal | None = None,
 ) -> dict[str, Any]:
-    """Resolve ACK/NEW market responses or mark them durably uncertain."""
+    """Resolve a market order without treating a live remainder as terminal.
+
+    A partial fill is safe to continue from only after cancellation (or another
+    terminal exchange status) is proven.  Trade history may prove fill details,
+    but it never upgrades an unresolved partial order to ``FILLED``.
+    """
 
     order = dict(raw_order)
     order_id = order.get("orderId", order.get("order_id"))
-    terminal = {"FILLED", "PARTIALLY_FILLED", "CANCELED", "REJECTED", "EXPIRED"}
+    terminal = {"FILLED", "CANCELED", "REJECTED", "EXPIRED", "EXPIRED_IN_MATCH"}
     for attempt in range(5):
         status = str(order.get("status", "")).upper()
         if status in terminal:
@@ -4798,8 +6246,13 @@ async def _confirm_market_order(
                 return value
         return Decimal("0")
 
-    fills: list[dict[str, Any]] = []
-    if order_id is not None:
+    async def attach_trade_fills(record: dict[str, Any]) -> dict[str, Any]:
+        nonlocal order_id
+        result = dict(record)
+        order_id = result.get("orderId", result.get("order_id", order_id))
+        if order_id is None:
+            return result
+        fills: list[dict[str, Any]] = []
         last_trade_error: str | None = None
         for attempt in range(5):
             try:
@@ -4812,13 +6265,80 @@ async def _confirm_market_order(
             if attempt < 4:
                 await asyncio.sleep(0.2)
         if not fills and last_trade_error:
-            order["trade_confirmation_error"] = last_trade_error
+            result["trade_confirmation_error"] = last_trade_error
         if fills:
             report = _summarize_exchange_trade_fills(fills)
-            order["status"] = "FILLED" if report["quantity"] else order.get("status", "UNKNOWN")
-            order["executedQty"] = report["quantity"]
-            order["avgPrice"] = report["avg_price"]
-            order["trade_report"] = report
+            result["executedQty"] = report["quantity"]
+            result["avgPrice"] = report["avg_price"]
+            result["trade_report"] = report
+        return result
+
+    order = await attach_trade_fills(order)
+
+    expected = None
+    if expected_quantity is not None:
+        expected = Decimal(str(expected_quantity))
+        if not expected.is_finite() or expected <= 0:
+            raise ValueError(f"invalid expected market quantity: {expected_quantity!r}")
+    else:
+        try:
+            candidate = Decimal(str(order.get("origQty", "0") or "0"))
+        except Exception:
+            candidate = Decimal("0")
+        if candidate > 0:
+            expected = candidate
+
+    status = str(order.get("status", "UNKNOWN")).upper()
+    filled = executed(order)
+    fill_tolerance = Decimal("0.0000000001")
+    fully_filled = bool(
+        expected is not None and filled >= expected - fill_tolerance
+    )
+    if fully_filled and status in terminal:
+        order["status"] = "FILLED"
+        status = "FILLED"
+
+    if status not in terminal:
+        cancel_error: str | None = None
+        try:
+            cancelled = dict(
+                await client.cancel_order(
+                    symbol,
+                    order_id=order_id,
+                    client_order_id=None if order_id is not None else client_order_id,
+                )
+            )
+            cancelled.setdefault("clientOrderId", client_order_id)
+            order = cancelled
+        except Exception as exc:
+            cancel_error = f"{type(exc).__name__}: {exc}"
+            try:
+                if order_id is not None:
+                    order = dict(await client.get_order(symbol, order_id=order_id))
+                else:
+                    order = dict(
+                        await client.get_order(
+                            symbol,
+                            client_order_id=client_order_id,
+                        )
+                    )
+            except Exception as lookup_exc:
+                order["cancel_error"] = cancel_error
+                order["cancel_confirmation_error"] = (
+                    f"{type(lookup_exc).__name__}: {lookup_exc}"
+                )
+        order = await attach_trade_fills(order)
+        status = str(order.get("status", "UNKNOWN")).upper()
+        filled = executed(order)
+        fully_filled = bool(
+            expected is not None and filled >= expected - fill_tolerance
+        )
+        if fully_filled and status in terminal:
+            order["status"] = "FILLED"
+            status = "FILLED"
+        elif status not in terminal:
+            order["execution_uncertain"] = True
+            order["cancel_error"] = cancel_error
 
     def average_price(record: dict[str, Any]) -> Decimal:
         report = record.get("trade_report")
@@ -4858,8 +6378,14 @@ async def _confirm_market_order(
 
     status = str(order.get("status", "UNKNOWN")).upper()
     filled = executed(order)
-    execution_uncertain = bool(status not in terminal and filled <= 0)
-    if require_fill_details and status in {"FILLED", "PARTIALLY_FILLED"}:
+    execution_uncertain = bool(order.get("execution_uncertain")) or status not in terminal
+    if expected is not None and status == "FILLED" and filled < expected - fill_tolerance:
+        execution_uncertain = True
+        order["fill_quantity_mismatch"] = {
+            "expected": str(expected),
+            "observed": str(filled),
+        }
+    if require_fill_details and filled > 0:
         fill_details_complete = bool(
             filled > 0 and average_price(order) > 0 and exchange_fill_time(order) is not None
         )
@@ -4942,6 +6468,7 @@ async def _open_sleeve_market(
         raw_order=dict(raw or {}),
         client_order_id=client_order_id,
         require_fill_details=True,
+        expected_quantity=submitted_quantity,
     )
     order_id = order.get("orderId", order.get("order_id"))
 
@@ -5007,6 +6534,41 @@ async def _open_sleeve_market(
     }
 
 
+def _entry_window_ttl_seconds(
+    sleeve: dict[str, Any], *, now: pd.Timestamp
+) -> int | None:
+    """Return remaining source-owned entry time, or ``None`` when unrestricted."""
+
+    metadata = sleeve.get("policy_metadata")
+    if not isinstance(metadata, dict):
+        return None
+    window = metadata.get("entry_window")
+    if not isinstance(window, dict):
+        return None
+    try:
+        opens_at = pd.Timestamp(window["opens_at"])
+        expires_at = pd.Timestamp(window["expires_at"])
+    except (KeyError, TypeError, ValueError):
+        return 0
+
+    current = pd.Timestamp(now)
+    if current.tzinfo is None:
+        current = current.tz_localize("UTC")
+    else:
+        current = current.tz_convert("UTC")
+    if opens_at.tzinfo is None:
+        opens_at = opens_at.tz_localize("UTC")
+    else:
+        opens_at = opens_at.tz_convert("UTC")
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.tz_localize("UTC")
+    else:
+        expires_at = expires_at.tz_convert("UTC")
+    if current < opens_at or current >= expires_at:
+        return 0
+    return max(1, int((expires_at - current).total_seconds()))
+
+
 def _build_open_intents(
     *,
     sleeve_scores: list[dict[str, Any]],
@@ -5020,6 +6582,7 @@ def _build_open_intents(
     entry_maker_max_deviation_pct: float,
     maker_refresh_interval_sec: int,
     blocked_reentry_sleeves: set[str] | None = None,
+    now: pd.Timestamp | None = None,
 ) -> list[dict[str, Any]]:
     """Build immutable, de-duplicated order intents from score/state snapshots."""
 
@@ -5043,22 +6606,31 @@ def _build_open_intents(
         sleeve = dict(raw_sleeve)
         sleeve["entry_maker_max_deviation_pct"] = float(entry_maker_max_deviation_pct)
         sleeve["maker_refresh_interval_sec"] = int(maker_refresh_interval_sec)
+        window_ttl = _entry_window_ttl_seconds(
+            sleeve,
+            now=pd.Timestamp.utcnow() if now is None else pd.Timestamp(now),
+        )
+        if window_ttl == 0:
+            continue
         margin_fraction = _margin_fraction_for_weight(
             weight=float(sleeve["weight"]),
             total_weight=float(total_weight),
             leverage_budget=float(leverage_budget),
             allocation_mode=allocation_mode,
         )
+        entry_ttl = _entry_ttl_seconds(
+            sleeve,
+            interval_minutes=exec_cfg.interval_minutes,
+            timeout_fraction=entry_timeout_fraction,
+            max_entry_wait_sec=max_entry_wait_sec,
+        )
+        if window_ttl is not None:
+            entry_ttl = min(entry_ttl, window_ttl)
         intents.append(
             {
                 "sleeve": sleeve,
                 "margin_fraction": margin_fraction,
-                "entry_ttl_sec": _entry_ttl_seconds(
-                    sleeve,
-                    interval_minutes=exec_cfg.interval_minutes,
-                    timeout_fraction=entry_timeout_fraction,
-                    max_entry_wait_sec=max_entry_wait_sec,
-                ),
+                "entry_ttl_sec": entry_ttl,
             }
         )
     return intents
@@ -5228,6 +6800,7 @@ async def _close_sleeve(
                 raw_order=dict(raw_taker_order or {}),
                 client_order_id=taker_client_order_id,
                 require_fill_details=True,
+                expected_quantity=remaining,
             )
             taker_finished = pd.Timestamp.utcnow()
             order["taker_fallback_order"] = taker_order
@@ -5341,6 +6914,7 @@ async def _close_sleeve_market(
         symbol=exec_cfg.symbol,
         raw_order=dict(raw or {}),
         client_order_id=client_order_id,
+        expected_quantity=quantity,
     )
     order_id = order.get("orderId", order.get("order_id"))
 
@@ -5469,6 +7043,291 @@ def _close_order_type(
     if dynamic_exit_due and not time_exit_due:
         return "POST_ONLY_DYNAMIC_EXIT_WITH_TAKER_FALLBACK" if taker_fallback else "POST_ONLY_DYNAMIC_EXIT"
     return "POST_ONLY_EXIT_WITH_TAKER_FALLBACK" if taker_fallback else "POST_ONLY_EXIT"
+
+
+def _signed_net_due_closes(
+    *,
+    state: dict[str, Any],
+    enriched: pd.DataFrame,
+    features: pd.DataFrame,
+    now: pd.Timestamp,
+    interval_minutes: int,
+) -> dict[str, str]:
+    """Evaluate sleeve-local lifecycle rules without issuing sleeve orders."""
+
+    reasons: dict[str, str] = {}
+    for name, raw_state in list(state.get("open_sleeves", {}).items()):
+        open_state = dict(raw_state)
+        exit_at = open_state.get("exit_at")
+        time_exit_due = bool(exit_at) and pd.Timestamp(exit_at) <= now
+        dynamic_exit_due, dynamic_exit_reasons = _dynamic_exit_due(
+            open_state=open_state,
+            latest_feature_row=features.iloc[-1],
+            latest_bar=pd.Timestamp(enriched.iloc[-1]["date"]),
+            interval_minutes=interval_minutes,
+        )
+        if dynamic_exit_reasons:
+            open_state["last_dynamic_exit_reasons"] = dynamic_exit_reasons
+        barrier_exit_due, barrier_reason, barrier_exit_reasons, barrier_bar = (
+            _barrier_exit_due_in_bars(
+                open_state,
+                enriched[["date", "high", "low"]],
+                interval_minutes,
+            )
+        )
+        if barrier_exit_reasons:
+            open_state["last_barrier_exit_reasons"] = barrier_exit_reasons
+        if barrier_bar is not None:
+            open_state["last_barrier_bar"] = str(barrier_bar)
+        state["open_sleeves"][name] = open_state
+        if barrier_exit_due:
+            reasons[str(name)] = str(barrier_reason or "barrier_exit")
+        elif dynamic_exit_due:
+            reasons[str(name)] = "dynamic_exit"
+        elif time_exit_due:
+            reasons[str(name)] = "time_exit"
+    return reasons
+
+
+def _signed_net_eligible_entry_scores(
+    *,
+    sleeve_scores: list[dict[str, Any]],
+    policy: SignedNetPolicy,
+    now: pd.Timestamp,
+    interval_minutes: int,
+) -> list[dict[str, Any]]:
+    """Normalize every observed decision for replay-safe atomic planning."""
+
+    eligible: list[dict[str, Any]] = []
+    for raw in sleeve_scores:
+        name = str(raw.get("name", ""))
+        kind = str(raw.get("kind", "entry"))
+        if name not in policy.weights:
+            continue
+        if raw.get("emit") is False:
+            continue
+        if kind not in {"entry", "target"}:
+            raise RuntimeError(
+                f"unsupported signed-net score kind={kind!r} for sleeve={name}"
+            )
+        candidate = copy.deepcopy(dict(raw))
+        ready = candidate.get("ready", True)
+        if not isinstance(ready, bool):
+            raise RuntimeError(f"signal readiness must be boolean for sleeve={name}")
+        candidate["ready"] = ready
+        if kind == "entry" and not isinstance(candidate.get("active"), bool):
+            raise RuntimeError(f"entry active must be boolean for sleeve={name}")
+        current_close = float(raw.get("current_close", 0.0) or 0.0)
+        if not np.isfinite(current_close) or current_close <= 0.0:
+            candidate["ready"] = False
+            candidate["active"] = False
+            candidate.setdefault("reasons", []).append(
+                "signed_net_reference_price=invalid:fail_closed"
+            )
+        if _entry_window_ttl_seconds(raw, now=now) == 0:
+            candidate["ready"] = False
+            candidate["active"] = False
+            candidate.setdefault("reasons", []).append(
+                "signed_net_entry_window=closed:fail_closed"
+            )
+        if "execution_time" not in candidate:
+            signal_bar = pd.Timestamp(candidate.get("date"))
+            if signal_bar.tzinfo is None:
+                signal_bar = signal_bar.tz_localize("UTC")
+            else:
+                signal_bar = signal_bar.tz_convert("UTC")
+            candidate["execution_time"] = str(
+                signal_bar + pd.Timedelta(minutes=int(interval_minutes))
+            )
+        scheduled = pd.Timestamp(candidate["execution_time"])
+        if scheduled.tzinfo is None:
+            scheduled = scheduled.tz_localize("UTC")
+        else:
+            scheduled = scheduled.tz_convert("UTC")
+        wall_now = pd.Timestamp(now)
+        if wall_now.tzinfo is None:
+            wall_now = wall_now.tz_localize("UTC")
+        else:
+            wall_now = wall_now.tz_convert("UTC")
+        age_sec = (wall_now - scheduled).total_seconds()
+        metadata = candidate.get("policy_metadata")
+        held_target = bool(
+            kind == "target"
+            and name == "macro_flow"
+            and isinstance(metadata, dict)
+            and metadata.get("target_maintenance") is True
+        )
+        if age_sec < 0 or (age_sec > 30.0 and not held_target):
+            candidate["ready"] = False
+            candidate["active"] = False
+            candidate.setdefault("reasons", []).append(
+                f"signed_net_signal_age={age_sec:.3f}s:fail_closed"
+            )
+        elif age_sec > 30.0:
+            candidate.setdefault("reasons", []).append(
+                f"signed_net_target_maintenance_age={age_sec:.3f}s:pass"
+            )
+        raw["ready"] = candidate["ready"]
+        raw["active"] = candidate.get("active", False)
+        raw["execution_time"] = candidate["execution_time"]
+        raw["reasons"] = list(candidate.get("reasons", []))
+        eligible.append(candidate)
+    return eligible
+
+
+async def _run_signed_net_decision(
+    *,
+    policy: SignedNetPolicy,
+    state: dict[str, Any],
+    state_file: Path,
+    sleeve_scores: list[dict[str, Any]],
+    enriched: pd.DataFrame,
+    features: pd.DataFrame,
+    now: pd.Timestamp,
+    client: Any | None,
+    exec_cfg: WaveExecutionConfig,
+    engine: Any,
+    strategy_name: str,
+    execution_exchange: str,
+    computing_wall_time_sec: float,
+) -> dict[str, Any]:
+    """Execute one completed-bar decision through the signed virtual ledger."""
+
+    if exec_cfg.dry_run:
+        physical = (
+            signed_state_quantity(state)
+            if state.get("position_aggregation_mode") == policy.mode
+            else Decimal("0")
+        )
+        equity = Decimal("100")
+        price = Decimal(str(enriched.iloc[-1]["close"]))
+        minimum = step = Decimal("0.001")
+    else:
+        if client is None:
+            raise RuntimeError("live signed-net decision requires exchange client")
+        physical, equity, price, minimum, step = await _signed_net_account_snapshot(
+            client=client,
+            exec_cfg=exec_cfg,
+            allowed_open_client_order_ids=_signed_net_pending_client_order_ids(state),
+        )
+
+    state = _initialize_signed_net_state(
+        state,
+        policy=policy,
+        physical_quantity=physical,
+    )
+    state["updated_at"] = str(pd.Timestamp.utcnow())
+    _write_json(state_file, state)
+
+    resumed_records: list[dict[str, Any]] = []
+    if state.get("pending_signed_net_transition"):
+        state, resumed_records = await _resume_signed_net_transition(
+            state=state,
+            state_file=state_file,
+            policy=policy,
+            client=client,
+            exec_cfg=exec_cfg,
+            physical_quantity=physical,
+            min_quantity=minimum,
+            engine=engine if not exec_cfg.dry_run else None,
+            strategy_name=strategy_name,
+            execution_exchange=execution_exchange,
+        )
+        if exec_cfg.dry_run:
+            physical = signed_state_quantity(state)
+        else:
+            assert client is not None
+            physical, equity, price, minimum, step = await _signed_net_account_snapshot(
+                client=client,
+                exec_cfg=exec_cfg,
+                allowed_open_client_order_ids=_signed_net_pending_client_order_ids(state),
+            )
+
+    tolerance = max(step / Decimal("10"), Decimal("0.00000001"))
+    virtual_quantity = signed_state_quantity(state)
+    if abs(virtual_quantity - physical) > tolerance:
+        raise RuntimeError(
+            "signed-net exchange/virtual mismatch before decision: "
+            f"virtual={virtual_quantity} physical={physical}"
+        )
+
+    close_reasons = _signed_net_due_closes(
+        state=state,
+        enriched=enriched,
+        features=features,
+        now=now,
+        interval_minutes=exec_cfg.interval_minutes,
+    )
+    eligible_scores = _signed_net_eligible_entry_scores(
+        sleeve_scores=sleeve_scores,
+        policy=policy,
+        now=now,
+        interval_minutes=exec_cfg.interval_minutes,
+    )
+    if not close_reasons and not eligible_scores:
+        state["last_signed_net_physical_quantity"] = str(physical)
+        state["last_signed_net_equity"] = str(equity)
+        state["last_signed_net_reference_price"] = str(price)
+        state["updated_at"] = str(pd.Timestamp.utcnow())
+        _write_json(state_file, state)
+        return {
+            "state": state,
+            "opened": [],
+            "closed": [],
+            "blocked": [],
+            "order_records": resumed_records,
+            "target_quantity": physical,
+        }
+
+    decision_execution_time = pd.Timestamp(enriched.iloc[-1]["date"])
+    if decision_execution_time.tzinfo is None:
+        decision_execution_time = decision_execution_time.tz_localize("UTC")
+    else:
+        decision_execution_time = decision_execution_time.tz_convert("UTC")
+    decision_execution_time += pd.Timedelta(minutes=exec_cfg.interval_minutes)
+    plan = build_signed_net_plan(
+        policy=policy,
+        state=state,
+        current_physical_quantity=physical,
+        entry_scores=eligible_scores,
+        close_reasons=close_reasons,
+        equity=equity,
+        reference_price=price,
+        quantity_step=step,
+        interval_minutes=exec_cfg.interval_minutes,
+        execution_time=decision_execution_time,
+    )
+    state, order_records = await _apply_signed_net_transition(
+        policy=policy,
+        state=state,
+        state_file=state_file,
+        plan=plan,
+        close_reasons=close_reasons,
+        client=client,
+        exec_cfg=exec_cfg,
+        min_quantity=minimum,
+        engine=engine if not exec_cfg.dry_run else None,
+        strategy_name=strategy_name,
+        execution_exchange=execution_exchange,
+        computing_wall_time_sec=computing_wall_time_sec,
+    )
+    committed_target = signed_state_quantity(state)
+    state["last_signed_net_physical_quantity"] = str(committed_target)
+    state["last_signed_net_equity"] = str(equity)
+    state["last_signed_net_reference_price"] = str(price)
+    state["last_signed_net_blocked_entries"] = [
+        {"name": name, "reason": reason} for name, reason in plan.blocked_entries
+    ]
+    state["updated_at"] = str(pd.Timestamp.utcnow())
+    _write_json(state_file, state)
+    return {
+        "state": state,
+        "opened": list(plan.opened_sleeves),
+        "closed": list(plan.closed_sleeves),
+        "blocked": [list(item) for item in plan.blocked_entries],
+        "order_records": resumed_records + order_records,
+        "target_quantity": committed_target,
+    }
 
 
 
@@ -5999,9 +7858,260 @@ async def _wait_with_barrier_monitor(
         await asyncio.sleep(min(max(0.0, deadline - asyncio.get_running_loop().time()), max(0.05, float(poll_sec))))
 
 
+async def _wait_with_signed_net_barrier_monitor(
+    *,
+    wait_sec: float,
+    poll_sec: float,
+    state_file: Path,
+    policy: SignedNetPolicy,
+    client: Any | None,
+    exec_cfg: WaveExecutionConfig,
+    engine: Any,
+    strategy_name: str,
+    execution_exchange: str,
+    db_lease: PortfolioDbLease | None,
+    trade_stream: BinanceAggTradeStream | None = None,
+) -> list[str]:
+    """Monitor virtual barriers and atomically rebalance their signed sum."""
+
+    deadline = asyncio.get_running_loop().time() + max(0.0, float(wait_sec))
+    closed: list[str] = []
+    if exec_cfg.dry_run or client is None:
+        await asyncio.sleep(max(0.0, float(wait_sec)))
+        return closed
+
+    while True:
+        remaining = deadline - asyncio.get_running_loop().time()
+        if remaining <= 0:
+            return closed
+        if db_lease is not None:
+            _assert_portfolio_db_lease(db_lease)
+        state = _load_state(state_file)
+        _validate_state_aggregation_mode(state, policy=policy)
+        expected_policy_hash = signed_net_policy_digest(policy)
+        needs_initialization = (
+            state.get("position_aggregation_mode") != policy.mode
+            or state.get("signed_net_policy_hash") != expected_policy_hash
+        )
+        if needs_initialization or state.get("pending_signed_net_transition"):
+            physical, _, _, minimum, _ = await _signed_net_account_snapshot(
+                client=client,
+                exec_cfg=exec_cfg,
+                allowed_open_client_order_ids=(
+                    _signed_net_pending_client_order_ids(state)
+                ),
+            )
+            initialized = _initialize_signed_net_state(
+                state,
+                policy=policy,
+                physical_quantity=physical,
+            )
+            if initialized != state:
+                initialized["updated_at"] = str(pd.Timestamp.utcnow())
+                _write_json(state_file, initialized)
+            state = initialized
+        if state.get("pending_signed_net_transition"):
+            state, _ = await _resume_signed_net_transition(
+                state=state,
+                state_file=state_file,
+                policy=policy,
+                client=client,
+                exec_cfg=exec_cfg,
+                physical_quantity=physical,
+                min_quantity=minimum,
+                engine=engine,
+                strategy_name=strategy_name,
+                execution_exchange=execution_exchange,
+            )
+
+        monitored = {
+            str(name): dict(open_state)
+            for name, open_state in state.get("open_sleeves", {}).items()
+            if isinstance(open_state.get("barrier_exit"), dict)
+        }
+        if not monitored:
+            wait_for = min(remaining, max(0.05, float(poll_sec)))
+            if trade_stream is not None:
+                await trade_stream.collect(timeout_sec=wait_for)
+            else:
+                await asyncio.sleep(wait_for)
+            continue
+
+        close_reasons: dict[str, str] = {}
+        observed_price: float | None = None
+        if trade_stream is not None:
+            continuity_failed = {
+                name
+                for name, sleeve in monitored.items()
+                if sleeve.get("barrier_stream_session_id") != trade_stream.session_id
+                or int(sleeve.get("barrier_stream_gap_count", -1))
+                != int(trade_stream.gap_count)
+                or not trade_stream.healthy
+            }
+            if continuity_failed:
+                try:
+                    observed_price = float(
+                        await client.get_ticker_price(exec_cfg.symbol)
+                    )
+                except Exception:
+                    observed_price = None
+                for name in sorted(continuity_failed):
+                    current = dict(state["open_sleeves"].get(name, monitored[name]))
+                    current["last_barrier_exit_reasons"] = [
+                        "aggtrade_continuity=lost:fail_safe_close"
+                    ]
+                    state["open_sleeves"][name] = current
+                    close_reasons[name] = "stream_gap_fail_safe"
+            else:
+                ticks = await trade_stream.collect(
+                    timeout_sec=min(remaining, max(0.05, float(poll_sec)))
+                )
+                for tick in ticks:
+                    observed_price = float(tick.price)
+                    for name, open_state in monitored.items():
+                        if name in close_reasons:
+                            continue
+                        fill_raw = open_state.get("entry_filled_at")
+                        try:
+                            fill_ts = pd.Timestamp(fill_raw)
+                            fill_ts = (
+                                fill_ts.tz_localize("UTC")
+                                if fill_ts.tzinfo is None
+                                else fill_ts.tz_convert("UTC")
+                            )
+                            if int(tick.event_time_ms) <= int(
+                                fill_ts.timestamp() * 1000
+                            ):
+                                continue
+                        except Exception:
+                            pass
+                        due, reason, reasons = _barrier_exit_due_at_price(
+                            open_state,
+                            tick.price,
+                        )
+                        current = dict(
+                            state["open_sleeves"].get(name, open_state)
+                        )
+                        current["last_barrier_observed_price"] = float(tick.price)
+                        current["last_barrier_observed_at"] = str(
+                            pd.Timestamp(tick.event_time_ms, unit="ms", tz="UTC")
+                        )
+                        current["last_barrier_exit_reasons"] = reasons
+                        state["open_sleeves"][name] = current
+                        if due:
+                            close_reasons[name] = str(reason or "barrier_exit")
+        else:
+            try:
+                observed_price = float(
+                    await client.get_ticker_price(exec_cfg.symbol)
+                )
+            except Exception as exc:
+                _status(
+                    "[portfolio-live] signed-net barrier ticker error: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                await asyncio.sleep(
+                    min(remaining, max(0.05, float(poll_sec)))
+                )
+                continue
+            observed_at = pd.Timestamp.utcnow()
+            for name, open_state in monitored.items():
+                due, reason, reasons = _barrier_exit_due_at_price(
+                    open_state,
+                    observed_price,
+                )
+                current = dict(state["open_sleeves"].get(name, open_state))
+                current["last_barrier_observed_price"] = observed_price
+                current["last_barrier_observed_at"] = str(observed_at)
+                current["last_barrier_exit_reasons"] = reasons
+                state["open_sleeves"][name] = current
+                if due:
+                    close_reasons[name] = str(reason or "barrier_exit")
+
+        if not close_reasons:
+            if trade_stream is None:
+                await asyncio.sleep(
+                    min(remaining, max(0.05, float(poll_sec)))
+                )
+            continue
+        physical, equity, reference_price, minimum, step = (
+            await _signed_net_account_snapshot(client=client, exec_cfg=exec_cfg)
+        )
+        state = _initialize_signed_net_state(
+            state,
+            policy=policy,
+            physical_quantity=physical,
+        )
+        virtual_quantity = signed_state_quantity(state)
+        tolerance = max(step / Decimal("10"), Decimal("0.00000001"))
+        if abs(virtual_quantity - physical) > tolerance:
+            raise RuntimeError(
+                "signed-net barrier monitor found exchange/virtual mismatch: "
+                f"virtual={virtual_quantity} physical={physical}"
+            )
+        plan = build_signed_net_plan(
+            policy=policy,
+            state=state,
+            current_physical_quantity=physical,
+            entry_scores=[],
+            close_reasons=close_reasons,
+            equity=equity,
+            reference_price=reference_price,
+            quantity_step=step,
+            interval_minutes=exec_cfg.interval_minutes,
+            execution_time=pd.Timestamp.utcnow(),
+        )
+        state, order_records = await _apply_signed_net_transition(
+            policy=policy,
+            state=state,
+            state_file=state_file,
+            plan=plan,
+            close_reasons=close_reasons,
+            client=client,
+            exec_cfg=exec_cfg,
+            min_quantity=minimum,
+            engine=engine,
+            strategy_name=strategy_name,
+            execution_exchange=execution_exchange,
+            computing_wall_time_sec=0.0,
+        )
+        closed.extend(plan.closed_sleeves)
+        history = list(state.get("barrier_exit_history", []))
+        history.extend(
+            {
+                "name": name,
+                "reason": reason,
+                "observed_price": observed_price,
+                "signed_net_plan_id": state.get("last_signed_net_plan_id"),
+                "order_records": order_records,
+                "recorded_at": str(pd.Timestamp.utcnow()),
+            }
+            for name, reason in close_reasons.items()
+        )
+        state["barrier_exit_history"] = history[-200:]
+        state["updated_at"] = str(pd.Timestamp.utcnow())
+        _write_json(state_file, state)
+
+
 async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     portfolio = _load_json(cfg.portfolio_config)
     _validate_portfolio_mode(portfolio, live=cfg.live)
+    signed_net_policy = parse_signed_net_policy(portfolio)
+    _validate_signed_net_approval(
+        portfolio,
+        policy=signed_net_policy,
+        live=cfg.live,
+    )
+    if signed_net_policy is not None:
+        if cfg.allocation_mode != "research_gross":
+            raise RuntimeError(
+                "signed-net portfolios require allocation_mode=research_gross"
+            )
+        if Decimal(str(cfg.leverage)) < signed_net_policy.net_cap_after_fees:
+            raise RuntimeError(
+                "exchange leverage is below the signed post-fee net cap: "
+                f"leverage={cfg.leverage} cap={signed_net_policy.net_cap_after_fees}"
+            )
     minimum_history = int(portfolio.get("minimum_feature_history_minutes", 0) or 0)
     if int(cfg.lookback_minutes) < minimum_history:
         raise RuntimeError(
@@ -6052,6 +8162,18 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     if total_weight <= 0:
         raise RuntimeError("portfolio weights sum to zero")
     audit = _allocation_audit(portfolio, leverage_budget=float(cfg.leverage), allocation_mode=cfg.allocation_mode)
+    if signed_net_policy is not None:
+        audit.update(
+            {
+                "position_aggregation_mode": signed_net_policy.mode,
+                "offset_opposite_sides_before_costs": True,
+                "net_cap_after_fees": float(
+                    signed_net_policy.net_cap_after_fees
+                ),
+                "fee_rate": float(signed_net_policy.fee_rate),
+                "physical_position_model": "single_side_hedge_net",
+            }
+        )
 
     runner_id = f"pid-{os.getpid()}-{time.time_ns()}"
     runner_lock = _acquire_portfolio_runner_lock(cfg.state_file)
@@ -6060,6 +8182,10 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     trade_stream: BinanceAggTradeStream | None = None
     client = executor = None
     try:
+        _validate_state_aggregation_mode(
+            _load_state(cfg.state_file),
+            policy=signed_net_policy,
+        )
         engine = sqlalchemy_engine_from_env(cfg.env_path)
         if not exec_cfg.dry_run:
             db_lease = _acquire_portfolio_db_lease(
@@ -6112,19 +8238,34 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 wait = _seconds_until_next_interval(pd.Timestamp.utcnow(), interval_minutes=exec_cfg.interval_minutes, close_delay_sec=cfg.close_delay_sec)
                 _status(f"[portfolio-live] waiting {wait:.1f}s for next {exec_cfg.interval_minutes}m close")
                 if has_barrier_exits:
-                    closed_during_wait = await _wait_with_barrier_monitor(
-                        wait_sec=wait,
-                        poll_sec=barrier_poll_sec,
-                        state_file=cfg.state_file,
-                        client=client,
-                        executor=executor,
-                        exec_cfg=exec_cfg,
-                        engine=engine,
-                        strategy_name=cfg.strategy_name,
-                        execution_exchange=execution_exchange,
-                        db_lease=db_lease,
-                        trade_stream=trade_stream,
-                    )
+                    if signed_net_policy is not None:
+                        closed_during_wait = await _wait_with_signed_net_barrier_monitor(
+                            wait_sec=wait,
+                            poll_sec=barrier_poll_sec,
+                            state_file=cfg.state_file,
+                            policy=signed_net_policy,
+                            client=client,
+                            exec_cfg=exec_cfg,
+                            engine=engine,
+                            strategy_name=cfg.strategy_name,
+                            execution_exchange=execution_exchange,
+                            db_lease=db_lease,
+                            trade_stream=trade_stream,
+                        )
+                    else:
+                        closed_during_wait = await _wait_with_barrier_monitor(
+                            wait_sec=wait,
+                            poll_sec=barrier_poll_sec,
+                            state_file=cfg.state_file,
+                            client=client,
+                            executor=executor,
+                            exec_cfg=exec_cfg,
+                            engine=engine,
+                            strategy_name=cfg.strategy_name,
+                            execution_exchange=execution_exchange,
+                            db_lease=db_lease,
+                            trade_stream=trade_stream,
+                        )
                     if closed_during_wait:
                         _status(f"[portfolio-live] barrier_closed={closed_during_wait}")
                 else:
@@ -6223,6 +8364,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             if not data_fresh:
                 for sleeve in sleeve_scores:
                     sleeve["active"] = False
+                    if str(sleeve.get("kind", "entry")) == "target":
+                        sleeve["ready"] = False
                     if freshness_missing:
                         sleeve.setdefault("reasons", []).append(
                             "source_freshness=fail:" + ",".join(str(item["key"]) for item in freshness_missing[:5])
@@ -6240,6 +8383,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             if db_lease is not None:
                 _assert_portfolio_db_lease(db_lease)
             state = _load_state(cfg.state_file)
+            _validate_state_aggregation_mode(state, policy=signed_net_policy)
             decision_open_sleeves = set(state.get("open_sleeves", {}))
             if portfolio_selector_record is not None:
                 state["last_portfolio_selector"] = portfolio_selector_record
@@ -6258,6 +8402,89 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     history = list(state.get("stale_order_cancel_history", []))
                     history.extend(stale_cancelled)
                     state["stale_order_cancel_history"] = history[-200:]
+
+            if signed_net_policy is not None:
+                signed_result = await _run_signed_net_decision(
+                    policy=signed_net_policy,
+                    state=state,
+                    state_file=cfg.state_file,
+                    sleeve_scores=sleeve_scores,
+                    enriched=enriched,
+                    features=features,
+                    now=now,
+                    client=client,
+                    exec_cfg=exec_cfg,
+                    engine=engine,
+                    strategy_name=cfg.strategy_name,
+                    execution_exchange=execution_exchange,
+                    computing_wall_time_sec=frame_build_sec + alpha_score_sec,
+                )
+                state = signed_result["state"]
+                opened = list(signed_result["opened"])
+                closed = list(signed_result["closed"])
+                state["last_scores"] = sleeve_scores
+                state["allocation_audit"] = audit
+                state["last_timing"] = {
+                    "frame_build_sec": round(frame_build_sec, 3),
+                    "alpha_score_sec": round(alpha_score_sec, 3),
+                    "alpha_scoring_mode": (
+                        "process_per_sleeve" if alpha_processes is not None else "serial"
+                    ),
+                    "execution_exchange_scope": execution_exchange,
+                    "alpha_worker_pids": {
+                        str(score["name"]): score.get("worker_pid")
+                        for score in sleeve_scores
+                    },
+                    "freshness_waited_sec": round(freshness_waited, 3),
+                    "latest_bar": str(enriched.iloc[-1]["date"]),
+                    "latest_1m_ts": str(latest_1m_ts),
+                    "expected_bar": str(expected_bar),
+                    "decision_data_asof": str(decision_data_asof),
+                    "decision_bar_complete": decision_bar_complete,
+                    "asof": str(asof),
+                    "freshness_mode": freshness_mode,
+                    "source_latest_ts": {
+                        key: None if value is None else str(value)
+                        for key, value in latest_source_ts.items()
+                    },
+                    "source_freshness_missing": freshness_missing,
+                    "source_cache_mode": source_cache.last_query_mode,
+                    "feature_cache_mode": feature_cache.last_mode,
+                    "oi_cache_mode": oi_cache.last_query_mode,
+                    "external_cache_mode": external_cache.last_mode,
+                }
+                state["updated_at"] = str(pd.Timestamp.utcnow())
+                _write_json(cfg.state_file, state)
+                active = [score["name"] for score in sleeve_scores if score["active"]]
+                selector_status = "none"
+                if portfolio_selector_record is not None:
+                    selector_status = (
+                        f"{portfolio_selector_record.get('action')}:"
+                        f"{portfolio_selector_record.get('context_id')}"
+                    )
+                _status(
+                    f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} "
+                    f"opened={opened} closed={closed} open={list(state['open_sleeves'])} "
+                    f"stale_cancel={len(stale_cancelled)} gross={total_weight:.3f} "
+                    f"net={signed_result['target_quantity']} cap={signed_net_policy.net_cap_after_fees} "
+                    f"lev={exec_cfg.leverage} alloc=signed_net_research_notional "
+                    f"selector={selector_status} fb={frame_build_sec:.2f}s "
+                    f"score={alpha_score_sec:.2f}s "
+                    f"workers={len({s.get('worker_pid') for s in sleeve_scores if s.get('worker_pid')})} "
+                    f"fw={freshness_waited:.1f}s fm={freshness_mode} "
+                    f"miss={len(freshness_missing)} lb={effective_lookback_minutes}m "
+                    f"src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} "
+                    f"ext={external_cache.last_mode} alt={alt_pool_cache.last_query_mode} "
+                    f"feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
+                )
+                iterations += 1
+                if cfg.max_iterations is not None and iterations >= cfg.max_iterations:
+                    LOG.info(
+                        "portfolio_live.max_iterations_reached",
+                        extra={"iterations": iterations},
+                    )
+                    return
+                continue
 
             recovered_positions: list[dict[str, Any]] = []
             reconciled_positions: list[dict[str, Any]] = []
@@ -6548,6 +8775,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 entry_maker_max_deviation_pct=cfg.entry_maker_max_deviation_pct,
                 maker_refresh_interval_sec=cfg.maker_refresh_interval_sec,
                 blocked_reentry_sleeves=decision_open_sleeves,
+                now=pd.Timestamp.utcnow(),
             )
             reservation_conflicts: list[dict[str, Any]] = []
             if not exec_cfg.dry_run:

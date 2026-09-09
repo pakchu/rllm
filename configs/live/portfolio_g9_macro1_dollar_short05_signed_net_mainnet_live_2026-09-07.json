@@ -1,0 +1,91 @@
+{
+  "name": "portfolio_g9_macro1_dollar_short05_signed_net_mainnet_live_2026_09_07",
+  "status": "retired_unrefined_alpha",
+  "shadow_only": true,
+  "execution_network": "mainnet",
+  "as_of": "2026-09-07",
+  "minimum_feature_history_minutes": 90000,
+  "weights": {
+    "fresh_kimchi_fx": 1.0,
+    "frozen_annual_rank7": 1.5,
+    "rex_taker_low_range_position": 0.2,
+    "cand_rex_veto_7": 0.8,
+    "markov_transition_long": 1.0,
+    "macro_flow": 1.0,
+    "dollar_rally_short": 0.5
+  },
+  "gross_weight": 6.0,
+  "base_sleeves": [
+    {
+      "name": "fresh_kimchi_fx",
+      "source": "configs/shadow/fresh_kimchi_fx_2026-07-16.json",
+      "side": "AUTO",
+      "weight": 1.0
+    },
+    {
+      "name": "frozen_annual_rank7",
+      "policy_type": "frozen_annual_rank7",
+      "source": "configs/shadow/frozen_annual_rank7_2026-07-16.json",
+      "side": "LONG",
+      "weight": 1.5
+    },
+    {
+      "name": "rex_taker_low_range_position",
+      "source": "configs/shadow/rex_taker_low_range_position_2026-07-16.json",
+      "side": "AUTO",
+      "weight": 0.2
+    },
+    {
+      "name": "cand_rex_veto_7",
+      "source": "configs/live/rex_veto_7_candidate.json",
+      "side": "AUTO",
+      "weight": 0.8
+    },
+    {
+      "name": "markov_transition_long",
+      "source": "configs/shadow/markov_transition_long_2026-07-16.json",
+      "side": "LONG",
+      "weight": 1.0
+    },
+    {
+      "name": "macro_flow",
+      "policy_type": "macro_flow",
+      "source": "configs/live/macro_flow_runtime_2026-09-07.json",
+      "side": "AUTO",
+      "weight": 1.0
+    },
+    {
+      "name": "dollar_rally_short",
+      "policy_type": "dollar_rally_short",
+      "source": "configs/live/dollar_rally_short_runtime_2026-09-07.json",
+      "side": "SHORT",
+      "weight": 0.5
+    }
+  ],
+  "position_aggregation": {
+    "mode": "signed_net_hedge_v1",
+    "cross_sleeve_overlap_allowed": true,
+    "same_sleeve_overlap": "source_policy",
+    "offset_opposite_sides_before_costs": true,
+    "net_cap_after_fees": 4.5,
+    "fee_rate": 0.0006,
+    "physical_position_model": "single_side_hedge_net"
+  },
+  "approval_contract": {
+    "path": "configs/approved/g9_macro1_dollar_short05_2026-09-07.json",
+    "sha256": "44fa87328c3299249f7d956705fa53a036e7271eea41eadb46a930228445821c",
+    "selected_label": "g9_macro1_d0.5_r0.0"
+  },
+  "allocation_mode": "research_gross",
+  "accounting_version": "signed_virtual_sleeves_hedge_net_v1",
+  "operational_stage": "retired_from_live_2026_09_09",
+  "notes": [
+    "Approved sleeve notional coefficients are preserved exactly.",
+    "Cross-sleeve overlap is virtual; LONG and SHORT offset before one physical Hedge-Mode target.",
+    "Same-sleeve overlap remains blocked and the post-fee aggregate net is capped at 4.5x.",
+    "Live use requires an initially flat account and a dedicated signed-net state file; legacy ledgers are never inferred.",
+    "Retired from live on 2026-09-09 because macro_flow and dollar_rally_short did not pass the established refined-alpha criteria."
+  ],
+  "mainnet_promotion_authorized": false,
+  "promotion_authority": "superseded by explicit operator removal instruction on 2026-09-09"
+}

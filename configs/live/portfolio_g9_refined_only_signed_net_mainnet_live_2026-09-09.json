@@ -1,0 +1,75 @@
+{
+  "name": "portfolio_g9_refined_only_signed_net_mainnet_live_2026_09_09",
+  "status": "live",
+  "shadow_only": false,
+  "execution_network": "mainnet",
+  "as_of": "2026-09-09",
+  "minimum_feature_history_minutes": 90000,
+  "weights": {
+    "fresh_kimchi_fx": 1.0,
+    "frozen_annual_rank7": 1.5,
+    "rex_taker_low_range_position": 0.2,
+    "cand_rex_veto_7": 0.8,
+    "markov_transition_long": 1.0
+  },
+  "gross_weight": 4.5,
+  "base_sleeves": [
+    {
+      "name": "fresh_kimchi_fx",
+      "source": "configs/shadow/fresh_kimchi_fx_2026-07-16.json",
+      "side": "AUTO",
+      "weight": 1.0
+    },
+    {
+      "name": "frozen_annual_rank7",
+      "policy_type": "frozen_annual_rank7",
+      "source": "configs/shadow/frozen_annual_rank7_2026-07-16.json",
+      "side": "LONG",
+      "weight": 1.5
+    },
+    {
+      "name": "rex_taker_low_range_position",
+      "source": "configs/shadow/rex_taker_low_range_position_2026-07-16.json",
+      "side": "AUTO",
+      "weight": 0.2
+    },
+    {
+      "name": "cand_rex_veto_7",
+      "source": "configs/live/rex_veto_7_candidate.json",
+      "side": "AUTO",
+      "weight": 0.8
+    },
+    {
+      "name": "markov_transition_long",
+      "source": "configs/shadow/markov_transition_long_2026-07-16.json",
+      "side": "LONG",
+      "weight": 1.0
+    }
+  ],
+  "position_aggregation": {
+    "mode": "signed_net_hedge_v1",
+    "cross_sleeve_overlap_allowed": true,
+    "same_sleeve_overlap": "source_policy",
+    "offset_opposite_sides_before_costs": true,
+    "net_cap_after_fees": 4.5,
+    "fee_rate": 0.0006,
+    "physical_position_model": "single_side_hedge_net"
+  },
+  "approval_contract": {
+    "path": "configs/approved/g9_refined_only_remove_macro_dollar_2026-09-09.json",
+    "sha256": "51d06623a539d415ba75845acbe444ccce871b6e7c5a5eb2e36b12dd733499db",
+    "selected_label": "g9_refined_only"
+  },
+  "allocation_mode": "research_gross",
+  "accounting_version": "signed_virtual_sleeves_hedge_net_v1",
+  "operational_stage": "operator_authorized_mainnet_live_refined_g9_only",
+  "notes": [
+    "The five refined G9 notional coefficients are preserved exactly.",
+    "macro_flow and dollar_rally_short are excluded because they did not pass the established refined-alpha criteria.",
+    "Cross-sleeve overlap remains virtual; LONG and SHORT offset before one physical Hedge-Mode target.",
+    "Same-sleeve overlap remains source-controlled and the post-fee aggregate net is capped at 4.5x.",
+    "An active retained sleeve may be adopted only through the strict inactive-sleeve subset migration contract."
+  ],
+  "mainnet_promotion_authorized": true,
+  "promotion_authority": "explicit operator instruction to remove unrefined macro and dollar-short alphas on 2026-09-09"
+}

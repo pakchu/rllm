@@ -1,0 +1,198 @@
+{
+  "id": "macro_flow_regime_switch_75_25_v1",
+  "status": "shadow_candidate",
+  "enabled": false,
+  "live_authorized": false,
+  "side": "bidirectional_net",
+  "symbol": "BTCUSDT",
+  "decision_interval": "1h",
+  "execution_delay": "next_5m_open",
+  "position_overlap_allowed": true,
+  "long_short_offset_before_risk_and_cost": true,
+  "net_exposure_cap": 1.0,
+  "components": {
+    "inverse_dollar_aggressive_flow": {
+      "weight": 0.75,
+      "source": [
+        "BTCUSDT taker_buy_quote",
+        "BTCUSDT quote_asset_volume",
+        "DXY proxy with availability"
+      ],
+      "feature": "flow6=sum(2*taker_buy_quote-quote_asset_volume,6h)/sum(quote_asset_volume,6h); dxy_change6=log(DXY).diff(6h), delayed one extra completed hour",
+      "entry": "abs(flow6)>0.02 and sign(flow6)*dxy_change6<0",
+      "direction": "sign(flow6)",
+      "sizing": "clip(0.20/(vol24*sqrt(8766)),0.10,1.0)",
+      "signal_refresh_hours": 24
+    },
+    "long_regime_flow_switch": {
+      "weight": 0.25,
+      "source": [
+        "BTCUSDT close",
+        "BTCUSDT aggressive flow"
+      ],
+      "features": [
+        "mom720=log-close change720h/(vol720*sqrt720)",
+        "z24=close deviation from 24h mean/std",
+        "flow6"
+      ],
+      "entry": "if abs(mom720)>0.75: long only when mom720>0 and flow6>0; else long range-reversion only when z24<-1.5",
+      "direction": "long_only",
+      "sizing": "1.0",
+      "signal_refresh_hours": 24
+    }
+  },
+  "portfolio_formula": "clip(0.75*inverse_dollar_aggressive_flow + 0.25*long_regime_flow_switch,-1,1)",
+  "accounting": {
+    "notional_maintenance": "hourly target fraction; all resulting unit changes charged",
+    "base_cost_per_notional_side": 0.0006,
+    "stress_cost_per_notional_side": 0.001,
+    "funding": "realized; missing historical mark uses settlement 5m open proxy",
+    "mdd": "conservative five-minute high-before-low envelope"
+  },
+  "evidence": {
+    "selection_2021_2023": {
+      "name": "mix_223_162_0.75",
+      "spec": {
+        "family": "portfolio",
+        "components": {
+          "dollar_flow6__both__reb24": 0.75,
+          "flow_switch720__long__reb24__raw": 0.25
+        },
+        "model": false
+      },
+      "score": 2.242490742737898,
+      "selection": {
+        "return_pct": 113.89035046069509,
+        "cagr_pct": 28.86747168200028,
+        "mdd_pct": 11.239823397370463,
+        "calmar": 2.568320752152901,
+        "sharpe": 2.228455941522467,
+        "entry_episodes": 279,
+        "rebalance_orders": 9659,
+        "turnover": 198.15414852692098,
+        "fees_pct_initial": 18.06140150602597,
+        "funding_pct_initial": 2.6473449603262216
+      },
+      "half_sharpes": [
+        0.6964141208052508,
+        3.2624393449092404,
+        1.5064235806346855,
+        2.676962328737343,
+        3.1323737283225688,
+        2.3212522852776774
+      ]
+    },
+    "historical_reports": {
+      "report2024": {
+        "return_pct": 15.479993156728167,
+        "cagr_pct": 15.447827316497209,
+        "mdd_pct": 9.493968198792269,
+        "calmar": 1.6271201875799766,
+        "sharpe": 1.4500366504135729,
+        "entry_episodes": 100,
+        "rebalance_orders": 3343,
+        "turnover": 63.41300728418258,
+        "fees_pct_initial": 4.297570382913573,
+        "funding_pct_initial": 0.8806688276291186
+      },
+      "report2025": {
+        "return_pct": 10.397109519554881,
+        "cagr_pct": 10.405836723347361,
+        "mdd_pct": 6.567990500475174,
+        "calmar": 1.5843257877115582,
+        "sharpe": 1.1189404749488179,
+        "entry_episodes": 79,
+        "rebalance_orders": 2871,
+        "turnover": 69.50153158418942,
+        "fees_pct_initial": 4.526892310044745,
+        "funding_pct_initial": 0.33774990997412463
+      },
+      "report2026": {
+        "return_pct": -1.5595442469101162,
+        "cagr_pct": -3.740822627475804,
+        "mdd_pct": 7.038049437515492,
+        "calmar": -0.531514116331123,
+        "sharpe": -0.41202038589726986,
+        "entry_episodes": 40,
+        "rebalance_orders": 1399,
+        "turnover": 30.33541196079249,
+        "fees_pct_initial": 1.7713148509469128,
+        "funding_pct_initial": -0.023066928401063443
+      },
+      "combined": {
+        "return_pct": 25.498364979925636,
+        "cagr_pct": 9.866900631288011,
+        "mdd_pct": 10.068474343710365,
+        "calmar": 0.9799797163362417,
+        "sharpe": 1.0336823111601996,
+        "entry_episodes": 219,
+        "rebalance_orders": 7613,
+        "turnover": 163.24995082916428,
+        "fees_pct_initial": 11.783413940173856,
+        "funding_pct_initial": 1.2412951636889678
+      }
+    },
+    "historical_combined_stress": {
+      "return_pct": 17.561984137925315,
+      "cagr_pct": 6.933154529338714,
+      "mdd_pct": 11.915214000089868,
+      "calmar": 0.5818741089573735,
+      "sharpe": 0.7494031611058384,
+      "entry_episodes": 219,
+      "rebalance_orders": 7613,
+      "turnover": 163.25464847762834,
+      "fees_pct_initial": 18.996900073827096,
+      "funding_pct_initial": 1.2181024145453185
+    },
+    "fresh_2026_06_01_to_09_05": {
+      "return_pct": 5.626453662365649,
+      "cagr_pct": 23.054005182885362,
+      "mdd_pct": 3.9751952586101535,
+      "calmar": 5.799464852185834,
+      "sharpe": 2.458298176963832,
+      "entry_episodes": 29,
+      "rebalance_orders": 792,
+      "turnover": 22.889264285446558,
+      "fees_pct_initial": 1.4131947221889196,
+      "funding_pct_initial": 0.02515745338613119
+    },
+    "fresh_stress": {
+      "return_pct": 4.663210462230949,
+      "cagr_pct": 18.854915453386933,
+      "mdd_pct": 4.0458755799799295,
+      "calmar": 4.6602805945605645,
+      "sharpe": 2.0495616680458837,
+      "entry_episodes": 29,
+      "rebalance_orders": 792,
+      "turnover": 22.890469259868144,
+      "fees_pct_initial": 2.344818500105576,
+      "funding_pct_initial": 0.024916008393580755
+    },
+    "fresh_source_availability": {
+      "dxy_available": 0.7257013216176311,
+      "usdkrw_available": 0.709928337354604,
+      "kimchi_available": 0.709928337354604
+    },
+    "fresh_component_nonzero_hours": {
+      "dollar": 504,
+      "flow_switch720_long": 360,
+      "exhaustion24_both": 0,
+      "exhaustion24_short": 0
+    }
+  },
+  "risks": [
+    "Historical 2024/2025/2026H1 were exposed in prior research; not clean OOS.",
+    "2026H1 return was negative before the recent recovery.",
+    "DXY/USDKRW/kimchi publication-time parity is not independently proven; recent DXY availability is partial.",
+    "No liquidation, capacity, market-impact, or tick-order model.",
+    "Candidate selected from exposed historical finalists before one-shot recent replay; remain shadow-only."
+  ],
+  "artifacts": {
+    "research/macro_flow_combinations/selection_freeze.json": "1ac1aae4e86f3bff2b661c2e17549b90e3024f96997c573a8686ee3ef1b8afef",
+    "research/macro_flow_combinations/report.json": "f052f6e2fae7c34bbe6772d19e66c49dc556859fc6533b86d594f7322a2d5478",
+    "research/macro_flow_fresh/report.json": "e8d31060b550d911411a92fa6c6ebfe8dcd6756b8525431e5b0f759fd363df15"
+  },
+  "implementation": "training/evaluate_macro_flow_fixed_fresh.py:fixed_positions",
+  "research_only": true,
+  "result_hash": "568273edeb368ae97a702604f947d5c4565fd2336fbd86022ddcdc43bcbfdab9"
+}

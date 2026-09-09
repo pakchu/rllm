@@ -836,12 +836,18 @@ def _duplicate_groups(
 
 
 def _inventory() -> dict[str, Any]:
+    runtime_configs = sorted(
+        str(path)
+        for path in Path("configs/live").glob("*.json")
+        if path.name.endswith(".local.json")
+        or path.name == "rex_llm_binance_testnet_bear_pilot.json"
+    )
     atomic_configs = sorted(
         str(path)
         for folder in (Path("configs/live"), Path("configs/shadow"))
         for path in folder.glob("*.json")
         if not path.name.startswith("portfolio_")
-        and path.name != "rex_llm_binance_testnet_bear_pilot.json"
+        and str(path) not in runtime_configs
     )
     research_pool_files = sorted(
         str(path) for path in Path("research/pools/alphas").glob("*.json")
@@ -868,6 +874,22 @@ def _inventory() -> dict[str, Any]:
         {
             "path": "configs/live/rex_taker_low_range_position_research_candidate.json",
             "reason": "deduplicated alias; productionized frozen shadow contract is replayed",
+        },
+        {
+            "path": "configs/live/dollar_rally_short_runtime_2026-09-07.json",
+            "reason": "deduplicated runtime wrapper for the retired unrefined dollar-rally candidate; not a distinct alpha",
+        },
+        {
+            "path": "configs/live/macro_flow_runtime_2026-09-07.json",
+            "reason": "deduplicated runtime wrapper for the retired unrefined macro-flow candidate; not a distinct alpha",
+        },
+        {
+            "path": "configs/shadow/legacy_dollar_rally_short_2026-09-07.json",
+            "reason": "retired unrefined candidate; excluded from the canonical admitted-alpha comparison",
+        },
+        {
+            "path": "configs/shadow/macro_flow_regime_switch_candidate_2026-09-06.json",
+            "reason": "retired unrefined candidate; excluded from the canonical admitted-alpha comparison",
         },
         {
             "path": "research/pools/alphas/markov_persistent_funding_premium_long_20260712.json",
@@ -897,9 +919,7 @@ def _inventory() -> dict[str, Any]:
         "research_pool_files": research_pool_files,
         "scored_source_files": scored_source_files,
         "portfolio_configs_excluded_as_compositions": portfolio_configs,
-        "runtime_configs_excluded": [
-            "configs/live/rex_llm_binance_testnet_bear_pilot.json"
-        ],
+        "runtime_configs_excluded": runtime_configs,
         "raw_scan_artifacts_inventory_only": raw_scan_artifacts,
         "raw_scan_artifact_count": len(raw_scan_artifacts),
         "non_replayed_or_deduplicated": non_replayed,

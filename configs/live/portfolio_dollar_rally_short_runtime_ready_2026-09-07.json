@@ -1,0 +1,39 @@
+{
+  "name": "portfolio_dollar_rally_short_runtime_ready_2026_09_07",
+  "status": "runtime_ready_not_live",
+  "shadow_only": true,
+  "execution_network": "mainnet",
+  "as_of": "2026-09-07",
+  "minimum_feature_history_minutes": 90000,
+  "weights": {
+    "dollar_rally_short": 0.5
+  },
+  "gross_weight": 0.5,
+  "position_aggregation": {
+    "mode": "signed_net_hedge_v1",
+    "cross_sleeve_overlap_allowed": true,
+    "same_sleeve_overlap": "source_policy",
+    "offset_opposite_sides_before_costs": true,
+    "net_cap_after_fees": 4.5,
+    "fee_rate": 0.0006,
+    "physical_position_model": "single_side_hedge_net"
+  },
+  "base_sleeves": [
+    {
+      "name": "dollar_rally_short",
+      "policy_type": "dollar_rally_short",
+      "source": "configs/live/dollar_rally_short_runtime_2026-09-07.json",
+      "side": "SHORT",
+      "weight": 0.5
+    }
+  ],
+  "allocation_mode": "research_gross",
+  "operational_stage": "runtime_verified_not_service_activated",
+  "recovery_registry": true,
+  "notes": [
+    "This file keeps the sleeve identity and 0.5 allocation discoverable for signed-net state recovery after portfolio changes.",
+    "It is a component smoke portfolio, not authorization to replace or run beside the active multi-sleeve portfolio.",
+    "Live mode remains blocked until an operator-selected containing portfolio is promoted with status=live.",
+    "The Binance account remains in Hedge Mode, but the aggregate signed target is represented by only one non-zero physical side."
+  ]
+}

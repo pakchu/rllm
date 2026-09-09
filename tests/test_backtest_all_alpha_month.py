@@ -70,6 +70,19 @@ def test_atomic_registry_is_complete_and_accounted_for() -> None:
         "configs/live/rex_llm_binance_testnet_bear_pilot.json"
         in inventory["runtime_configs_excluded"]
     )
+    assert (
+        "configs/live/rex_rule_binance_mainnet_gross8.local.json"
+        in inventory["runtime_configs_excluded"]
+    )
+    non_replayed = {
+        row["path"]: row["reason"]
+        for row in inventory["non_replayed_or_deduplicated"]
+    }
+    for path in (
+        "configs/shadow/legacy_dollar_rally_short_2026-09-07.json",
+        "configs/shadow/macro_flow_regime_switch_candidate_2026-09-06.json",
+    ):
+        assert "retired unrefined candidate" in non_replayed[path]
 
 
 def test_missing_legacy_offset_uses_frozen_research_clock() -> None:
